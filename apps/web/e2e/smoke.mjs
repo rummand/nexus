@@ -218,6 +218,12 @@ try {
   await page.waitForSelector("[data-entity-table]");
   assert.ok((await page.locator("[data-entity-table] th").count()) >= 4, "table view renders attribute columns");
   await page.click(".entity-view-tabs button:has-text('List')");
+  // entity drawer: open from the list, Escape closes
+  await page.click(".entity-row .entity-open >> nth=0");
+  await page.waitForSelector("[data-entity-drawer] .entity-drawer-body", { timeout: 15000 });
+  assert.ok((await page.locator("[data-entity-drawer] .entity-drawer-section").count()) >= 2, "entity drawer shows relations and boards");
+  await page.keyboard.press("Escape");
+  await page.locator("[data-entity-drawer]").waitFor({ state: "detached" });
   await page.click("text=Import data");
   await page.click("text=Use sample");
   await page.click('.modal-card button:text-is("Import")');

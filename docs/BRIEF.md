@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 17 — SVG export, presentation mode)
+Last updated: 2026-09-04 (rev 18 — entity drawer)
 
 ---
 
@@ -273,6 +273,14 @@ board_entities  board_id, entity_id, element_id      (rebuilt on every save)
 - Sources are recorded per entity/relation (`canvas`, `import:<name>`); this is the hook
   for connectors and agents (§2.1–2.2).
 
+**Entity drawer (rev 18).** Clicking an entity name on the Knowledge graph page (list or table)
+opens a right-hand drawer with everything the graph knows: kind / name / description (save on
+change), attributes with the kind's schema as suggestions (blur saves, × removes), relations
+(click the other end to navigate), boards it appears on (links), duplicate candidates with a
+one-click merge, and delete. Esc or the backdrop closes it. Data comes from the existing
+`GET /api/graph/entities/[id]`; edits go through the same server actions the canvas uses.
+
+
 ### 5.6 Agent proposals (v0.2)
 
 The first rung of the agent layer (§2.2). Proposals are computed deterministically from the
@@ -490,6 +498,10 @@ contains (`src/canvas/lens.ts`).
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
 
+### Entity drawer (v0.2)
+- Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
+  relations, jump to boards, merge duplicates, delete.
+
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
   schema, sort, inline editing, add column, copy as CSV.
@@ -610,6 +622,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 18: entity drawer.** Entity names on the Knowledge graph page (list and
+  table) open a detail drawer: editable fields and attributes, navigable relations, board links,
+  duplicate merge and delete.
 
 - **2026-09-04 — Rev 17: SVG export, presentation mode.** Topbar Export menu with Download SVG /
   Copy SVG (pure document → SVG renderer, unit-tested) and Present (hides topbar, tool rail,

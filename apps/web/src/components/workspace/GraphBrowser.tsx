@@ -7,6 +7,7 @@ import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
 import { ProposalsPanel } from "./ProposalsPanel";
 import { EntityTable } from "./EntityTable";
+import { EntityDrawer } from "./EntityDrawer";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, renameRelationKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
 
@@ -29,6 +30,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "table">("list");
+  const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ kind: "", name: "", description: "" });
   const [pending, start] = useTransition();
 
@@ -95,7 +97,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
             </label>
           </div>
         </div>
-        {view === "table" && <EntityTable entities={filtered} snapshot={snapshot} kindFilter={kindFilter} />}
+        {view === "table" && <EntityTable entities={filtered} snapshot={snapshot} kindFilter={kindFilter} onOpen={setOpenId} />}
         {view === "list" && <div className="studio-board-list">
           {filtered.map((e) => (
             <article key={e.id} className="studio-board-row entity-row">
@@ -121,7 +123,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
                   <div className="studio-board-open" style={{ cursor: "default" }}>
                     <span className="board-glyph" style={{ background: kindColor(snapshot, e.kind) + "22", color: kindColor(snapshot, e.kind) }}>■</span>
                     <span>
-                      <strong>{e.name || "(unnamed)"}</strong>
+                      <strong><button type="button" className="entity-open" onClick={() => setOpenId(e.id)} title="Open details">{e.name || "(unnamed)"}</button></strong>
                       <small>{e.description || "No description"}</small>
                       {Object.keys(e.attributes).length > 0 && <span className="entity-attrs">{Object.entries(e.attributes).slice(0, 4).map(([k, v]) => <i key={k}>{k} · {v}</i>)}</span>}
                       <em>{e.kind || "Untyped"} · {e.relationCount} relation{e.relationCount === 1 ? "" : "s"} · source {e.source}</em>
@@ -141,6 +143,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
         </div>}
       </section>
 
+      <EntityDrawer entityId={openId} workspaceId={workspaceId} kindColor={(k) => kindColor(snapshot, k)} onClose={() => setOpenId(null)} onNavigate={setOpenId} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} workspaceId={workspaceId} />
       <LayoutDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} workspaceId={workspaceId} spaces={spaces} kinds={snapshot.kinds.map((k) => k.kind)} slug={slug} />
     </section>

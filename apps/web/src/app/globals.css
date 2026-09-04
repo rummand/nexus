@@ -1160,3 +1160,41 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .miro-studio.presenting .canvas-viewport { border-radius: 0; }
 .present-exit { background: rgba(23, 32, 51, 0.82); border: 0; border-radius: 999px; bottom: 16px; color: #fff; font-size: 12px; font-weight: 800; left: 50%; padding: 8px 14px; position: absolute; transform: translateX(-50%); z-index: 6; }
 .present-exit:hover { background: rgba(23, 32, 51, 0.95); }
+
+/* ---- entity drawer ------------------------------------------------------------------------ */
+.entity-open { background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0; text-align: left; }
+.entity-open:hover { color: var(--blue); text-decoration: underline; }
+.modal-backdrop[data-entity-drawer] { align-items: stretch; justify-content: flex-end; padding: 0; }
+.entity-drawer { background: #fff; border-left: 1px solid var(--lines); box-shadow: -18px 0 44px rgba(23, 32, 51, 0.14); display: grid; gap: 14px; grid-template-rows: auto 1fr; height: 100%; max-width: 100%; overflow: auto; padding: 18px 20px 24px; width: 520px; }
+.entity-drawer > header { align-items: center; display: flex; gap: 12px; }
+.entity-drawer > header > div { flex: 1; min-width: 0; }
+.entity-drawer > header small { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.entity-drawer > header h2 { font-size: 20px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-drawer > header > button { background: transparent; border: 0; color: #8a95a8; }
+.entity-drawer > header > button:hover { color: var(--ink); }
+.entity-drawer-body { display: grid; gap: 14px; }
+.entity-drawer-form { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+.entity-drawer-form label { display: grid; gap: 4px; }
+.entity-drawer-form label.wide { grid-column: 1 / -1; }
+.entity-drawer-form label span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.entity-drawer-form input, .entity-drawer-form textarea { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: var(--ink); font: inherit; font-size: 13px; padding: 7px 10px; resize: vertical; }
+.entity-drawer-form input:focus, .entity-drawer-form textarea:focus { border-color: var(--blue); outline: 0; }
+.entity-drawer-form .primary-home-button { grid-column: 1 / -1; justify-self: start; }
+.entity-drawer-section { background: #f7f9fc; border: 1px solid #e4ebf4; border-radius: 10px; display: grid; gap: 6px; padding: 10px 12px; }
+.entity-drawer-section.warn { background: #fffaf0; border-color: #f6dfb2; }
+.entity-drawer-section > span { align-items: center; color: #8490a3; display: flex; font-size: 11px; font-weight: 900; gap: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+.entity-drawer-section > span small { background: #eef4fb; border-radius: 999px; color: var(--blue); font-size: 10px; padding: 1px 6px; }
+.entity-drawer-section ul { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.entity-drawer-section li { align-items: center; color: #34445c; display: flex; font-size: 13px; gap: 8px; min-height: 26px; }
+.entity-drawer-section li b { color: var(--blue); font-weight: 800; }
+.entity-drawer-section li button { background: transparent; border: 0; color: var(--ink); font: inherit; font-weight: 700; padding: 0; text-align: left; }
+.entity-drawer-section li button:hover { color: var(--blue); text-decoration: underline; }
+.entity-drawer-section li small { color: #8a95a8; font-weight: 600; }
+.entity-drawer-section li a { color: var(--blue); font-weight: 700; text-decoration: none; }
+.entity-drawer-section .muted { color: #8a95a8; font-size: 12px; margin: 0; }
+.entity-drawer-merge { align-items: center; background: #fff !important; border: 1px solid #f0d39a !important; border-radius: 999px !important; color: #b45309 !important; display: inline-flex; font-size: 11px !important; gap: 4px; margin-left: auto; padding: 3px 9px !important; }
+.entity-drawer-merge:hover { background: #fff5e6 !important; text-decoration: none !important; }
+.entity-drawer footer { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.entity-drawer footer small { color: #8a95a8; font-size: 11px; }
+.entity-drawer footer .ghost-button { height: 34px; min-height: 34px; width: auto; }
+.entity-drawer footer .ghost-button.danger { color: #c24141; }

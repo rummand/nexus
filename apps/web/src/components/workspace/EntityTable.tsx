@@ -12,7 +12,7 @@ type SortKey = "name" | "kind" | "relations" | "boards" | `attr:${string}`;
  * Spreadsheet view of entities: one column per attribute key in use (the emergent schema),
  * cells editable in place. Adding a column just adds a key — the schema is whatever the data says.
  */
-export function EntityTable({ entities, snapshot, kindFilter }: { entities: EntitySummary[]; snapshot: GraphSnapshot; kindFilter: string | null }) {
+export function EntityTable({ entities, snapshot, kindFilter, onOpen }: { entities: EntitySummary[]; snapshot: GraphSnapshot; kindFilter: string | null; onOpen?: (id: string) => void }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 });
   const [extraKeys, setExtraKeys] = useState<string[]>([]);
   const [newKey, setNewKey] = useState("");
@@ -76,7 +76,7 @@ export function EntityTable({ entities, snapshot, kindFilter }: { entities: Enti
           <tbody>
             {rows.map((e) => (
               <tr key={e.id}>
-                <td className="entity-table-name"><strong>{e.name || "(unnamed)"}</strong>{e.description && <small>{e.description}</small>}</td>
+                <td className="entity-table-name"><strong><button type="button" className="entity-open" onClick={() => onOpen?.(e.id)} title="Open details">{e.name || "(unnamed)"}</button></strong>{e.description && <small>{e.description}</small>}</td>
                 {!kindFilter && <td><span className="entity-table-kind"><i style={{ background: snapshot.kinds.find((k) => k.kind === e.kind)?.color ?? "#1376d4" }} />{e.kind || "Untyped"}</span></td>}
                 {keys.map((k) => <Cell key={k} entityId={e.id} attrKey={k} value={e.attributes[k] ?? ""} />)}
                 <td className="num">{e.relationCount}</td>
