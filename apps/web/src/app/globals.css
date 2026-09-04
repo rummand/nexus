@@ -990,6 +990,7 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .viewpoint-legend button i { border-radius: 3px; display: inline-block; flex: 0 0 auto; height: 11px; width: 11px; }
 .viewpoint-legend button b { flex: 1; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .viewpoint-legend button small { color: #6c7a91; font-weight: 800; }
+.viewpoint-legend button.hidden-entry, .lens-legend-items button.hidden-entry { opacity: 0.45; text-decoration: line-through; }
 .lens-legend { background: rgba(255, 255, 255, 0.94); border: 1px solid var(--lines); border-radius: 13px; bottom: 48px; box-shadow: 0 16px 40px rgba(23, 32, 51, 0.12); display: grid; gap: 6px; left: 50%; max-width: 420px; padding: 10px 12px; position: absolute; transform: translateX(-50%); z-index: 6; }
 .lens-legend header { align-items: center; display: flex; gap: 8px; }
 .lens-legend header strong { color: var(--ink); flex: 1; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }

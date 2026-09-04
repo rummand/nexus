@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import { nanoid } from "nanoid";
 import { cardColorForKind, isBoxElement, type CanvasElement, type CardElement } from "../document";
+import { boxContainsBox } from "../geometry";
+import { LENS_PALETTE } from "../lens";
 import { useCanvasStore } from "../store";
 import { isEntityId, type NeighborhoodResponse } from "@/lib/graph-types";
 
@@ -123,12 +125,13 @@ export function useGraphActions() {
   );
 
   /** Group the board's cards into one frame per kind (existing frames are left alone). */
-  const arrangeByKind = useCallback(() => {
+  /** Lay every card out in one frame per group (kind, or an attribute's values). */
+  const arrangeBy = useCallback((groupOf: (c: CardElement) => string, frameOf: (group: string) => { title: string; color: string }) => {
     const s = store.getState();
     const cards = Object.values(s.elements).filter((el): el is CardElement => el.type === "card");
-    if (cards.length === 0) return;
+    if (cards.length === 0) return 0;
     const byKind = new Map<string, CardElement[]>();
-    for (const c of cards) byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), c]);
+    for (const c of cards) byKind.set(groupOf(c), [...(byKind.get(groupOf(c)) ?? []), c]);
     const kinds = [...byKind.entries()].sort((a, b) => b[1].length - a[1].length);
     const boxes = Object.values(s.elements).filter(isBoxElement);
     const startX = Math.min(...boxes.map((b) => b.x));
@@ -143,7 +146,8 @@ export function useGraphActions() {
       const fw = pad * 2 + perRow * cardW + (perRow - 1) * gapX;
       const fh = titleRoom + pad + rows * cardH + (rows - 1) * gapY;
       if (col >= 2) { col = 0; x = startX; y += rowH + frameGap; rowH = 0; }
-      frames.push({ id: nanoid(10), type: "frame", x, y, w: fw, h: fh, title: kind || "Untyped", color: cardColorForKind(kind), z: 0 });
+      const f = frameOf(kind);
+      frames.push({ id: nanoid(10), type: "frame", x, y, w: fw, h: fh, title: f.title, color: f.color, z: 0 });
       list.forEach((c, i) => {
         patch[c.id] = { x: x + pad + (i % perRow) * (cardW + gapX), y: y + titleRoom + Math.floor(i / perRow) * (cardH + gapY), w: cardW, h: cardH };
       });
@@ -151,11 +155,30 @@ export function useGraphActions() {
       rowH = Math.max(rowH, fh);
       col++;
     }
+    // frames that only held cards we just moved out are now empty — drop them rather than leave husks
+    const moved = new Set(Object.keys(patch));
+    const emptyFrames = boxes
+      .filter((b) => b.type === "frame")
+      .filter((f) => !boxes.some((b) => b.id !== f.id && !moved.has(b.id) && b.type !== "frame" && boxContainsBox(f, b)))
+      .filter((f) => boxes.some((b) => moved.has(b.id) && boxContainsBox(f, b)))
+      .map((f) => f.id);
     s.pushHistory();
     s.addElements(frames, { select: false, history: false });
     s.updateElements(patch);
+    if (emptyFrames.length) s.deleteElements(emptyFrames, { history: false });
     s.zoomToFit();
+    return kinds.length;
   }, [store]);
+
+  const arrangeByKind = useCallback(() => arrangeBy((c) => c.kind, (kind) => ({ title: kind || "Untyped", color: cardColorForKind(kind) })), [arrangeBy]);
+
+  /** One frame per value of `key` (cards without the attribute land in a "no <key>" frame). */
+  const arrangeByAttribute = useCallback((key: string) => {
+    const values = new Map<string, number>();
+    for (const el of Object.values(store.getState().elements)) if (el.type === "card") { const v = el.attributes?.[key] ?? ""; values.set(v, (values.get(v) ?? 0) + 1); }
+    const order = [...values.entries()].filter(([v]) => v).sort((a, b) => b[1] - a[1]).map(([v]) => v);
+    return arrangeBy((c) => c.attributes?.[key] ?? "", (v) => ({ title: v ? `${key}: ${v}` : `no ${key}`, color: v ? LENS_PALETTE[order.indexOf(v) % LENS_PALETTE.length]! : "#94a3b8" }));
+  }, [arrangeBy, store]);
 
   /** Lay the selected box elements out on a grid. */
   const distributeSelection = useCallback(() => {
@@ -172,5 +195,5 @@ export function useGraphActions() {
     s.updateElements(patch, { history: true });
   }, [store]);
 
-  return { busy, showRelations, expandSelection, arrangeByKind, distributeSelection };
+  return { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, distributeSelection };
 }

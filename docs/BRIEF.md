@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 13 — attribute proposals)
+Last updated: 2026-09-04 (rev 14 — relation lens, group by attribute)
 
 ---
 
@@ -378,6 +378,12 @@ contains (`src/canvas/lens.ts`).
   on the card; cards without the attribute fade; connectors stay visible only between two
   visible cards. The legend is the emergent value set with counts — i.e. the attribute's schema
   as the data actually uses it.
+- **Relation lens.** Colours connectors by relation type (palette in order of frequency,
+  unlabelled connectors grouped as "(unlabelled)"); clicking a type in the legend fades that
+  type out (`hidden` list in the lens). Cards are never faded by this lens.
+- **Group by attribute.** Next to "Group by kind", a picker lays every card out in one frame
+  per value of an attribute (`lifecycle: active`, `no lifecycle` …). Both layouts remove frames
+  that were emptied by the move so the board does not keep husks; one undo step reverts all.
 - **Derived state.** The lens result (visible set, colours, hops, legend) is computed once per
   change of lens / selection / elements by a store subscription and stored as `lensResult`;
   every card and connector reads a per-id slice, so the graph walk never runs per component.
@@ -466,9 +472,11 @@ contains (`src/canvas/lens.ts`).
   an attribute.
 
 ### Lenses (v0.2)
-- Impact lens (direction, depth) and attribute lens (colour by value) in the Viewpoint tab;
-  cards badge their hop distance or attribute value; legend card on the canvas; legend entries
-  select their cards; saved views remember the lens.
+- Impact lens (direction, depth), attribute lens (colour by value) and relation lens (colour
+  connectors by type, toggle types) in the Viewpoint tab; cards badge their hop distance or
+  attribute value; legend card on the canvas; legend entries select their cards or toggle a
+  relation type; saved views remember the lens. Group by kind / by attribute lay cards out in
+  frames and clean up emptied frames.
 
 ### Viewpoints (v0.2)
 - Graph panel with Inventory | Viewpoint tabs; expand neighbours (depth, direction),
@@ -566,6 +574,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 14: relation lens, group by attribute.** Third lens colours connectors by
+  relation type with a toggleable legend; "Group by attribute" lays cards out in frames per
+  value; both group-by layouts now delete frames they emptied and stay a single undo step
+  (`deleteElements` gained a history option).
 
 - **2026-09-04 — Rev 13: attribute proposals.** Three new resolution rules keep the emergent
   attribute schema clean: rename key variants, normalise value spellings, fill in attributes

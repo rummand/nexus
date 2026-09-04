@@ -107,7 +107,7 @@ export interface CanvasState {
   updateElements(patch: Record<ElementId, Partial<CanvasElement>>, opts?: { history?: boolean }): void;
   /** Replace the whole element map (used by drags that computed positions externally). */
   replaceElements(next: Elements, opts?: { history?: boolean }): void;
-  deleteElements(ids: ElementId[]): void;
+  deleteElements(ids: ElementId[], opts?: { history?: boolean }): void;
   duplicateSelection(): void;
   bringToFront(ids: ElementId[]): void;
   sendToBack(ids: ElementId[]): void;
@@ -315,7 +315,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         if (changed) mutate(next, opts.history ?? false);
       },
       replaceElements: (next, opts = {}) => mutate(next, opts.history ?? false),
-      deleteElements: (ids) => {
+      deleteElements: (ids, opts = {}) => {
         const s = get();
         const doomed = new Set(ids);
         // connectors attached to deleted elements go too
@@ -326,7 +326,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         if (doomed.size === 0) return;
         const next: Elements = {};
         for (const el of Object.values(s.elements)) if (!doomed.has(el.id)) next[el.id] = el;
-        mutate(next, true, { selection: s.selection.filter((id) => !doomed.has(id)), editingId: null });
+        mutate(next, opts.history ?? true, { selection: s.selection.filter((id) => !doomed.has(id)), editingId: null });
       },
       duplicateSelection: () => {
         const s = get();

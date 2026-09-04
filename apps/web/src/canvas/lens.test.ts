@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasElement } from "./document";
-import { attributeKeysOnBoard, computeLens, reachable } from "./lens";
+import { attributeKeysOnBoard, computeLens, reachable, relationKindsOnBoard, UNLABELLED } from "./lens";
 
 function card(id: string, attributes?: Record<string, string>): CanvasElement {
   return { id, type: "card", x: 0, y: 0, w: 200, h: 100, z: 1, kind: "Application", color: "#1376d4", title: id, description: "", attributes };
@@ -52,5 +52,16 @@ describe("computeLens", () => {
   it("lists attribute keys with counts", () => {
     const withAttrs = { ...els, a: card("a", { lifecycle: "Active", owner: "x" }), b: card("b", { lifecycle: "Active" }) };
     expect(attributeKeysOnBoard(withAttrs)).toEqual([{ key: "lifecycle", count: 2 }, { key: "owner", count: 1 }]);
+  });
+
+  it("relation lens colours connectors by type and fades hidden types", () => {
+    const withLabels = { ...els, ab: { ...els.ab!, label: "uses" }, bc: { ...els.bc!, label: "uses" } };
+    expect(relationKindsOnBoard(withLabels)).toEqual([{ kind: "uses", count: 2 }, { kind: UNLABELLED, count: 1 }]);
+    const r = computeLens({ type: "relation", hidden: [UNLABELLED] }, withLabels, []);
+    expect(r?.visible.has("ab")).toBe(true);
+    expect(r?.visible.has("db")).toBe(false);
+    expect(r?.visible.has("e")).toBe(true); // cards are never faded by this lens
+    expect(r?.colors.ab).toBe(r?.colors.bc);
+    expect(r?.legend.find((l) => l.value === UNLABELLED)?.hidden).toBe(true);
   });
 });

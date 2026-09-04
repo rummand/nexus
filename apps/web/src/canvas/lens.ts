@@ -8,7 +8,9 @@ import type { CanvasElement, ConnectorElement, ElementId } from "./document";
 export type Lens =
   | { type: "none" }
   | { type: "impact"; direction: "both" | "out" | "in"; depth: number }
-  | { type: "attribute"; key: string };
+  | { type: "attribute"; key: string }
+  /** Colour connectors by relation type; `hidden` relation types fade out. */
+  | { type: "relation"; hidden: string[] };
 
 export const NO_LENS: Lens = { type: "none" };
 
@@ -17,13 +19,25 @@ export interface LensLegendEntry {
   color: string;
   count: number;
   ids: ElementId[];
+  /** Relation lens: this relation type is currently faded out. */
+  hidden?: boolean;
+}
+
+/** Label shown for connectors without a relation type. */
+export const UNLABELLED = "(unlabelled)";
+
+/** Relation types used by connectors on the board, most common first. */
+export function relationKindsOnBoard(elements: Record<ElementId, CanvasElement>): Array<{ kind: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const el of Object.values(elements)) if (el.type === "connector") { const k = el.label.trim() || UNLABELLED; counts.set(k, (counts.get(k) ?? 0) + 1); }
+  return [...counts.entries()].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count || a.kind.localeCompare(b.kind));
 }
 
 export interface LensResult {
   lens: Exclude<Lens, { type: "none" }>;
   /** Cards and connectors that stay fully visible; everything else of those types is dimmed. */
   visible: Set<ElementId>;
-  /** Per-card accent colour (attribute lens). */
+  /** Per-element accent colour (cards for the attribute lens, connectors for the relation lens). */
   colors: Record<ElementId, string>;
   /** Per-card hop distance from the selection (impact lens; 0 = selected). */
   hops: Record<ElementId, number>;
@@ -103,6 +117,25 @@ export function computeLens(lens: Lens, elements: Record<ElementId, CanvasElemen
     const reached = Object.keys(hops).length - roots.length;
     const dir = lens.direction === "both" ? "connected to" : lens.direction === "out" ? "downstream of" : "upstream of";
     return { lens, visible, colors: {}, hops, legend, summary: `${reached} card${reached === 1 ? "" : "s"} ${dir} the selection within ${lens.depth} hop${lens.depth === 1 ? "" : "s"}` };
+  }
+  if (lens.type === "relation") {
+    const kinds = relationKindsOnBoard(elements);
+    const hidden = new Set(lens.hidden);
+    const colorOf = new Map(kinds.map((k, i) => [k.kind, LENS_PALETTE[i % LENS_PALETTE.length]!]));
+    const colors: Record<ElementId, string> = {};
+    const visible = new Set<ElementId>();
+    const idsByKind = new Map<string, ElementId[]>();
+    for (const el of Object.values(elements)) {
+      if (el.type !== "connector") { visible.add(el.id); continue; }
+      const k = el.label.trim() || UNLABELLED;
+      idsByKind.set(k, [...(idsByKind.get(k) ?? []), el.id]);
+      if (hidden.has(k)) continue;
+      visible.add(el.id);
+      colors[el.id] = colorOf.get(k)!;
+    }
+    const legend: LensLegendEntry[] = kinds.map((k) => ({ value: k.kind, color: colorOf.get(k.kind)!, count: k.count, ids: idsByKind.get(k.kind) ?? [], hidden: hidden.has(k.kind) }));
+    const shown = kinds.length - kinds.filter((k) => hidden.has(k.kind)).length;
+    return { lens, visible, colors, hops: {}, legend, summary: kinds.length === 0 ? "No connectors on this board" : `${shown} of ${kinds.length} relation type${kinds.length === 1 ? "" : "s"} shown · click a type to toggle it` };
   }
   // attribute lens
   const byValue = new Map<string, ElementId[]>();

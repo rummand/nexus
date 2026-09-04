@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cardColorForKind } from "./document";
-import { attributeKeysOnBoard, NO_LENS } from "./lens";
+import { attributeKeysOnBoard, NO_LENS, relationKindsOnBoard } from "./lens";
 import { useCanvas, useCanvasStore } from "./store";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { isEntityId } from "@/lib/graph-types";
@@ -18,7 +18,9 @@ export function ViewpointPanel() {
   const lensResult = useCanvas((s) => s.lensResult);
   const attributeKeys = useMemo(() => attributeKeysOnBoard(elements), [elements]);
   const [viewName, setViewName] = useState("");
-  const { busy, showRelations, expandSelection, arrangeByKind, distributeSelection } = useGraphActions();
+  const { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, distributeSelection } = useGraphActions();
+  const [groupKey, setGroupKey] = useState("");
+  const relationKinds = useMemo(() => relationKindsOnBoard(elements), [elements]);
   const [depth, setDepthState] = useState(1);
   const [direction, setDirectionState] = useState<"both" | "out" | "in">("both");
   const setDepth = (d: number) => { setDepthState(d); if (lens.type === "impact") store.getState().setLens({ ...lens, depth: d }); };
@@ -79,6 +81,10 @@ export function ViewpointPanel() {
         <span>Cleanup</span>
         <div className="viewpoint-buttons">
           <button type="button" disabled={stats.cards === 0} onClick={() => run("Arranged by kind", arrangeByKind)}>Group by kind</button>
+          <select className="viewpoint-select" value={groupKey} disabled={attributeKeys.length === 0} aria-label="Group cards by attribute" onChange={(e) => { const key = e.target.value; setGroupKey(""); if (key) run(`Grouped by ${key}`, () => arrangeByAttribute(key)); }}>
+            <option value="">{attributeKeys.length === 0 ? "Group by attribute…" : "Group by attribute…"}</option>
+            {attributeKeys.map((k) => <option key={k.key} value={k.key}>{k.key} ({k.count})</option>)}
+          </select>
           <button type="button" disabled={selection.length < 2} onClick={() => run("Distributed", distributeSelection)}>Distribute</button>
           <button type="button" onClick={() => store.getState().zoomToFit()}>Fit board</button>
         </div>
@@ -90,6 +96,7 @@ export function ViewpointPanel() {
           <button type="button" className={lens.type === "none" ? "active" : ""} onClick={() => store.getState().setLens(NO_LENS)}>Off</button>
           <button type="button" className={lens.type === "impact" ? "active" : ""} onClick={() => store.getState().setLens({ type: "impact", direction, depth })} title="Dim everything not connected to the selected cards">Impact</button>
           <button type="button" className={lens.type === "attribute" ? "active" : ""} disabled={attributeKeys.length === 0} onClick={() => store.getState().setLens({ type: "attribute", key: attributeKeys[0]!.key })} title={attributeKeys.length === 0 ? "No card on this board has attributes yet" : "Colour cards by an attribute value"}>Attribute</button>
+          <button type="button" className={lens.type === "relation" ? "active" : ""} disabled={relationKinds.length === 0} onClick={() => store.getState().setLens({ type: "relation", hidden: [] })} title={relationKinds.length === 0 ? "No connectors on this board yet" : "Colour connectors by relation type; click a type to hide it"}>Relations</button>
         </div>
         {lens.type === "impact" && (
           <small className="viewpoint-hint">Uses the hop depth and direction above. Select cards to trace what they touch; everything else fades.</small>
@@ -106,7 +113,7 @@ export function ViewpointPanel() {
           <div className="viewpoint-legend">
             <small>{lensResult.summary}</small>
             {lensResult.legend.map((entry) => (
-              <button key={entry.value} type="button" onClick={() => store.getState().select(entry.ids)} title="Select these cards">
+              <button key={entry.value} type="button" className={entry.hidden ? "hidden-entry" : ""} onClick={() => { if (lens.type === "relation") store.getState().setLens({ type: "relation", hidden: lens.hidden.includes(entry.value) ? lens.hidden.filter((h) => h !== entry.value) : [...lens.hidden, entry.value] }); else store.getState().select(entry.ids); }} title={lens.type === "relation" ? (entry.hidden ? "Show this relation type" : "Hide this relation type") : "Select these cards"}>
                 <i style={{ background: entry.color }} />
                 <b>{entry.value}</b>
                 <small>{entry.count}</small>

@@ -89,13 +89,14 @@ const ConnectorView = memo(function ConnectorView({ id }: { id: string }) {
   const selected = useCanvas((s) => s.selection.includes(id));
   const hovered = useCanvas((s) => s.hoverId === id);
   const dimmed = useCanvas((s) => s.lensResult !== null && !s.lensResult.visible.has(id));
+  const lensColor = useCanvas((s) => s.lensResult?.colors[id]);
   if (!c || !p) return null;
-  const stroke = selected ? "#1376d4" : c.stroke;
+  const stroke = selected ? "#1376d4" : lensColor ?? c.stroke;
   return (
     <g data-element-id={c.id} data-connectable="false" style={{ pointerEvents: "auto", cursor: "pointer", opacity: dimmed ? 0.12 : 1 }}>
       <path d={p.d} fill="none" stroke="transparent" strokeWidth={HIT_WIDTH} />
       {(selected || hovered) && <path d={p.d} fill="none" stroke="#1376d4" strokeOpacity={0.16} strokeWidth={8} />}
-      <path d={p.d} fill="none" stroke={stroke} strokeWidth={2.5} strokeDasharray={c.style === "dashed" ? "8 6" : undefined} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={p.d} fill="none" stroke={stroke} strokeWidth={lensColor ? 3.5 : 2.5} strokeDasharray={c.style === "dashed" ? "8 6" : undefined} strokeLinecap="round" strokeLinejoin="round" />
       {c.arrowEnd && <polygon points={arrowHead(p.to, p.endDir)} fill={stroke} />}
       {c.arrowStart && <polygon points={arrowHead(p.from, { x: -p.startDir.x, y: -p.startDir.y })} fill={stroke} />}
     </g>
