@@ -1,0 +1,346 @@
+import { createStore, type StoreApi } from "zustand/vanilla";
+import { useStore } from "zustand";
+import { createContext, useContext } from "react";
+import { nanoid } from "nanoid";
+import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point } from "./document";
+import { DOCUMENT_VERSION, isBoxElement } from "./document";
+import { type Camera, cameraToFit, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
+
+export type Tool = "select" | "hand" | "sticky" | "text" | "rect" | "ellipse" | "frame" | "connector";
+
+export type SaveState = "saved" | "dirty" | "saving" | "error";
+
+export type ScrollMode = "pan" | "zoom";
+
+type Elements = Record<ElementId, CanvasElement>;
+
+const HISTORY_LIMIT = 100;
+
+export interface CanvasState {
+  boardId: string;
+  elements: Elements;
+  camera: Camera;
+  viewport: { w: number; h: number };
+  tool: Tool;
+  selection: ElementId[];
+  editingId: ElementId | null;
+  hoverId: ElementId | null;
+  /** Transient connector being drawn (screen-independent, world coords). */
+  pendingConnector: { from: ElementId; to: Point } | null;
+  /** Marquee rectangle in world coords while dragging. */
+  marquee: Box | null;
+  past: Elements[];
+  future: Elements[];
+  saveState: SaveState;
+  /** Increments on every document mutation; the autosave hook watches it. */
+  revision: number;
+  scrollMode: ScrollMode;
+  spaceDown: boolean;
+
+  // camera
+  setViewport(w: number, h: number): void;
+  setCamera(cam: Camera): void;
+  panBy(dx: number, dy: number): void;
+  zoomAt(anchor: Point, factor: number): void;
+  zoomTo(zoom: number, anchor?: Point): void;
+  zoomToFit(): void;
+  zoomToSelection(): void;
+  centerOn(world: Point): void;
+
+  // ui
+  setTool(tool: Tool): void;
+  setScrollMode(mode: ScrollMode): void;
+  setSpaceDown(v: boolean): void;
+  setHover(id: ElementId | null): void;
+  setMarquee(b: Box | null): void;
+  setPendingConnector(p: CanvasState["pendingConnector"]): void;
+  setSaveState(s: SaveState): void;
+
+  // selection
+  select(ids: ElementId[], additive?: boolean): void;
+  toggleSelect(id: ElementId): void;
+  clearSelection(): void;
+  selectAll(): void;
+  startEditing(id: ElementId | null): void;
+
+  // document
+  addElements(els: CanvasElement[], opts?: { select?: boolean; history?: boolean }): void;
+  updateElements(patch: Record<ElementId, Partial<CanvasElement>>, opts?: { history?: boolean }): void;
+  /** Replace the whole element map (used by drags that computed positions externally). */
+  replaceElements(next: Elements, opts?: { history?: boolean }): void;
+  deleteElements(ids: ElementId[]): void;
+  duplicateSelection(): void;
+  bringToFront(ids: ElementId[]): void;
+  sendToBack(ids: ElementId[]): void;
+  nudgeSelection(dx: number, dy: number): void;
+
+  // history
+  pushHistory(snapshot?: Elements): void;
+  undo(): void;
+  redo(): void;
+
+  // export
+  toDocument(): CanvasDocument;
+}
+
+export type CanvasStore = StoreApi<CanvasState>;
+
+export interface CreateCanvasStoreOptions {
+  boardId: string;
+  document: CanvasDocument;
+  scrollMode?: ScrollMode;
+}
+
+export function nextZ(elements: Elements): number {
+  let max = 0;
+  for (const el of Object.values(elements)) max = Math.max(max, el.z);
+  return max + 1;
+}
+
+/** Elements that move together with a frame: those whose centre lies inside it. */
+export function frameChildren(frameId: ElementId, elements: Elements): ElementId[] {
+  const frame = elements[frameId];
+  if (!frame || frame.type !== "frame") return [];
+  const out: ElementId[] = [];
+  for (const el of Object.values(elements)) {
+    if (el.id === frameId || !isBoxElement(el) || el.type === "frame") continue;
+    const cx = el.x + el.w / 2;
+    const cy = el.y + el.h / 2;
+    if (cx >= frame.x && cx <= frame.x + frame.w && cy >= frame.y && cy <= frame.y + frame.h) out.push(el.id);
+  }
+  return out;
+}
+
+/** Selection + children of any selected frames (for moving). */
+export function expandSelectionForMove(selection: ElementId[], elements: Elements): ElementId[] {
+  const set = new Set(selection);
+  for (const id of selection) for (const child of frameChildren(id, elements)) set.add(child);
+  return [...set];
+}
+
+export function selectionBounds(selection: ElementId[], elements: Elements): Box | null {
+  const boxes: Box[] = [];
+  for (const id of selection) {
+    const el = elements[id];
+    if (!el) continue;
+    const b = elementBounds(el, elements);
+    if (b) boxes.push(b);
+  }
+  return unionBoxes(boxes);
+}
+
+export function createCanvasStore({ boardId, document, scrollMode = "pan" }: CreateCanvasStoreOptions): CanvasStore {
+  return createStore<CanvasState>((set, get) => {
+    const mutate = (next: Elements, history: boolean, extra: Partial<CanvasState> = {}) => {
+      const s = get();
+      set({
+        elements: next,
+        revision: s.revision + 1,
+        saveState: "dirty",
+        ...(history ? { past: [...s.past.slice(-HISTORY_LIMIT + 1), s.elements], future: [] } : {}),
+        ...extra,
+      });
+    };
+
+    return {
+      boardId,
+      elements: { ...document.elements },
+      camera: { x: 0, y: 0, zoom: 1 },
+      viewport: { w: 1, h: 1 },
+      tool: "select",
+      selection: [],
+      editingId: null,
+      hoverId: null,
+      pendingConnector: null,
+      marquee: null,
+      past: [],
+      future: [],
+      saveState: "saved",
+      revision: 0,
+      scrollMode,
+      spaceDown: false,
+
+      // ---- camera ----
+      setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
+      setCamera: (camera) => set({ camera: { ...camera, zoom: clamp(camera.zoom, MIN_ZOOM, MAX_ZOOM) } }),
+      panBy: (dx, dy) => set((s) => ({ camera: { ...s.camera, x: s.camera.x + dx, y: s.camera.y + dy } })),
+      zoomAt: (anchor, factor) => set((s) => ({ camera: zoomCameraAt(s.camera, anchor, factor) })),
+      zoomTo: (zoom, anchor) =>
+        set((s) => ({ camera: zoomCameraTo(s.camera, anchor ?? { x: s.viewport.w / 2, y: s.viewport.h / 2 }, zoom) })),
+      zoomToFit: () => {
+        const s = get();
+        const bounds = contentBounds(s.elements) ?? { x: -400, y: -300, w: 800, h: 600 };
+        set({ camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 80, 1.5) });
+      },
+      zoomToSelection: () => {
+        const s = get();
+        const bounds = selectionBounds(s.selection, s.elements);
+        if (!bounds) return;
+        set({ camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 120, 2) });
+      },
+      centerOn: (world) =>
+        set((s) => ({ camera: { ...s.camera, x: s.viewport.w / 2 - world.x * s.camera.zoom, y: s.viewport.h / 2 - world.y * s.camera.zoom } })),
+
+      // ---- ui ----
+      setTool: (tool) => set({ tool, editingId: null, pendingConnector: null }),
+      setScrollMode: (scrollMode) => set({ scrollMode }),
+      setSpaceDown: (spaceDown) => set({ spaceDown }),
+      setHover: (hoverId) => set((s) => (s.hoverId === hoverId ? s : { hoverId })),
+      setMarquee: (marquee) => set({ marquee }),
+      setPendingConnector: (pendingConnector) => set({ pendingConnector }),
+      setSaveState: (saveState) => set({ saveState }),
+
+      // ---- selection ----
+      select: (ids, additive = false) =>
+        set((s) => ({ selection: additive ? [...new Set([...s.selection, ...ids])] : ids, editingId: null })),
+      toggleSelect: (id) =>
+        set((s) => ({ selection: s.selection.includes(id) ? s.selection.filter((x) => x !== id) : [...s.selection, id] })),
+      clearSelection: () => set({ selection: [], editingId: null }),
+      selectAll: () => set((s) => ({ selection: Object.keys(s.elements) })),
+      startEditing: (editingId) => {
+        if (editingId) get().pushHistory();
+        set({ editingId });
+      },
+
+      // ---- document ----
+      addElements: (els, opts = {}) => {
+        const s = get();
+        const next = { ...s.elements };
+        let z = nextZ(next);
+        for (const el of els) next[el.id] = { ...el, z: el.z || z++ };
+        mutate(next, opts.history ?? true, opts.select ? { selection: els.map((e) => e.id) } : {});
+      },
+      updateElements: (patch, opts = {}) => {
+        const s = get();
+        const next = { ...s.elements };
+        let changed = false;
+        for (const [id, p] of Object.entries(patch)) {
+          const el = next[id];
+          if (!el) continue;
+          next[id] = { ...el, ...p } as CanvasElement;
+          changed = true;
+        }
+        if (changed) mutate(next, opts.history ?? false);
+      },
+      replaceElements: (next, opts = {}) => mutate(next, opts.history ?? false),
+      deleteElements: (ids) => {
+        const s = get();
+        const doomed = new Set(ids);
+        // connectors attached to deleted elements go too
+        for (const el of Object.values(s.elements)) {
+          if (el.type !== "connector") continue;
+          if (("elementId" in el.from && doomed.has(el.from.elementId)) || ("elementId" in el.to && doomed.has(el.to.elementId))) doomed.add(el.id);
+        }
+        if (doomed.size === 0) return;
+        const next: Elements = {};
+        for (const el of Object.values(s.elements)) if (!doomed.has(el.id)) next[el.id] = el;
+        mutate(next, true, { selection: s.selection.filter((id) => !doomed.has(id)), editingId: null });
+      },
+      duplicateSelection: () => {
+        const s = get();
+        if (s.selection.length === 0) return;
+        const idMap = new Map<ElementId, ElementId>();
+        for (const id of s.selection) idMap.set(id, nanoid(10));
+        const offset = 24;
+        const clones: CanvasElement[] = [];
+        let z = nextZ(s.elements);
+        for (const id of s.selection) {
+          const el = s.elements[id];
+          if (!el) continue;
+          const newId = idMap.get(id)!;
+          if (isBoxElement(el)) {
+            clones.push({ ...el, id: newId, x: el.x + offset, y: el.y + offset, z: z++ });
+          } else {
+            const remap = (end: ConnectorEnd): ConnectorEnd => {
+              if ("elementId" in end) {
+                const mapped = idMap.get(end.elementId);
+                return mapped ? { elementId: mapped } : end;
+              }
+              return { point: { x: end.point.x + offset, y: end.point.y + offset } };
+            };
+            clones.push({ ...el, id: newId, from: remap(el.from), to: remap(el.to), z: z++ });
+          }
+        }
+        const next = { ...s.elements };
+        for (const c of clones) next[c.id] = c;
+        mutate(next, true, { selection: clones.map((c) => c.id) });
+      },
+      bringToFront: (ids) => {
+        const s = get();
+        let z = nextZ(s.elements);
+        const patch: Record<ElementId, Partial<CanvasElement>> = {};
+        for (const id of ids) if (s.elements[id]) patch[id] = { z: z++ };
+        s.updateElements(patch, { history: true });
+      },
+      sendToBack: (ids) => {
+        const s = get();
+        const others = Object.values(s.elements).filter((e) => !ids.includes(e.id));
+        const min = others.length ? Math.min(...others.map((e) => e.z)) : 1;
+        const patch: Record<ElementId, Partial<CanvasElement>> = {};
+        let z = min - ids.length;
+        for (const id of ids) if (s.elements[id]) patch[id] = { z: z++ };
+        s.updateElements(patch, { history: true });
+      },
+      nudgeSelection: (dx, dy) => {
+        const s = get();
+        const ids = expandSelectionForMove(s.selection, s.elements);
+        const patch: Record<ElementId, Partial<CanvasElement>> = {};
+        for (const id of ids) {
+          const el = s.elements[id];
+          if (el && isBoxElement(el)) patch[id] = { x: el.x + dx, y: el.y + dy };
+        }
+        s.updateElements(patch, { history: true });
+      },
+
+      // ---- history ----
+      pushHistory: (snapshot) => {
+        const s = get();
+        set({ past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot ?? s.elements], future: [] });
+      },
+      undo: () => {
+        const s = get();
+        const prev = s.past[s.past.length - 1];
+        if (!prev) return;
+        set({
+          elements: prev,
+          past: s.past.slice(0, -1),
+          future: [s.elements, ...s.future],
+          selection: s.selection.filter((id) => prev[id]),
+          editingId: null,
+          revision: s.revision + 1,
+          saveState: "dirty",
+        });
+      },
+      redo: () => {
+        const s = get();
+        const next = s.future[0];
+        if (!next) return;
+        set({
+          elements: next,
+          past: [...s.past, s.elements],
+          future: s.future.slice(1),
+          selection: s.selection.filter((id) => next[id]),
+          editingId: null,
+          revision: s.revision + 1,
+          saveState: "dirty",
+        });
+      },
+
+      toDocument: () => ({ version: DOCUMENT_VERSION, elements: get().elements }),
+    };
+  });
+}
+
+// ---- React binding -----------------------------------------------------------
+
+export const CanvasStoreContext = createContext<CanvasStore | null>(null);
+
+export function useCanvasStore(): CanvasStore {
+  const store = useContext(CanvasStoreContext);
+  if (!store) throw new Error("useCanvasStore must be used inside <CanvasStoreContext.Provider>");
+  return store;
+}
+
+export function useCanvas<T>(selector: (s: CanvasState) => T): T {
+  return useStore(useCanvasStore(), selector);
+}

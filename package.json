@@ -1,0 +1,17 @@
+{
+  "name": "nexus",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Nexus — AI-native enterprise architecture canvas",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --filter @nexus/web dev",
+    "build": "pnpm --filter @nexus/web build",
+    "start": "pnpm --filter @nexus/web start",
+    "lint": "pnpm --filter @nexus/web lint",
+    "typecheck": "pnpm --filter @nexus/web typecheck",
+    "test": "pnpm --filter @nexus/web test",
+    "db:generate": "pnpm --filter @nexus/web db:generate",
+    "db:seed": "pnpm --filter @nexus/web db:seed"
+  }
+}
