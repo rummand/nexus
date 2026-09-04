@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 23 — entity deep links, recently changed)
+Last updated: 2026-09-04 (rev 24 — proposals on the canvas)
 
 ---
 
@@ -327,6 +327,13 @@ All three are pure functions over the entity list (`attributeProposals`) so they
 without a database; accepting them rewrites the JSON attribute bags server-side and boards pick
 the change up through `hydrateDocument` on the next load, like kind renames.
 
+**On the canvas (rev 24).** The board fetches the workspace's open proposals after every save
+and indexes them by entity. Cards whose entity has proposals wear a small ✦ badge; the Selection
+inspector shows the proposals for the selected card with Accept / Dismiss (inputs for kind,
+label and attribute values). Accepting applies the change in the graph *and* mirrors it onto the
+open document (`applyLocally`: kind / colour, connector label, attributes, entity relink for
+merges) so the next autosave agrees with the graph instead of undoing it.
+
 
 ### 5.7 Viewpoints — the first optics (v0.2)
 
@@ -511,6 +518,10 @@ contains (`src/canvas/lens.ts`).
   import with result summary, "Lay out on a board" (optionally filtered by kinds).
 - Seeded boards are indexed into the graph at seed time (28 entities, 13 relations).
 
+### Agent proposals on the canvas (v0.2)
+- ✦ badge on cards with open proposals; review and accept / dismiss from the Selection inspector,
+  with the document patched to match.
+
 ### Agent proposals (v0.2)
 - Rule-based proposals with evidence and confidence: duplicate merge, kind normalisation,
   untyped entities, unlabelled relations, orphans (§5.6).
@@ -662,6 +673,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 24: proposals on the canvas.** Proposals are fetched into the board store
+  after each save; affected cards show a ✦ badge and the inspector lets you accept or dismiss
+  them in place, patching the open document to mirror the graph change.
 
 - **2026-09-04 — Rev 23: entity deep links, recently changed.** `/e/:id` route, `?entity=`
   drawer opening on the graph page, "Open in graph" from the canvas inspector, and a

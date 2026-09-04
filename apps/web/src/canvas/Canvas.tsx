@@ -16,6 +16,7 @@ import { Toolbar } from "./Toolbar";
 import { InspectorPanel } from "./InspectorPanel";
 import { InventoryPanel } from "./InventoryPanel";
 import { LensLegend } from "./LensLegend";
+import { useProposals } from "./hooks/useProposals";
 import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
@@ -33,6 +34,7 @@ export function Canvas() {
   const dragging = useCanvas((s) => s.isDragging);
   const panels = useCanvas((s) => s.panels);
   const presenting = useCanvas((s) => s.presenting);
+  useProposals();
   const isEmpty = useCanvas((s) => Object.keys(s.elements).length === 0);
   const count = useCanvas((s) => Object.keys(s.elements).length);
 

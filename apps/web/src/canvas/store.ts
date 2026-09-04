@@ -1,6 +1,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 export { useStore } from "zustand";
 import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
+import type { Proposal } from "@/lib/graph-types";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
@@ -58,6 +59,9 @@ export interface CanvasState {
   viewpoints: SavedViewpoint[];
   /** Presentation mode: chrome hidden, canvas only (Esc leaves). */
   presenting: boolean;
+  /** Open agent proposals for this workspace (fetched after every save) and a per-entity index. */
+  proposals: Proposal[];
+  proposalsByEntity: Record<string, Proposal[]>;
   /** Active lens (client-side optic, saved with viewpoints) and its derived result. */
   lens: Lens;
   lensResult: LensResult | null;
@@ -93,6 +97,7 @@ export interface CanvasState {
   setContextMenu(m: CanvasState["contextMenu"]): void;
   setLens(lens: Lens): void;
   setPresenting(v: boolean): void;
+  setProposals(list: Proposal[]): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
   deleteViewpoint(id: string): void;
@@ -231,6 +236,8 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       lens: NO_LENS,
       lensResult: null,
       presenting: false,
+      proposals: [],
+      proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
 
       // ---- camera ----
@@ -272,6 +279,11 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setSnapEnabled: (snapEnabled) => set({ snapEnabled }),
       setContextMenu: (contextMenu) => set({ contextMenu }),
       setLens: (lens) => set({ lens }),
+      setProposals: (proposals) => {
+        const proposalsByEntity: Record<string, Proposal[]> = {};
+        for (const p of proposals) for (const id of p.entityIds) (proposalsByEntity[id] ??= []).push(p);
+        set({ proposals, proposalsByEntity });
+      },
       setPresenting: (presenting) => {
         set({ presenting, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
         // re-fit with the chrome gone (or back)

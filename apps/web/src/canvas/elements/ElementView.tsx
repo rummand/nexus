@@ -41,10 +41,12 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
     const h = r.hops[el.id];
     return h === undefined || h === 0 ? null : `${h} hop${h === 1 ? "" : "s"}`;
   });
+  const proposalCount = useCanvas((s) => (typeof el.meta?.entityId === "string" ? s.proposalsByEntity[el.meta.entityId]?.length ?? 0 : 0));
   const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : ""].filter(Boolean).join(" ");
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>
       {lensBadge && <span className="fact-lens-badge" style={lensColor ? { background: lensColor } : undefined}>{lensBadge}</span>}
+      {proposalCount > 0 && <span className="fact-proposal-badge" data-proposal-badge title={`${proposalCount} agent proposal${proposalCount === 1 ? "" : "s"} — select the card to review`}>✦ {proposalCount}</span>}
       <span className="fact-kind">
         <i />
         <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
