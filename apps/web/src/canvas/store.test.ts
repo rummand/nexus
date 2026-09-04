@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCanvasStore, expandSelectionForMove } from "./store";
+import { createCanvasStore, documentFromFrame, expandSelectionForMove } from "./store";
 import type { CanvasElement } from "./document";
 
 const sticky = (id: string, x = 0, y = 0): CanvasElement => ({ id, type: "sticky", x, y, w: 100, h: 100, title: "", text: id, color: "#fff", z: 1 });
@@ -109,5 +109,21 @@ describe("canvas store", () => {
     }
     store.getState().undo();
     expect(store.getState().elements.n!.type).toBe("sticky");
+  });
+
+  it("builds a board document from a frame's contents, translated to the origin", () => {
+    const els: CanvasElement[] = [
+      { id: "f", type: "frame", x: 100, y: 100, w: 400, h: 300, title: "Billing", color: "#000", z: 0 },
+      sticky("in1", 120, 120),
+      sticky("in2", 300, 200),
+      sticky("out", 900, 900),
+      { id: "c1", type: "connector", from: { elementId: "in1" }, to: { elementId: "in2" }, label: "", stroke: "#000", style: "solid", arrowEnd: true, arrowStart: false, z: 5 },
+      { id: "c2", type: "connector", from: { elementId: "in1" }, to: { elementId: "out" }, label: "", stroke: "#000", style: "solid", arrowEnd: true, arrowStart: false, z: 6 },
+    ];
+    const doc = documentFromFrame("f", Object.fromEntries(els.map((e) => [e.id, e])));
+    expect(Object.keys(doc!.elements).sort()).toEqual(["c1", "in1", "in2"]);
+    const in1 = doc!.elements.in1!;
+    expect("x" in in1 && [in1.x, in1.y]).toEqual([20, 20]);
+    expect(documentFromFrame("in1", Object.fromEntries(els.map((e) => [e.id, e])))).toBeNull();
   });
 });

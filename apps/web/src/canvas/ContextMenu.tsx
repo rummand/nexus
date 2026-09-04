@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { BringToFront, Copy, Focus, Lock, Maximize2, Network, SendToBack, StickyNote, Box, Trash2, Unlock, MousePointerSquareDashed } from "lucide-react";
+import { BringToFront, Copy, Focus, LayoutTemplate, Lock, Maximize2, Network, SendToBack, StickyNote, Box, Trash2, Unlock, MousePointerSquareDashed } from "lucide-react";
 import { nanoid } from "nanoid";
 import { cardColorForKind, NOTE_COLORS, type CanvasElement } from "./document";
-import { useCanvas, useCanvasStore } from "./store";
+import { documentFromFrame, useCanvas, useCanvasStore } from "./store";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { ENTITY_ID_PREFIX } from "@/lib/graph-types";
+import { createBoardFromFrame } from "@/lib/actions";
 
 /** Right-click menu: object actions or quick creation on empty canvas. */
 export function ContextMenu() {
@@ -34,6 +35,18 @@ export function ContextMenu() {
   const allLocked = hasSelection && items.every((i) => i.locked);
   const cards = items.filter((i) => i.type === "card");
   const notes = items.filter((i) => i.type === "sticky");
+  const frame = items.length === 1 && items[0]!.type === "frame" ? items[0]! : null;
+  const splitFrame = () => {
+    if (!frame || frame.type !== "frame") return;
+    const doc = documentFromFrame(frame.id, s.elements);
+    if (!doc || Object.keys(doc.elements).length === 0) { window.alert("This frame is empty — put objects inside it first."); return; }
+    const name = window.prompt("Name for the new board", frame.title || "Untitled board");
+    if (name === null) return;
+    void createBoardFromFrame(s.boardId, name, doc).then((r) => {
+      if ("error" in r) window.alert(r.error);
+      else window.open(`/b/${r.id}`, "_blank", "noopener");
+    });
+  };
   const left = Math.min(menu.x, Math.max(8, viewport.w - 230));
   const top = Math.min(menu.y, Math.max(8, viewport.h - 320));
   const s = store.getState();
@@ -45,6 +58,7 @@ export function ContextMenu() {
       {hasSelection ? (
         <>
           {cards.length > 0 && <button type="button" onClick={run(() => void expandSelection(1, "both"))}><Network size={14} /> Expand neighbours</button>}
+          {frame && <button type="button" data-split-frame onClick={run(splitFrame)}><LayoutTemplate size={14} /> Create board from frame</button>}
           {notes.length > 0 && <button type="button" data-promote-note onClick={run(() => s.convertNotesToCards(notes.map((n) => n.id)))}><Box size={14} /> Turn into card{notes.length > 1 ? "s" : ""}</button>}
           <button type="button" onClick={run(() => s.zoomToSelection())}><Focus size={14} /> Focus</button>
           <button type="button" onClick={run(() => s.duplicateSelection())}><Copy size={14} /> Duplicate <kbd>⌘D</kbd></button>

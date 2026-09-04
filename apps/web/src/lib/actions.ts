@@ -1,15 +1,15 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "./session";
-import { emptyDocument, serializeDocument } from "@/canvas/document";
+import { emptyDocument, migrateDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
-import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, parseImportText } from "./graph";
+import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, parseImportText, syncBoardToGraph } from "./graph";
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 import { createRelation, deleteRelation } from "./relations";
@@ -270,6 +270,64 @@ export async function deleteRelationAction(workspaceId: string, relationId: stri
   return r;
 }
 
+/** "Create board from frame": a new board in the same space seeded with the given document. */
+export async function createBoardFromFrame(boardId: string, name: string, document: unknown) {
+  const db = await getDb();
+  const source = await db.query.boards.findFirst({ where: eq(s.boards.id, boardId) });
+  if (!source) return { error: "Board not found" };
+  if (!document || typeof document !== "object") return { error: "A document is required" };
+  const user = await currentUser();
+  const doc = migrateDocument(document as Partial<CanvasDocument>);
+  const id = `brd_${nanoid(10)}`;
+  await db.insert(s.boards).values({
+    id,
+    workspaceId: source.workspaceId,
+    spaceId: source.spaceId,
+    name: name.trim() || "Untitled board",
+    description: `Split out of “${source.name}”.`,
+    createdById: user.id,
+    document: serializeDocument(doc),
+    lastOpenedAt: now(),
+  });
+  await syncBoardToGraph(db, { id, workspaceId: source.workspaceId }, doc);
+  revalidatePath(`/w/${await workspaceSlug(source.workspaceId)}`, "layout");
+  return { id };
+}
+
+/** Table view bulk actions. */
+export async function bulkSetAttribute(entityIds: string[], key: string, value: string) {
+  const db = await getDb();
+  const k = key.trim();
+  if (!k || entityIds.length === 0) return { error: "An attribute key and at least one entity are required" };
+  const rows = await db.select().from(s.entities).where(inArray(s.entities.id, entityIds));
+  const ts = now();
+  for (const row of rows) {
+    const attrs = parseAttributes(row.attributes);
+    if (value.trim()) attrs[k] = value.trim();
+    else delete attrs[k];
+    await db.update(s.entities).set({ attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, row.id));
+  }
+  if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
+  return { updated: rows.length };
+}
+
+export async function bulkSetKind(entityIds: string[], kind: string) {
+  const db = await getDb();
+  const k = kind.trim();
+  if (!k || entityIds.length === 0) return { error: "A kind and at least one entity are required" };
+  const rows = await db.update(s.entities).set({ kind: k, updatedAt: now() }).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId });
+  if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
+  return { updated: rows.length };
+}
+
+export async function bulkDeleteEntities(entityIds: string[]) {
+  const db = await getDb();
+  if (entityIds.length === 0) return { error: "Nothing selected" };
+  const rows = await db.delete(s.entities).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId });
+  if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
+  return { deleted: rows.length };
+}
+
 /** Rename an attribute key across the workspace (the kind card's schema chips). */
 export async function renameAttributeKeyAction(workspaceId: string, from: string, to: string) {
   const db = await getDb();
@@ -321,7 +379,6 @@ export async function createBoardFromGraph(input: { workspaceId: string; spaceId
     lastOpenedAt: now(),
   });
   // index the board's cards right away so the inventory shows them
-  const { syncBoardToGraph } = await import("./graph");
   await syncBoardToGraph(db, { id, workspaceId: input.workspaceId }, doc);
   revalidatePath(`/w/${await workspaceSlug(input.workspaceId)}`, "layout");
   redirect(`/b/${id}`);

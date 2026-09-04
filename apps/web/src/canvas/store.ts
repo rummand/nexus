@@ -171,6 +171,30 @@ export function expandSelectionForMove(selection: ElementId[], elements: Element
   return [...set];
 }
 
+/**
+ * The document for a new board made from one frame: the frame's contents (and connectors between
+ * them), translated so the frame sits at the origin. The frame itself is not copied — the new
+ * board *is* the frame.
+ */
+export function documentFromFrame(frameId: ElementId, elements: Elements): CanvasDocument | null {
+  const frame = elements[frameId];
+  if (!frame || frame.type !== "frame") return null;
+  const ids = new Set(frameChildren(frameId, elements));
+  const out: Elements = {};
+  for (const id of ids) {
+    const el = elements[id];
+    if (!el || !isBoxElement(el)) continue;
+    out[id] = { ...el, x: el.x - frame.x, y: el.y - frame.y };
+  }
+  for (const el of Object.values(elements)) {
+    if (el.type !== "connector") continue;
+    const from = "elementId" in el.from ? el.from.elementId : null;
+    const to = "elementId" in el.to ? el.to.elementId : null;
+    if (from && to && ids.has(from) && ids.has(to)) out[el.id] = el;
+  }
+  return { version: DOCUMENT_VERSION, elements: out };
+}
+
 /** Screen-space area hidden by the floating chrome (command bar, panels, map card). */
 export function fitInsets(s: Pick<CanvasState, "panels" | "viewport" | "presenting">, extra = 40): Insets {
   if (s.presenting) return { top: extra, bottom: extra, left: extra, right: extra };

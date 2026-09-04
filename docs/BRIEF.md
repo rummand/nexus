@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 24 — proposals on the canvas)
+Last updated: 2026-09-04 (rev 25 — bulk edits, board from frame)
 
 ---
 
@@ -186,6 +186,10 @@ nexus/
   normal — the default for relation connectors, as in LeanFlow) and **elbow** (orthogonal,
   two bends). Labels sit on the path midpoint. Rendered in an SVG layer inside the world
   transform.
+- **Board from frame.** Right-click a frame → *Create board from frame*: a new board in the same
+  space seeded with the frame's contents (and the connectors between them), translated to the
+  origin; the new board syncs into the graph immediately, so the same entities now appear on
+  both boards. The original board is untouched — this is the Miro "split a board" move.
 - **Alignment.** With two or more objects selected the property bar offers align left / centre /
   right / top / middle / bottom and, from three objects, distribute horizontally / vertically
   (`alignBoxes`, `distributeBoxes` in geometry). Frames carry their contents; locked objects stay.
@@ -364,6 +368,10 @@ of the same kind), sync to `entities.attributes` and hydrate back. The **set of 
 kind, with usage counts,** is the emergent attribute schema shown on each kind card of the
 Knowledge graph page — nobody defines a schema up front; it appears from the data. CSV import
 turns any extra header columns into attributes; JSON entities may carry `attributes`.
+
+**Bulk edits (rev 25).** Table rows have checkboxes (select all shown); a bulk bar sets an
+attribute (empty value removes it) or the kind for the selection, or deletes the entities. Three
+small server actions back it.
 
 **Table view (rev 15).** The Knowledge graph page's entity section has a *List | Table* toggle.
 The table has one column per attribute key in use (ordered by the filtered kind's schema, or by
@@ -547,7 +555,9 @@ contains (`src/canvas/lens.ts`).
 
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
-  schema, sort, inline editing, add column, copy as CSV.
+  schema, sort, inline editing, add column, copy as CSV, row selection with bulk set attribute /
+  set kind / delete.
+- Context menu on a frame: create a board from its contents.
 
 ### Attribute proposals (v0.2)
 - Rename attribute keys that differ by case / separators, normalise value spellings, fill in
@@ -673,6 +683,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 25: bulk edits, board from frame.** Row selection and a bulk bar (set
+  attribute, set kind, delete) in the entity table; "Create board from frame" in the canvas
+  context menu with a pure `documentFromFrame` helper (unit-tested) and a server action that
+  seeds and graph-syncs the new board.
 
 - **2026-09-04 — Rev 24: proposals on the canvas.** Proposals are fetched into the board store
   after each save; affected cards show a ✦ badge and the inspector lets you accept or dismiss
