@@ -13,6 +13,7 @@
     "test": "pnpm --filter @nexus/web test",
     "db:generate": "pnpm --filter @nexus/web db:generate",
     "db:seed": "pnpm --filter @nexus/web db:seed",
+    "db:reset": "pnpm --filter @nexus/web db:reset",
     "e2e": "pnpm --filter @nexus/web e2e"
   }
 }

@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 19 — query: has / missing / on)
+Last updated: 2026-09-04 (rev 20 — API docs, db:reset)
 
 ---
 
@@ -591,6 +591,13 @@ The SQLite file lives in `apps/web/data/nexus.db` (git-ignored). Migrations in
 database is empty. Delete the file to reset. Schema changes: edit
 `apps/web/src/db/schema.ts`, then `pnpm db:generate`.
 
+- `pnpm db:reset` deletes `apps/web/data/nexus.db` (stop the dev server first — it keeps the
+  old file open); the next request recreates and re-seeds it. Useful after e2e runs have
+  littered the demo boards with test objects.
+- The HTTP routes, server actions, query grammar and import format are documented in
+  `docs/API.md`; keep it in step with `src/app/api` and `src/lib/actions.ts`.
+
+
 ## 7. Decision log
 
 | Date | Decision | Reasoning |
@@ -630,6 +637,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 20: API documentation, db:reset.** New `docs/API.md` (routes, server
+  actions, query grammar, import format, document shape), README feature overview, and a
+  `pnpm db:reset` script for a clean demo database.
 
 - **2026-09-04 — Rev 19: query clauses has / missing / on.** The graph query language gained
   attribute-presence filters (`has:`, `missing:` with `without:` / `no:` aliases) and board
