@@ -1,6 +1,7 @@
 "use client";
 
-import { AlignEndHorizontal, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, Diamond, Lock, SendToBack, Square, Trash2, Unlock } from "lucide-react";
+import { AlignEndHorizontal, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, Diamond, Lock, Network, SendToBack, Square, Trash2, Unlock } from "lucide-react";
+import { useGraphActions } from "./hooks/useGraphActions";
 import { useState } from "react";
 import type { CanvasElement, ConnectorElement, ElementId } from "./document";
 import { CARD_KINDS, FRAME_COLORS, NOTE_COLORS, SHAPE_FILLS, STROKE_COLORS, TEXT_COLORS } from "./document";
@@ -17,6 +18,7 @@ export function SelectionToolbar() {
   const editingId = useCanvas((s) => s.editingId);
   const marquee = useCanvas((s) => s.marquee);
   const dragging = useCanvas((s) => s.isDragging);
+  const { busy, expandSelection } = useGraphActions();
 
   if (selection.length === 0 || editingId || marquee || dragging) return null;
   const bounds = selectionBounds(selection, elements);
@@ -44,6 +46,11 @@ export function SelectionToolbar() {
 
   return (
     <div className="shape-inspector-bar fade-in" style={{ left, top, width }} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      {only === "card" && (
+        <div className="shape-inspector-group">
+          <button type="button" title="Place this card's graph neighbours around it" disabled={busy} onClick={() => void expandSelection(1, "both")}><Network size={12} /> Expand</button>
+        </div>
+      )}
       {only === "card" && (
         <div className="shape-inspector-group colors" title="Kind">
           {CARD_KINDS.map((k) => (

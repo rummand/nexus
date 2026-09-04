@@ -8,6 +8,7 @@ import { useDraggablePanel } from "./hooks/useDraggablePanel";
 import { useCanvas, useCanvasStore } from "./store";
 import type { EntitySummary, GraphSnapshot } from "@/lib/graph-types";
 import { isEntityId } from "@/lib/graph-types";
+import { ViewpointPanel } from "./ViewpointPanel";
 
 /**
  * "Graph inventory" panel (LeanFlow "Factsheet hierarchy"): every entity in the workspace
@@ -17,6 +18,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
   const store = useCanvasStore();
   const workspaceId = useCanvas((s) => s.workspaceId);
   const collapsed = useCanvas((s) => !s.panels.inventory);
+  const tab = useCanvas((s) => s.graphTab);
   const saveState = useCanvas((s) => s.saveState);
   const elements = useCanvas((s) => s.elements);
   const onBoard = useMemo(() => {
@@ -87,7 +89,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
     >
       <div className="panel-title" onPointerDown={onPointerDown} title="Drag to move">
         <Database size={18} />
-        Graph inventory
+        Graph
         <div className="panel-title-actions">
           <button type="button" onClick={() => store.getState().togglePanel("inventory")}>{collapsed ? "Expand" : "Collapse"}</button>
         </div>
@@ -99,6 +101,12 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
         </div>
       ) : (
         <>
+          <div className="panel-tabs" role="tablist">
+            <button type="button" role="tab" className={tab === "inventory" ? "active" : ""} onClick={() => store.getState().setGraphTab("inventory")}>Inventory</button>
+            <button type="button" role="tab" className={tab === "viewpoint" ? "active" : ""} onClick={() => store.getState().setGraphTab("viewpoint")}>Viewpoint</button>
+          </div>
+          {tab === "viewpoint" && <ViewpointPanel />}
+          {tab === "inventory" && (<>
           <label className="inventory-search">
             <Search size={15} />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the graph" onKeyDown={(e) => e.stopPropagation()} />
@@ -139,6 +147,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
             {snapshot && groups.length === 0 && <div className="suggestion-empty">{total === 0 ? "The graph is empty. Add cards to any board or import data on the Graph page." : "No entity matches."}</div>}
             {!snapshot && <div className="suggestion-empty">Loading graph…</div>}
           </div>
+          </>)}
         </>
       )}
     </section>

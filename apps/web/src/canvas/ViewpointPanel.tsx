@@ -1,0 +1,96 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { cardColorForKind } from "./document";
+import { useCanvas, useCanvasStore } from "./store";
+import { useGraphActions } from "./hooks/useGraphActions";
+import { isEntityId } from "@/lib/graph-types";
+
+/** Viewpoint tab (LeanFlow "Graph viewpoint"): expand, relations, layout, kind lens. */
+export function ViewpointPanel() {
+  const store = useCanvasStore();
+  const elements = useCanvas((s) => s.elements);
+  const selection = useCanvas((s) => s.selection);
+  const hiddenKinds = useCanvas((s) => s.hiddenKinds);
+  const { busy, showRelations, expandSelection, arrangeByKind, distributeSelection } = useGraphActions();
+  const [depth, setDepth] = useState(1);
+  const [direction, setDirection] = useState<"both" | "out" | "in">("both");
+  const [status, setStatus] = useState<string | null>(null);
+
+  const stats = useMemo(() => {
+    const cards = Object.values(elements).filter((e) => e.type === "card");
+    const linked = cards.filter((c) => isEntityId(c.meta?.entityId)).length;
+    const kinds = new Map<string, number>();
+    for (const c of cards) if (c.type === "card") kinds.set(c.kind, (kinds.get(c.kind) ?? 0) + 1);
+    const connectors = Object.values(elements).filter((e) => e.type === "connector").length;
+    const relLinked = Object.values(elements).filter((e) => e.type === "connector" && typeof e.meta?.relationId === "string").length;
+    return { cards: cards.length, linked, kinds: [...kinds.entries()].sort((a, b) => b[1] - a[1]), connectors, relLinked };
+  }, [elements]);
+  const selectedCards = selection.filter((id) => elements[id]?.type === "card").length;
+
+  const run = async (label: string, fn: () => Promise<number> | number | void) => {
+    try {
+      const n = await fn();
+      setStatus(typeof n === "number" ? `${label}: ${n}` : label);
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Something went wrong");
+    }
+  };
+
+  return (
+    <div className="viewpoint-body">
+      <div className="viewpoint-summary">
+        <strong>{stats.cards} cards · {stats.connectors} connectors</strong>
+        <small>{stats.linked} linked to the graph · {stats.relLinked} connectors are relations</small>
+      </div>
+
+      <div className="viewpoint-group">
+        <span>Expand selection</span>
+        <div className="viewpoint-row">
+          <em>Hop depth</em>
+          {[1, 2, 3].map((d) => <button key={d} type="button" className={depth === d ? "active" : ""} onClick={() => setDepth(d)}>{d}</button>)}
+        </div>
+        <div className="viewpoint-row">
+          <em>Direction</em>
+          {(["both", "out", "in"] as const).map((d) => <button key={d} type="button" className={direction === d ? "active" : ""} onClick={() => setDirection(d)}>{d === "both" ? "Both" : d === "out" ? "Outbound" : "Inbound"}</button>)}
+        </div>
+        <button type="button" className="viewpoint-primary" disabled={busy || selectedCards === 0} onClick={() => run("Neighbours placed", () => expandSelection(depth, direction))}>
+          {selectedCards === 0 ? "Select a card to expand" : `Expand ${selectedCards} card${selectedCards === 1 ? "" : "s"}`}
+        </button>
+      </div>
+
+      <div className="viewpoint-group">
+        <span>Relations</span>
+        <div className="viewpoint-buttons">
+          <button type="button" disabled={busy || stats.linked < 2} onClick={() => run("Connectors added", showRelations)}>Show all relations</button>
+          <button type="button" disabled={stats.connectors === 0} onClick={() => { const s = store.getState(); s.deleteElements(Object.values(s.elements).filter((e) => e.type === "connector" && typeof e.meta?.relationId === "string").map((e) => e.id)); setStatus("Relation connectors hidden"); }}>Hide relations</button>
+        </div>
+      </div>
+
+      <div className="viewpoint-group">
+        <span>Cleanup</span>
+        <div className="viewpoint-buttons">
+          <button type="button" disabled={stats.cards === 0} onClick={() => run("Arranged by kind", arrangeByKind)}>Group by kind</button>
+          <button type="button" disabled={selection.length < 2} onClick={() => run("Distributed", distributeSelection)}>Distribute</button>
+          <button type="button" onClick={() => store.getState().zoomToFit()}>Fit board</button>
+        </div>
+      </div>
+
+      <div className="viewpoint-group">
+        <span>Kinds on this board {hiddenKinds.length > 0 && <button type="button" className="viewpoint-link" onClick={() => store.getState().clearHiddenKinds()}>show all</button>}</span>
+        <div className="viewpoint-kinds">
+          {stats.kinds.map(([kind, n]) => (
+            <button key={kind} type="button" className={hiddenKinds.includes(kind) ? "dimmed" : ""} onClick={() => store.getState().toggleKind(kind)} title={hiddenKinds.includes(kind) ? "Show this kind" : "Dim this kind"}>
+              <i style={{ background: cardColorForKind(kind) }} />
+              <b>{kind || "Untyped"}</b>
+              <small>{n}</small>
+            </button>
+          ))}
+          {stats.kinds.length === 0 && <small className="viewpoint-empty">No cards yet. Place entities from the Inventory tab or press C.</small>}
+        </div>
+      </div>
+
+      {status && <div className="viewpoint-status">{status}</div>}
+    </div>
+  );
+}

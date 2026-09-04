@@ -339,3 +339,33 @@ export async function graphForWorkspace(db: Db, workspaceId: string, kinds?: str
 }
 
 export { isBoxElement };
+
+export type Direction = "both" | "out" | "in";
+
+/**
+ * Graph neighbourhood: starting from `ids`, follow relations up to `depth` hops in the given
+ * direction. Returns the discovered entities (excluding the seeds) plus every relation among
+ * seeds ∪ discovered — so callers can draw the complete local picture. depth 0 = relations
+ * among the seeds only.
+ */
+export async function neighborhood(db: Db, workspaceId: string, ids: string[], depth: number, direction: Direction = "both", relationKinds?: string[]) {
+  const seeds = new Set(ids);
+  const all = await db.select().from(s.relations_).where(eq(s.relations_.workspaceId, workspaceId));
+  const rels = relationKinds && relationKinds.length ? all.filter((r) => relationKinds.includes(r.kind)) : all;
+  const visited = new Set(ids);
+  let frontier = new Set(ids);
+  for (let hop = 0; hop < depth; hop++) {
+    const next = new Set<string>();
+    for (const r of rels) {
+      if ((direction === "both" || direction === "out") && frontier.has(r.fromEntityId) && !visited.has(r.toEntityId)) next.add(r.toEntityId);
+      if ((direction === "both" || direction === "in") && frontier.has(r.toEntityId) && !visited.has(r.fromEntityId)) next.add(r.fromEntityId);
+    }
+    for (const id of next) visited.add(id);
+    frontier = next;
+    if (next.size === 0) break;
+  }
+  const discoveredIds = [...visited].filter((id) => !seeds.has(id));
+  const entities = discoveredIds.length ? await db.select().from(s.entities).where(inArray(s.entities.id, discoveredIds)) : [];
+  const relations = rels.filter((r) => visited.has(r.fromEntityId) && visited.has(r.toEntityId));
+  return { entities, relations };
+}

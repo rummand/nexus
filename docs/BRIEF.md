@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 4 — agent proposals)
+Last updated: 2026-09-04 (rev 5 — viewpoints)
 
 ---
 
@@ -138,7 +138,7 @@ and UX were replicated on 2026-09-04 and Nexus must keep following it:
   **notes** (tinted left border, uppercase label, title + body), **text blocks** and
   **sections** (titled paragraphs), **frames** (translucent, pill titlebar with title /
   #order / Color / Focus / Delete), shapes, connectors with pill labels. Text fields are
-  always live — no separate edit mode (shapes keep double-click labelling).
+  always live — no separate edit mode (shapes keep double-click labelling); fields of unselected objects are inert so the first click selects.
 - **Grid**: 80 px major / 20 px minor lines that scale with zoom.
 
 When the reference evolves, port the change here and note it in the changelog.
@@ -265,6 +265,24 @@ Surfaces: the **Agent proposals** section at the top of the Knowledge graph page
 "Agent proposal · possible duplicate" block in the board's Selection inspector with a
 one-click merge that relinks the open board's cards immediately.
 
+### 5.7 Viewpoints — the first optics (v0.2)
+
+"Load and unload optics" (§2.4) starts as a **Viewpoint** tab in the board's Graph panel
+(LeanFlow "Graph viewpoint"). Everything it places is graph-backed, so it round-trips
+through the normal save → sync path.
+
+- **Expand selection**: hop depth 1–3, direction both / outbound / inbound; the selected
+  cards' graph neighbours are placed radially around them (skipping occupied space) and
+  connected with relation connectors. Also a one-click **Expand** in the card property bar.
+- **Show all relations**: draws connectors for every graph relation between cards already
+  on the board (idempotent — existing connectors and pairs are skipped). **Hide relations**
+  removes relation connectors.
+- **Cleanup**: Group cards by kind (one frame per kind under the current content), Distribute
+  the selection on a grid, Fit board.
+- **Kind lens**: dim / show card kinds on this board (client-side; not persisted yet).
+- Server: `POST /api/graph/neighborhood` — BFS over relations with depth, direction and an
+  optional relation-kind filter; returns discovered entities plus all relations among the set.
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -284,7 +302,9 @@ the schema already separates users, memberships and roles.
   *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
 - ~~Entity resolution proposals (same name / kind across boards → merge)~~ **Done (v0.2)**
   — see §5.6. Next: attribute schema per kind, relation-type vocabulary management.
-- Optics: load/unload lenses (capability view, data-flow view, overlays).
+- Optics: ~~load/unload lenses~~ first version done (§5.7: expand, relations, group by kind,
+  kind lens). Next: saved viewpoints per board, relation-type filters, overlays (lifecycle,
+  risk, ownership), automatic layouts (lanes, radial).
 - Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
   ServiceNow, CMDB, wiki).
 - Agent framework: classification, meta-model proposal, ~~entity resolution~~ (rules done),
@@ -340,10 +360,14 @@ the schema already separates users, memberships and roles.
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
 
+### Viewpoints (v0.2)
+- Graph panel with Inventory | Viewpoint tabs; expand neighbours (depth, direction),
+  show / hide relations, group by kind, distribute, kind lens (§5.7).
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
-  graph sync / hydrate / import / layout and proposal rules / merge against an in-memory SQLite).
+  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood against an in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
@@ -390,6 +414,9 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Zoom-to-fit targets the viewport area not covered by floating panels. | With inventory + inspector open, a naive fit hid content under the panels. |
 | 2026-09-04 | Agent proposals start as deterministic rules behind the final `Proposal` contract. | Gives users the review workflow and decision memory now; LLM sources can be added without UI changes, and rule proposals stay explainable. |
 | 2026-09-04 | Merging entities rewrites board documents server-side and the open canvas relinks its cards client-side. | The board document is the client's truth while open; without the client patch the next autosave would resurrect the merged entity. |
+| 2026-09-04 | Viewpoint controls live in a tab of the left Graph panel rather than a third floating panel. | Screen budget: inventory + inspector + map already frame the canvas; LeanFlow's separate panel would overlap content. |
+| 2026-09-04 | Kind lens is client-side only for now. | Cheap to try; persisting viewpoints per board is the next step once we know which lenses matter. |
+| 2026-09-04 | Text fields on an *unselected* object are inert: the first click selects (and can drag), the second click edits. | At low zoom a note is mostly text field; without this rule it could not be grabbed. Matches the Miro / Figma model. |
 
 ## 8. Open questions for the product owner
 
@@ -400,6 +427,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 5: viewpoints (first optics).** Viewpoint tab on the board: expand
+  selected cards into their graph neighbours (depth, direction, collision-free placement),
+  show / hide all relations between cards on the board, group cards by kind, distribute,
+  kind lens (dim kinds). Expand button in the card property bar. Graph neighbourhood API.
 
 - **2026-09-04 — Rev 4: agent proposals.** Deterministic entity-resolution and meta-model
   hygiene rules (duplicates, kind variants, untyped, unlabelled relations, orphans) with

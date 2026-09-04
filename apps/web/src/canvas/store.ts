@@ -43,6 +43,10 @@ export interface CanvasState {
   spaceDown: boolean;
   connectorPreset: ConnectorPreset;
   panels: Record<PanelName, boolean>;
+  /** Viewpoint: card kinds dimmed on this board (client-side lens, not persisted). */
+  hiddenKinds: string[];
+  /** Which tab the left graph panel shows. */
+  graphTab: "inventory" | "viewpoint";
   /** Frame id the inspector should scroll to / highlight after "Focus". */
   isDragging: boolean;
 
@@ -67,6 +71,9 @@ export interface CanvasState {
   setConnectorPreset(p: ConnectorPreset): void;
   togglePanel(name: PanelName, value?: boolean): void;
   setDragging(v: boolean): void;
+  toggleKind(kind: string): void;
+  clearHiddenKinds(): void;
+  setGraphTab(tab: "inventory" | "viewpoint"): void;
   /** Select an element and bring it into view. */
   focusElement(id: ElementId): void;
 
@@ -189,6 +196,8 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       connectorPreset: "arrow",
       panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true },
       isDragging: false,
+      hiddenKinds: [],
+      graphTab: "inventory",
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -222,6 +231,9 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
       togglePanel: (name, value) => set((s) => ({ panels: { ...s.panels, [name]: value ?? !s.panels[name] } })),
       setDragging: (isDragging) => set((s) => (s.isDragging === isDragging ? s : { isDragging })),
+      toggleKind: (kind) => set((s) => ({ hiddenKinds: s.hiddenKinds.includes(kind) ? s.hiddenKinds.filter((k) => k !== kind) : [...s.hiddenKinds, kind] })),
+      clearHiddenKinds: () => set({ hiddenKinds: [] }),
+      setGraphTab: (graphTab) => set((s) => ({ graphTab, panels: { ...s.panels, inventory: true } })),
       focusElement: (id) => {
         const s = get();
         if (!s.elements[id]) return;

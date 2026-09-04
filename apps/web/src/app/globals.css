@@ -956,3 +956,32 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .graph-block .dupe-actions button { background: #fff; border: 1px solid #b8d7ff; border-radius: 999px; color: var(--blue); font-size: 10px; font-weight: 900; min-height: 26px; padding: 0 9px; }
 .graph-block .dupe-actions button:hover { background: #eef6ff; }
 .graph-block.warn { border-left-color: #f59e0b; background: #fffaf3; }
+
+/* graph panel tabs + viewpoint */
+.panel-tabs { background: #f2f6fb; border-radius: 10px; display: grid; gap: 4px; grid-template-columns: 1fr 1fr; padding: 4px; }
+.panel-tabs button { background: transparent; border: 0; border-radius: 8px; color: #53627a; font-size: 12px; font-weight: 800; min-height: 30px; }
+.panel-tabs button.active { background: #fff; box-shadow: 0 1px 2px rgba(31, 45, 70, 0.08); color: var(--blue); }
+.viewpoint-body { display: grid; gap: 10px; overflow: auto; }
+.viewpoint-summary { background: #f8fbff; border: 1px solid #dbe8f6; border-radius: 10px; display: grid; gap: 3px; padding: 8px 10px; }
+.viewpoint-summary strong { font-size: 13px; }
+.viewpoint-summary small { color: #6c7a91; font-size: 11px; }
+.viewpoint-group { display: grid; gap: 6px; }
+.viewpoint-group > span { align-items: center; color: #7c8799; display: flex; font-size: 10px; font-weight: 900; gap: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+.viewpoint-row { align-items: center; display: flex; flex-wrap: wrap; gap: 4px; }
+.viewpoint-row em { color: #7c8799; flex: 0 0 74px; font-size: 11px; font-style: normal; font-weight: 800; }
+.viewpoint-row button, .viewpoint-buttons button { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: #344156; font-size: 12px; font-weight: 800; min-height: 30px; padding: 0 10px; }
+.viewpoint-row button.active { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
+.viewpoint-row button:hover, .viewpoint-buttons button:hover { border-color: #b8d7ff; color: var(--blue); }
+.viewpoint-buttons { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
+.viewpoint-buttons button:disabled, .viewpoint-primary:disabled { cursor: not-allowed; opacity: 0.5; }
+.viewpoint-primary { background: var(--blue); border: 0; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 800; min-height: 34px; }
+.viewpoint-link { background: transparent; border: 0; color: var(--blue); font-size: 10px; font-weight: 900; letter-spacing: 0; margin-left: auto; padding: 0; text-transform: none; }
+.viewpoint-kinds { display: grid; gap: 4px; }
+.viewpoint-kinds button { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: #253247; display: flex; font-size: 12px; gap: 8px; min-height: 30px; padding: 0 8px; text-align: left; }
+.viewpoint-kinds button i { border-radius: 3px; display: inline-block; height: 11px; width: 11px; }
+.viewpoint-kinds button b { flex: 1; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewpoint-kinds button small { color: #6c7a91; font-weight: 800; }
+.viewpoint-kinds button.dimmed { opacity: 0.45; text-decoration: line-through; }
+.viewpoint-empty { color: #6c7a91; font-size: 11px; }
+.viewpoint-status { background: #edf9f1; border: 1px solid #cbeed7; border-radius: 9px; color: #38734b; font-size: 11px; font-weight: 800; padding: 6px 8px; }
+.fact-card.dimmed { opacity: 0.22; }

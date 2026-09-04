@@ -18,13 +18,17 @@ interface Props {
   ariaLabel?: string;
   /** Focus on mount (used for the title of a freshly created object). */
   autoFocus?: boolean;
+  /** Whether the owning object is selected. Unselected objects keep their fields inert so the
+   *  first click selects / drags the object (Miro model); the second click edits text. */
+  active?: boolean;
 }
 
-export function LiveField({ value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false }: Props) {
+export function LiveField({ value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false, active = true }: Props) {
   const store = useCanvasStore();
   // Fields only take input with the select tool; with pan/creation tools they are inert so
   // the canvas receives the pointer (LeanFlow's isInteractiveTarget rule).
-  const inert = useCanvas((s) => s.tool !== "select" || s.spaceDown);
+  const toolInert = useCanvas((s) => s.tool !== "select" || s.spaceDown);
+  const inert = toolInert || !active;
   const dirty = useRef(false);
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   useEffect(() => {

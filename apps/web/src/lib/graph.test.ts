@@ -82,3 +82,25 @@ describe("import", () => {
     expect(els.filter((e) => e.type === "connector")).toHaveLength(relations.length);
   });
 });
+
+describe("neighbourhood", () => {
+  it("follows relations by depth and direction and returns relations among the set", async () => {
+    const { neighborhood } = await import("./graph");
+    // ent_a -feeds-> ent_b exists from the first test; add ent_c -> ent_a
+    await db.insert(s.entities).values({ id: "ent_c", workspaceId: "ws", kind: "Application", name: "Upstream" });
+    await db.insert(s.relations_).values({ id: "rel_ca", workspaceId: "ws", fromEntityId: "ent_c", toEntityId: "ent_a", kind: "sends" });
+    // (the import test above also linked ent_a → Billing, so "out" has two neighbours)
+    const out = await neighborhood(db, "ws", ["ent_a"], 1, "out");
+    expect(out.entities.map((e) => e.id)).toContain("ent_b");
+    expect(out.entities.map((e) => e.id)).not.toContain("ent_c");
+    expect(out.relations.map((r) => r.id)).toContain("rel_ab");
+    const both = await neighborhood(db, "ws", ["ent_a"], 1, "both");
+    expect(both.entities.map((e) => e.id)).toContain("ent_c");
+    expect(both.relations.map((r) => r.id)).toContain("rel_ca");
+    const inbound = await neighborhood(db, "ws", ["ent_a"], 1, "in");
+    expect(inbound.entities.map((e) => e.id)).toEqual(["ent_c"]);
+    const zero = await neighborhood(db, "ws", ["ent_a", "ent_b"], 0);
+    expect(zero.entities).toHaveLength(0);
+    expect(zero.relations.map((r) => r.id)).toEqual(["rel_ab"]);
+  });
+});

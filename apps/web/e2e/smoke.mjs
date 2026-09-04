@@ -52,15 +52,16 @@ try {
   const noteId = await page.evaluate(() => document.activeElement?.closest("[data-element-id]")?.getAttribute("data-element-id"));
   assert.ok(noteId, "new note has an id");
   await page.keyboard.type(TEXT);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape"); // leave the field
   const note = page.locator(`[data-element-id="${noteId}"]`);
   assert.equal(await note.locator("input").first().inputValue(), TEXT, "note title typed");
+  await page.keyboard.press("Escape"); // deselect: fields of unselected objects are inert
 
-  // drag by the note surface (not the inputs)
+  // drag from the middle: an unselected object is grabbed anywhere (first click selects + drags)
   const b0 = await note.boundingBox();
-  await page.mouse.move(b0.x + 6, b0.y + b0.height / 2);
+  await page.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2);
   await page.mouse.down();
-  await page.mouse.move(b0.x + 6 + 120, b0.y + b0.height / 2 + 60, { steps: 8 });
+  await page.mouse.move(b0.x + b0.width / 2 + 120, b0.y + b0.height / 2 + 60, { steps: 8 });
   await page.mouse.up();
   const b1 = await note.boundingBox();
   assert.ok(Math.abs(b1.x - b0.x - 120) < 2 && Math.abs(b1.y - b0.y - 60) < 2, "note moved with the pointer");
@@ -79,8 +80,9 @@ try {
   assert.ok(Math.abs(fit - parseInt(z0, 10)) <= 5, `shift+1 fits the board (got ${fit}%, initial ${z0})`);
 
   // select + inspector + delete + undo
+  await page.keyboard.press("Escape");
   const nb = await note.boundingBox();
-  await page.mouse.click(nb.x + 6, nb.y + nb.height / 2);
+  await page.mouse.click(nb.x + nb.width / 2, nb.y + nb.height / 2);
   assert.ok(await page.locator(".inspector-panel h2", { hasText: TEXT }).isVisible(), "inspector shows the selected note");
   const beforeDelete = await count();
   await page.keyboard.press("Delete");
@@ -105,7 +107,7 @@ try {
   await page.keyboard.press("Escape");
   await page.keyboard.press("l");
   const sb = await note.boundingBox();
-  await page.mouse.move(sb.x + 6, sb.y + sb.height / 2);
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
   await page.mouse.down();
   await page.mouse.move(1175, 470, { steps: 10 });
   await page.mouse.up();
@@ -131,6 +133,18 @@ try {
     assert.equal(await count(), before + 1, "placing an entity adds a card");
     assert.ok(await page.locator(".graph-block").isVisible(), "inspector shows graph facts for the placed card");
   }
+
+  // viewpoint tab: show relations between cards on the board (idempotent), kind lens toggles
+  await page.click(".panel-tabs button:has-text('Viewpoint')");
+  await page.waitForSelector(".viewpoint-body");
+  await page.click(".viewpoint-buttons button:has-text('Show all relations')");
+  await page.waitForSelector(".viewpoint-status", { timeout: 20000 });
+  const kindButtons = await page.locator(".viewpoint-kinds button").count();
+  assert.ok(kindButtons > 0, "viewpoint lists kinds on the board");
+  await page.click(".viewpoint-kinds button >> nth=0");
+  assert.ok((await page.locator(".fact-card.dimmed").count()) > 0, "kind lens dims cards");
+  await page.click(".viewpoint-kinds button >> nth=0");
+  await page.click(".panel-tabs button:has-text('Inventory')");
 
   // autosave + reload
   await page.waitForTimeout(1500);

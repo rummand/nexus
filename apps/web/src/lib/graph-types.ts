@@ -78,3 +78,16 @@ export function isEntityId(v: unknown): v is string {
 export function isRelationId(v: unknown): v is string {
   return typeof v === "string" && v.startsWith(RELATION_ID_PREFIX);
 }
+
+export interface NeighborhoodRequest {
+  workspaceId: string;
+  entityIds: string[];
+  depth: number;
+  direction: "both" | "out" | "in";
+  relationKinds?: string[];
+}
+
+export interface NeighborhoodResponse {
+  entities: Array<{ id: string; kind: string; name: string; description: string }>;
+  relations: Array<{ id: string; fromEntityId: string; toEntityId: string; kind: string }>;
+}
