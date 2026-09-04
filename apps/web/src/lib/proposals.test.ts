@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import path from "node:path";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/client";
-import { computeProposals, mergeEntities, recordDecision } from "./proposals";
+import { attributeProposals, computeProposals, mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 import { syncBoardToGraph } from "./graph";
 import { parseDocument, serializeDocument, type CanvasDocument, type CardElement } from "@/canvas/document";
 
@@ -65,5 +65,41 @@ describe("proposals", () => {
     expect(usage.map((u) => u.boardId).sort()).toEqual(["b1", "b2"]);
     const props = await computeProposals(db, "ws");
     expect(props.find((p) => p.type === "merge")).toBeUndefined();
+  });
+
+  it("proposes attribute key / value normalisation and missing attributes", async () => {
+    const ent = (id: string, kind: string, attributes: Record<string, string>): s.Entity => ({ id, workspaceId: "ws", kind, name: id, description: "", source: "test", attributes: JSON.stringify(attributes), createdAt: "2026-01-01", updatedAt: "2026-01-01" });
+    const props = attributeProposals([
+      ent("a1", "Application", { lifecycle: "Active", owner: "IT", tier: "1" }),
+      ent("a2", "Application", { lifecycle: "active", owner: "IT", Tier: "2" }),
+      ent("a3", "Application", { lifecycle: "Active", owner: "IT" }),
+      ent("a4", "Application", { lifecycle: "Active" }),
+      ent("a5", "Application", { lifecycle: "Active", owner: "IT", tier: "3" }),
+    ], new Set());
+    const key = props.find((p) => p.type === "attributeKey")!;
+    expect(key.action).toEqual({ kind: "renameAttributeKey", from: "Tier", to: "tier" });
+    const value = props.find((p) => p.type === "attributeValue")!;
+    expect(value.action).toEqual({ kind: "renameAttributeValue", key: "lifecycle", from: "active", to: "Active" });
+    const missing = props.filter((p) => p.type === "attributeMissing");
+    // a4 lacks owner (4 of 5 carry it; "IT" is dominant → suggested); nobody lacks lifecycle
+    expect(missing.map((p) => p.entityIds[0])).toEqual(["a4"]);
+    expect(missing[0]!.action).toEqual({ kind: "setAttribute", entityId: "a4", key: "owner", to: "IT" });
+    expect(missing[0]!.confidence).toBe("medium");
+  });
+
+  it("applies attribute renames and sets values in the database", async () => {
+    await db.insert(s.entities).values([
+      { id: "ent_p1", workspaceId: "ws", kind: "Server", name: "srv-1", source: "test", attributes: JSON.stringify({ Env: "prod", os: "linux" }) },
+      { id: "ent_p2", workspaceId: "ws", kind: "Server", name: "srv-2", source: "test", attributes: JSON.stringify({ env: "Prod", os: "Linux" }) },
+    ]);
+    await renameAttributeKey(db, "ws", "Env", "env");
+    await renameAttributeValue(db, "ws", "env", "Prod", "prod");
+    await setEntityAttribute(db, "ent_p2", "region", "dk1");
+    const rows = await db.select().from(s.entities).where(eq(s.entities.kind, "Server"));
+    const attrs = Object.fromEntries(rows.map((r) => [r.id, JSON.parse(r.attributes)]));
+    expect(attrs.ent_p1).toEqual({ env: "prod", os: "linux" });
+    expect(attrs.ent_p2).toEqual({ env: "prod", os: "Linux", region: "dk1" });
+    const props = await computeProposals(db, "ws");
+    expect(props.find((p) => p.type === "attributeValue" && p.action.kind === "renameAttributeValue" && p.action.key === "os")).toBeDefined();
   });
 });

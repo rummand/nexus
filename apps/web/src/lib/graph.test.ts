@@ -61,6 +61,9 @@ describe("import", () => {
     expect(p.entities).toEqual([{ kind: "Application", name: "SAP", description: "ERP, finance" }]);
     expect(p.relations).toEqual([{ from: "SAP", kind: "depends on", to: "Application:CRM Cloud" }]);
     expect(parseImportText(`{"entities":[{"kind":"K","name":"N"}],"relations":[]}`).entities).toHaveLength(1);
+    // without a description column every extra column is an attribute
+    const noDesc = parseImportText(`kind,name,Lifecycle,owner\nServer,srv-1,Active,Platform`);
+    expect(noDesc.entities[0]).toEqual({ kind: "Server", name: "srv-1", description: "", attributes: { Lifecycle: "Active", owner: "Platform" } });
   });
 
   it("matches existing entities by kind + name and creates relations by name", async () => {

@@ -3,6 +3,7 @@ import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import { parseDocument, serializeDocument } from "@/canvas/document";
 import type { Proposal } from "./graph-types";
+import { parseAttributes } from "./graph";
 
 /**
  * Agent proposals — deterministic, explainable suggestions derived from the graph.
@@ -15,6 +16,138 @@ import type { Proposal } from "./graph-types";
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
 const singular = (v: string) => (v.endsWith("s") && v.length > 3 ? v.slice(0, -1) : v);
+/** Attribute keys compare case-insensitively with `_`, `-` and spaces treated alike. */
+const normKey = (k: string) => norm(k).replace(/[_-]+/g, " ");
+
+/**
+ * Attribute proposals:
+ * 6. keys that differ only by case / separators ("Lifecycle" vs "lifecycle", "business_owner" vs "Business owner") → rename key;
+ * 7. values of one key that differ only by case / whitespace ("Active" vs "active") → rename value;
+ * 8. entities missing an attribute that (almost) every other entity of their kind carries → set it.
+ */
+export function attributeProposals(entities: s.Entity[], decided: Set<string>): Proposal[] {
+  const out: Proposal[] = [];
+  const attrsOf = new Map<string, Record<string, string>>();
+  for (const e of entities) attrsOf.set(e.id, parseAttributes(e.attributes));
+
+  // 6. key variants
+  const keyCount = new Map<string, number>();
+  for (const a of attrsOf.values()) for (const k of Object.keys(a)) keyCount.set(k, (keyCount.get(k) ?? 0) + 1);
+  const keyGroups = new Map<string, string[]>();
+  for (const k of keyCount.keys()) keyGroups.set(normKey(k), [...(keyGroups.get(normKey(k)) ?? []), k]);
+  for (const [, variants] of keyGroups) {
+    if (variants.length < 2) continue;
+    const target = [...variants].sort((a, b) => (keyCount.get(b) ?? 0) - (keyCount.get(a) ?? 0) || a.localeCompare(b))[0]!;
+    for (const v of variants) {
+      if (v === target) continue;
+      const key = `attrkey:${v}=>${target}`;
+      if (decided.has(key)) continue;
+      out.push({
+        key,
+        type: "attributeKey",
+        confidence: "high",
+        title: `Attribute “${v}” looks like “${target}”`,
+        detail: `${keyCount.get(v)} entit${keyCount.get(v) === 1 ? "y" : "ies"} use “${v}”, ${keyCount.get(target)} use “${target}”. Rename the key so the attribute schema has one column.`,
+        entityIds: entities.filter((e) => v in (attrsOf.get(e.id) ?? {})).map((e) => e.id),
+        action: { kind: "renameAttributeKey", from: v, to: target },
+      });
+    }
+  }
+
+  // 7. value variants per key
+  const valueCount = new Map<string, Map<string, number>>();
+  for (const a of attrsOf.values()) for (const [k, v] of Object.entries(a)) {
+    if (!v.trim()) continue;
+    const m = valueCount.get(k) ?? new Map<string, number>();
+    m.set(v, (m.get(v) ?? 0) + 1);
+    valueCount.set(k, m);
+  }
+  for (const [k, values] of valueCount) {
+    const groups = new Map<string, string[]>();
+    for (const v of values.keys()) groups.set(norm(v), [...(groups.get(norm(v)) ?? []), v]);
+    for (const [, variants] of groups) {
+      if (variants.length < 2) continue;
+      const target = [...variants].sort((a, b) => (values.get(b) ?? 0) - (values.get(a) ?? 0) || a.localeCompare(b))[0]!;
+      for (const v of variants) {
+        if (v === target) continue;
+        const key = `attrvalue:${k}:${v}=>${target}`;
+        if (decided.has(key)) continue;
+        out.push({
+          key,
+          type: "attributeValue",
+          confidence: "high",
+          title: `${k}: “${v}” looks like “${target}”`,
+          detail: `${values.get(v)} entit${values.get(v) === 1 ? "y says" : "ies say"} “${v}”, ${values.get(target)} ${values.get(target) === 1 ? "says" : "say"} “${target}”. One spelling keeps lenses and queries honest.`,
+          entityIds: entities.filter((e) => attrsOf.get(e.id)?.[k] === v).map((e) => e.id),
+          action: { kind: "renameAttributeValue", key: k, from: v, to: target },
+        });
+      }
+    }
+  }
+
+  // 8. missing attributes: a key carried by ≥ 80 % of a kind (≥ 3 entities) is expected on the rest
+  const byKind = new Map<string, s.Entity[]>();
+  for (const e of entities) if (e.kind.trim()) byKind.set(e.kind, [...(byKind.get(e.kind) ?? []), e]);
+  for (const [kind, list] of byKind) {
+    if (list.length < 3) continue;
+    const keys = new Map<string, number>();
+    for (const e of list) for (const k of Object.keys(attrsOf.get(e.id) ?? {})) keys.set(k, (keys.get(k) ?? 0) + 1);
+    for (const [k, n] of keys) {
+      if (n / list.length < 0.8 || n === list.length) continue;
+      // dominant value (if one value covers ≥ 80 % of carriers) becomes the suggestion
+      const vals = new Map<string, number>();
+      for (const e of list) { const v = attrsOf.get(e.id)?.[k]; if (v) vals.set(v, (vals.get(v) ?? 0) + 1); }
+      const top = [...vals.entries()].sort((a, b) => b[1] - a[1])[0];
+      const suggestion = top && top[1] / n >= 0.8 ? top[0] : "";
+      for (const e of list) {
+        if (k in (attrsOf.get(e.id) ?? {})) continue;
+        const key = `attrmissing:${e.id}:${k}`;
+        if (decided.has(key)) continue;
+        out.push({
+          key,
+          type: "attributeMissing",
+          confidence: suggestion ? "medium" : "low",
+          title: `“${e.name}” has no “${k}”`,
+          detail: `${n} of ${list.length} ${kind} entities carry “${k}”${suggestion ? `, almost all “${suggestion}”` : ` (${[...vals.keys()].slice(0, 4).join(", ")}${vals.size > 4 ? ", …" : ""})`}. Fill it in so the ${kind} schema is complete.`,
+          entityIds: [e.id],
+          action: { kind: "setAttribute", entityId: e.id, key: k, to: suggestion },
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Move attribute `from` to `to` on every entity of the workspace (existing `to` values win). */
+export async function renameAttributeKey(db: Db, workspaceId: string, from: string, to: string) {
+  const rows = await db.select().from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
+  const ts = new Date().toISOString();
+  for (const e of rows) {
+    const a = parseAttributes(e.attributes);
+    if (!(from in a)) continue;
+    const { [from]: moved, ...rest } = a;
+    const next = to in rest ? rest : { ...rest, [to]: moved };
+    await db.update(s.entities).set({ attributes: JSON.stringify(next), updatedAt: ts }).where(eq(s.entities.id, e.id));
+  }
+}
+
+/** Replace value `from` of attribute `key` with `to` on every entity that carries it. */
+export async function renameAttributeValue(db: Db, workspaceId: string, key: string, from: string, to: string) {
+  const rows = await db.select().from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
+  const ts = new Date().toISOString();
+  for (const e of rows) {
+    const a = parseAttributes(e.attributes);
+    if (a[key] !== from) continue;
+    await db.update(s.entities).set({ attributes: JSON.stringify({ ...a, [key]: to }), updatedAt: ts }).where(eq(s.entities.id, e.id));
+  }
+}
+
+/** Set one attribute on one entity. */
+export async function setEntityAttribute(db: Db, entityId: string, key: string, value: string) {
+  const [e] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
+  if (!e) return;
+  await db.update(s.entities).set({ attributes: JSON.stringify({ ...parseAttributes(e.attributes), [key]: value }), updatedAt: new Date().toISOString() }).where(eq(s.entities.id, entityId));
+}
 
 export async function computeProposals(db: Db, workspaceId: string): Promise<Proposal[]> {
   const [entities, relations, decisions, usage] = await Promise.all([
@@ -145,6 +278,9 @@ export async function computeProposals(db: Db, workspaceId: string): Promise<Pro
       action: { kind: "deleteEntity", entityId: e.id },
     });
   }
+
+  // 6–8. attributes: the emergent attribute schema (BRIEF §5.8) needs the same hygiene as kinds
+  out.push(...attributeProposals(entities, decided));
 
   const rank = { high: 0, medium: 1, low: 2 } as const;
   return out.sort((a, b) => rank[a.confidence] - rank[b.confidence] || a.title.localeCompare(b.title));

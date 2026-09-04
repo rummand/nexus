@@ -11,7 +11,7 @@ import { emptyDocument, serializeDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
 import { buildBoardFromGraph, graphForWorkspace, importGraph, parseImportText } from "./graph";
 import type { ImportResult, Proposal } from "./graph-types";
-import { mergeEntities, recordDecision } from "./proposals";
+import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 
 const now = () => new Date().toISOString();
 
@@ -308,6 +308,18 @@ export async function acceptProposal(workspaceId: string, proposal: Proposal, ov
     case "deleteEntity":
       await db.delete(s.entities).where(eq(s.entities.id, a.entityId));
       break;
+    case "renameAttributeKey":
+      await renameAttributeKey(db, workspaceId, a.from, (override ?? a.to).trim() || a.to);
+      break;
+    case "renameAttributeValue":
+      await renameAttributeValue(db, workspaceId, a.key, a.from, (override ?? a.to).trim() || a.to);
+      break;
+    case "setAttribute": {
+      const to = (override ?? a.to).trim();
+      if (!to) return { error: "A value is required" };
+      await setEntityAttribute(db, a.entityId, a.key, to);
+      break;
+    }
   }
   await recordDecision(db, workspaceId, proposal.key, "accepted");
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");

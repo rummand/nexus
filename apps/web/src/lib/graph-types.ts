@@ -42,14 +42,20 @@ export interface EntityDetail {
   duplicates: Array<{ id: string; kind: string; name: string; description: string }>;
 }
 
-export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "orphan";
+export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "orphan" | "attributeKey" | "attributeValue" | "attributeMissing";
 
 export type ProposalAction =
   | { kind: "merge"; survivorId: string; otherIds: string[] }
   | { kind: "renameKind"; from: string; to: string }
   | { kind: "setKind"; entityId: string; to: string }
   | { kind: "setRelationKind"; relationId: string; to: string }
-  | { kind: "deleteEntity"; entityId: string };
+  | { kind: "deleteEntity"; entityId: string }
+  /** Move every `from` attribute onto the `to` key (existing `to` values win). */
+  | { kind: "renameAttributeKey"; from: string; to: string }
+  /** Replace one attribute value with another for every entity that carries it. */
+  | { kind: "renameAttributeValue"; key: string; from: string; to: string }
+  /** Set one attribute on one entity (the value may be supplied by the reviewer). */
+  | { kind: "setAttribute"; entityId: string; key: string; to: string };
 
 export interface Proposal {
   key: string;

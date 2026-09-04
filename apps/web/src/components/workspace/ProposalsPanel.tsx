@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, GitMerge, Sparkles, Tag, Trash2, Type, Unlink, X } from "lucide-react";
+import { Check, Columns3, GitMerge, ListPlus, SpellCheck, Sparkles, Tag, Trash2, Type, Unlink, X } from "lucide-react";
 import type { Proposal } from "@/lib/graph-types";
 import { acceptProposal, dismissProposal } from "@/lib/actions";
 
@@ -11,6 +11,9 @@ const ICONS: Record<Proposal["type"], React.ReactNode> = {
   untyped: <Type size={16} />,
   relation: <Unlink size={16} />,
   orphan: <Trash2 size={16} />,
+  attributeKey: <Columns3 size={16} />,
+  attributeValue: <SpellCheck size={16} />,
+  attributeMissing: <ListPlus size={16} />,
 };
 
 const ACCEPT_LABEL: Record<Proposal["type"], string> = {
@@ -19,6 +22,9 @@ const ACCEPT_LABEL: Record<Proposal["type"], string> = {
   untyped: "Set kind",
   relation: "Label",
   orphan: "Delete",
+  attributeKey: "Rename key",
+  attributeValue: "Normalise",
+  attributeMissing: "Set value",
 };
 
 /** Agent proposals: deterministic suggestions with accept / dismiss (LeanFlow panel styling). */
@@ -56,8 +62,8 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
       {proposals.length > 0 && (
         <div className="proposal-list">
           {visible.map((p) => {
-            const needsInput = (p.type === "untyped" || p.type === "relation");
-            const value = inputs[p.key] ?? (p.action.kind === "setKind" || p.action.kind === "setRelationKind" ? p.action.to : "");
+            const needsInput = (p.type === "untyped" || p.type === "relation" || p.type === "attributeMissing");
+            const value = inputs[p.key] ?? (p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" ? p.action.to : "");
             return (
               <article key={p.key} className={`proposal-card ${p.confidence}`}>
                 <div className="proposal-icon">{ICONS[p.type]}</div>
@@ -73,7 +79,7 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
                     </ul>
                   )}
                   {needsInput && (
-                    <input className="proposal-input" value={value} onChange={(e) => setInputs((v) => ({ ...v, [p.key]: e.target.value }))} placeholder={p.type === "untyped" ? "Kind, e.g. Application" : "Relation label, e.g. depends on"} />
+                    <input className="proposal-input" value={value} onChange={(e) => setInputs((v) => ({ ...v, [p.key]: e.target.value }))} placeholder={p.type === "untyped" ? "Kind, e.g. Application" : p.type === "attributeMissing" && p.action.kind === "setAttribute" ? `Value for ${p.action.key}` : "Relation label, e.g. depends on"} />
                   )}
                   {errors[p.key] && <p className="form-error">{errors[p.key]}</p>}
                 </div>

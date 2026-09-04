@@ -310,6 +310,7 @@ export function parseImportText(text: string): ImportPayload {
   const relations: ImportPayload["relations"] = [];
   let mode: "entities" | "relations" = "entities";
   let attributeColumns: string[] = [];
+  let descriptionColumn = 2; // -1 when the header has no "description" column: every extra column is an attribute
   for (const line of trimmed.split(/\r?\n/)) {
     const l = line.trim();
     if (!l) continue;
@@ -318,14 +319,20 @@ export function parseImportText(text: string): ImportPayload {
     if (l.startsWith("#")) continue;
     const cells = splitCsv(l);
     const header = cells.map(norm);
-    if (header[0] === "kind" && header[1] === "name") { mode = "entities"; attributeColumns = cells.slice(3).map((c) => c.trim()); continue; }
+    if (header[0] === "kind" && header[1] === "name") {
+      mode = "entities";
+      descriptionColumn = header[2] === "description" ? 2 : -1;
+      attributeColumns = cells.slice(descriptionColumn === 2 ? 3 : 2).map((c) => c.trim());
+      continue;
+    }
     if (header[0] === "from" && (header[1] === "relation" || header[1] === "kind")) { mode = "relations"; continue; }
     if (mode === "entities") {
       const attributes: Record<string, string> = {};
+      const firstAttr = descriptionColumn === 2 ? 3 : 2;
       if (attributeColumns.length) {
-        attributeColumns.forEach((col, i) => { const v = cells[3 + i]; if (col && v && v.trim()) attributes[col] = v.trim(); });
+        attributeColumns.forEach((col, i) => { const v = cells[firstAttr + i]; if (col && v && v.trim()) attributes[col] = v.trim(); });
       }
-      entities.push({ kind: cells[0] ?? "", name: cells[1] ?? "", description: cells[2] ?? "", ...(Object.keys(attributes).length ? { attributes } : {}) });
+      entities.push({ kind: cells[0] ?? "", name: cells[1] ?? "", description: descriptionColumn === 2 ? cells[2] ?? "" : "", ...(Object.keys(attributes).length ? { attributes } : {}) });
     } else relations.push({ from: cells[0] ?? "", kind: cells[1] ?? "", to: cells[2] ?? "" });
   }
   return { entities, relations };

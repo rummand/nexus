@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 12 — impact and attribute lenses)
+Last updated: 2026-09-04 (rev 13 — attribute proposals)
 
 ---
 
@@ -285,6 +285,22 @@ Surfaces: the **Agent proposals** section at the top of the Knowledge graph page
 "Agent proposal · possible duplicate" block in the board's Selection inspector with a
 one-click merge that relinks the open board's cards immediately.
 
+Attribute hygiene (rev 13) — the emergent attribute schema (§5.8) gets the same care as kinds:
+
+- **Attribute key variants** — keys that differ only by case or separators (`Lifecycle` /
+  `lifecycle`, `business_owner` / `Business owner`) → *Rename key* onto the most-used spelling
+  (existing values on the target key win).
+- **Attribute value variants** — values of one key that differ only by case / whitespace
+  (`Active` / `active`) → *Normalise* to the most-used spelling.
+- **Missing attributes** — when ≥ 80 % of a kind's entities (≥ 3) carry a key, each entity of
+  that kind without it gets a *Set value* proposal; if one value covers ≥ 80 % of carriers it is
+  pre-filled (medium confidence), otherwise the reviewer types it (low).
+
+All three are pure functions over the entity list (`attributeProposals`) so they are unit-tested
+without a database; accepting them rewrites the JSON attribute bags server-side and boards pick
+the change up through `hydrateDocument` on the next load, like kind renames.
+
+
 ### 5.7 Viewpoints — the first optics (v0.2)
 
 "Load and unload optics" (§2.4) starts as a **Viewpoint** tab in the board's Graph panel
@@ -443,6 +459,12 @@ contains (`src/canvas/lens.ts`).
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
 
+### Attribute proposals (v0.2)
+- Rename attribute keys that differ by case / separators, normalise value spellings, fill in
+  attributes that (almost) every entity of a kind carries — with accept / dismiss memory like
+  the other rules. CSV import without a `description` column now treats every extra column as
+  an attribute.
+
 ### Lenses (v0.2)
 - Impact lens (direction, depth) and attribute lens (colour by value) in the Viewpoint tab;
   cards badge their hop distance or attribute value; legend card on the canvas; legend entries
@@ -528,6 +550,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
+| 2026-09-04 | Missing-attribute proposals need ≥ 80 % coverage within a kind of ≥ 3 entities. | Below that the "schema" is not established and the proposals would be noise; the threshold is a constant to tune once real data arrives. |
 | 2026-09-04 | Lenses never mutate the document; the impact lens walks *board connectors*, not the workspace graph. | What you see is what you traverse: the user controls which relations are on the board (Show all relations / expand) and the lens explains exactly that picture. A graph-backed variant can come later as "expand then lens". |
 | 2026-09-04 | The board canvas is client-only (`dynamic(..., { ssr: false })`) with a loading shell. | Server-rendering a thousand absolutely positioned nodes doubled the payload and the hydration cost for zero benefit — the canvas needs the viewport size before it can place anything. |
 | 2026-09-04 | Grid and minimap are drawn on `<canvas>`; the world transform is set imperatively. | These are the three things that change on *every* pan/zoom frame. Keeping them out of React (and out of CSS gradient repaints) is what made navigation frame-bound instead of render-bound. |
@@ -543,6 +566,12 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 13: attribute proposals.** Three new resolution rules keep the emergent
+  attribute schema clean: rename key variants, normalise value spellings, fill in attributes
+  that a kind (almost) always carries — each with accept / dismiss and evidence in the proposals
+  panel. CSV import treats every extra column as an attribute when there is no `description`
+  header (previously the third column was silently read as the description).
 
 - **2026-09-04 — Rev 12: impact and attribute lenses.** Two board optics in the Viewpoint tab:
   the impact lens fades everything not reachable from the selection along connectors (direction
