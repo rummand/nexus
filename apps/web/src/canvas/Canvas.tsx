@@ -18,6 +18,7 @@ import { InventoryPanel } from "./InventoryPanel";
 import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
+import { HistoryPanel } from "./HistoryPanel";
 
 /** Minor grid spacing adapts to zoom so lines never get denser than ~16 screen px. */
 function gridStep(zoom: number) {
@@ -115,6 +116,7 @@ export function Canvas() {
       <InspectorPanel rootRef={rootRef} />
       {panels.map && <MapCard />}
       {panels.help && <HelpPanel />}
+      {panels.history && <HistoryPanel rootRef={rootRef} />}
       <ZoomCard />
       <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
     </main>

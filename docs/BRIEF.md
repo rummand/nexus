@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 6 — attributes / emergent schema)
+Last updated: 2026-09-04 (rev 7 — version history)
 
 ---
 
@@ -293,6 +293,16 @@ kind, with usage counts,** is the emergent attribute schema shown on each kind c
 Knowledge graph page — nobody defines a schema up front; it appears from the data. CSV import
 turns any extra header columns into attributes; JSON entities may carry `attributes`.
 
+### 5.9 Board version history (v0.2)
+
+`board_versions` stores full-document checkpoints per board: **auto** (on save, when the
+latest checkpoint is older than 10 minutes — the state being overwritten is kept), **manual**
+("Save checkpoint" with a label) and **restore** (the state replaced by a restore, so restores
+are reversible). Auto checkpoints are pruned to 30 per board; manual ones are kept. The
+History panel (topbar → History) lists versions with age, object count and author, and
+restores with one click; the restored document re-syncs into the graph. This is the seed of
+the "dated checkpoints / compare over time" idea (§2, LeanFlow's snapshots).
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -380,10 +390,13 @@ the schema already separates users, memberships and roles.
   graph sync/hydrate, CSV extra columns → attributes, emergent per-kind schema on the
   Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
 
+### Version history (v0.2)
+- Auto / manual / restore checkpoints per board, History panel with restore (§5.9).
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
-  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood against an in-memory SQLite).
+  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood, version checkpoints / restore against an in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
@@ -434,6 +447,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Kind lens is client-side only for now. | Cheap to try; persisting viewpoints per board is the next step once we know which lenses matter. |
 | 2026-09-04 | Text fields on an *unselected* object are inert: the first click selects (and can drag), the second click edits. | At low zoom a note is mostly text field; without this rule it could not be grabbed. Matches the Miro / Figma model. |
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
+| 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 
 ## 8. Open questions for the product owner
 
@@ -444,6 +458,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 7: version history.** Board checkpoints (auto every 10 minutes of
+  editing, manual with label, pre-restore), History panel with one-click restore that
+  re-syncs the graph. Unit tests for checkpoint timing, pruning rules and restore.
 
 - **2026-09-04 — Rev 6: attributes and emergent schema.** Cards carry key/value attributes
   (chips, risk tint), editable in the inspector with per-kind key suggestions, synced to

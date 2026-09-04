@@ -153,6 +153,15 @@ try {
   await page.locator(`[data-element-id="${noteId}"]`).waitFor({ timeout: 10000 });
   assert.equal(await page.locator(`[data-element-id="${noteId}"] input`).first().inputValue(), TEXT, "note persisted across reload");
 
+  // version history: the save above produced an auto checkpoint; a manual one can be added
+  await page.click(".studio-topbar button:has-text('History')");
+  await page.waitForSelector(".history-panel");
+  await page.fill(".history-new input", "e2e checkpoint");
+  await page.click(".history-new button");
+  await page.waitForSelector(".history-item.manual", { timeout: 15000 });
+  assert.ok((await page.locator(".history-item").count()) >= 1, "history lists checkpoints");
+  await page.click(".history-panel .panel-title button");
+
   // graph page: import the sample and check the meta-model renders
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   assert.ok((await page.locator(".kind-card").count()) > 0, "graph page shows kinds");

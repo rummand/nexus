@@ -4,6 +4,7 @@ import { getDb } from "@/db/client";
 import { boards } from "@/db/schema";
 import { migrateDocument, parseDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
+import { autoCheckpoint } from "@/lib/versions";
 
 type Params = { params: Promise<{ boardId: string }> };
 
@@ -36,6 +37,9 @@ export async function PUT(req: Request, { params }: Params) {
   const doc = migrateDocument(body.document as Partial<CanvasDocument>);
   const db = await getDb();
   const updatedAt = new Date().toISOString();
+  // time-based checkpoint of the state we are about to overwrite
+  const previous = await db.query.boards.findFirst({ where: eq(boards.id, boardId), columns: { document: true } });
+  if (previous) await autoCheckpoint(db, boardId, parseDocument(previous.document));
   const [row] = await db
     .update(boards)
     .set({ document: serializeDocument(doc), updatedAt })

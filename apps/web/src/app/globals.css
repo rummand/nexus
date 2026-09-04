@@ -1011,3 +1011,20 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .kind-card-attrs i small { color: #8a95a8; font-weight: 800; }
 .entity-attrs { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
 .entity-attrs i { background: #f8fbff; border: 1px solid #dbe8f6; border-radius: 7px; color: #53627a; font-size: 10px; font-style: normal; font-weight: 900; padding: 2px 6px; }
+
+/* version history */
+.history-panel { display: grid; gap: 10px; max-height: calc(100vh - 140px); overflow: hidden; padding: 12px; width: 300px; z-index: 11; }
+.history-new { display: grid; gap: 6px; }
+.history-new input { background: #fff; border: 1px solid #d7e3f1; border-radius: 9px; font-size: 12px; min-height: 32px; outline: 0; padding: 0 10px; }
+.history-new input:focus { border-color: var(--blue); }
+.history-hint { color: #6c7a91; font-size: 11px; line-height: 1.35; margin: 0; }
+.history-list { display: grid; gap: 4px; list-style: none; margin: 0; overflow: auto; padding: 0; }
+.history-item { align-items: center; background: #f8fbff; border: 1px solid #dbe8f6; border-left: 3px solid #b8c4d6; border-radius: 10px; display: flex; gap: 8px; padding: 8px 10px; }
+.history-item.manual { border-left-color: var(--blue); }
+.history-item.restore { border-left-color: #f59e0b; }
+.history-item > div { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.history-item strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-item small { color: #6c7a91; font-size: 11px; }
+.history-item button { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 999px; color: #53627a; display: inline-flex; font-size: 10px; font-weight: 900; gap: 4px; min-height: 26px; padding: 0 9px; white-space: nowrap; }
+.history-item button:hover { border-color: #b8d7ff; color: var(--blue); }
+.history-empty { color: #6c7a91; font-size: 12px; padding: 8px; }

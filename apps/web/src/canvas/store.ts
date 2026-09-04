@@ -10,7 +10,7 @@ export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" |
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 
-export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory";
+export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error";
 
@@ -194,7 +194,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
-      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true },
+      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false },
       isDragging: false,
       hiddenKinds: [],
       graphTab: "inventory",

@@ -1,4 +1,4 @@
-import { sqliteTable, text, primaryKey, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 
 /**
@@ -194,6 +194,24 @@ export const boardEntities = sqliteTable(
   (t) => [primaryKey({ columns: [t.boardId, t.entityId, t.elementId] }), index("board_entities_entity_idx").on(t.entityId)],
 );
 
+/** Board checkpoints: automatic (time-based while editing), manual, or taken before a restore. */
+export const boardVersions = sqliteTable(
+  "board_versions",
+  {
+    id: text("id").primaryKey(),
+    boardId: text("board_id")
+      .notNull()
+      .references(() => boards.id, { onDelete: "cascade" }),
+    label: text("label").notNull().default(""),
+    reason: text("reason", { enum: ["auto", "manual", "restore"] }).notNull().default("auto"),
+    document: text("document").notNull(),
+    objectCount: integer("object_count").notNull().default(0),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("board_versions_board_idx").on(t.boardId, t.createdAt)],
+);
+
 /** Remembered decisions on agent proposals (dismissed / accepted), keyed by proposal key. */
 export const agentDecisions = sqliteTable(
   "agent_decisions",
@@ -274,3 +292,4 @@ export type Space = typeof spaces.$inferSelect;
 export type Board = typeof boards.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type Relation = typeof relations_.$inferSelect;
+export type BoardVersion = typeof boardVersions.$inferSelect;

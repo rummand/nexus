@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Keyboard, Loader2, Share2 } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, History, Keyboard, Loader2, Share2 } from "lucide-react";
 import { renameBoard } from "@/lib/actions";
 import { NexusMark } from "@/components/workspace/NexusMark";
 import { initials } from "@/components/workspace/Sidebar";
@@ -26,6 +26,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   const count = useCanvas((s) => Object.keys(s.elements).length);
   const zoom = useCanvas((s) => s.camera.zoom);
   const helpOpen = useCanvas((s) => s.panels.help);
+  const historyOpen = useCanvas((s) => s.panels.history);
 
   const commit = () => {
     const v = name.trim();
@@ -63,6 +64,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
           {saveState === "saving" ? <Loader2 size={13} className="spin" /> : saveState === "saved" ? <Check size={13} /> : <CircleDot size={13} />}
           {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
         </span>
+        <button className={historyOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("history")} title="Version history"><History size={16} /> History</button>
         <button className={helpOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("help")} title="Keyboard shortcuts"><Keyboard size={16} /> Shortcuts</button>
         <button className="ghost-button" type="button" onClick={() => void share()}><Share2 size={16} /> {copied ? "Link copied" : "Share"}</button>
         <span className="avatar" title={user.name}>{initials(user.name)}</span>
