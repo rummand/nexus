@@ -54,4 +54,18 @@ describe("query language", () => {
     expect((await runQuery(db, "ws", "end of life")).entities.map((e) => e.name)).toEqual(["Historian"]);
     expect((await runQuery(db, "ws", "")).total).toBe(4);
   });
+
+  it("has: / missing: filter on attribute presence and on: on board placement", async () => {
+    await db.insert(s.spaces).values({ id: "sp", workspaceId: "ws", name: "Space" });
+    await db.insert(s.boards).values({ id: "b1", workspaceId: "ws", spaceId: "sp", name: "Application landscape" });
+    await db.insert(s.boardEntities).values({ boardId: "b1", entityId: "ent_sap", elementId: "el1" });
+    const missing = await runQuery(db, "ws", "kind:Application missing:lifecycle");
+    expect(missing.entities.map((e) => e.name)).toEqual(["SAP S/4"]);
+    const has = await runQuery(db, "ws", "has:lifecycle");
+    expect(has.entities.map((e) => e.name).sort()).toEqual(["CRM Cloud", "Historian"]);
+    const on = await runQuery(db, "ws", 'on:"landscape"');
+    expect(on.entities.map((e) => e.name)).toEqual(["SAP S/4"]);
+    expect(on.entities[0]!.why).toContain("on Application landscape");
+    expect(describeQuery(parseQuery("missing:owner on:landscape"))).toBe("Entities where no “owner”, on board “landscape”");
+  });
 });

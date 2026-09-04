@@ -29,7 +29,7 @@ function searchText(el: CanvasElement) {
   }
 }
 
-const EXAMPLES = ["kind:Application criticality:high", 'lifecycle:"end of life"', "related:Maximo", "owner:Grid", "kind:Interface"];
+const EXAMPLES = ["kind:Application criticality:high", 'lifecycle:"end of life"', "related:Maximo", "missing:owner", "has:lifecycle on:landscape"];
 
 /**
  * Command bar: finds objects on this board and queries the workspace graph with a small

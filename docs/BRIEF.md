@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 18 — entity drawer)
+Last updated: 2026-09-04 (rev 19 — query: has / missing / on)
 
 ---
 
@@ -396,6 +396,14 @@ Authentication is **not** part of the first brief: the app runs as a seeded demo
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
 
+**Rev 19 clauses.** `has:<key>` (attribute present with a value), `missing:<key>` (also
+`without:` / `no:`; attribute absent or empty) and `on:<board>` (also `board:`; the entity is
+placed on a board whose name contains the text). Together with the attribute proposals they make
+schema hygiene queryable: `kind:Application missing:owner` lists exactly the gaps the agent
+would otherwise propose one by one, and `on:landscape has:criticality` scopes a question to a
+board. Each hit still carries a "why" (e.g. `no owner`, `on Application landscape`).
+
+
 ### 5.11 Lenses — impact and attribute optics (v0.2)
 
 A *lens* is a client-side optic over a board: it changes how the board is drawn, never what it
@@ -622,6 +630,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 19: query clauses has / missing / on.** The graph query language gained
+  attribute-presence filters (`has:`, `missing:` with `without:` / `no:` aliases) and board
+  scoping (`on:` / `board:`), each explained in the hit's "why"; command-bar example chips
+  updated.
 
 - **2026-09-04 — Rev 18: entity drawer.** Entity names on the Knowledge graph page (list and
   table) open a detail drawer: editable fields and attributes, navigable relations, board links,

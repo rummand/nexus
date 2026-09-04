@@ -110,6 +110,12 @@ export interface ParsedQuery {
   attributes: Array<{ key: string; value: string }>;
   related: Array<{ name: string; direction: "both" | "out" | "in"; relationKind?: string }>;
   relationKinds: string[];
+  /** has:<key> — the attribute must be present (any value). */
+  has: string[];
+  /** missing:<key> — the attribute must be absent or empty. */
+  missing: string[];
+  /** on:<board> — the entity must appear on a board whose name contains this. */
+  boards: string[];
   /** true when at least one structured clause was used */
   structured: boolean;
 }
