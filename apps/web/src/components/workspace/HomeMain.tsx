@@ -33,7 +33,7 @@ export interface HomeMainProps {
   initialQuery?: string;
   headerExtra?: ReactNode;
   /** Knowledge-graph summary for the home strip. */
-  graph?: { entities: number; kinds: number; relations: number; proposals: number; slug: string };
+  graph?: { entities: number; kinds: number; relations: number; proposals: number; slug: string; recent?: Array<{ id: string; name: string; kind: string; updatedAt: string; color: string }> };
 }
 
 const VIEW_KEY = "nexus.boardView";
@@ -130,6 +130,18 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
           {graph.proposals > 0 ? <span className="graph-strip-badge warn">{graph.proposals} agent proposal{graph.proposals === 1 ? "" : "s"}</span> : <span className="graph-strip-badge">consistent</span>}
           <span className="graph-strip-cta">Open graph →</span>
         </Link>
+      )}
+      {mode === "home" && graph?.recent && graph.recent.length > 0 && !query.trim() && (
+        <div className="graph-recent" aria-label="Recently changed entities">
+          <span>Recently changed</span>
+          {graph.recent.map((e) => (
+            <Link key={e.id} href={`/e/${e.id}`} className="graph-recent-chip" title={`${e.kind || "Untyped"} · updated ${new Date(e.updatedAt).toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`}>
+              <i style={{ background: e.color }} />
+              <b>{e.name || "(unnamed)"}</b>
+              <small>{e.kind || "Untyped"}</small>
+            </Link>
+          ))}
+        </div>
       )}
 
       {mode === "home" && !query.trim() && recent.length > 0 && (

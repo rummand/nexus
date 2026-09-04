@@ -230,6 +230,13 @@ try {
   assert.ok((await page.locator("[data-entity-drawer] .entity-drawer-section").count()) >= 2, "entity drawer shows relations and boards");
   await page.keyboard.press("Escape");
   await page.locator("[data-entity-drawer]").waitFor({ state: "detached" });
+  // entity deep link: /e/:id redirects to the graph page with the drawer open
+  const firstEntityId = await page.evaluate(async () => (await (await fetch("/api/workspaces/ws_acme/graph")).json()).entities[0]?.id);
+  assert.ok(firstEntityId, "graph snapshot has entities");
+  await page.goto(`${base}/e/${firstEntityId}`, { waitUntil: "load" });
+  await page.waitForSelector("[data-entity-drawer] .entity-drawer-body", { timeout: 15000 });
+  assert.ok(page.url().includes(`/graph?entity=${firstEntityId}`), "deep link lands on the graph page");
+  await page.keyboard.press("Escape");
   await page.click("text=Import data");
   await page.click("text=Use sample");
   await page.click('.modal-card button:text-is("Import")');

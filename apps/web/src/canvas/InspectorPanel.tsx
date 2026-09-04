@@ -211,7 +211,7 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
             </ul>
           )}
           {otherBoards.length > 0 && <small>Also on: {otherBoards.map((b, i) => <span key={b.id}>{i > 0 && ", "}<Link href={`/b/${b.id}`}>{b.name}</Link></span>)}</small>}
-          <small>Source: {detail.entity.source}</small>
+          <small>Source: {detail.entity.source} · <Link href={`/e/${detail.entity.id}`} title="Open this entity on the Knowledge graph page">Open in graph →</Link></small>
         </>
       )}
     </div>

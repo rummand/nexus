@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 22 — graph-first relation editing)
+Last updated: 2026-09-04 (rev 23 — entity deep links, recently changed)
 
 ---
 
@@ -280,6 +280,11 @@ change), attributes with the kind's schema as suggestions (blur saves, × remove
 one-click merge, and delete. Esc or the backdrop closes it. Data comes from the existing
 `GET /api/graph/entities/[id]`; edits go through the same server actions the canvas uses.
 
+**Deep links (rev 23).** `/e/:entityId` redirects to the owning workspace's Knowledge graph page
+with the drawer open (`?entity=`); the canvas inspector's graph block links there ("Open in
+graph →") and the home page shows the six most recently changed entities as chips under the
+graph strip. Anything that mentions an entity can now link to it.
+
 **Relations without a board (rev 22).** The drawer's relation list has an add form (direction,
 relation type with the workspace's types as suggestions, other entity by name) and a delete
 button per relation (`src/lib/relations.ts`). Creating dedupes on ends + type; deleting also
@@ -521,6 +526,9 @@ contains (`src/canvas/lens.ts`).
 - Shortcuts panel lists multi-select, smart-guide bypass, right-click actions, alignment and
   presentation mode.
 
+### Entity deep links (v0.2)
+- `/e/:id` opens the entity drawer; inspector and home "Recently changed" chips link to it.
+
 ### Entity drawer (v0.2)
 - Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
   relations, add / delete relations (board connectors cleaned up), jump to boards, merge
@@ -654,6 +662,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 23: entity deep links, recently changed.** `/e/:id` route, `?entity=`
+  drawer opening on the graph page, "Open in graph" from the canvas inspector, and a
+  "Recently changed" chip row on the home page.
 
 - **2026-09-04 — Rev 22: graph-first relation editing.** Add and delete relations from the
   entity drawer (deduped create, delete strips board connectors), with unit tests and two new

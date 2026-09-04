@@ -6,11 +6,11 @@ import { computeProposals } from "@/lib/proposals";
 import { getWorkspaceBySlug, getWorkspaceShell } from "@/lib/data";
 import { currentUser } from "@/lib/session";
 
-export default async function GraphPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function GraphPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ entity?: string }> }) {
+  const [{ slug }, { entity }] = await Promise.all([params, searchParams]);
   const [workspace, user] = await Promise.all([getWorkspaceBySlug(slug), currentUser()]);
   if (!workspace) notFound();
   const db = await getDb();
   const [snapshot, { spaces }, proposals] = await Promise.all([graphSnapshot(db, workspace.id), getWorkspaceShell(workspace.id, user.id), computeProposals(db, workspace.id)]);
-  return <GraphBrowser workspaceId={workspace.id} slug={slug} snapshot={snapshot} spaces={spaces} proposals={proposals} />;
+  return <GraphBrowser workspaceId={workspace.id} slug={slug} snapshot={snapshot} spaces={spaces} proposals={proposals} initialEntityId={entity ?? null} />;
 }

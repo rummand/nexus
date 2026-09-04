@@ -23,7 +23,14 @@ export default async function WorkspaceHome({ params, searchParams }: { params: 
       mode="home"
       lastOpened={lastOpened}
       initialQuery={q ?? ""}
-      graph={{ entities: snapshot.entities.length, kinds: snapshot.kinds.length, relations: snapshot.relationKinds.reduce((a, k) => a + k.count, 0), proposals: proposals.length, slug }}
+      graph={{
+        entities: snapshot.entities.length,
+        kinds: snapshot.kinds.length,
+        relations: snapshot.relationKinds.reduce((a, k) => a + k.count, 0),
+        proposals: proposals.length,
+        slug,
+        recent: [...snapshot.entities].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6).map((e) => ({ id: e.id, name: e.name, kind: e.kind, updatedAt: e.updatedAt, color: snapshot.kinds.find((k) => k.kind === e.kind)?.color ?? "#1376d4" })),
+      }}
     />
   );
 }

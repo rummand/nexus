@@ -1209,3 +1209,11 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .entity-drawer-addrel select, .entity-drawer-addrel input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: var(--ink); font: inherit; font-size: 12px; height: 32px; min-width: 0; padding: 0 8px; }
 .entity-drawer-addrel select:focus, .entity-drawer-addrel input:focus { border-color: var(--blue); outline: 0; }
 .entity-drawer-addrel .ghost-button { height: 32px; min-height: 32px; padding: 0; width: 34px; }
+
+.graph-recent { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+.graph-recent > span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; margin-right: 4px; text-transform: uppercase; }
+.graph-recent-chip { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 999px; color: var(--ink); display: inline-flex; font-size: 12px; gap: 7px; max-width: 260px; padding: 5px 10px 5px 8px; text-decoration: none; }
+.graph-recent-chip:hover { border-color: #b8d7ff; color: var(--blue); }
+.graph-recent-chip i { border-radius: 3px; display: inline-block; flex: 0 0 auto; height: 10px; width: 10px; }
+.graph-recent-chip b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.graph-recent-chip small { color: #8a95a8; font-size: 11px; font-weight: 700; white-space: nowrap; }

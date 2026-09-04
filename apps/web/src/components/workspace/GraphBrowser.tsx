@@ -24,14 +24,14 @@ Customer API,consumed by,ERP Core
 CRM Cloud,supports,Revenue Management`;
 
 /** Workspace knowledge graph: inventory, emergent meta-model, import, lay out on a board. */
-export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[] }) {
+export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null }) {
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "table">("list");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialEntityId);
   const [draft, setDraft] = useState({ kind: "", name: "", description: "" });
   const [pending, start] = useTransition();
 
