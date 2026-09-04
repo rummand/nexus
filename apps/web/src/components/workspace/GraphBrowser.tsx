@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { renameAttributeKeyAction } from "@/lib/actions";
+import { parseImportText, previewImport } from "@/lib/import-parse";
 import { useMemo, useState, useTransition } from "react";
 import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
 import type { Space } from "@/db/schema";
@@ -145,7 +146,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
       </section>
 
       <EntityDrawer entityId={openId} workspaceId={workspaceId} kindColor={(k) => kindColor(snapshot, k)} onClose={() => setOpenId(null)} onNavigate={setOpenId} entities={snapshot.entities} relationKinds={snapshot.relationKinds.map((r) => r.kind)} />
-      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} workspaceId={workspaceId} />
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} workspaceId={workspaceId} snapshot={snapshot} />
       <LayoutDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} workspaceId={workspaceId} spaces={spaces} kinds={snapshot.kinds.map((k) => k.kind)} slug={slug} />
     </section>
   );
@@ -201,8 +202,16 @@ function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRenam
   );
 }
 
-function ImportDialog({ open, onClose, workspaceId }: { open: boolean; onClose: () => void; workspaceId: string }) {
+function ImportDialog({ open, onClose, workspaceId, snapshot }: { open: boolean; onClose: () => void; workspaceId: string; snapshot: GraphSnapshot }) {
   const [text, setText] = useState("");
+  const preview = useMemo(() => {
+    if (!text.trim()) return null;
+    try {
+      return previewImport(parseImportText(text), snapshot.entities);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Could not parse" };
+    }
+  }, [text, snapshot]);
   const [name, setName] = useState("");
   const [result, setResult] = useState<ImportResult | { error: string } | null>(null);
   const [pending, start] = useTransition();
@@ -226,6 +235,19 @@ function ImportDialog({ open, onClose, workspaceId }: { open: boolean; onClose: 
           <label>Data</label>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={10} placeholder={SAMPLE} style={{ fontFamily: "var(--mono)", fontSize: 12, minHeight: 200 }} />
         </div>
+        {preview && !result && ("error" in preview ? (
+          <p className="form-error">{preview.error}</p>
+        ) : (
+          <div className="import-preview" data-import-preview>
+            <span>Preview</span>
+            <strong>{preview.entities} entit{preview.entities === 1 ? "y" : "ies"} · {preview.newEntities} new · {preview.existingEntities} update existing · {preview.relations} relation{preview.relations === 1 ? "" : "s"}</strong>
+            <small>
+              {preview.kinds.length > 0 && <>Kinds: {preview.kinds.map((k) => `${k.kind} (${k.count})`).join(", ")}. </>}
+              {preview.attributeKeys.length > 0 ? <>Attributes: {preview.attributeKeys.join(", ")}.</> : "No attribute columns."}
+            </small>
+            {preview.warnings.map((w) => <em key={w}>⚠ {w}</em>)}
+          </div>
+        ))}
         {result && "error" in result && <p className="form-error">{result.error}</p>}
         {result && !("error" in result) && (
           <div className="mode-banner" style={{ margin: 0 }}>

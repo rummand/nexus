@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 27 — frames as slides, query autocomplete)
+Last updated: 2026-09-04 (rev 28 — import preview, kind suggestions)
 
 ---
 
@@ -176,6 +176,9 @@ nexus/
   (`x`, `y`, `zoom`) maps world to screen. Elements are rendered inside a single
   CSS-transformed layer; selection handles and overlays are rendered in screen space so
   they stay crisp at any zoom.
+- **Vocabulary on the canvas.** The board keeps the workspace's kinds (refreshed with the
+  proposals after each save); a card's kind field offers them as suggestions, so vocabularies
+  converge while typing instead of via a proposal afterwards.
 - **Elements** are a discriminated union (document v2): `card` (kind, title,
   description — the canvas face of a future graph entity), `sticky` (note: title, body,
   colour), `text` (variant text/section: title, body, colour), `shape` (rect / ellipse /
@@ -376,6 +379,12 @@ turns any extra header columns into attributes; JSON entities may carry `attribu
 attribute (empty value removes it) or the kind for the selection, or deletes the entities. Three
 small server actions back it.
 
+**Import preview (rev 28).** The import dialog parses the pasted text as you type (pure
+`src/lib/import-parse.ts`, shared with the server) and shows what would happen before *Import*:
+entities (new vs. updating existing, matched by kind + name like the server), kinds, attribute
+columns, relations, and warnings (rows without a name, relations pointing at unknown names,
+unrecognised header).
+
 **Table view (rev 15).** The Knowledge graph page's entity section has a *List | Table* toggle.
 The table has one column per attribute key in use (ordered by the filtered kind's schema, or by
 frequency across all kinds), sortable headers, inline cell editing (click, type, Enter; empty
@@ -567,6 +576,10 @@ contains (`src/canvas/lens.ts`).
   relations, add / delete relations (board connectors cleaned up), jump to boards, merge
   duplicates, delete.
 
+### Import preview (v0.2)
+- Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
+  warnings. Card kind fields suggest the workspace's kinds.
+
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
   schema, sort, inline editing, add column, copy as CSV, row selection with bulk set attribute /
@@ -699,6 +712,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 28: import preview, kind suggestions.** The CSV / JSON parser moved to a
+  pure module shared with the client; the import dialog previews new vs. existing entities,
+  kinds, attributes, relations and warnings before importing. Card kind fields get a datalist
+  of the workspace's kinds.
 
 - **2026-09-04 — Rev 27: frames as slides, query autocomplete.** Presentation mode steps through
   frames with the keyboard (‹ › buttons and a "Frame n of m" pill); the command bar completes

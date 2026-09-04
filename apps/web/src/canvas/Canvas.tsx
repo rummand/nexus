@@ -120,6 +120,7 @@ export function Canvas() {
       {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
       {!presenting && <ZoomCard />}
       <LensLegend />
+      <KindSuggestions />
       {presenting ? (
         <div className="present-bar" data-present-exit onPointerDown={(e) => e.stopPropagation()}>
           {frameCount > 0 && <button type="button" onClick={() => store.getState().presentStep(-1)} aria-label="Previous frame">‹</button>}
@@ -133,4 +134,10 @@ export function Canvas() {
       )}
     </main>
   );
+}
+
+/** Datalist of kinds in the workspace graph, offered by the kind field of every card. */
+function KindSuggestions() {
+  const kinds = useCanvas((s) => s.graphKinds);
+  return <datalist id="nexus-kinds">{kinds.map((k) => <option key={k} value={k} />)}</datalist>;
 }

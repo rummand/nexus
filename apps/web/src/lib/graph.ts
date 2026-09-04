@@ -297,64 +297,7 @@ export async function importGraph(db: Db, workspaceId: string, payload: ImportPa
   return result;
 }
 
-/** Parse CSV text into an import payload. Entities: kind,name[,description]. Relations: from,relation,to. */
-export function parseImportText(text: string): ImportPayload {
-  const trimmed = text.trim();
-  if (!trimmed) return { entities: [], relations: [] };
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    const parsed = JSON.parse(trimmed) as Partial<ImportPayload> | ImportPayload["entities"];
-    if (Array.isArray(parsed)) return { entities: parsed, relations: [] };
-    return { entities: parsed.entities ?? [], relations: parsed.relations ?? [] };
-  }
-  const entities: ImportPayload["entities"] = [];
-  const relations: ImportPayload["relations"] = [];
-  let mode: "entities" | "relations" = "entities";
-  let attributeColumns: string[] = [];
-  let descriptionColumn = 2; // -1 when the header has no "description" column: every extra column is an attribute
-  for (const line of trimmed.split(/\r?\n/)) {
-    const l = line.trim();
-    if (!l) continue;
-    if (/^#\s*relations/i.test(l)) { mode = "relations"; continue; }
-    if (/^#\s*entities/i.test(l)) { mode = "entities"; continue; }
-    if (l.startsWith("#")) continue;
-    const cells = splitCsv(l);
-    const header = cells.map(norm);
-    if (header[0] === "kind" && header[1] === "name") {
-      mode = "entities";
-      descriptionColumn = header[2] === "description" ? 2 : -1;
-      attributeColumns = cells.slice(descriptionColumn === 2 ? 3 : 2).map((c) => c.trim());
-      continue;
-    }
-    if (header[0] === "from" && (header[1] === "relation" || header[1] === "kind")) { mode = "relations"; continue; }
-    if (mode === "entities") {
-      const attributes: Record<string, string> = {};
-      const firstAttr = descriptionColumn === 2 ? 3 : 2;
-      if (attributeColumns.length) {
-        attributeColumns.forEach((col, i) => { const v = cells[firstAttr + i]; if (col && v && v.trim()) attributes[col] = v.trim(); });
-      }
-      entities.push({ kind: cells[0] ?? "", name: cells[1] ?? "", description: descriptionColumn === 2 ? cells[2] ?? "" : "", ...(Object.keys(attributes).length ? { attributes } : {}) });
-    } else relations.push({ from: cells[0] ?? "", kind: cells[1] ?? "", to: cells[2] ?? "" });
-  }
-  return { entities, relations };
-}
-
-function splitCsv(line: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
-      else quoted = !quoted;
-    } else if ((ch === "," || ch === ";") && !quoted) {
-      out.push(cur.trim());
-      cur = "";
-    } else cur += ch;
-  }
-  out.push(cur.trim());
-  return out;
-}
+export { parseImportText } from "./import-parse";
 
 /** Deterministic layout: one frame per kind, cards in a grid, connectors for relations. */
 export function buildBoardFromGraph(entities: s.Entity[], relations: s.Relation[], title: string): CanvasDocument {

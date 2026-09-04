@@ -21,9 +21,11 @@ interface Props {
   /** Whether the owning object is selected. Unselected objects keep their fields inert so the
    *  first click selects / drags the object (Miro model); the second click edits text. */
   active?: boolean;
+  /** id of a <datalist> with suggestions (single-line fields only). */
+  list?: string;
 }
 
-export function LiveField({ value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false, active = true }: Props) {
+export function LiveField({ value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false, active = true, list }: Props) {
   const store = useCanvasStore();
   // Fields only take input with the select tool; with pan/creation tools they are inert so
   // the canvas receives the pointer (LeanFlow's isInteractiveTarget rule).
@@ -65,5 +67,5 @@ export function LiveField({ value, onChange, placeholder, className, style, mult
       onChange(e.target.value);
     },
   };
-  return multiline ? <textarea ref={(el) => { ref.current = el; }} {...common} /> : <input ref={(el) => { ref.current = el; }} {...common} />;
+  return multiline ? <textarea ref={(el) => { ref.current = el; }} {...common} /> : <input ref={(el) => { ref.current = el; }} {...common} list={inert ? undefined : list} />;
 }

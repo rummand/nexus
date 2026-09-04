@@ -1248,3 +1248,9 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .entity-bulk-form { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 .entity-bulk-form input { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: var(--ink); font: inherit; font-size: 13px; height: 32px; padding: 0 10px; width: 200px; }
 .entity-bulk-form .primary-home-button { height: 32px; min-height: 32px; padding: 0 12px; }
+
+.import-preview { background: #f6f9fd; border: 1px solid #dce6f2; border-left: 4px solid var(--blue); border-radius: 10px; display: grid; gap: 4px; padding: 10px 12px; }
+.import-preview > span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.import-preview strong { font-size: 13px; }
+.import-preview small { color: #65738a; font-size: 12px; line-height: 1.4; }
+.import-preview em { color: #b45309; font-size: 12px; font-style: normal; font-weight: 700; }

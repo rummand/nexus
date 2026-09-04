@@ -61,6 +61,8 @@ export interface CanvasState {
   presenting: boolean;
   /** Index of the frame currently shown as a "slide" while presenting (null = whole board). */
   presentIndex: number | null;
+  /** Workspace vocabulary for suggestions on the canvas (kinds; refreshed with the proposals). */
+  graphKinds: string[];
   /** Open agent proposals for this workspace (fetched after every save) and a per-entity index. */
   proposals: Proposal[];
   proposalsByEntity: Record<string, Proposal[]>;
@@ -102,6 +104,7 @@ export interface CanvasState {
   /** Move to the next / previous frame slide while presenting; wraps around. */
   presentStep(delta: 1 | -1): void;
   setProposals(list: Proposal[]): void;
+  setGraphKinds(kinds: string[]): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
   deleteViewpoint(id: string): void;
@@ -271,6 +274,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       lensResult: null,
       presenting: false,
       presentIndex: null,
+      graphKinds: [],
       proposals: [],
       proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
@@ -327,6 +331,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         const f = frames[next]!;
         set({ presentIndex: next, camera: cameraToFitInsets({ x: f.x, y: f.y - 40, w: f.w, h: f.h + 40 }, s.viewport.w, s.viewport.h, { top: 40, bottom: 40, left: 40, right: 40 }, 2) });
       },
+      setGraphKinds: (graphKinds) => set((s) => (s.graphKinds.length === graphKinds.length && s.graphKinds.every((k, i) => k === graphKinds[i]) ? s : { graphKinds })),
       setPresenting: (presenting) => {
         set({ presenting, presentIndex: null, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
         // re-fit with the chrome gone (or back)
