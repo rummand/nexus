@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 25 — bulk edits, board from frame)
+Last updated: 2026-09-04 (rev 26 — query lens, home entity search)
 
 ---
 
@@ -448,6 +448,11 @@ contains (`src/canvas/lens.ts`).
 - **Relation lens.** Colours connectors by relation type (palette in order of frequency,
   unlabelled connectors grouped as "(unlabelled)"); clicking a type in the legend fades that
   type out (`hidden` list in the lens). Cards are never faded by this lens.
+- **Query lens (living views).** A graph query typed in the Viewpoint tab becomes a lens: cards
+  whose entity is in the result set stay, the rest fade; *Place missing* adds cards for results
+  that are not on the board yet. The lens stores the query text and its last result; whenever
+  the text changes (typing, or a saved view applying it) the query is re-run, so a saved view
+  with a query lens is a **living view** of the graph, not a snapshot.
 - **Group by attribute.** Next to "Group by kind", a picker lays every card out in one frame
   per value of an attribute (`lifecycle: active`, `no lifecycle` …). Both layouts remove frames
   that were emptied by the move so the board does not keep husks; one undo step reverts all.
@@ -566,8 +571,8 @@ contains (`src/canvas/lens.ts`).
   an attribute.
 
 ### Lenses (v0.2)
-- Impact lens (direction, depth), attribute lens (colour by value) and relation lens (colour
-  connectors by type, toggle types) in the Viewpoint tab; cards badge their hop distance or
+- Impact lens (direction, depth), attribute lens (colour by value), relation lens (colour
+  connectors by type, toggle types) and query lens (living graph query with place-missing) in the Viewpoint tab; cards badge their hop distance or
   attribute value; legend card on the canvas; legend entries select their cards or toggle a
   relation type; saved views remember the lens. Group by kind / by attribute lay cards out in
   frames and clean up emptied frames.
@@ -683,6 +688,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 26: query lens, home entity search.** Fourth lens type turns a graph query
+  into a living view (re-run on apply, place missing results); the home search also returns
+  entities from the graph with deep links.
 
 - **2026-09-04 — Rev 25: bulk edits, board from frame.** Row selection and a bulk bar (set
   attribute, set kind, delete) in the entity table; "Create board from frame" in the canvas

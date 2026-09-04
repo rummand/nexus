@@ -10,7 +10,9 @@ export type Lens =
   | { type: "impact"; direction: "both" | "out" | "in"; depth: number }
   | { type: "attribute"; key: string }
   /** Colour connectors by relation type; `hidden` relation types fade out. */
-  | { type: "relation"; hidden: string[] };
+  | { type: "relation"; hidden: string[] }
+  /** A graph query: cards whose entity is in the result set stay, the rest fade. `entityIds` is the last result. */
+  | { type: "query"; q: string; entityIds: string[] };
 
 export const NO_LENS: Lens = { type: "none" };
 
@@ -117,6 +119,28 @@ export function computeLens(lens: Lens, elements: Record<ElementId, CanvasElemen
     const reached = Object.keys(hops).length - roots.length;
     const dir = lens.direction === "both" ? "connected to" : lens.direction === "out" ? "downstream of" : "upstream of";
     return { lens, visible, colors: {}, hops, legend, summary: `${reached} card${reached === 1 ? "" : "s"} ${dir} the selection within ${lens.depth} hop${lens.depth === 1 ? "" : "s"}` };
+  }
+  if (lens.type === "query") {
+    const hits = new Set(lens.entityIds);
+    const visible = new Set<ElementId>();
+    const colors: Record<ElementId, string> = {};
+    const matched: ElementId[] = [];
+    let cards = 0;
+    for (const el of Object.values(elements)) {
+      if (el.type === "card") {
+        cards++;
+        if (typeof el.meta?.entityId === "string" && hits.has(el.meta.entityId)) { visible.add(el.id); colors[el.id] = "#1376d4"; matched.push(el.id); }
+      } else if (el.type !== "connector") visible.add(el.id);
+    }
+    for (const el of Object.values(elements)) {
+      if (el.type !== "connector") continue;
+      const from = endpoint(el.from);
+      const to = endpoint(el.to);
+      if (from && to && visible.has(from) && visible.has(to)) visible.add(el.id);
+    }
+    const legend: LensLegendEntry[] = matched.length ? [{ value: "matches", color: "#1376d4", count: matched.length, ids: matched }] : [];
+    const offBoard = lens.entityIds.length - matched.length;
+    return { lens, visible, colors, hops: {}, legend, summary: `${matched.length} of ${cards} cards match “${lens.q}”${offBoard > 0 ? ` · ${offBoard} more in the graph, not on this board` : ""}` };
   }
   if (lens.type === "relation") {
     const kinds = relationKindsOnBoard(elements);

@@ -64,4 +64,14 @@ describe("computeLens", () => {
     expect(r?.colors.ab).toBe(r?.colors.bc);
     expect(r?.legend.find((l) => l.value === UNLABELLED)?.hidden).toBe(true);
   });
+
+  it("query lens keeps matching cards and counts results that are not on the board", () => {
+    const withEntities = { ...els, a: { ...els.a!, meta: { entityId: "ent_1" } }, b: { ...els.b!, meta: { entityId: "ent_2" } } } as typeof els;
+    const r = computeLens({ type: "query", q: "kind:Application", entityIds: ["ent_1", "ent_9"] }, withEntities, []);
+    expect(r?.visible.has("a")).toBe(true);
+    expect(r?.visible.has("b")).toBe(false);
+    expect(r?.visible.has("ab")).toBe(false); // one end faded
+    expect(r?.legend[0]).toMatchObject({ value: "matches", count: 1, ids: ["a"] });
+    expect(r?.summary).toContain("1 more in the graph, not on this board");
+  });
 });

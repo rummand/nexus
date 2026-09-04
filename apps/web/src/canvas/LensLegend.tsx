@@ -9,7 +9,7 @@ export function LensLegend() {
   const result = useCanvas((s) => s.lensResult);
   if (!result) return null;
   const lens = result.lens;
-  const title = lens.type === "impact" ? `Impact · ${lens.direction === "both" ? "both ways" : lens.direction === "out" ? "downstream" : "upstream"} · ${lens.depth} hop${lens.depth === 1 ? "" : "s"}` : lens.type === "attribute" ? `Colour by ${lens.key}` : "Relation types";
+  const title = lens.type === "impact" ? `Impact · ${lens.direction === "both" ? "both ways" : lens.direction === "out" ? "downstream" : "upstream"} · ${lens.depth} hop${lens.depth === 1 ? "" : "s"}` : lens.type === "attribute" ? `Colour by ${lens.key}` : lens.type === "query" ? `Query · ${lens.q}` : "Relation types";
   const onEntry = (entry: { value: string; ids: string[] }) => {
     const s = store.getState();
     if (lens.type === "relation") s.setLens({ type: "relation", hidden: lens.hidden.includes(entry.value) ? lens.hidden.filter((h) => h !== entry.value) : [...lens.hidden, entry.value] });

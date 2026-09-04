@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { nanoid } from "nanoid";
+import type { QueryResponse } from "@/lib/graph-types";
 import { cardColorForKind } from "./document";
 import { attributeKeysOnBoard, NO_LENS, relationKindsOnBoard } from "./lens";
 import { useCanvas, useCanvasStore } from "./store";
@@ -20,6 +22,40 @@ export function ViewpointPanel() {
   const [viewName, setViewName] = useState("");
   const { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, distributeSelection } = useGraphActions();
   const [groupKey, setGroupKey] = useState("");
+  const [queryText, setQueryText] = useState(lens.type === "query" ? lens.q : "");
+  const [queryHits, setQueryHits] = useState<QueryResponse["entities"] | null>(null);
+  const workspaceId = useCanvas((s) => s.workspaceId);
+  const lensQuery = lens.type === "query" ? lens.q : null;
+  // Living query: (re)run whenever the query lens's text changes — including when a saved view applies it.
+  useEffect(() => {
+    if (lensQuery === null) return;
+    let cancelled = false;
+    fetch("/api/graph/query", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, q: lensQuery }) })
+      .then((r) => (r.ok ? (r.json() as Promise<QueryResponse>) : null))
+      .then((res) => {
+        if (cancelled || !res) return;
+        setQueryHits(res.entities);
+        const st = store.getState();
+        const ids = res.entities.map((e) => e.id);
+        if (st.lens.type === "query" && st.lens.q === lensQuery && (st.lens.entityIds.length !== ids.length || st.lens.entityIds.some((id, i) => id !== ids[i]))) st.setLens({ type: "query", q: lensQuery, entityIds: ids });
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [lensQuery, workspaceId, store]);
+  const runQueryLens = () => { const q = queryText.trim(); if (q) store.getState().setLens({ type: "query", q, entityIds: lens.type === "query" && lens.q === q ? lens.entityIds : [] }); };
+  const placeMissing = () => {
+    if (!queryHits || lens.type !== "query") return;
+    const s = store.getState();
+    const onBoard = new Set(Object.values(s.elements).map((el) => (el.type === "card" ? el.meta?.entityId : undefined)));
+    const fresh = queryHits.filter((e) => !onBoard.has(e.id));
+    if (!fresh.length) return;
+    const centre = { x: (s.viewport.w / 2 - s.camera.x) / s.camera.zoom, y: (s.viewport.h / 2 - s.camera.y) / s.camera.zoom };
+    const perRow = Math.max(1, Math.ceil(Math.sqrt(fresh.length)));
+    const w = 236, h = 124, gap = 24;
+    const totalW = perRow * w + (perRow - 1) * gap, totalH = Math.ceil(fresh.length / perRow) * h + (Math.ceil(fresh.length / perRow) - 1) * gap;
+    s.addElements(fresh.map((e, i) => ({ id: nanoid(10), type: "card" as const, x: centre.x - totalW / 2 + (i % perRow) * (w + gap), y: centre.y - totalH / 2 + Math.floor(i / perRow) * (h + gap), w, h, kind: e.kind, color: cardColorForKind(e.kind), title: e.name, description: e.description, attributes: e.attributes, z: 0, meta: { entityId: e.id } })), { select: true });
+    setStatus(`Placed ${fresh.length}`);
+  };
   const relationKinds = useMemo(() => relationKindsOnBoard(elements), [elements]);
   const [depth, setDepthState] = useState(1);
   const [direction, setDirectionState] = useState<"both" | "out" | "in">("both");
@@ -97,7 +133,15 @@ export function ViewpointPanel() {
           <button type="button" className={lens.type === "impact" ? "active" : ""} onClick={() => store.getState().setLens({ type: "impact", direction, depth })} title="Dim everything not connected to the selected cards">Impact</button>
           <button type="button" className={lens.type === "attribute" ? "active" : ""} disabled={attributeKeys.length === 0} onClick={() => store.getState().setLens({ type: "attribute", key: attributeKeys[0]!.key })} title={attributeKeys.length === 0 ? "No card on this board has attributes yet" : "Colour cards by an attribute value"}>Attribute</button>
           <button type="button" className={lens.type === "relation" ? "active" : ""} disabled={relationKinds.length === 0} onClick={() => store.getState().setLens({ type: "relation", hidden: [] })} title={relationKinds.length === 0 ? "No connectors on this board yet" : "Colour connectors by relation type; click a type to hide it"}>Relations</button>
+          <button type="button" className={lens.type === "query" ? "active" : ""} onClick={() => { if (lens.type !== "query") { if (queryText.trim()) runQueryLens(); else setQueryText("kind:"); } }} title="Fade everything that does not match a graph query">Query</button>
         </div>
+        {(lens.type === "query" || (queryText && lens.type === "none")) && (
+          <div className="viewpoint-row" style={{ gap: 6 }} data-query-lens>
+            <input className="viewpoint-input" value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="kind:Application missing:owner" aria-label="Query lens" onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") runQueryLens(); }} />
+            <button type="button" onClick={runQueryLens} disabled={!queryText.trim()}>Run</button>
+            {lens.type === "query" && queryHits && queryHits.length > (lensResult?.legend[0]?.count ?? 0) && <button type="button" onClick={placeMissing} title="Add cards for results that are not on this board">Place missing {queryHits.length - (lensResult?.legend[0]?.count ?? 0)}</button>}
+          </div>
+        )}
         {lens.type === "impact" && (
           <small className="viewpoint-hint">Uses the hop depth and direction above. Select cards to trace what they touch; everything else fades.</small>
         )}
@@ -148,7 +192,7 @@ export function ViewpointPanel() {
             <div key={v.id} className="viewpoint-saved-item">
               <button type="button" className="viewpoint-saved-apply" onClick={() => { store.getState().applyViewpoint(v.id); setStatus(`Applied “${v.name}”`); }} title={`${v.hiddenKinds.length ? `dims ${v.hiddenKinds.join(", ")}` : "all kinds visible"}${v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}`}>
                 <strong>{v.name}</strong>
-                <small>{v.hiddenKinds.length ? `${v.hiddenKinds.length} kind${v.hiddenKinds.length === 1 ? "" : "s"} dimmed` : "all kinds"}{v.lens ? ` · ${v.lens.type === "impact" ? "impact lens" : v.lens.type === "attribute" ? `by ${v.lens.key}` : ""}` : ""}{v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}</small>
+                <small>{v.hiddenKinds.length ? `${v.hiddenKinds.length} kind${v.hiddenKinds.length === 1 ? "" : "s"} dimmed` : "all kinds"}{v.lens ? ` · ${v.lens.type === "impact" ? "impact lens" : v.lens.type === "attribute" ? `by ${v.lens.key}` : v.lens.type === "query" ? `query ${v.lens.q}` : v.lens.type === "relation" ? "relation lens" : ""}` : ""}{v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}</small>
               </button>
               <button type="button" className="viewpoint-saved-delete" onClick={() => store.getState().deleteViewpoint(v.id)} aria-label={`Delete view ${v.name}`}>×</button>
             </div>

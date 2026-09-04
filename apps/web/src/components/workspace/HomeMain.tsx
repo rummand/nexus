@@ -1,7 +1,9 @@
 "use client";
 
+import type { QueryResponse } from "@/lib/graph-types";
+
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useLocalStorageValue } from "@/lib/useLocalStorageValue";
 import { Database, FileText, Grid3X3, LayoutList, Network, Plus, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +50,21 @@ const STARTERS: Array<{ id: TemplateId; icon: ReactNode; title: string; hint: st
 export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, meta, boards, spaces, mode, spaceId, lastOpened, initialQuery = "", headerExtra, graph }: HomeMainProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
+  const [entityHits, setEntityHits] = useState<{ q: string; entities: QueryResponse["entities"]; total: number } | null>(null);
+  // Entities matching the search (debounced) — the graph is searchable from the home page too.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch("/api/graph/query", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, q }) })
+        .then((r) => (r.ok ? (r.json() as Promise<QueryResponse>) : null))
+        .then((res) => { if (!cancelled && res) setEntityHits({ q, entities: res.entities.slice(0, 8), total: res.total }); })
+        .catch(() => undefined);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query, workspaceId]);
+  const showEntities = query.trim() && entityHits && entityHits.q === query.trim() && entityHits.entities.length > 0;
   const [storedView, storeView] = useLocalStorageValue(VIEW_KEY, "list");
   const view: ViewMode = storedView === "grid" ? "grid" : "list";
   const [dialog, setDialog] = useState<{ open: boolean; template: TemplateId }>({ open: false, template: "blank" });
@@ -160,6 +177,26 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
                 <small>{b.description || `${b.spaceEmoji} ${b.spaceName}`}</small>
                 <em>{statsLabel(parseDocument(b.document))}</em>
               </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {showEntities && entityHits && (
+        <section className="studio-board-browser" aria-label="Matching entities" data-home-entities>
+          <div className="studio-board-browser-title">
+            <div>
+              <h2>Entities</h2>
+              <p>{entityHits.total} in the knowledge graph match “{entityHits.q}” — open one to see its relations and boards.</p>
+            </div>
+          </div>
+          <div className="graph-recent" style={{ marginTop: 0 }}>
+            {entityHits.entities.map((e) => (
+              <Link key={e.id} href={`/e/${e.id}`} className="graph-recent-chip" title={e.why}>
+                <i style={{ background: "#1376d4" }} />
+                <b>{e.name || "(unnamed)"}</b>
+                <small>{e.kind || "Untyped"}{e.boards.length ? ` · ${e.boards.length} board${e.boards.length === 1 ? "" : "s"}` : ""}</small>
+              </Link>
             ))}
           </div>
         </section>
