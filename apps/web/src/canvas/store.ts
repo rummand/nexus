@@ -2,6 +2,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 export { useStore } from "zustand";
 import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
 import type { Proposal } from "@/lib/graph-types";
+import type { VocabEntity } from "./link";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
@@ -61,8 +62,9 @@ export interface CanvasState {
   presenting: boolean;
   /** Index of the frame currently shown as a "slide" while presenting (null = whole board). */
   presentIndex: number | null;
-  /** Workspace vocabulary for suggestions on the canvas (kinds; refreshed with the proposals). */
+  /** Workspace vocabulary for suggestions on the canvas (kinds and entities; refreshed with the proposals). */
   graphKinds: string[];
+  graphEntities: VocabEntity[];
   /** Open agent proposals for this workspace (fetched after every save) and a per-entity index. */
   proposals: Proposal[];
   proposalsByEntity: Record<string, Proposal[]>;
@@ -105,6 +107,7 @@ export interface CanvasState {
   presentStep(delta: 1 | -1): void;
   setProposals(list: Proposal[]): void;
   setGraphKinds(kinds: string[]): void;
+  setGraphEntities(entities: VocabEntity[]): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
   deleteViewpoint(id: string): void;
@@ -275,6 +278,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       presenting: false,
       presentIndex: null,
       graphKinds: [],
+      graphEntities: [],
       proposals: [],
       proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
@@ -332,6 +336,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         set({ presentIndex: next, camera: cameraToFitInsets({ x: f.x, y: f.y - 40, w: f.w, h: f.h + 40 }, s.viewport.w, s.viewport.h, { top: 40, bottom: 40, left: 40, right: 40 }, 2) });
       },
       setGraphKinds: (graphKinds) => set((s) => (s.graphKinds.length === graphKinds.length && s.graphKinds.every((k, i) => k === graphKinds[i]) ? s : { graphKinds })),
+      setGraphEntities: (graphEntities) => set({ graphEntities }),
       setPresenting: (presenting) => {
         set({ presenting, presentIndex: null, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
         // re-fit with the chrome gone (or back)

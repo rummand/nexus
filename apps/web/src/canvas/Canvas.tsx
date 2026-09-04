@@ -136,8 +136,14 @@ export function Canvas() {
   );
 }
 
-/** Datalist of kinds in the workspace graph, offered by the kind field of every card. */
+/** Datalists of kinds and entity names in the workspace graph, offered by the card fields. */
 function KindSuggestions() {
   const kinds = useCanvas((s) => s.graphKinds);
-  return <datalist id="nexus-kinds">{kinds.map((k) => <option key={k} value={k} />)}</datalist>;
+  const names = useCanvas((s) => s.graphEntities);
+  return (
+    <>
+      <datalist id="nexus-kinds">{kinds.map((k) => <option key={k} value={k} />)}</datalist>
+      <datalist id="nexus-entities">{names.slice(0, 600).map((e) => <option key={e.id} value={e.name}>{e.kind}</option>)}</datalist>
+    </>
+  );
 }

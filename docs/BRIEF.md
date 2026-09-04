@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 28 — import preview, kind suggestions)
+Last updated: 2026-09-04 (rev 29 — link to existing entity)
 
 ---
 
@@ -176,9 +176,14 @@ nexus/
   (`x`, `y`, `zoom`) maps world to screen. Elements are rendered inside a single
   CSS-transformed layer; selection handles and overlays are rendered in screen space so
   they stay crisp at any zoom.
-- **Vocabulary on the canvas.** The board keeps the workspace's kinds (refreshed with the
-  proposals after each save); a card's kind field offers them as suggestions, so vocabularies
-  converge while typing instead of via a proposal afterwards.
+- **Vocabulary on the canvas.** The board keeps the workspace's kinds and entity names
+  (refreshed with the proposals after each save); a card's kind and title fields offer them as
+  suggestions, so vocabularies converge while typing instead of via a proposal afterwards.
+- **Link instead of duplicate.** When a selected card's title equals the name of an entity that is
+  not the card's own (same kind preferred), a pill under the title offers *Link to existing …*:
+  the card takes that entity's id, kind and attributes, so the next save updates the existing
+  entity instead of minting a duplicate. Duplicates that slip through are still caught by the
+  merge proposal.
 - **Elements** are a discriminated union (document v2): `card` (kind, title,
   description — the canvas face of a future graph entity), `sticky` (note: title, body,
   colour), `text` (variant text/section: title, body, colour), `shape` (rect / ellipse /
@@ -576,6 +581,9 @@ contains (`src/canvas/lens.ts`).
   relations, add / delete relations (board connectors cleaned up), jump to boards, merge
   duplicates, delete.
 
+### Link to existing (v0.2)
+- Title matches an existing entity → one click links the card to it (dedupe at creation).
+
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
   warnings. Card kind fields suggest the workspace's kinds.
@@ -712,6 +720,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 29: link to existing entity.** Cards offer to link to an existing entity
+  when their title matches one; entity names are suggested while typing. Vocabulary (kinds,
+  entities) now lives in the board store.
 
 - **2026-09-04 — Rev 28: import preview, kind suggestions.** The CSV / JSON parser moved to a
   pure module shared with the client; the import dialog previews new vs. existing entities,

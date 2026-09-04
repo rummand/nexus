@@ -18,7 +18,12 @@ export function useProposals() {
       .catch(() => undefined);
     fetch(`/api/workspaces/${workspaceId}/graph`)
       .then((r) => (r.ok ? (r.json() as Promise<GraphSnapshot>) : null))
-      .then((snap) => { if (!cancelled && snap) store.getState().setGraphKinds(snap.kinds.map((k) => k.kind).filter(Boolean)); })
+      .then((snap) => {
+        if (cancelled || !snap) return;
+        const st = store.getState();
+        st.setGraphKinds(snap.kinds.map((k) => k.kind).filter(Boolean));
+        st.setGraphEntities(snap.entities.map((e) => ({ id: e.id, name: e.name, kind: e.kind, attributes: e.attributes })));
+      })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [workspaceId, saveState, store]);

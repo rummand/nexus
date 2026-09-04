@@ -1254,3 +1254,6 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .import-preview strong { font-size: 13px; }
 .import-preview small { color: #65738a; font-size: 12px; line-height: 1.4; }
 .import-preview em { color: #b45309; font-size: 12px; font-style: normal; font-weight: 700; }
+
+.fact-card .fact-link-suggest { align-self: flex-start; background: #eef6ff; border: 1px solid #b8d7ff; border-radius: 999px; color: var(--blue); cursor: pointer; font-size: 10px; font-weight: 900; line-height: 1.2; max-width: 100%; overflow: hidden; padding: 3px 8px; text-overflow: ellipsis; white-space: nowrap; }
+.fact-card .fact-link-suggest:hover { background: var(--blue); color: #fff; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, type CSSProperties } from "react";
+import { findLinkCandidate } from "../link";
 import { attributeIsRisk, cardColorForKind, FRAME_COLORS, isBoxElement, type CardElement, type ElementId, type FrameElement, type ShapeElement, type StickyElement, type TextElement } from "../document";
 import { useCanvas, useCanvasStore } from "../store";
 import { EditableText } from "./EditableText";
@@ -42,6 +43,8 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
     return h === undefined || h === 0 ? null : `${h} hop${h === 1 ? "" : "s"}`;
   });
   const proposalCount = useCanvas((s) => (typeof el.meta?.entityId === "string" ? s.proposalsByEntity[el.meta.entityId]?.length ?? 0 : 0));
+  const linkCandidate = useCanvas((s) => (selected ? findLinkCandidate(el.title, typeof el.meta?.entityId === "string" ? el.meta.entityId : undefined, el.kind, s.graphEntities) : null));
+  const linkTo = (target: { id: string; kind: string; attributes?: Record<string, string> }) => patch({ kind: target.kind || el.kind, color: target.kind ? cardColorForKind(target.kind) : el.color, attributes: { ...(target.attributes ?? {}), ...(el.attributes ?? {}) }, meta: { ...(el.meta ?? {}), entityId: target.id } });
   const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : ""].filter(Boolean).join(" ");
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>
@@ -51,7 +54,12 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
         <i />
         <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" list="nexus-kinds" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
       </span>
-      <LiveField active={selected} className="fact-title" value={el.title} placeholder="Name" ariaLabel="Card title" autoFocus={fresh} onChange={(title) => patch({ title })} />
+      <LiveField active={selected} className="fact-title" value={el.title} placeholder="Name" ariaLabel="Card title" autoFocus={fresh} onChange={(title) => patch({ title })} list="nexus-entities" />
+      {linkCandidate && (
+        <button type="button" className="fact-link-suggest" data-link-suggest onPointerDown={(e) => e.stopPropagation()} onClick={() => linkTo(linkCandidate)} title="Use the existing entity instead of creating a duplicate">
+          ⇄ Link to existing {linkCandidate.kind || "entity"} “{linkCandidate.name}”
+        </button>
+      )}
       {el.attributes && Object.keys(el.attributes).length > 0 && (
         <div className="fact-attributes">
           {Object.entries(el.attributes).slice(0, 3).map(([k, v]) => (
