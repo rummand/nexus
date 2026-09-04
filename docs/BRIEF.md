@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 20 — API docs, db:reset)
+Last updated: 2026-09-04 (rev 21 — note promotion, attribute key rename, shortcuts)
 
 ---
 
@@ -506,6 +506,15 @@ contains (`src/canvas/lens.ts`).
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
 
+### Polish (v0.2, rev 21)
+- Right-click a note → *Turn into card*: the note becomes an untyped card in place (title / body →
+  title / description, fresh entity id) so ideas captured as notes flow into the graph; the
+  untyped-kind proposal then suggests a kind.
+- Attribute keys on the kind cards of the Knowledge graph page are renameable in place (rename
+  across the workspace), complementing the automatic key-variant proposals.
+- Shortcuts panel lists multi-select, smart-guide bypass, right-click actions, alignment and
+  presentation mode.
+
 ### Entity drawer (v0.2)
 - Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
   relations, jump to boards, merge duplicates, delete.
@@ -637,6 +646,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 21: note promotion, attribute key rename, shortcuts.** Context-menu *Turn
+  into card* for notes (single undo step, unit + e2e tested), click-to-rename attribute keys on
+  kind cards backed by a new server action, and an updated Shortcuts panel.
 
 - **2026-09-04 — Rev 20: API documentation, db:reset.** New `docs/API.md` (routes, server
   actions, query grammar, import format, document shape), README feature overview, and a

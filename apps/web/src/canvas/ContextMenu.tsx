@@ -33,6 +33,7 @@ export function ContextMenu() {
   const hasSelection = items.length > 0;
   const allLocked = hasSelection && items.every((i) => i.locked);
   const cards = items.filter((i) => i.type === "card");
+  const notes = items.filter((i) => i.type === "sticky");
   const left = Math.min(menu.x, Math.max(8, viewport.w - 230));
   const top = Math.min(menu.y, Math.max(8, viewport.h - 320));
   const s = store.getState();
@@ -44,6 +45,7 @@ export function ContextMenu() {
       {hasSelection ? (
         <>
           {cards.length > 0 && <button type="button" onClick={run(() => void expandSelection(1, "both"))}><Network size={14} /> Expand neighbours</button>}
+          {notes.length > 0 && <button type="button" data-promote-note onClick={run(() => s.convertNotesToCards(notes.map((n) => n.id)))}><Box size={14} /> Turn into card{notes.length > 1 ? "s" : ""}</button>}
           <button type="button" onClick={run(() => s.zoomToSelection())}><Focus size={14} /> Focus</button>
           <button type="button" onClick={run(() => s.duplicateSelection())}><Copy size={14} /> Duplicate <kbd>⌘D</kbd></button>
           <button type="button" onClick={run(() => s.bringToFront(selection))}><BringToFront size={14} /> Bring to front <kbd>⌘]</kbd></button>

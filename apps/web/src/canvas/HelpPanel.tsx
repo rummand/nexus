@@ -18,7 +18,8 @@ export function HelpPanel() {
       <Row k="Space + drag · middle mouse">Pan</Row>
       <Row k="⇧1 · ⇧2">Fit board · Fit selection</Row>
       <Row k="⌘0 · ⌘+ · ⌘−">100% · in · out</Row>
-      <Row k="⌘K">Search this board</Row>
+      <Row k="⌘K">Search the board · query the graph</Row>
+      <Row k="Esc">Leave presentation mode</Row>
       <h3>Tools</h3>
       <Row k="V · H">Select · Pan</Row>
       <Row k="F · C · N">Frame · Card · Note</Row>
@@ -31,6 +32,12 @@ export function HelpPanel() {
       <Row k="⌘A · ⌫ · Esc">Select all · Delete · Deselect</Row>
       <Row k="Arrows · ⇧Arrows">Nudge 1 · 10</Row>
       <Row k="⌘] · ⌘[">Bring to front · Send to back</Row>
+      <Row k="⇧ click · drag">Add to selection · marquee</Row>
+      <Row k="Alt while dragging">Ignore smart guides</Row>
+      <Row k="Right-click">Object actions · turn a note into a card</Row>
+      <h3>Selection bar</h3>
+      <Row k="2+ objects">Align edges and centres</Row>
+      <Row k="3+ objects">Distribute evenly</Row>
     </section>
   );
 }

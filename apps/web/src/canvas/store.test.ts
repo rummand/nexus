@@ -94,4 +94,20 @@ describe("canvas store", () => {
     store.getState().undo();
     expect(y("f")).toBe(500);
   });
+
+  it("promotes notes to cards in place with a fresh entity id", () => {
+    const store = makeStore([{ id: "n", type: "sticky", x: 10, y: 20, w: 300, h: 150, title: "Billing engine", text: "Owned by Finance", color: "#fff", z: 3 }]);
+    store.getState().convertNotesToCards(["n"]);
+    const el = store.getState().elements.n!;
+    expect(el.type).toBe("card");
+    if (el.type === "card") {
+      expect(el.title).toBe("Billing engine");
+      expect(el.description).toBe("Owned by Finance");
+      expect(el.kind).toBe("");
+      expect(String(el.meta?.entityId)).toMatch(/^ent_/);
+      expect([el.x, el.y, el.z]).toEqual([10, 20, 3]);
+    }
+    store.getState().undo();
+    expect(store.getState().elements.n!.type).toBe("sticky");
+  });
 });

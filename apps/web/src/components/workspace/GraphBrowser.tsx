@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { renameAttributeKeyAction } from "@/lib/actions";
 import { useMemo, useState, useTransition } from "react";
 import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
 import type { Space } from "@/db/schema";
@@ -65,7 +66,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
         </div>
         <div className="metamodel-grid">
           {snapshot.kinds.map((k) => (
-            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} attributeKeys={k.attributeKeys} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} />
+            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} attributeKeys={k.attributeKeys} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} onRenameAttribute={(from, to) => start(() => renameAttributeKeyAction(workspaceId, from, to))} />
           ))}
           {snapshot.kinds.length === 0 && <div className="studio-empty-boards"><Database size={26} /><strong>No kinds yet</strong><span>Add cards to a board or import a CSV to start growing the meta-model.</span></div>}
         </div>
@@ -154,14 +155,28 @@ function kindColor(snapshot: GraphSnapshot, kind: string) {
   return snapshot.kinds.find((k) => k.kind === kind)?.color ?? "#1376d4";
 }
 
-function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRename }: { kind: string; count: number; color: string; attributeKeys: Array<{ key: string; count: number; sample: string }>; active: boolean; onSelect: () => void; onRename: (to: string) => void }) {
+function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRename, onRenameAttribute }: { kind: string; count: number; color: string; attributeKeys: Array<{ key: string; count: number; sample: string }>; active: boolean; onSelect: () => void; onRename: (to: string) => void; onRenameAttribute: (from: string, to: string) => void }) {
   const [renaming, setRenaming] = useState(false);
   const [value, setValue] = useState(kind);
+  const [attrRename, setAttrRename] = useState<{ from: string; value: string } | null>(null);
   return (
     <div className={active ? "kind-card active" : "kind-card"}>
       {attributeKeys.length > 0 && (
-        <div className="kind-card-attrs" title="Attribute schema discovered for this kind">
-          {attributeKeys.slice(0, 4).map((a) => <i key={a.key}>{a.key} <small>{a.count}/{count}</small></i>)}
+        <div className="kind-card-attrs" title="Attribute schema discovered for this kind — click a key to rename it everywhere">
+          {attributeKeys.slice(0, 4).map((a) => attrRename?.from === a.key ? (
+            <input
+              key={a.key}
+              autoFocus
+              className="kind-card-attr-input"
+              value={attrRename.value}
+              aria-label={`Rename attribute ${a.key}`}
+              onChange={(e) => setAttrRename({ from: a.key, value: e.target.value })}
+              onBlur={() => { const to = attrRename.value.trim(); setAttrRename(null); if (to && to !== a.key) onRenameAttribute(a.key, to); }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setAttrRename(null); }}
+            />
+          ) : (
+            <i key={a.key}><button type="button" onClick={() => setAttrRename({ from: a.key, value: a.key })} title={`Rename “${a.key}” across the workspace`}>{a.key}</button> <small>{a.count}/{count}</small></i>
+          ))}
           {attributeKeys.length > 4 && <i>+{attributeKeys.length - 4}</i>}
         </div>
       )}

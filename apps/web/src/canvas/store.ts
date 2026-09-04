@@ -112,6 +112,8 @@ export interface CanvasState {
   /** Replace the whole element map (used by drags that computed positions externally). */
   replaceElements(next: Elements, opts?: { history?: boolean }): void;
   deleteElements(ids: ElementId[], opts?: { history?: boolean }): void;
+  /** Promote sticky notes to architecture cards (same id and place; title → title, body → description). */
+  convertNotesToCards(ids: ElementId[]): void;
   /** Align or distribute the selected box elements (frames carry their contents). */
   alignSelection(mode: AlignMode | "distributeX" | "distributeY"): void;
   duplicateSelection(): void;
@@ -340,6 +342,21 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         const next: Elements = {};
         for (const el of Object.values(s.elements)) if (!doomed.has(el.id)) next[el.id] = el;
         mutate(next, opts.history ?? true, { selection: s.selection.filter((id) => !doomed.has(id)), editingId: null });
+      },
+      convertNotesToCards: (ids) => {
+        const s = get();
+        const next: Elements = { ...s.elements };
+        let changed = false;
+        for (const id of ids) {
+          const el = next[id];
+          if (!el || el.type !== "sticky") continue;
+          const [firstLine, ...rest] = el.text.split(/\r?\n/);
+          const title = el.title.trim() || (firstLine ?? "").trim();
+          const description = el.title.trim() ? el.text.trim() : rest.join("\n").trim();
+          next[id] = { id, type: "card", x: el.x, y: el.y, w: Math.max(236, el.w), h: Math.max(124, el.h), z: el.z, kind: "", color: "#1376d4", title, description, meta: { ...(el.meta ?? {}), entityId: `ent_${nanoid(12)}` }, ...(el.locked ? { locked: true } : {}) };
+          changed = true;
+        }
+        if (changed) mutate(next, true);
       },
       alignSelection: (mode) => {
         const s = get();

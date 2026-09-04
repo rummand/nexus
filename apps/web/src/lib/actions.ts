@@ -249,6 +249,15 @@ export async function updateEntity(entityId: string, patch: { kind?: string; nam
   if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
 }
 
+/** Rename an attribute key across the workspace (the kind card's schema chips). */
+export async function renameAttributeKeyAction(workspaceId: string, from: string, to: string) {
+  const db = await getDb();
+  const target = to.trim();
+  if (!target || target === from) return;
+  await renameAttributeKey(db, workspaceId, from, target);
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+}
+
 /** Set (or, with an empty value, remove) one attribute on one entity — the table view's cell editor. */
 export async function setEntityAttributeAction(entityId: string, key: string, value: string) {
   const db = await getDb();

@@ -1198,3 +1198,7 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .entity-drawer footer small { color: #8a95a8; font-size: 11px; }
 .entity-drawer footer .ghost-button { height: 34px; min-height: 34px; width: auto; }
 .entity-drawer footer .ghost-button.danger { color: #c24141; }
+
+.kind-card-attrs i button { background: transparent; border: 0; color: inherit; cursor: text; font: inherit; padding: 0; }
+.kind-card-attrs i button:hover { color: var(--blue); text-decoration: underline; }
+.kind-card-attr-input { background: #fff; border: 1px solid var(--blue); border-radius: 999px; color: var(--ink); font-size: 10px; font-weight: 800; height: 18px; outline: 0; padding: 0 7px; width: 110px; }

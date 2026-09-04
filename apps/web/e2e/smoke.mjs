@@ -130,6 +130,12 @@ try {
   assert.ok(await page.locator(".context-menu").isVisible(), "right-click opens the context menu");
   await page.keyboard.press("Escape");
   assert.equal(await page.locator(".context-menu").count(), 0, "escape closes the context menu");
+  // promote the note to a card from the context menu, then undo
+  await page.mouse.click(cb.x + cb.width / 2, cb.y + cb.height / 2, { button: "right" });
+  await page.click(".context-menu [data-promote-note]");
+  assert.ok(await page.locator(`[data-element-id="${noteId}"].fact-card`).count() === 1, "note became a card in place");
+  await page.keyboard.press("Control+z");
+  await page.locator(`[data-element-id="${noteId}"].impact-note`).waitFor({ timeout: 5000 });
 
   // command bar: structured graph query with placement
   await page.keyboard.press("Escape");
