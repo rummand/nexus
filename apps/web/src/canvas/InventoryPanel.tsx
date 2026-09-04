@@ -71,6 +71,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
       color: cardColorForKind(e.kind),
       title: e.name,
       description: e.description,
+      attributes: e.attributes,
       z: 0,
       meta: { entityId: e.id },
     }));

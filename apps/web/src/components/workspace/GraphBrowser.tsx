@@ -9,11 +9,11 @@ import { ProposalsPanel } from "./ProposalsPanel";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
 
-const SAMPLE = `kind,name,description
-Application,CRM Cloud,Customer relationship management
-Application,ERP Core,Finance and procurement
-Business Capability,Revenue Management,Bill and collect
-Interface,Customer API,REST interface exposed by CRM Cloud
+const SAMPLE = `kind,name,description,lifecycle,owner
+Application,CRM Cloud,Customer relationship management,active,Customer
+Application,ERP Core,Finance and procurement,active,Corporate IT
+Business Capability,Revenue Management,Bill and collect,,
+Interface,Customer API,REST interface exposed by CRM Cloud,plan,Customer
 # relations
 from,relation,to
 CRM Cloud,provides,Customer API
@@ -61,7 +61,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
         </div>
         <div className="metamodel-grid">
           {snapshot.kinds.map((k) => (
-            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} />
+            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} attributeKeys={k.attributeKeys} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} />
           ))}
           {snapshot.kinds.length === 0 && <div className="studio-empty-boards"><Database size={26} /><strong>No kinds yet</strong><span>Add cards to a board or import a CSV to start growing the meta-model.</span></div>}
         </div>
@@ -111,6 +111,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
                     <span>
                       <strong>{e.name || "(unnamed)"}</strong>
                       <small>{e.description || "No description"}</small>
+                      {Object.keys(e.attributes).length > 0 && <span className="entity-attrs">{Object.entries(e.attributes).slice(0, 4).map(([k, v]) => <i key={k}>{k} · {v}</i>)}</span>}
                       <em>{e.kind || "Untyped"} · {e.relationCount} relation{e.relationCount === 1 ? "" : "s"} · source {e.source}</em>
                     </span>
                   </div>
@@ -138,11 +139,17 @@ function kindColor(snapshot: GraphSnapshot, kind: string) {
   return snapshot.kinds.find((k) => k.kind === kind)?.color ?? "#1376d4";
 }
 
-function KindCard({ kind, count, color, active, onSelect, onRename }: { kind: string; count: number; color: string; active: boolean; onSelect: () => void; onRename: (to: string) => void }) {
+function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRename }: { kind: string; count: number; color: string; attributeKeys: Array<{ key: string; count: number; sample: string }>; active: boolean; onSelect: () => void; onRename: (to: string) => void }) {
   const [renaming, setRenaming] = useState(false);
   const [value, setValue] = useState(kind);
   return (
     <div className={active ? "kind-card active" : "kind-card"}>
+      {attributeKeys.length > 0 && (
+        <div className="kind-card-attrs" title="Attribute schema discovered for this kind">
+          {attributeKeys.slice(0, 4).map((a) => <i key={a.key}>{a.key} <small>{a.count}/{count}</small></i>)}
+          {attributeKeys.length > 4 && <i>+{attributeKeys.length - 4}</i>}
+        </div>
+      )}
       <button type="button" className="kind-card-main" onClick={onSelect}>
         <i style={{ background: color }} />
         {renaming ? (
@@ -173,7 +180,7 @@ function ImportDialog({ open, onClose, workspaceId }: { open: boolean; onClose: 
     <Modal open={open} onClose={onClose} title="Import data into the graph" width={680}>
       <div className="grid gap-4">
         <p style={{ color: "#65738a", fontSize: 13, margin: 0 }}>
-          Paste CSV or JSON, or load a file. Entities: <code>kind,name,description</code>. Relations after a <code># relations</code> line: <code>from,relation,to</code> (names, or <code>Kind:Name</code>). Existing entities are matched by kind and name.
+          Paste CSV or JSON, or load a file. Entities: <code>kind,name,description</code> — any extra header columns (e.g. <code>lifecycle,owner</code>) become attributes. Relations after a <code># relations</code> line: <code>from,relation,to</code> (names, or <code>Kind:Name</code>). Existing entities are matched by kind and name.
         </p>
         <div className="field-row">
           <div className="field">

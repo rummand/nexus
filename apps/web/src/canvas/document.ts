@@ -60,6 +60,9 @@ export interface CardElement extends BaseElement {
   color: string;
   title: string;
   description: string;
+  /** Free-form attributes (lifecycle, owner, criticality …). Synced to the entity; the set of
+   *  keys per kind is the emergent attribute schema. */
+  attributes?: Record<string, string>;
 }
 
 export interface ShapeElement extends BaseElement {
@@ -204,4 +207,10 @@ export const CARD_KINDS: ReadonlyArray<{ kind: string; color: string }> = [
 export function cardColorForKind(kind: string): string {
   const hit = CARD_KINDS.find((k) => k.kind.toLowerCase() === kind.trim().toLowerCase());
   return hit?.color ?? "#1376d4";
+}
+
+/** Attribute keys whose "high"/"critical"/"end of life" values should read as a warning. */
+export const RISK_ATTRIBUTE_KEYS = ["risk", "criticality", "lifecycle", "status", "compliance"];
+export function attributeIsRisk(key: string, value: string) {
+  return RISK_ATTRIBUTE_KEYS.includes(key.trim().toLowerCase()) && /high|critical|end of life|eol|phase out|retire|non.?compliant|red/i.test(value);
 }

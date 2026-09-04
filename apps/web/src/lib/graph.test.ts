@@ -35,7 +35,7 @@ describe("board ↔ graph sync", () => {
     const snap = await graphSnapshot(db, "ws");
     expect(snap.entities.map((e) => e.name).sort()).toEqual(["CRM", "ERP"]);
     expect(snap.entities.find((e) => e.id === "ent_a")).toMatchObject({ relationCount: 1, boardCount: 1 });
-    expect(snap.kinds).toEqual([{ kind: "Application", count: 2, color: expect.any(String) }]);
+    expect(snap.kinds).toEqual([expect.objectContaining({ kind: "Application", count: 2 })]);
     expect(snap.relationKinds).toEqual([{ kind: "feeds", count: 1 }]);
     const detail = await entityDetail(db, "ent_a");
     expect(detail?.boards.map((b) => b.id)).toEqual(["b1"]);
@@ -102,5 +102,32 @@ describe("neighbourhood", () => {
     const zero = await neighborhood(db, "ws", ["ent_a", "ent_b"], 0);
     expect(zero.entities).toHaveLength(0);
     expect(zero.relations.map((r) => r.id)).toEqual(["rel_ab"]);
+  });
+});
+
+describe("attributes", () => {
+  it("imports extra CSV columns as attributes and merges them into existing entities", async () => {
+    const { importGraph, parseImportText, graphSnapshot } = await import("./graph");
+    const payload = parseImportText(`kind,name,description,lifecycle,owner\nApplication,CRM Cloud,,active,Customer\nApplication,New App,Fresh,plan,`);
+    expect(payload.entities[0]).toMatchObject({ attributes: { lifecycle: "active", owner: "Customer" } });
+    expect(payload.entities[1]).toMatchObject({ attributes: { lifecycle: "plan" } });
+    await importGraph(db, "ws", payload, "import:attrs");
+    const snap = await graphSnapshot(db, "ws");
+    const crm = snap.entities.find((e) => e.id === "ent_a")!;
+    expect(crm.attributes).toMatchObject({ lifecycle: "active", owner: "Customer" });
+    const appKind = snap.kinds.find((k) => k.kind === "Application")!;
+    expect(appKind.attributeKeys.map((a) => a.key)).toEqual(expect.arrayContaining(["lifecycle", "owner"]));
+  });
+
+  it("syncs card attributes to the entity and hydrates them back", async () => {
+    const { syncBoardToGraph, hydrateDocument, entityDetail } = await import("./graph");
+    const doc: CanvasDocument = { version: 2, elements: { a: { ...cardEl("a", "ent_a", "CRM Cloud"), attributes: { lifecycle: "end of life", criticality: "high" } } } };
+    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc);
+    const detail = await entityDetail(db, "ent_a");
+    expect(detail?.entity.attributes).toEqual({ lifecycle: "end of life", criticality: "high" });
+    expect(detail?.kindAttributeKeys).toContain("criticality");
+    const stale: CanvasDocument = { version: 2, elements: { z: cardEl("z", "ent_a", "CRM Cloud") } };
+    const fresh = await hydrateDocument(db, stale);
+    expect(fresh.elements.z).toMatchObject({ attributes: { lifecycle: "end of life", criticality: "high" } });
   });
 });

@@ -18,6 +18,31 @@ import { ENTITY_ID_PREFIX, isEntityId, isRelationId, RELATION_ID_PREFIX, type En
 
 const now = () => new Date().toISOString();
 
+export function parseAttributes(raw: string | null | undefined): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) if (k.trim() && val !== null && val !== undefined && String(val).trim()) out[k.trim()] = String(val).trim();
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function cleanAttributes(attrs: Record<string, string> | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(attrs ?? {})) if (k.trim() && String(v).trim()) out[k.trim()] = String(v).trim();
+  return out;
+}
+
+function sameAttributes(a: Record<string, string>, b: Record<string, string>) {
+  const ak = Object.keys(a).sort();
+  const bk = Object.keys(b).sort();
+  return ak.length === bk.length && ak.every((k, i) => k === bk[i] && a[k] === b[k]);
+}
+
 type Elements = CanvasDocument["elements"];
 
 function entityCards(elements: Elements): Array<CardElement & { entityId: string }> {
@@ -37,10 +62,11 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
 
   for (const c of cards) {
     const cur = byId.get(c.entityId);
+    const attrs = cleanAttributes(c.attributes);
     if (!cur) {
-      await db.insert(s.entities).values({ id: c.entityId, workspaceId: board.workspaceId, kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), source: "canvas", createdAt: ts, updatedAt: ts });
-    } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim())) {
-      await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
+      await db.insert(s.entities).values({ id: c.entityId, workspaceId: board.workspaceId, kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), source: "canvas", createdAt: ts, updatedAt: ts });
+    } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim() || !sameAttributes(parseAttributes(cur.attributes), attrs))) {
+      await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
     }
   }
 
@@ -82,11 +108,12 @@ export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<Canv
   for (const c of cards) {
     const e = byId.get(c.entityId);
     if (!e) continue;
-    if (e.kind !== c.kind || e.name !== c.title || e.description !== c.description) {
+    const attrs = parseAttributes(e.attributes);
+    if (e.kind !== c.kind || e.name !== c.title || e.description !== c.description || !sameAttributes(attrs, cleanAttributes(c.attributes))) {
       const color = e.kind !== c.kind ? cardColorForKind(e.kind) : c.color;
       const { entityId: _drop, ...rest } = c;
       void _drop;
-      elements[c.id] = { ...rest, kind: e.kind, title: e.name, description: e.description, color } as CanvasElement;
+      elements[c.id] = { ...rest, kind: e.kind, title: e.name, description: e.description, color, attributes: attrs } as CanvasElement;
     }
   }
   const relIds = Object.values(doc.elements).filter((el) => el.type === "connector" && isRelationId(el.meta?.relationId)).map((el) => el.meta!.relationId as string);
@@ -128,7 +155,17 @@ export async function graphSnapshot(db: Db, workspaceId: string): Promise<GraphS
     boardsByEntity.set(b.entityId, list);
   }
   const kindCounts = new Map<string, number>();
-  for (const r of rows) kindCounts.set(r.e.kind, (kindCounts.get(r.e.kind) ?? 0) + 1);
+  const kindAttrs = new Map<string, Map<string, { count: number; sample: string }>>();
+  for (const r of rows) {
+    kindCounts.set(r.e.kind, (kindCounts.get(r.e.kind) ?? 0) + 1);
+    const attrs = parseAttributes(r.e.attributes);
+    const m = kindAttrs.get(r.e.kind) ?? new Map();
+    for (const [k, v] of Object.entries(attrs)) {
+      const cur = m.get(k) ?? { count: 0, sample: v };
+      m.set(k, { count: cur.count + 1, sample: cur.sample });
+    }
+    kindAttrs.set(r.e.kind, m);
+  }
   const relKinds = await db
     .select({ kind: s.relations_.kind, count: sql<number>`count(*)` })
     .from(s.relations_)
@@ -140,13 +177,19 @@ export async function graphSnapshot(db: Db, workspaceId: string): Promise<GraphS
       kind: r.e.kind,
       name: r.e.name,
       description: r.e.description,
+      attributes: parseAttributes(r.e.attributes),
       source: r.e.source,
       updatedAt: r.e.updatedAt,
       boardCount: r.boardCount,
       relationCount: r.relationCount,
       boards: boardsByEntity.get(r.e.id) ?? [],
     })),
-    kinds: [...kindCounts.entries()].sort((a, b) => b[1] - a[1]).map(([kind, count]) => ({ kind, count, color: cardColorForKind(kind) })),
+    kinds: [...kindCounts.entries()].sort((a, b) => b[1] - a[1]).map(([kind, count]) => ({
+      kind,
+      count,
+      color: cardColorForKind(kind),
+      attributeKeys: [...(kindAttrs.get(kind) ?? new Map<string, { count: number; sample: string }>()).entries()].sort((a, b) => b[1].count - a[1].count).map(([key, v]) => ({ key, count: v.count, sample: v.sample })),
+    })),
     relationKinds: relKinds.map((r) => ({ kind: r.kind, count: r.count })).sort((a, b) => b.count - a.count),
   };
 }
@@ -168,8 +211,12 @@ export async function entityDetail(db: Db, entityId: string): Promise<EntityDeta
   const dupes = entity.name.trim()
     ? (await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, entity.workspaceId), sql`lower(trim(${s.entities.name})) = ${entity.name.trim().toLowerCase()}`))).filter((d) => d.id !== entity.id)
     : [];
+  const sameKind = await db.select({ attributes: s.entities.attributes }).from(s.entities).where(and(eq(s.entities.workspaceId, entity.workspaceId), eq(s.entities.kind, entity.kind)));
+  const keyCounts = new Map<string, number>();
+  for (const row of sameKind) for (const k of Object.keys(parseAttributes(row.attributes))) keyCounts.set(k, (keyCounts.get(k) ?? 0) + 1);
   return {
-    entity: { id: entity.id, kind: entity.kind, name: entity.name, description: entity.description, source: entity.source, updatedAt: entity.updatedAt },
+    entity: { id: entity.id, kind: entity.kind, name: entity.name, description: entity.description, attributes: parseAttributes(entity.attributes), source: entity.source, updatedAt: entity.updatedAt },
+    kindAttributeKeys: [...keyCounts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k),
     duplicates: dupes.map((d) => ({ id: d.id, kind: d.kind, name: d.name, description: d.description })),
     boards: boards.filter((b) => (seenBoards.has(b.id) ? false : (seenBoards.add(b.id), true))),
     relations: rels.map((r) => {
@@ -201,14 +248,19 @@ export async function importGraph(db: Db, workspaceId: string, payload: ImportPa
     const key = `${norm(kind)}|${norm(name)}`;
     const cur = byKey.get(key);
     const description = raw.description?.trim() ?? "";
+    const incoming = cleanAttributes(raw.attributes);
     if (cur) {
-      if (description && description !== cur.description) {
-        await db.update(s.entities).set({ description, updatedAt: ts }).where(eq(s.entities.id, cur.id));
-        cur.description = description;
+      const merged = { ...parseAttributes(cur.attributes), ...incoming };
+      const descChanged = !!description && description !== cur.description;
+      const attrsChanged = !sameAttributes(merged, parseAttributes(cur.attributes));
+      if (descChanged || attrsChanged) {
+        await db.update(s.entities).set({ ...(descChanged ? { description } : {}), attributes: JSON.stringify(merged), updatedAt: ts }).where(eq(s.entities.id, cur.id));
+        if (descChanged) cur.description = description;
+        cur.attributes = JSON.stringify(merged);
         result.entitiesUpdated++;
       }
     } else {
-      const row: s.Entity = { id: `${ENTITY_ID_PREFIX}${nanoid(12)}`, workspaceId, kind, name, description, attributes: "{}", source, createdAt: ts, updatedAt: ts };
+      const row: s.Entity = { id: `${ENTITY_ID_PREFIX}${nanoid(12)}`, workspaceId, kind, name, description, attributes: JSON.stringify(incoming), source, createdAt: ts, updatedAt: ts };
       await db.insert(s.entities).values(row);
       byKey.set(key, row);
       byName.set(norm(name), [...(byName.get(norm(name)) ?? []), row]);
@@ -257,6 +309,7 @@ export function parseImportText(text: string): ImportPayload {
   const entities: ImportPayload["entities"] = [];
   const relations: ImportPayload["relations"] = [];
   let mode: "entities" | "relations" = "entities";
+  let attributeColumns: string[] = [];
   for (const line of trimmed.split(/\r?\n/)) {
     const l = line.trim();
     if (!l) continue;
@@ -265,10 +318,15 @@ export function parseImportText(text: string): ImportPayload {
     if (l.startsWith("#")) continue;
     const cells = splitCsv(l);
     const header = cells.map(norm);
-    if (header[0] === "kind" && header[1] === "name") { mode = "entities"; continue; }
+    if (header[0] === "kind" && header[1] === "name") { mode = "entities"; attributeColumns = cells.slice(3).map((c) => c.trim()); continue; }
     if (header[0] === "from" && (header[1] === "relation" || header[1] === "kind")) { mode = "relations"; continue; }
-    if (mode === "entities") entities.push({ kind: cells[0] ?? "", name: cells[1] ?? "", description: cells.slice(2).join(", ") });
-    else relations.push({ from: cells[0] ?? "", kind: cells[1] ?? "", to: cells[2] ?? "" });
+    if (mode === "entities") {
+      const attributes: Record<string, string> = {};
+      if (attributeColumns.length) {
+        attributeColumns.forEach((col, i) => { const v = cells[3 + i]; if (col && v && v.trim()) attributes[col] = v.trim(); });
+      }
+      entities.push({ kind: cells[0] ?? "", name: cells[1] ?? "", description: cells[2] ?? "", ...(Object.keys(attributes).length ? { attributes } : {}) });
+    } else relations.push({ from: cells[0] ?? "", kind: cells[1] ?? "", to: cells[2] ?? "" });
   }
   return { entities, relations };
 }
@@ -312,7 +370,7 @@ export function buildBoardFromGraph(entities: s.Entity[], relations: s.Relation[
     list.forEach((e, i) => {
       const cx = x + pad + (i % perRow) * (cardW + gapX);
       const cy = y + titleRoom + Math.floor(i / perRow) * (cardH + gapY);
-      const c = card(cx, cy, e.kind, e.name, e.description) as CardElement;
+      const c = card(cx, cy, e.kind, e.name, e.description, undefined, parseAttributes(e.attributes)) as CardElement;
       c.meta = { entityId: e.id };
       cardIds.set(e.id, c.id);
       els.push(c);

@@ -107,7 +107,7 @@ export function useGraphActions() {
           }
           const pos = placed ?? { x: cx + 400 + i * 40, y: cy + 400 + i * 40 };
           occupied.push({ x: pos.x - margin, y: pos.y - margin, w: w + margin * 2, h: h + margin * 2 });
-          newCards.push({ id: nanoid(10), type: "card", x: pos.x, y: pos.y, w, h, kind: e.kind, color: cardColorForKind(e.kind), title: e.name, description: e.description, z: 0, meta: { entityId: e.id } });
+          newCards.push({ id: nanoid(10), type: "card", x: pos.x, y: pos.y, w, h, kind: e.kind, color: cardColorForKind(e.kind), title: e.name, description: e.description, attributes: e.attributes, z: 0, meta: { entityId: e.id } });
         });
         for (const c of newCards) cards.set(c.meta!.entityId as string, c);
         if (newCards.length) s.addElements(newCards, { select: false });

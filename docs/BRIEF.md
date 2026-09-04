@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 5 — viewpoints)
+Last updated: 2026-09-04 (rev 6 — attributes / emergent schema)
 
 ---
 
@@ -283,6 +283,16 @@ through the normal save → sync path.
 - Server: `POST /api/graph/neighborhood` — BFS over relations with depth, direction and an
   optional relation-kind filter; returns discovered entities plus all relations among the set.
 
+### 5.8 Attributes and the emergent attribute schema (v0.2)
+
+Cards carry free-form `attributes` (key → value: lifecycle, owner, criticality, hosting …).
+They render as chips on the card (risk-tinted for values like *high*, *end of life*,
+*phase out*), are edited in the Selection inspector (with key suggestions from other entities
+of the same kind), sync to `entities.attributes` and hydrate back. The **set of keys per
+kind, with usage counts,** is the emergent attribute schema shown on each kind card of the
+Knowledge graph page — nobody defines a schema up front; it appears from the data. CSV import
+turns any extra header columns into attributes; JSON entities may carry `attributes`.
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -301,7 +311,8 @@ the schema already separates users, memberships and roles.
 - ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
   *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
 - ~~Entity resolution proposals (same name / kind across boards → merge)~~ **Done (v0.2)**
-  — see §5.6. Next: attribute schema per kind, relation-type vocabulary management.
+  — see §5.6. ~~Attribute schema per kind~~ done (§5.8). Next: relation-type vocabulary
+  management, attribute value normalisation proposals.
 - Optics: ~~load/unload lenses~~ first version done (§5.7: expand, relations, group by kind,
   kind lens). Next: saved viewpoints per board, relation-type filters, overlays (lifecycle,
   risk, ownership), automatic layouts (lanes, radial).
@@ -364,6 +375,11 @@ the schema already separates users, memberships and roles.
 - Graph panel with Inventory | Viewpoint tabs; expand neighbours (depth, direction),
   show / hide relations, group by kind, distribute, kind lens (§5.7).
 
+### Attributes (v0.2)
+- Key/value attributes on cards with risk-tinted chips, inspector editor with suggestions,
+  graph sync/hydrate, CSV extra columns → attributes, emergent per-kind schema on the
+  Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
@@ -417,6 +433,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Viewpoint controls live in a tab of the left Graph panel rather than a third floating panel. | Screen budget: inventory + inspector + map already frame the canvas; LeanFlow's separate panel would overlap content. |
 | 2026-09-04 | Kind lens is client-side only for now. | Cheap to try; persisting viewpoints per board is the next step once we know which lenses matter. |
 | 2026-09-04 | Text fields on an *unselected* object are inert: the first click selects (and can drag), the second click edits. | At low zoom a note is mostly text field; without this rule it could not be grabbed. Matches the Miro / Figma model. |
+| 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 
 ## 8. Open questions for the product owner
 
@@ -427,6 +444,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 6: attributes and emergent schema.** Cards carry key/value attributes
+  (chips, risk tint), editable in the inspector with per-kind key suggestions, synced to
+  entities and hydrated back; CSV import maps extra columns to attributes; the Knowledge
+  graph page shows the discovered attribute schema per kind and attribute chips per entity.
 
 - **2026-09-04 — Rev 5: viewpoints (first optics).** Viewpoint tab on the board: expand
   selected cards into their graph neighbours (depth, direction, collision-free placement),

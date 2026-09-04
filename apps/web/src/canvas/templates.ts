@@ -35,9 +35,26 @@ export function frame(x: number, y: number, w: number, h: number, title: string,
 export function note(x: number, y: number, title: string, text: string, color = "#ff9800", id = nanoid(10)): CanvasElement {
   return { id, type: "sticky", x, y, w: 300, h: 150, title, text, color, z: nextZ() };
 }
-export function card(x: number, y: number, kind: string, title: string, description = "", id = nanoid(10)): CanvasElement {
+export function card(x: number, y: number, kind: string, title: string, description = "", id = nanoid(10), attributes?: Record<string, string>): CanvasElement {
   // every card is graph-backed from birth; the entity is created on the first save
-  return { id, type: "card", x, y, w: 236, h: 124, kind, color: cardColorForKind(kind), title, description, z: nextZ(), meta: { entityId: `ent_${nanoid(12)}` } };
+  return { id, type: "card", x, y, w: 236, h: 124, kind, color: cardColorForKind(kind), title, description, z: nextZ(), meta: { entityId: `ent_${nanoid(12)}` }, ...(attributes ? { attributes } : {}) };
+}
+
+/** Demo attributes for well-known applications (lifecycle / owner / criticality). */
+const DEMO_ATTRIBUTES: Record<string, Record<string, string>> = {
+  "SCADA / EMS": { lifecycle: "active", criticality: "high", owner: "Grid Operations" },
+  "Outage Mgmt": { lifecycle: "active", criticality: "high", owner: "Grid Operations" },
+  Historian: { lifecycle: "end of life", criticality: "medium", owner: "Grid Operations" },
+  Maximo: { lifecycle: "active", criticality: "medium", owner: "Asset Management" },
+  "Asset Register": { lifecycle: "phase out", criticality: "medium", owner: "Asset Management" },
+  "SAP S/4": { lifecycle: "active", criticality: "high", owner: "Corporate IT" },
+  "CRM Cloud": { lifecycle: "active", criticality: "medium", owner: "Customer" },
+  "ERP Core": { lifecycle: "active", criticality: "high", owner: "Corporate IT" },
+  "Data Lake": { lifecycle: "plan", criticality: "medium", owner: "Data Platform" },
+  "Settlement Engine": { lifecycle: "active", criticality: "high", owner: "Market" },
+};
+export function demoAttributes(name: string) {
+  return DEMO_ATTRIBUTES[name];
 }
 export function shape(x: number, y: number, w: number, h: number, text: string, fill: string, id = nanoid(10), kind: "rect" | "ellipse" | "diamond" = "rect"): CanvasElement {
   return { id, type: "shape", shape: kind, x, y, w, h, text, fill, stroke: "#475569", z: nextZ() };
@@ -81,7 +98,7 @@ export function capabilityMap(): CanvasDocument {
     cap.apps.forEach((app, j) => {
       const id = nanoid(10);
       ids[`${cap.title}/${app}`] = id;
-      els.push(card(fx + 20 + (j % 2) * 250, fy + 50 + Math.floor(j / 2) * 140, "Application", app, `Realises ${cap.title}`, id));
+      els.push(card(fx + 20 + (j % 2) * 250, fy + 50 + Math.floor(j / 2) * 140, "Application", app, `Realises ${cap.title}`, id, demoAttributes(app)));
     });
   });
   els.push(connect(ids["Grid Planning/Asset Register"]!, ids["Asset Management/Asset Register"]!, "same system"));
@@ -106,7 +123,7 @@ export function landscape(): CanvasDocument {
   for (const [name, kind, x, y] of apps) {
     const id = nanoid(10);
     ids[name] = id;
-    els.push(card(x, y, kind, name, kind === "Application" ? "Lifecycle: active" : "", id));
+    els.push(card(x, y, kind, name, "", id, demoAttributes(name)));
   }
   els.push(connect(ids["CRM Cloud"]!, ids["Customer API"]!, "provides"));
   els.push(connect(ids["Customer API"]!, ids["ERP Core"]!, "consumed by"));
@@ -128,7 +145,7 @@ export function integration(): CanvasDocument {
   for (const [name, x, y] of nodes) {
     const id = nanoid(10);
     ids[name] = id;
-    els.push(card(x, y, name === "Data Lake" ? "IT Component" : "Application", name, "", id));
+    els.push(card(x, y, name === "Data Lake" ? "IT Component" : "Application", name, "", id, demoAttributes(name)));
   }
   const flows: Array<[string, string, string]> = [
     ["SCADA / EMS", "Historian", "telemetry"], ["Historian", "Data Lake", "hourly batch"], ["Asset Register", "Maximo", "master data"],

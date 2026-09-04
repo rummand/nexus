@@ -5,6 +5,7 @@ export interface EntitySummary {
   kind: string;
   name: string;
   description: string;
+  attributes: Record<string, string>;
   source: string;
   updatedAt: string;
   boardCount: number;
@@ -16,6 +17,8 @@ export interface KindSummary {
   kind: string;
   count: number;
   color: string;
+  /** Emergent attribute schema: keys used by entities of this kind, with usage counts. */
+  attributeKeys: Array<{ key: string; count: number; sample: string }>;
 }
 
 export interface RelationKindSummary {
@@ -30,7 +33,9 @@ export interface GraphSnapshot {
 }
 
 export interface EntityDetail {
-  entity: { id: string; kind: string; name: string; description: string; source: string; updatedAt: string };
+  entity: { id: string; kind: string; name: string; description: string; attributes: Record<string, string>; source: string; updatedAt: string };
+  /** Attribute keys other entities of the same kind use (for suggestions). */
+  kindAttributeKeys: string[];
   boards: Array<{ id: string; name: string; spaceName: string }>;
   relations: Array<{ id: string; kind: string; direction: "out" | "in"; other: { id: string; name: string; kind: string } }>;
   /** Other entities with the same name — candidates for a merge. */
@@ -58,7 +63,7 @@ export interface Proposal {
 }
 
 export interface ImportPayload {
-  entities: Array<{ kind: string; name: string; description?: string }>;
+  entities: Array<{ kind: string; name: string; description?: string; attributes?: Record<string, string> }>;
   relations: Array<{ from: string; kind: string; to: string }>;
 }
 
@@ -88,6 +93,6 @@ export interface NeighborhoodRequest {
 }
 
 export interface NeighborhoodResponse {
-  entities: Array<{ id: string; kind: string; name: string; description: string }>;
+  entities: Array<{ id: string; kind: string; name: string; description: string; attributes: Record<string, string> }>;
   relations: Array<{ id: string; fromEntityId: string; toEntityId: string; kind: string }>;
 }

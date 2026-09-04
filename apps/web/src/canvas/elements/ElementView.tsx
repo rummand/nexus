@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, type CSSProperties } from "react";
-import { cardColorForKind, FRAME_COLORS, isBoxElement, type CardElement, type ElementId, type FrameElement, type ShapeElement, type StickyElement, type TextElement } from "../document";
+import { attributeIsRisk, cardColorForKind, FRAME_COLORS, isBoxElement, type CardElement, type ElementId, type FrameElement, type ShapeElement, type StickyElement, type TextElement } from "../document";
 import { useCanvas, useCanvasStore } from "../store";
 import { EditableText } from "./EditableText";
 import { LiveField } from "./LiveField";
@@ -41,6 +41,14 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
         <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
       </span>
       <LiveField active={selected} className="fact-title" value={el.title} placeholder="Name" ariaLabel="Card title" autoFocus={fresh} onChange={(title) => patch({ title })} />
+      {el.attributes && Object.keys(el.attributes).length > 0 && (
+        <div className="fact-attributes">
+          {Object.entries(el.attributes).slice(0, 3).map(([k, v]) => (
+            <span key={k} className={attributeIsRisk(k, v) ? "lifecycle-chip risk" : "lifecycle-chip"} title={`${k}: ${v}`}>{k} · {v}</span>
+          ))}
+          {Object.keys(el.attributes).length > 3 && <span className="lifecycle-chip">+{Object.keys(el.attributes).length - 3}</span>}
+        </div>
+      )}
       <LiveField active={selected} className="fact-desc" multiline value={el.description} placeholder="Description" ariaLabel="Card description" onChange={(description) => patch({ description })} style={{ flex: 1 }} />
     </div>
   );

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
-import { neighborhood } from "@/lib/graph";
+import { neighborhood, parseAttributes } from "@/lib/graph";
 import type { NeighborhoodRequest, NeighborhoodResponse } from "@/lib/graph-types";
 
 /** POST { workspaceId, entityIds, depth, direction, relationKinds? } → entities + relations. */
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const direction = body.direction === "out" || body.direction === "in" ? body.direction : "both";
   const { entities, relations } = await neighborhood(db, body.workspaceId, body.entityIds.slice(0, 200), depth, direction, body.relationKinds);
   const res: NeighborhoodResponse = {
-    entities: entities.map((e) => ({ id: e.id, kind: e.kind, name: e.name, description: e.description })),
+    entities: entities.map((e) => ({ id: e.id, kind: e.kind, name: e.name, description: e.description, attributes: parseAttributes(e.attributes) })),
     relations: relations.map((r) => ({ id: r.id, fromEntityId: r.fromEntityId, toEntityId: r.toEntityId, kind: r.kind })),
   };
   return NextResponse.json(res);

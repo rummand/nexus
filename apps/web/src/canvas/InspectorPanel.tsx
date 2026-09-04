@@ -6,7 +6,7 @@ import type { EntityDetail } from "@/lib/graph-types";
 import { isEntityId } from "@/lib/graph-types";
 import { mergeEntitiesAction } from "@/lib/actions";
 import { Filter } from "lucide-react";
-import { elementName, elementTypeLabel, isBoxElement, type CanvasElement, type ElementId } from "./document";
+import { attributeIsRisk, elementName, elementTypeLabel, isBoxElement, type CanvasElement, type CardElement, type ElementId } from "./document";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
 import { selectionBounds, useCanvas, useCanvasStore } from "./store";
 import { documentStats } from "@/components/workspace/BoardThumbnail";
@@ -60,6 +60,7 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
                 <div><span>Kind</span><input value={single.kind} onChange={(e) => patch({ kind: e.target.value })} placeholder="e.g. Application" /></div>
                 <div><span>Title</span><input value={single.title} onChange={(e) => patch({ title: e.target.value })} /></div>
                 <div><span>Description</span><textarea value={single.description} onChange={(e) => patch({ description: e.target.value })} /></div>
+                <AttributesEditor key={single.id} card={single} onChange={(attributes) => patch({ attributes })} />
               </>
             )}
             {single.type === "sticky" && (
@@ -215,5 +216,55 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
       )}
     </div>
     </>
+  );
+}
+
+const COMMON_ATTRIBUTE_KEYS = ["lifecycle", "owner", "criticality", "hosting", "vendor", "cost", "data classification"];
+
+/** Key / value attributes on a card; keys used by the same kind elsewhere are offered as suggestions. */
+function AttributesEditor({ card, onChange }: { card: CardElement; onChange: (attributes: Record<string, string>) => void }) {
+  const attrs = card.attributes ?? {};
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
+  const [suggested, setSuggested] = useState<string[]>([]);
+  const entityId = isEntityId(card.meta?.entityId) ? card.meta.entityId : null;
+  useEffect(() => {
+    if (!entityId) return;
+    let cancelled = false;
+    fetch(`/api/graph/entities/${entityId}`).then((r) => (r.ok ? (r.json() as Promise<EntityDetail>) : null)).then((d) => { if (!cancelled && d) setSuggested(d.kindAttributeKeys); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [entityId]);
+  const options = [...new Set([...suggested, ...COMMON_ATTRIBUTE_KEYS])].filter((k) => !(k in attrs)).slice(0, 6);
+  const set = (k: string, v: string) => onChange({ ...attrs, [k]: v });
+  const remove = (k: string) => { const next = { ...attrs }; delete next[k]; onChange(next); };
+  const add = () => {
+    const k = newKey.trim();
+    if (!k) return;
+    onChange({ ...attrs, [k]: newValue.trim() });
+    setNewKey("");
+    setNewValue("");
+  };
+  return (
+    <div className="attributes-editor">
+      <span>Attributes {Object.keys(attrs).length > 0 && <small>{Object.keys(attrs).length}</small>}</span>
+      {Object.entries(attrs).map(([k, v]) => (
+        <div key={k} className={attributeIsRisk(k, v) ? "attribute-row risk" : "attribute-row"}>
+          <b title={k}>{k}</b>
+          <input value={v} onChange={(e) => set(k, e.target.value)} aria-label={`${k} value`} />
+          <button type="button" onClick={() => remove(k)} aria-label={`Remove ${k}`}>×</button>
+        </div>
+      ))}
+      <div className="attribute-row add">
+        <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="key" list={`attr-keys-${card.id}`} aria-label="New attribute key" />
+        <datalist id={`attr-keys-${card.id}`}>{options.map((k) => <option key={k} value={k} />)}</datalist>
+        <input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="value" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} aria-label="New attribute value" />
+        <button type="button" onClick={add} disabled={!newKey.trim()} aria-label="Add attribute">+</button>
+      </div>
+      {options.length > 0 && (
+        <div className="attribute-suggest">
+          {options.map((k) => <button key={k} type="button" onClick={() => setNewKey(k)}>{k}</button>)}
+        </div>
+      )}
+    </div>
   );
 }
