@@ -74,9 +74,11 @@ try {
   await page.mouse.wheel(0, -300);
   await page.keyboard.up("Control");
   assert.notEqual(await zoom(), z0, "ctrl+wheel zooms");
-  const bg0 = await page.locator(".canvas-viewport").evaluate((el) => el.style.backgroundPosition);
+  const worldTransform = () => page.locator("[data-canvas-world]").evaluate((el) => el.style.transform);
+  const w0 = await worldTransform();
   await page.mouse.wheel(100, 50);
-  assert.notEqual(await page.locator(".canvas-viewport").evaluate((el) => el.style.backgroundPosition), bg0, "wheel pans");
+  await page.waitForTimeout(100); // wheel deltas are applied once per animation frame
+  assert.notEqual(await worldTransform(), w0, "wheel pans");
   await page.keyboard.press("Shift+1");
   const fit = parseInt(await zoom(), 10);
   assert.ok(Math.abs(fit - parseInt(z0, 10)) <= 5, `shift+1 fits the board (got ${fit}%, initial ${z0})`);

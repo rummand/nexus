@@ -21,19 +21,12 @@ import { HelpPanel } from "./HelpPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { ContextMenu } from "./ContextMenu";
 import { GuidesOverlay } from "./GuidesOverlay";
-
-/** Minor grid spacing adapts to zoom so lines never get denser than ~16 screen px. */
-function gridStep(zoom: number) {
-  let step = 20;
-  while (step * zoom < 14) step *= 2;
-  while (step * zoom > 56) step /= 2;
-  return step * zoom;
-}
+import { GridCanvas } from "./GridCanvas";
 
 export function Canvas() {
   const store = useCanvasStore();
   const rootRef = useRef<HTMLDivElement>(null);
-  const camera = useCanvas((s) => s.camera);
+  const worldRef = useRef<HTMLDivElement>(null);
   const tool = useCanvas((s) => s.tool);
   const spaceDown = useCanvas((s) => s.spaceDown);
   const dragging = useCanvas((s) => s.isDragging);
@@ -45,6 +38,17 @@ export function Canvas() {
   useWheel(rootRef);
   useKeyboard(true);
   useAutosave();
+
+  // The world transform is written straight to the DOM on camera changes so panning and
+  // zooming never re-render the React tree (only the culling key below can).
+  useEffect(() => {
+    const apply = () => {
+      const { camera } = store.getState();
+      if (worldRef.current) worldRef.current.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
+    };
+    apply();
+    return store.subscribe((s, prev) => { if (s.camera !== prev.camera) apply(); });
+  }, [store]);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -63,9 +67,6 @@ export function Canvas() {
     return () => ro.disconnect();
   }, [store]);
 
-  const minor = gridStep(camera.zoom);
-  const major = minor * 4;
-  const pos = `${camera.x}px ${camera.y}px`;
   const mode = spaceDown || tool === "hand" ? "pan-tool" : tool === "select" ? "select-tool" : "draw-tool";
 
   return (
@@ -73,10 +74,6 @@ export function Canvas() {
       ref={rootRef}
       className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""}`}
       aria-label="Nexus canvas"
-      style={{
-        backgroundSize: `${major}px ${major}px, ${major}px ${major}px, ${minor}px ${minor}px, ${minor}px ${minor}px`,
-        backgroundPosition: `${pos}, ${pos}, ${pos}, ${pos}`,
-      }}
       onMouseDown={(e) => {
         const t = e.target as HTMLElement;
         if (!(t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT" || t.isContentEditable)) e.preventDefault();
@@ -88,8 +85,9 @@ export function Canvas() {
       onDoubleClick={interaction.onDoubleClick}
       onContextMenu={interaction.onContextMenu}
     >
+      <GridCanvas />
       {/* world layer */}
-      <div className="absolute left-0 top-0" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`, transformOrigin: "0 0", width: 0, height: 0, willChange: "transform" }}>
+      <div ref={worldRef} className="absolute left-0 top-0" data-canvas-world style={{ transformOrigin: "0 0", width: 0, height: 0, willChange: "transform" }}>
         <ElementLayer />
         <ConnectorLayer />
       </div>

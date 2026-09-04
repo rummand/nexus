@@ -15,6 +15,18 @@ export function useWheel(rootRef: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
+    // Wheel events arrive far faster than frames; accumulate and apply once per animation
+    // frame so the store (and every subscriber) updates at most 60×/s.
+    let pending = { dx: 0, dy: 0, zoom: 1, anchor: { x: 0, y: 0 } };
+    let raf = 0;
+    const flush = () => {
+      raf = 0;
+      const s = store.getState();
+      const { dx, dy, zoom, anchor } = pending;
+      pending = { dx: 0, dy: 0, zoom: 1, anchor };
+      if (zoom !== 1) s.zoomAt(anchor, zoom);
+      if (dx || dy) s.panBy(-dx, -dy);
+    };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const s = store.getState();
@@ -28,17 +40,22 @@ export function useWheel(rootRef: RefObject<HTMLDivElement | null>) {
       const zoomGesture = e.ctrlKey || e.metaKey || (s.scrollMode === "zoom" && !e.shiftKey);
       if (zoomGesture) {
         // pinch deltas are small; mouse wheels are ±100 — exp keeps both smooth
-        const factor = Math.exp(-dy * (e.ctrlKey && Math.abs(dy) < 50 ? 0.01 : 0.0025));
-        s.zoomAt(anchor, factor);
-        return;
+        pending.zoom *= Math.exp(-dy * (e.ctrlKey && Math.abs(dy) < 50 ? 0.01 : 0.0025));
+        pending.anchor = anchor;
+      } else {
+        if (e.shiftKey && dx === 0) {
+          dx = dy;
+          dy = 0;
+        }
+        pending.dx += dx;
+        pending.dy += dy;
       }
-      if (e.shiftKey && dx === 0) {
-        dx = dy;
-        dy = 0;
-      }
-      s.panBy(-dx, -dy);
+      if (!raf) raf = requestAnimationFrame(flush);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [rootRef, store]);
 }

@@ -477,11 +477,6 @@ a { color: inherit; text-decoration: none; }
 
 .canvas-viewport {
   background-color: #f8fafc;
-  background-image:
-    linear-gradient(#e6ecf4 1px, transparent 1px),
-    linear-gradient(90deg, #e6ecf4 1px, transparent 1px),
-    linear-gradient(#f1f4f8 1px, transparent 1px),
-    linear-gradient(90deg, #f1f4f8 1px, transparent 1px);
   height: 100%;
   overflow: clip;
   position: relative;
@@ -1078,3 +1073,5 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .graph-strip-badge { background: #edf9f1; border: 1px solid #cbeed7; border-radius: 999px; color: #38734b; font-size: 12px; font-weight: 800; padding: 6px 12px; white-space: nowrap; }
 .graph-strip-badge.warn { background: #fff7ed; border-color: #fed7aa; color: #b45309; }
 .graph-strip-cta { color: var(--blue); font-size: 13px; font-weight: 800; white-space: nowrap; }
+
+.grid-canvas { inset: 0; pointer-events: none; position: absolute; z-index: 0; }

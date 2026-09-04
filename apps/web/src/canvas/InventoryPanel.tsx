@@ -20,12 +20,13 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
   const collapsed = useCanvas((s) => !s.panels.inventory);
   const tab = useCanvas((s) => s.graphTab);
   const saveState = useCanvas((s) => s.saveState);
-  const elements = useCanvas((s) => s.elements);
-  const onBoard = useMemo(() => {
-    const ids = new Set<string>();
-    for (const el of Object.values(elements)) if (el.type === "card" && isEntityId(el.meta?.entityId)) ids.add(el.meta.entityId);
-    return ids;
-  }, [elements]);
+  // A stable string key (not a Set) so the panel does not re-render while objects are dragged.
+  const onBoardKey = useCanvas((s) => {
+    const ids: string[] = [];
+    for (const el of Object.values(s.elements)) if (el.type === "card" && isEntityId(el.meta?.entityId)) ids.push(el.meta.entityId);
+    return ids.sort().join("\n");
+  });
+  const onBoard = useMemo(() => new Set(onBoardKey ? onBoardKey.split("\n") : []), [onBoardKey]);
   const { pos, onPointerDown, panelRef } = useDraggablePanel(rootRef, { x: 74, y: 76 });
   const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
   const [query, setQuery] = useState("");

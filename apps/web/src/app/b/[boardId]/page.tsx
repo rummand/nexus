@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BoardCanvas } from "@/canvas/BoardCanvas";
+import { BoardCanvasClient } from "@/canvas/BoardCanvasClient";
 import { parseDocument } from "@/canvas/document";
 import { getBoardWithContext } from "@/lib/data";
 import { getDb } from "@/db/client";
@@ -21,7 +21,7 @@ export default async function BoardPage({ params }: Props) {
   if (!board) notFound();
   const document = await hydrateDocument(await getDb(), parseDocument(board.document));
   return (
-    <BoardCanvas
+    <BoardCanvasClient
       document={document}
       header={{
         boardId: board.id,

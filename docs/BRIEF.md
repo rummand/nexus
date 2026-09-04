@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 10 — saved viewpoints)
+Last updated: 2026-09-04 (rev 11 — performance)
 
 ---
 
@@ -202,8 +202,21 @@ nexus/
   state is visible in the UI.
 - **Templates.** `src/canvas/templates.ts` builds starter documents (capability map,
   application landscape, integration flows, roadmap) used by the home starters and the seed.
-- **Performance.** Off-screen elements are culled; per-element subscriptions keep
-  re-renders local.
+- **Performance.** The canvas is client-only (dynamic import, no SSR of 1 000 DOM nodes).
+  The world transform is applied imperatively from a store subscription, so pans and zooms
+  never re-render React. The dot grid and the minimap are drawn on `<canvas>` elements
+  (one `drawImage`-class repaint instead of CSS gradients / hundreds of DOM boxes). Wheel
+  deltas are accumulated and applied once per animation frame. Box elements are culled
+  against a *quantised* viewport rectangle (240 screen px steps) so small camera moves do
+  not touch the element layer at all. Element and connector layers memoise their children
+  on the list of ids; every element, connector and label subscribes to its own slice, so
+  dragging a card re-renders that card and the connectors touching it — nothing else.
+  Google fonts load asynchronously (a render-blocking `<link>` stalled first paint for
+  seconds in the sandbox). Measured on a 400-card / 300-connector board (headless Chromium,
+  software rendering, production build): first load 0.4 s, warm reload 0.3 s, pan
+  ≈ 25 ms/frame, zoom ≈ 20 ms/frame, drag ≈ 40 ms/step — down from 13.5 s / 85 / 60 /
+  75 before this work. `scratchpad`-style stress scripts are not checked in; the
+  numbers come from a Playwright script that PUTs the stress document to a scratch board.
 
 ### 5.4 Data model (v0.1)
 
@@ -389,7 +402,7 @@ the schema already separates users, memberships and roles.
 | Elements | Architecture card (kind with colour, title, description; kind swatches from a starter vocabulary), note (title, body, 7 tints), text block / section (title, body, colour), shape (rectangle / oval / rhombus, fill; double-click to label), frame (pill titlebar: title, #order, Color, Focus, Delete; moving a frame carries the objects inside it), connector (element-to-element or free end, pill label, line / arrow / dashed presets, arrows either end, re-routed live). |
 | Editing | Live text fields on cards, notes, text blocks and frames (new objects focus their title), click / shift-click / marquee selection (frames need full enclosure), drag-move, 8-handle resize (shift keeps aspect), floating property bar per selection type, draggable Selection inspector with editable fields and actions, command bar search (⌘K) that focuses matches, lock, bring-to-front / send-to-back, nudge with arrows, duplicate, copy/cut/paste, delete (connectors follow their elements), undo/redo (snapshot history of committed operations). |
 | Persistence | Versioned JSON document (`{ version: 1, elements }`) per board; debounced autosave (`PUT /api/boards/[id]`) with saved/saving/error indicator; flush on tab hide and unload. |
-| Performance | Off-screen culling of box elements; per-element store subscriptions; `overflow: clip` root so nothing can scroll the canvas surface. |
+| Performance | Client-only canvas, imperative world transform, canvas-drawn grid and minimap, per-frame wheel coalescing, quantised culling, id-keyed layer memoisation, per-connector subscriptions with cached paths, async fonts; `overflow: clip` root so nothing can scroll the canvas surface. 400 cards + 300 connectors: 0.4 s load, ~25 ms pan frames in headless software rendering. |
 | Help | Shortcuts panel (topbar button); empty-board hint card. |
 
 ### Knowledge graph (v0.2)
@@ -488,6 +501,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
+| 2026-09-04 | The board canvas is client-only (`dynamic(..., { ssr: false })`) with a loading shell. | Server-rendering a thousand absolutely positioned nodes doubled the payload and the hydration cost for zero benefit — the canvas needs the viewport size before it can place anything. |
+| 2026-09-04 | Grid and minimap are drawn on `<canvas>`; the world transform is set imperatively. | These are the three things that change on *every* pan/zoom frame. Keeping them out of React (and out of CSS gradient repaints) is what made navigation frame-bound instead of render-bound. |
+| 2026-09-04 | Layers memoise children on a joined-ids string; components subscribe to their own slice. | A drag mutates `elements` every pointer move; without id-keyed memoisation React recreated 700 elements per frame even though every child bailed out. |
+| 2026-09-04 | Fonts load from a client component after mount rather than a `<link>` in `<head>`. | The render-blocking stylesheet stalled first paint for up to 13 s behind the sandbox proxy; the fallback stack (Aptos / system sans) is close enough that the swap is barely visible. |
 
 ## 8. Open questions for the product owner
 
@@ -498,6 +515,14 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 11: performance.** Client-only canvas with a loading shell,
+  imperative world transform, canvas-drawn grid and minimap, wheel coalescing per animation
+  frame, quantised culling, id-keyed memoisation of the element and connector layers,
+  per-connector subscriptions with cached paths, asynchronous font loading. A
+  400-card / 300-connector stress board now loads in 0.4 s (production build) instead of
+  13.5 s, and pan / zoom / drag frame costs dropped three- to four-fold. E2E pan check now
+  reads the world transform (the CSS grid it used to read is gone).
 
 - **2026-09-04 — Rev 10: saved views, relation types, home strip.** Saved viewpoints in the
   board document, relation-type renaming on the Knowledge graph page, and a graph summary
