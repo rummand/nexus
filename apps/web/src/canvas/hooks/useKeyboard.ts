@@ -114,6 +114,7 @@ export function useKeyboard(enabled = true) {
 
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); s.deleteElements(s.selection); return; }
       if (e.key === "Escape") {
+        if (s.presenting) { s.setPresenting(false); return; }
         if (s.selection.length) s.clearSelection();
         else s.setTool("select");
         s.setPendingConnector(null);

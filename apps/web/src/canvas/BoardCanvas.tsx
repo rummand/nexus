@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "./document";
-import { CanvasStoreContext, createCanvasStore, type ScrollMode } from "./store";
+import { CanvasStoreContext, createCanvasStore, useStore, type ScrollMode } from "./store";
 import { Canvas } from "./Canvas";
 import { StudioTopbar, type StudioTopbarProps } from "./StudioTopbar";
 import { markBoardOpened } from "@/lib/actions";
@@ -41,10 +41,11 @@ export function BoardCanvas({ document, header }: { document: CanvasDocument; he
     });
   }, [store]);
 
+  const presenting = useStore(store, (s) => s.presenting);
   return (
     <CanvasStoreContext.Provider value={store}>
-      <div className="miro-studio">
-        <StudioTopbar {...header} />
+      <div className={presenting ? "miro-studio presenting" : "miro-studio"}>
+        {!presenting && <StudioTopbar {...header} />}
         <Canvas />
       </div>
     </CanvasStoreContext.Provider>

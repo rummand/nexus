@@ -1,4 +1,5 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
+export { useStore } from "zustand";
 import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
@@ -55,6 +56,8 @@ export interface CanvasState {
   contextMenu: { x: number; y: number; targetId: string | null; world: Point } | null;
   /** Saved viewpoints (persisted with the document). */
   viewpoints: SavedViewpoint[];
+  /** Presentation mode: chrome hidden, canvas only (Esc leaves). */
+  presenting: boolean;
   /** Active lens (client-side optic, saved with viewpoints) and its derived result. */
   lens: Lens;
   lensResult: LensResult | null;
@@ -89,6 +92,7 @@ export interface CanvasState {
   setSnapEnabled(v: boolean): void;
   setContextMenu(m: CanvasState["contextMenu"]): void;
   setLens(lens: Lens): void;
+  setPresenting(v: boolean): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
   deleteViewpoint(id: string): void;
@@ -161,7 +165,8 @@ export function expandSelectionForMove(selection: ElementId[], elements: Element
 }
 
 /** Screen-space area hidden by the floating chrome (command bar, panels, map card). */
-export function fitInsets(s: Pick<CanvasState, "panels" | "viewport">, extra = 40): Insets {
+export function fitInsets(s: Pick<CanvasState, "panels" | "viewport" | "presenting">, extra = 40): Insets {
+  if (s.presenting) return { top: extra, bottom: extra, left: extra, right: extra };
   const narrow = s.viewport.w < 1100;
   return {
     top: 140 + extra,
@@ -223,6 +228,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       contextMenu: null,
       lens: NO_LENS,
       lensResult: null,
+      presenting: false,
       viewpoints: document.viewpoints ?? [],
 
       // ---- camera ----
@@ -264,6 +270,11 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setSnapEnabled: (snapEnabled) => set({ snapEnabled }),
       setContextMenu: (contextMenu) => set({ contextMenu }),
       setLens: (lens) => set({ lens }),
+      setPresenting: (presenting) => {
+        set({ presenting, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
+        // re-fit with the chrome gone (or back)
+        requestAnimationFrame(() => get().zoomToFit());
+      },
       saveViewpoint: (name) => {
         const s = get();
         const vp: SavedViewpoint = { id: `vp_${nanoid(8)}`, name: name.trim() || `View ${s.viewpoints.length + 1}`, hiddenKinds: [...s.hiddenKinds], camera: { ...s.camera }, createdAt: new Date().toISOString(), ...(s.lens.type !== "none" ? { lens: s.lens } : {}) };

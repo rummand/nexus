@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 16 — alignment tools, version compare)
+Last updated: 2026-09-04 (rev 17 — SVG export, presentation mode)
 
 ---
 
@@ -203,6 +203,11 @@ nexus/
 - **Persistence.** The board document is versioned JSON (`{ version, elements }`;
   currently v2 with a v1 → v2 migration), autosaved to the server with a debounce; save
   state is visible in the UI.
+- **Export.** `src/canvas/export.ts` renders a document to a standalone SVG (frames, cards with
+  kind / title / attribute chips / description, notes, text blocks, shapes, connectors with
+  arrowheads and label pills; greedy text wrapping on an approximate glyph width). The topbar
+  *Export* menu offers Download SVG, Copy SVG and *Present* — presentation mode hides all chrome,
+  fits the board to the full viewport and leaves on Esc or a click on the pill.
 - **Templates.** `src/canvas/templates.ts` builds starter documents (capability map,
   application landscape, integration flows, roadmap) used by the home starters and the seed.
 - **Performance.** The canvas is client-only (dynamic import, no SSR of 1 000 DOM nodes).
@@ -511,6 +516,9 @@ contains (`src/canvas/lens.ts`).
   graph sync/hydrate, CSV extra columns → attributes, emergent per-kind schema on the
   Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
 
+### Export & present (v0.2)
+- Export menu in the topbar: Download SVG, Copy SVG, Present (chrome-free, Esc to leave).
+
 ### Alignment (v0.2)
 - Align and distribute buttons in the selection bar for multi-selections; one undo step.
 
@@ -586,6 +594,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
 | 2026-09-04 | Missing-attribute proposals need ≥ 80 % coverage within a kind of ≥ 3 entities. | Below that the "schema" is not established and the proposals would be noise; the threshold is a constant to tune once real data arrives. |
+| 2026-09-04 | Export is SVG generated from the document, not a DOM/canvas screenshot. | Vector output scales into slides and design tools, needs no headless browser on the server, and works offline in the client; PNG can be derived from it later. Fidelity is "faithful enough" rather than pixel identical. |
 | 2026-09-04 | Lenses never mutate the document; the impact lens walks *board connectors*, not the workspace graph. | What you see is what you traverse: the user controls which relations are on the board (Show all relations / expand) and the lens explains exactly that picture. A graph-backed variant can come later as "expand then lens". |
 | 2026-09-04 | The board canvas is client-only (`dynamic(..., { ssr: false })`) with a loading shell. | Server-rendering a thousand absolutely positioned nodes doubled the payload and the hydration cost for zero benefit — the canvas needs the viewport size before it can place anything. |
 | 2026-09-04 | Grid and minimap are drawn on `<canvas>`; the world transform is set imperatively. | These are the three things that change on *every* pan/zoom frame. Keeping them out of React (and out of CSS gradient repaints) is what made navigation frame-bound instead of render-bound. |
@@ -601,6 +610,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 17: SVG export, presentation mode.** Topbar Export menu with Download SVG /
+  Copy SVG (pure document → SVG renderer, unit-tested) and Present (hides topbar, tool rail,
+  panels and command bar, fits the board edge to edge, Esc leaves).
 
 - **2026-09-04 — Rev 16: alignment tools, version compare.** Align / distribute group in the
   selection bar (frames carry contents, single undo step). History panel gained *Compare*: a

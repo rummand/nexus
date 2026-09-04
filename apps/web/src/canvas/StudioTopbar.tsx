@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, History, Keyboard, Loader2, Share2 } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Keyboard, Loader2, Presentation, Share2 } from "lucide-react";
+import { documentToSvg } from "./export";
 import { renameBoard } from "@/lib/actions";
 import { NexusMark } from "@/components/workspace/NexusMark";
 import { initials } from "@/components/workspace/Sidebar";
@@ -21,6 +22,8 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   const store = useCanvasStore();
   const [name, setName] = useState(initialName);
   const [copied, setCopied] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
   const [, start] = useTransition();
   const saveState = useCanvas((s) => s.saveState);
   const count = useCanvas((s) => Object.keys(s.elements).length);
@@ -44,6 +47,29 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
     }
   };
 
+  const svg = () => documentToSvg(store.getState().toDocument(), { title: name });
+  const downloadSvg = () => {
+    const blob = new Blob([svg()], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.replace(/[^\w.-]+/g, "_") || "board"}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setExportNote("SVG downloaded");
+    setExportOpen(false);
+  };
+  const copySvg = async () => {
+    try {
+      await navigator.clipboard.writeText(svg());
+      setExportNote("SVG copied to the clipboard");
+    } catch {
+      setExportNote("Clipboard unavailable");
+    }
+    setExportOpen(false);
+  };
+  const present = () => { setExportOpen(false); store.getState().setPresenting(true); };
+
   return (
     <header className="studio-topbar">
       <div className="brand-block">
@@ -66,6 +92,16 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
         </span>
         <button className={historyOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("history")} title="Version history"><History size={16} /> History</button>
         <button className={helpOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("help")} title="Keyboard shortcuts"><Keyboard size={16} /> Shortcuts</button>
+        <span className="export-anchor">
+          <button className={exportOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => setExportOpen((v) => !v)} aria-haspopup="menu" aria-expanded={exportOpen} data-export-button><Download size={16} /> {exportNote && !exportOpen ? exportNote : "Export"}</button>
+          {exportOpen && (
+            <div className="export-menu" role="menu" data-export-menu>
+              <button type="button" role="menuitem" onClick={downloadSvg}><Download size={14} /> Download SVG<small>Vector, opens in Figma / PowerPoint / browsers</small></button>
+              <button type="button" role="menuitem" onClick={() => void copySvg()}><Copy size={14} /> Copy SVG<small>Paste into a document or design tool</small></button>
+              <button type="button" role="menuitem" onClick={present}><Presentation size={14} /> Present<small>Hide the chrome and fit the board · Esc to leave</small></button>
+            </div>
+          )}
+        </span>
         <button className="ghost-button" type="button" onClick={() => void share()}><Share2 size={16} /> {copied ? "Link copied" : "Share"}</button>
         <span className="avatar" title={user.name}>{initials(user.name)}</span>
       </div>

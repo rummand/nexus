@@ -201,6 +201,15 @@ try {
   assert.ok(/added|changed|removed|identical/i.test(await page.locator("[data-history-diff]").innerText()), "history compare summarises the diff");
   await page.click(".history-panel .panel-title button");
 
+  // export menu + presentation mode (Esc leaves)
+  await page.click("[data-export-button]");
+  await page.waitForSelector("[data-export-menu]");
+  await page.click("[data-export-menu] button:has-text('Present')");
+  await page.waitForSelector("[data-present-exit]");
+  assert.equal(await page.locator(".canvas-toolbar").count(), 0, "presentation mode hides the toolbar");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".canvas-toolbar");
+
   // graph page: import the sample and check the meta-model renders
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   assert.ok((await page.locator(".kind-card").count()) > 0, "graph page shows kinds");

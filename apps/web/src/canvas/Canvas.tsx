@@ -32,6 +32,7 @@ export function Canvas() {
   const spaceDown = useCanvas((s) => s.spaceDown);
   const dragging = useCanvas((s) => s.isDragging);
   const panels = useCanvas((s) => s.panels);
+  const presenting = useCanvas((s) => s.presenting);
   const isEmpty = useCanvas((s) => Object.keys(s.elements).length === 0);
   const count = useCanvas((s) => Object.keys(s.elements).length);
 
@@ -103,19 +104,23 @@ export function Canvas() {
 
       {/* screen-space overlays */}
       <GuidesOverlay />
-      <SelectionOverlay onBeginResize={interaction.beginResize} />
-      <ContextMenu />
-      <SelectionToolbar />
-      <CommandBar />
-      <Toolbar />
-      <InventoryPanel rootRef={rootRef} />
-      <InspectorPanel rootRef={rootRef} />
-      {panels.map && <MapCard />}
-      {panels.help && <HelpPanel />}
-      {panels.history && <HistoryPanel rootRef={rootRef} />}
-      <ZoomCard />
+      {!presenting && <SelectionOverlay onBeginResize={interaction.beginResize} />}
+      {!presenting && <ContextMenu />}
+      {!presenting && <SelectionToolbar />}
+      {!presenting && <CommandBar />}
+      {!presenting && <Toolbar />}
+      {!presenting && <InventoryPanel rootRef={rootRef} />}
+      {!presenting && <InspectorPanel rootRef={rootRef} />}
+      {!presenting && panels.map && <MapCard />}
+      {!presenting && panels.help && <HelpPanel />}
+      {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
+      {!presenting && <ZoomCard />}
       <LensLegend />
-      <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
+      {presenting ? (
+        <button type="button" className="present-exit" data-present-exit onClick={() => store.getState().setPresenting(false)} onPointerDown={(e) => e.stopPropagation()}>Presenting · press Esc or click to exit</button>
+      ) : (
+        <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
+      )}
     </main>
   );
 }
