@@ -120,10 +120,19 @@ try {
   await page.keyboard.press("Escape");
   assert.equal(await page.locator(".context-menu").count(), 0, "escape closes the context menu");
 
+  // command bar: structured graph query with placement
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+k");
+  await page.fill(".command-bar input", "kind:Application criticality:high");
+  await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
+  assert.ok((await page.locator(".search-suggestions .graph-hit").count()) > 0, "graph query returns entities");
+  await page.keyboard.press("Escape");
+  await page.fill(".command-bar input", "");
+
   // command bar finds the note
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
-  await page.keyboard.type(TEXT.slice(0, 9));
+  await page.keyboard.type(TEXT);
   await page.waitForSelector(".search-suggestions button");
   assert.ok((await page.locator(".search-suggestions button", { hasText: TEXT }).count()) >= 1, "command bar finds the note");
   await page.keyboard.press("Escape");

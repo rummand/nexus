@@ -96,3 +96,32 @@ export interface NeighborhoodResponse {
   entities: Array<{ id: string; kind: string; name: string; description: string; attributes: Record<string, string> }>;
   relations: Array<{ id: string; fromEntityId: string; toEntityId: string; kind: string }>;
 }
+
+/** Structured graph query (deterministic precursor to natural-language questions). */
+export interface ParsedQuery {
+  text: string[];
+  kinds: string[];
+  attributes: Array<{ key: string; value: string }>;
+  related: Array<{ name: string; direction: "both" | "out" | "in"; relationKind?: string }>;
+  relationKinds: string[];
+  /** true when at least one structured clause was used */
+  structured: boolean;
+}
+
+export interface QueryResultEntity {
+  id: string;
+  kind: string;
+  name: string;
+  description: string;
+  attributes: Record<string, string>;
+  boards: Array<{ id: string; name: string }>;
+  /** Why this entity matched (short, human-readable). */
+  why: string;
+}
+
+export interface QueryResponse {
+  query: ParsedQuery;
+  explanation: string;
+  entities: QueryResultEntity[];
+  total: number;
+}

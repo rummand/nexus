@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 8 — canvas polish)
+Last updated: 2026-09-04 (rev 9 — graph query)
 
 ---
 
@@ -309,6 +309,24 @@ History panel (topbar → History) lists versions with age, object count and aut
 restores with one click; the restored document re-syncs into the graph. This is the seed of
 the "dated checkpoints / compare over time" idea (§2, LeanFlow's snapshots).
 
+### 5.10 Graph query in the command bar (v0.2)
+
+The board's command bar (⌘K) searches the board **and** queries the workspace graph with a
+small deterministic language (`src/lib/query.ts`, `POST /api/graph/query`):
+
+| Clause | Meaning |
+|---|---|
+| `kind:Application` (`is:`, `type:`) | entity kind (exact or prefix, case-insensitive) |
+| `owner:"Grid Operations"`, `criticality:high` | attribute contains value (key exact or prefix) |
+| `related:Maximo` · `from:X` · `to:X` | 1-hop neighbours of entities whose name matches X (any / outbound / inbound) |
+| `rel:billing` (`via:`) | restrict the relation kinds used by related/from/to |
+| free text | name, description and attribute values contain every word |
+
+Results show why they matched, where they already live, and can be **placed** one by one,
+all at once (Enter / "Place n"), or **highlighted** when already on the board. Example
+queries appear as chips when the bar is empty. The agent layer will translate natural
+language into this structure, so the runner is the single definition of what a question means.
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -337,7 +355,7 @@ the schema already separates users, memberships and roles.
 - Agent framework: classification, meta-model proposal, ~~entity resolution~~ (rules done),
   enrichment, with human review queue (the accept / dismiss flow exists; LLM-backed
   proposal sources are next).
-- Search across boards and the graph.
+- ~~Search across boards and the graph~~ done: home search over boards + objects, board command bar with structured graph queries (§5.10). Next: natural-language translation by the agent layer.
 - Board templates; export (PNG/PDF); comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
@@ -404,10 +422,13 @@ the schema already separates users, memberships and roles.
   relation connectors default to curved. Smart alignment guides with Alt bypass and toggle.
   Right-click context menu.
 
+### Graph query (v0.2)
+- Structured graph queries from the command bar with place / highlight actions (§5.10).
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
-  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood, version checkpoints / restore against an in-memory SQLite).
+  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood, version checkpoints / restore, query parsing and execution against an in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
@@ -458,6 +479,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Text fields on an *unselected* object are inert: the first click selects (and can drag), the second click edits. | At low zoom a note is mostly text field; without this rule it could not be grabbed. Matches the Miro / Figma model. |
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
+| 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
 
 ## 8. Open questions for the product owner
 
@@ -468,6 +490,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 9: graph query.** Command bar queries the workspace graph with
+  kind:, attribute:, related:/from:/to:, rel: and free text; results explain their match,
+  show board usage, and can be placed or highlighted. Unit tests for parsing and execution.
 
 - **2026-09-04 — Rev 8: canvas polish.** Curved and elbow connector routing (relations
   curved by default), smart alignment guides while dragging, right-click context menu,
