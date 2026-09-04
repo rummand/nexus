@@ -34,6 +34,8 @@ export function Canvas() {
   const dragging = useCanvas((s) => s.isDragging);
   const panels = useCanvas((s) => s.panels);
   const presenting = useCanvas((s) => s.presenting);
+  const presentIndex = useCanvas((s) => s.presentIndex);
+  const frameCount = useCanvas((s) => { let n = 0; for (const el of Object.values(s.elements)) if (el.type === "frame") n++; return n; });
   useProposals();
   const isEmpty = useCanvas((s) => Object.keys(s.elements).length === 0);
   const count = useCanvas((s) => Object.keys(s.elements).length);
@@ -119,7 +121,13 @@ export function Canvas() {
       {!presenting && <ZoomCard />}
       <LensLegend />
       {presenting ? (
-        <button type="button" className="present-exit" data-present-exit onClick={() => store.getState().setPresenting(false)} onPointerDown={(e) => e.stopPropagation()}>Presenting · press Esc or click to exit</button>
+        <div className="present-bar" data-present-exit onPointerDown={(e) => e.stopPropagation()}>
+          {frameCount > 0 && <button type="button" onClick={() => store.getState().presentStep(-1)} aria-label="Previous frame">‹</button>}
+          <button type="button" className="present-exit" onClick={() => store.getState().setPresenting(false)}>
+            {frameCount > 0 ? (presentIndex === null ? `Whole board · ${frameCount} frame${frameCount === 1 ? "" : "s"} · → to step through` : `Frame ${presentIndex + 1} of ${frameCount}`) : "Presenting"} · Esc to exit
+          </button>
+          {frameCount > 0 && <button type="button" onClick={() => store.getState().presentStep(1)} aria-label="Next frame">›</button>}
+        </div>
       ) : (
         <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
       )}

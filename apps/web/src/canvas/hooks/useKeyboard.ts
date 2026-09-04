@@ -113,8 +113,14 @@ export function useKeyboard(enabled = true) {
       if (mod) return;
 
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); s.deleteElements(s.selection); return; }
+      if (s.presenting) {
+        if (e.key === "Escape") { s.setPresenting(false); return; }
+        if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " " || e.key === "PageDown" || e.key === "Enter") { e.preventDefault(); s.presentStep(1); return; }
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp" || e.key === "Backspace") { e.preventDefault(); s.presentStep(-1); return; }
+        if (e.key === "Home") { e.preventDefault(); s.zoomToFit(); return; }
+        return;
+      }
       if (e.key === "Escape") {
-        if (s.presenting) { s.setPresenting(false); return; }
         if (s.selection.length) s.clearSelection();
         else s.setTool("select");
         s.setPendingConnector(null);

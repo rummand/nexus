@@ -5,7 +5,8 @@ import { nanoid } from "nanoid";
 import { Box, Database, Frame, Plus, Search, Shapes, Spline, StickyNote, Type } from "lucide-react";
 import { cardColorForKind, elementName, elementTypeLabel, type CanvasElement } from "./document";
 import { useCanvas, useCanvasStore } from "./store";
-import { isEntityId, type QueryResponse } from "@/lib/graph-types";
+import { isEntityId, type GraphSnapshot, type QueryResponse } from "@/lib/graph-types";
+import { completeQuery } from "@/lib/query-complete";
 
 function iconFor(el: CanvasElement) {
   switch (el.type) {
@@ -43,6 +44,15 @@ export function CommandBar() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [graph, setGraph] = useState<QueryResponse | null>(null);
+  const [vocab, setVocab] = useState<GraphSnapshot | null>(null);
+  // vocabulary for autocomplete, loaded the first time the bar opens
+  useEffect(() => {
+    if (!open || vocab) return;
+    let cancelled = false;
+    fetch(`/api/workspaces/${workspaceId}/graph`).then((r) => (r.ok ? (r.json() as Promise<GraphSnapshot>) : null)).then((v) => { if (!cancelled && v) setVocab(v); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [open, vocab, workspaceId]);
+  const completions = useMemo(() => (query.trim() ? completeQuery(query, vocab) : []), [query, vocab]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -157,6 +167,11 @@ export function CommandBar() {
                 {EXAMPLES.map((ex) => <button key={ex} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setQuery(ex); inputRef.current?.focus(); }}>{ex}</button>)}
               </div>
             </>
+          )}
+          {completions.length > 0 && (
+            <div className="query-shortcuts" data-completions>
+              {completions.map((c) => <button key={c.query} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setQuery(c.query); inputRef.current?.focus(); }}>{c.label}</button>)}
+            </div>
           )}
           {boardMatches.length > 0 && (
             <>

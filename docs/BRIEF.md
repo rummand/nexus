@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 26 — query lens, home entity search)
+Last updated: 2026-09-04 (rev 27 — frames as slides, query autocomplete)
 
 ---
 
@@ -211,7 +211,10 @@ nexus/
   kind / title / attribute chips / description, notes, text blocks, shapes, connectors with
   arrowheads and label pills; greedy text wrapping on an approximate glyph width). The topbar
   *Export* menu offers Download SVG, Copy SVG and *Present* — presentation mode hides all chrome,
-  fits the board to the full viewport and leaves on Esc or a click on the pill.
+  fits the board to the full viewport and leaves on Esc or a click on the pill. **Frames are
+  slides**: → / space / PageDown step through the board's frames in reading order (rows top to
+  bottom, then left to right), ← / PageUp step back, Home shows the whole board; the pill reads
+  "Frame 2 of 6".
 - **Templates.** `src/canvas/templates.ts` builds starter documents (capability map,
   application landscape, integration flows, roadmap) used by the home starters and the seed.
 - **Performance.** The canvas is client-only (dynamic import, no SSR of 1 000 DOM nodes).
@@ -422,6 +425,12 @@ Authentication is **not** part of the first brief: the app runs as a seeded demo
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
 
+**Autocomplete (rev 27).** The command bar completes the last token from the workspace vocabulary
+(`src/lib/query-complete.ts`, pure and unit-tested): a bare word offers clause keywords and
+attribute keys; `kind:` offers kinds, `rel:` relation types, `related:`/`from:`/`to:` entity
+names, `has:`/`missing:` attribute keys, and `<attribute>:` the values in use, most common first.
+Values with spaces are quoted automatically.
+
 **Rev 19 clauses.** `has:<key>` (attribute present with a value), `missing:<key>` (also
 `without:` / `no:`; attribute absent or empty) and `on:<board>` (also `board:`; the entity is
 placed on a board whose name contains the text). Together with the attribute proposals they make
@@ -587,7 +596,9 @@ contains (`src/canvas/lens.ts`).
   Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
 
 ### Export & present (v0.2)
-- Export menu in the topbar: Download SVG, Copy SVG, Present (chrome-free, Esc to leave).
+- Export menu in the topbar: Download SVG, Copy SVG, Present (chrome-free, frames as slides with
+  arrow keys, Esc to leave).
+- Command-bar autocomplete for the query language from the live vocabulary.
 
 ### Alignment (v0.2)
 - Align and distribute buttons in the selection bar for multi-selections; one undo step.
@@ -688,6 +699,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 27: frames as slides, query autocomplete.** Presentation mode steps through
+  frames with the keyboard (‹ › buttons and a "Frame n of m" pill); the command bar completes
+  query tokens from kinds, relation types, entity names, attribute keys and values.
 
 - **2026-09-04 — Rev 26: query lens, home entity search.** Fourth lens type turns a graph query
   into a living view (re-run on apply, place missing results); the home search also returns

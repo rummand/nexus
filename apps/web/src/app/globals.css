@@ -1158,8 +1158,11 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .export-menu button:hover { background: #eef6ff; color: var(--blue); }
 .miro-studio.presenting { grid-template-rows: 1fr; }
 .miro-studio.presenting .canvas-viewport { border-radius: 0; }
-.present-exit { background: rgba(23, 32, 51, 0.82); border: 0; border-radius: 999px; bottom: 16px; color: #fff; font-size: 12px; font-weight: 800; left: 50%; padding: 8px 14px; position: absolute; transform: translateX(-50%); z-index: 6; }
-.present-exit:hover { background: rgba(23, 32, 51, 0.95); }
+.miro-studio.presenting .board-frame-titlebar button, .miro-studio.presenting .board-frame-titlebar span { display: none; }
+.present-bar { align-items: center; bottom: 16px; display: flex; gap: 6px; left: 50%; position: absolute; transform: translateX(-50%); z-index: 6; }
+.present-bar > button { background: rgba(23, 32, 51, 0.82); border: 0; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 800; min-height: 32px; padding: 8px 14px; }
+.present-bar > button[aria-label] { font-size: 18px; line-height: 1; min-width: 32px; padding: 4px 0 6px; }
+.present-bar > button:hover { background: rgba(23, 32, 51, 0.95); }
 
 /* ---- entity drawer ------------------------------------------------------------------------ */
 .entity-open { background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0; text-align: left; }

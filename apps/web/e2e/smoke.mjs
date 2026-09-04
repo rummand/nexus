@@ -93,8 +93,9 @@ try {
   // select + inspector + delete + undo
   await page.keyboard.press("Escape");
   const nb = await note.boundingBox();
-  await page.mouse.click(nb.x + nb.width / 2, nb.y + nb.height / 2);
-  assert.ok(await page.locator(".inspector-panel h2", { hasText: TEXT }).isVisible(), "inspector shows the selected note");
+  // click near the corner: the centre of a small note can sit under a connector from an earlier run
+  await page.mouse.click(nb.x + 8, nb.y + 8);
+  await page.locator(".inspector-panel h2", { hasText: TEXT }).waitFor({ timeout: 4000 }).catch(() => assert.fail("inspector shows the selected note"));
   const beforeDelete = await count();
   await page.keyboard.press("Delete");
   assert.equal(await count(), beforeDelete - 1, "delete removes the note");
@@ -118,7 +119,7 @@ try {
   await page.keyboard.press("Escape");
   await page.keyboard.press("l");
   const sb = await note.boundingBox();
-  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+  await page.mouse.move(sb.x + 10, sb.y + sb.height - 10); // inside the note, away from connector labels of earlier runs
   await page.mouse.down();
   await page.mouse.move(1175, 470, { steps: 10 });
   await page.mouse.up();
@@ -164,7 +165,7 @@ try {
     const before = await count();
     await placeable.click();
     assert.equal(await count(), before + 1, "placing an entity adds a card");
-    assert.ok(await page.locator(".graph-block").isVisible(), "inspector shows graph facts for the placed card");
+    assert.ok(await page.locator(".graph-block:not(.proposal-block)").isVisible(), "inspector shows graph facts for the placed card");
   }
 
   // viewpoint tab: show relations between cards on the board (idempotent), kind lens toggles

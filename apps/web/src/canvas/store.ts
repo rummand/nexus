@@ -59,6 +59,8 @@ export interface CanvasState {
   viewpoints: SavedViewpoint[];
   /** Presentation mode: chrome hidden, canvas only (Esc leaves). */
   presenting: boolean;
+  /** Index of the frame currently shown as a "slide" while presenting (null = whole board). */
+  presentIndex: number | null;
   /** Open agent proposals for this workspace (fetched after every save) and a per-entity index. */
   proposals: Proposal[];
   proposalsByEntity: Record<string, Proposal[]>;
@@ -97,6 +99,8 @@ export interface CanvasState {
   setContextMenu(m: CanvasState["contextMenu"]): void;
   setLens(lens: Lens): void;
   setPresenting(v: boolean): void;
+  /** Move to the next / previous frame slide while presenting; wraps around. */
+  presentStep(delta: 1 | -1): void;
   setProposals(list: Proposal[]): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
@@ -169,6 +173,12 @@ export function expandSelectionForMove(selection: ElementId[], elements: Element
   const set = new Set(selection);
   for (const id of selection) for (const child of frameChildren(id, elements)) set.add(child);
   return [...set];
+}
+
+/** Frames in reading order (rows top to bottom, then left to right) — the slides of a presentation. */
+export function presentationFrames(elements: Elements): BoxElement[] {
+  const frames = Object.values(elements).filter((el): el is BoxElement => el.type === "frame");
+  return frames.sort((a, b) => (Math.abs(a.y - b.y) > 80 ? a.y - b.y : a.x - b.x));
 }
 
 /**
@@ -260,6 +270,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       lens: NO_LENS,
       lensResult: null,
       presenting: false,
+      presentIndex: null,
       proposals: [],
       proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
@@ -308,8 +319,16 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         for (const p of proposals) for (const id of p.entityIds) (proposalsByEntity[id] ??= []).push(p);
         set({ proposals, proposalsByEntity });
       },
+      presentStep: (delta) => {
+        const s = get();
+        const frames = presentationFrames(s.elements);
+        if (frames.length === 0) return;
+        const next = s.presentIndex === null ? (delta > 0 ? 0 : frames.length - 1) : (s.presentIndex + delta + frames.length) % frames.length;
+        const f = frames[next]!;
+        set({ presentIndex: next, camera: cameraToFitInsets({ x: f.x, y: f.y - 40, w: f.w, h: f.h + 40 }, s.viewport.w, s.viewport.h, { top: 40, bottom: 40, left: 40, right: 40 }, 2) });
+      },
       setPresenting: (presenting) => {
-        set({ presenting, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
+        set({ presenting, presentIndex: null, selection: presenting ? [] : get().selection, editingId: null, contextMenu: null });
         // re-fit with the chrome gone (or back)
         requestAnimationFrame(() => get().zoomToFit());
       },
