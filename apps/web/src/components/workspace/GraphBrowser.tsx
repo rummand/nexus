@@ -6,6 +6,7 @@ import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide
 import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
 import { ProposalsPanel } from "./ProposalsPanel";
+import { EntityTable } from "./EntityTable";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, renameRelationKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
 
@@ -27,6 +28,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
   const [importOpen, setImportOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "table">("list");
   const [draft, setDraft] = useState({ kind: "", name: "", description: "" });
   const [pending, start] = useTransition();
 
@@ -82,12 +84,19 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
             <h2>{kindFilter ? `${kindFilter} entities` : "All entities"}</h2>
             <p>{filtered.length} shown · place any entity on any board from that board&apos;s Graph inventory.</p>
           </div>
-          <label className="studio-home-search" style={{ width: 320 }}>
-            <Search size={16} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search entities" />
-          </label>
+          <div className="entity-view-tools">
+            <div className="panel-tabs entity-view-tabs" role="tablist" aria-label="Entity view">
+              <button type="button" role="tab" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>List</button>
+              <button type="button" role="tab" className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Table</button>
+            </div>
+            <label className="studio-home-search" style={{ width: 320 }}>
+              <Search size={16} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search entities" />
+            </label>
+          </div>
         </div>
-        <div className="studio-board-list">
+        {view === "table" && <EntityTable entities={filtered} snapshot={snapshot} kindFilter={kindFilter} />}
+        {view === "list" && <div className="studio-board-list">
           {filtered.map((e) => (
             <article key={e.id} className="studio-board-row entity-row">
               {editing === e.id ? (
@@ -129,7 +138,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
             </article>
           ))}
           {filtered.length === 0 && <div className="studio-empty-boards"><Database size={26} /><strong>No entities</strong><span>{snapshot.entities.length ? "Nothing matches the filter." : "Cards you create on boards become entities here automatically."}</span></div>}
-        </div>
+        </div>}
       </section>
 
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} workspaceId={workspaceId} />

@@ -201,6 +201,10 @@ try {
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   assert.ok((await page.locator(".kind-card").count()) > 0, "graph page shows kinds");
   assert.ok(await page.locator("text=Agent proposals").isVisible(), "graph page shows agent proposals");
+  await page.click(".entity-view-tabs button:has-text('Table')");
+  await page.waitForSelector("[data-entity-table]");
+  assert.ok((await page.locator("[data-entity-table] th").count()) >= 4, "table view renders attribute columns");
+  await page.click(".entity-view-tabs button:has-text('List')");
   await page.click("text=Import data");
   await page.click("text=Use sample");
   await page.click('.modal-card button:text-is("Import")');

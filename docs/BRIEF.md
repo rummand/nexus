@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 14 — relation lens, group by attribute)
+Last updated: 2026-09-04 (rev 15 — entity table)
 
 ---
 
@@ -331,6 +331,15 @@ kind, with usage counts,** is the emergent attribute schema shown on each kind c
 Knowledge graph page — nobody defines a schema up front; it appears from the data. CSV import
 turns any extra header columns into attributes; JSON entities may carry `attributes`.
 
+**Table view (rev 15).** The Knowledge graph page's entity section has a *List | Table* toggle.
+The table has one column per attribute key in use (ordered by the filtered kind's schema, or by
+frequency across all kinds), sortable headers, inline cell editing (click, type, Enter; empty
+removes the attribute), an "Add column" box that simply introduces a new key, and "Copy as CSV"
+in the import format so a round-trip through a spreadsheet works. Cells save through
+`setEntityAttributeAction`; the schema chips on the kind cards update on the next render because
+the schema *is* the data.
+
+
 ### 5.9 Board version history (v0.2)
 
 `board_versions` stores full-document checkpoints per board: **auto** (on save, when the
@@ -465,6 +474,10 @@ contains (`src/canvas/lens.ts`).
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
 
+### Entity table (v0.2)
+- Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
+  schema, sort, inline editing, add column, copy as CSV.
+
 ### Attribute proposals (v0.2)
 - Rename attribute keys that differ by case / separators, normalise value spellings, fill in
   attributes that (almost) every entity of a kind carries — with accept / dismiss memory like
@@ -574,6 +587,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 15: entity table.** List | Table toggle on the Knowledge graph page: one
+  column per attribute key in use, sortable, cells editable in place (empty removes), "Add
+  column" introduces a key, "Copy as CSV" exports in the import format. New server action to set
+  or remove a single attribute.
 
 - **2026-09-04 — Rev 14: relation lens, group by attribute.** Third lens colours connectors by
   relation type with a toggleable legend; "Group by attribute" lays cards out in frames per

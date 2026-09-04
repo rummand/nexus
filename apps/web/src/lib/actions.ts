@@ -9,7 +9,7 @@ import * as s from "@/db/schema";
 import { currentUser } from "./session";
 import { emptyDocument, serializeDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
-import { buildBoardFromGraph, graphForWorkspace, importGraph, parseImportText } from "./graph";
+import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, parseImportText } from "./graph";
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 
@@ -247,6 +247,22 @@ export async function updateEntity(entityId: string, patch: { kind?: string; nam
   const db = await getDb();
   const [row] = await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId)).returning();
   if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+}
+
+/** Set (or, with an empty value, remove) one attribute on one entity — the table view's cell editor. */
+export async function setEntityAttributeAction(entityId: string, key: string, value: string) {
+  const db = await getDb();
+  const k = key.trim();
+  if (!k) return { error: "An attribute key is required" };
+  const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
+  if (!row) return { error: "Entity not found" };
+  if (value.trim()) await setEntityAttribute(db, entityId, k, value.trim());
+  else {
+    const { [k]: _removed, ...rest } = parseAttributes(row.attributes);
+    void _removed;
+    await db.update(s.entities).set({ attributes: JSON.stringify(rest), updatedAt: now() }).where(eq(s.entities.id, entityId));
+  }
+  revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
 }
 
 export async function deleteEntity(entityId: string) {
