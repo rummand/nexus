@@ -19,6 +19,8 @@ import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { ContextMenu } from "./ContextMenu";
+import { GuidesOverlay } from "./GuidesOverlay";
 
 /** Minor grid spacing adapts to zoom so lines never get denser than ~16 screen px. */
 function gridStep(zoom: number) {
@@ -61,14 +63,6 @@ export function Canvas() {
     return () => ro.disconnect();
   }, [store]);
 
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const prevent = (e: Event) => e.preventDefault();
-    el.addEventListener("contextmenu", prevent);
-    return () => el.removeEventListener("contextmenu", prevent);
-  }, []);
-
   const minor = gridStep(camera.zoom);
   const major = minor * 4;
   const pos = `${camera.x}px ${camera.y}px`;
@@ -92,6 +86,7 @@ export function Canvas() {
       onPointerUp={interaction.onPointerUp}
       onPointerCancel={interaction.onPointerUp}
       onDoubleClick={interaction.onDoubleClick}
+      onContextMenu={interaction.onContextMenu}
     >
       {/* world layer */}
       <div className="absolute left-0 top-0" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`, transformOrigin: "0 0", width: 0, height: 0, willChange: "transform" }}>
@@ -108,7 +103,9 @@ export function Canvas() {
       )}
 
       {/* screen-space overlays */}
+      <GuidesOverlay />
       <SelectionOverlay onBeginResize={interaction.beginResize} />
+      <ContextMenu />
       <SelectionToolbar />
       <CommandBar />
       <Toolbar />

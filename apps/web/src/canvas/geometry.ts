@@ -246,3 +246,104 @@ export function handleCursor(handle: HandleId): string {
 export function snap(v: number, step: number) {
   return Math.round(v / step) * step;
 }
+
+// ---- connector paths -------------------------------------------------------
+
+export interface ConnectorPath extends ConnectorGeometry {
+  /** SVG path data in world coordinates. */
+  d: string;
+  /** Unit direction of the path as it arrives at `to` / leaves `from` (for arrowheads). */
+  endDir: Point;
+  startDir: Point;
+}
+
+/** Outward unit normal of the box side that contains `p` (p is on the box border). */
+export function sideNormal(b: Box, p: Point): Point {
+  const dl = Math.abs(p.x - b.x), dr = Math.abs(p.x - (b.x + b.w)), dt = Math.abs(p.y - b.y), db = Math.abs(p.y - (b.y + b.h));
+  const m = Math.min(dl, dr, dt, db);
+  if (m === dl) return { x: -1, y: 0 };
+  if (m === dr) return { x: 1, y: 0 };
+  if (m === dt) return { x: 0, y: -1 };
+  return { x: 0, y: 1 };
+}
+
+function unit(dx: number, dy: number): Point {
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: dx / d, y: dy / d };
+}
+
+function cubicAt(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+    y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y,
+  };
+}
+
+/** Full path for a connector according to its route. */
+export function connectorPath(c: ConnectorElement, elements: Record<string, CanvasElement>): ConnectorPath | null {
+  const g = connectorGeometry(c, elements);
+  if (!g) return null;
+  const route = c.route ?? "straight";
+  const fromBox = "elementId" in c.from ? (elements[c.from.elementId] as BoxElement | undefined) : undefined;
+  const toBox = "elementId" in c.to ? (elements[c.to.elementId] as BoxElement | undefined) : undefined;
+  const straightDir = unit(g.to.x - g.from.x, g.to.y - g.from.y);
+
+  if (route === "curved") {
+    const n0 = fromBox ? sideNormal(fromBox, g.from) : straightDir;
+    const n1 = toBox ? sideNormal(toBox, g.to) : { x: -straightDir.x, y: -straightDir.y };
+    const dist = Math.hypot(g.to.x - g.from.x, g.to.y - g.from.y);
+    const k = Math.max(40, Math.min(220, dist / 2.5));
+    const c1 = { x: g.from.x + n0.x * k, y: g.from.y + n0.y * k };
+    const c2 = { x: g.to.x + n1.x * k, y: g.to.y + n1.y * k };
+    const mid = cubicAt(g.from, c1, c2, g.to, 0.5);
+    const nearEnd = cubicAt(g.from, c1, c2, g.to, 0.97);
+    const nearStart = cubicAt(g.from, c1, c2, g.to, 0.03);
+    return { ...g, mid, d: `M ${g.from.x} ${g.from.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${g.to.x} ${g.to.y}`, endDir: unit(g.to.x - nearEnd.x, g.to.y - nearEnd.y), startDir: unit(nearStart.x - g.from.x, nearStart.y - g.from.y) };
+  }
+
+  if (route === "elbow") {
+    const dx = g.to.x - g.from.x;
+    const dy = g.to.y - g.from.y;
+    const horizontalFirst = Math.abs(dx) >= Math.abs(dy);
+    const p1 = horizontalFirst ? { x: g.from.x + dx / 2, y: g.from.y } : { x: g.from.x, y: g.from.y + dy / 2 };
+    const p2 = horizontalFirst ? { x: g.from.x + dx / 2, y: g.to.y } : { x: g.to.x, y: g.from.y + dy / 2 };
+    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    return { ...g, mid, d: `M ${g.from.x} ${g.from.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${g.to.x} ${g.to.y}`, endDir: unit(g.to.x - p2.x, g.to.y - p2.y), startDir: unit(p1.x - g.from.x, p1.y - g.from.y) };
+  }
+
+  return { ...g, d: `M ${g.from.x} ${g.from.y} L ${g.to.x} ${g.to.y}`, endDir: straightDir, startDir: straightDir };
+}
+
+// ---- alignment snapping ----------------------------------------------------
+
+export interface SnapResult {
+  dx: number;
+  dy: number;
+  guidesX: number[];
+  guidesY: number[];
+}
+
+/**
+ * Snap a moving box to the edges / centres of other boxes (Miro-style smart guides).
+ * Returns the correction to apply to the moving box and the guide lines to draw (world coords).
+ */
+export function snapToBoxes(moving: Box, others: Box[], threshold: number): SnapResult {
+  const xs = [moving.x, moving.x + moving.w / 2, moving.x + moving.w];
+  const ys = [moving.y, moving.y + moving.h / 2, moving.y + moving.h];
+  let bestX: { delta: number; guide: number } | null = null;
+  let bestY: { delta: number; guide: number } | null = null;
+  for (const o of others) {
+    const ox = [o.x, o.x + o.w / 2, o.x + o.w];
+    const oy = [o.y, o.y + o.h / 2, o.y + o.h];
+    for (const a of xs) for (const b of ox) {
+      const delta = b - a;
+      if (Math.abs(delta) <= threshold && (!bestX || Math.abs(delta) < Math.abs(bestX.delta))) bestX = { delta, guide: b };
+    }
+    for (const a of ys) for (const b of oy) {
+      const delta = b - a;
+      if (Math.abs(delta) <= threshold && (!bestY || Math.abs(delta) < Math.abs(bestY.delta))) bestY = { delta, guide: b };
+    }
+  }
+  return { dx: bestX?.delta ?? 0, dy: bestY?.delta ?? 0, guidesX: bestX ? [bestX.guide] : [], guidesY: bestY ? [bestY.guide] : [] };
+}

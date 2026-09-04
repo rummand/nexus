@@ -47,6 +47,11 @@ export interface CanvasState {
   hiddenKinds: string[];
   /** Which tab the left graph panel shows. */
   graphTab: "inventory" | "viewpoint";
+  /** Smart alignment guides while dragging (world coords). */
+  guides: { x: number[]; y: number[] };
+  snapEnabled: boolean;
+  /** Context menu anchor (screen coords) and the element under it, if any. */
+  contextMenu: { x: number; y: number; targetId: string | null; world: Point } | null;
   /** Frame id the inspector should scroll to / highlight after "Focus". */
   isDragging: boolean;
 
@@ -74,6 +79,9 @@ export interface CanvasState {
   toggleKind(kind: string): void;
   clearHiddenKinds(): void;
   setGraphTab(tab: "inventory" | "viewpoint"): void;
+  setGuides(g: { x: number[]; y: number[] }): void;
+  setSnapEnabled(v: boolean): void;
+  setContextMenu(m: CanvasState["contextMenu"]): void;
   /** Select an element and bring it into view. */
   focusElement(id: ElementId): void;
 
@@ -198,6 +206,9 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       isDragging: false,
       hiddenKinds: [],
       graphTab: "inventory",
+      guides: { x: [], y: [] },
+      snapEnabled: true,
+      contextMenu: null,
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -234,6 +245,9 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       toggleKind: (kind) => set((s) => ({ hiddenKinds: s.hiddenKinds.includes(kind) ? s.hiddenKinds.filter((k) => k !== kind) : [...s.hiddenKinds, kind] })),
       clearHiddenKinds: () => set({ hiddenKinds: [] }),
       setGraphTab: (graphTab) => set((s) => ({ graphTab, panels: { ...s.panels, inventory: true } })),
+      setGuides: (guides) => set((s) => (s.guides.x.length === 0 && s.guides.y.length === 0 && guides.x.length === 0 && guides.y.length === 0 ? s : { guides })),
+      setSnapEnabled: (snapEnabled) => set({ snapEnabled }),
+      setContextMenu: (contextMenu) => set({ contextMenu }),
       focusElement: (id) => {
         const s = get();
         if (!s.elements[id]) return;

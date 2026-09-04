@@ -90,6 +90,8 @@ export interface ConnectorElement {
   label: string;
   stroke: string;
   style: "solid" | "dashed";
+  /** Path routing; straight when omitted. Relation connectors default to curved. */
+  route?: "straight" | "curved" | "elbow";
   arrowEnd: boolean;
   arrowStart: boolean;
   meta?: Meta;

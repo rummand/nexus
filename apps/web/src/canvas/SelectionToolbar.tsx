@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignEndHorizontal, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, Diamond, Lock, Network, SendToBack, Square, Trash2, Unlock } from "lucide-react";
+import { AlignEndHorizontal, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, CornerDownRight, Diamond, Lock, Minus, Network, SendToBack, Spline, Square, Trash2, Unlock } from "lucide-react";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { useState } from "react";
 import type { CanvasElement, ConnectorElement, ElementId } from "./document";
@@ -39,7 +39,7 @@ export function SelectionToolbar() {
     store.getState().updateElements(patch, { history: true });
   };
 
-  const width = 560;
+  const width = only === "connector" ? 640 : 560;
   const left = clamp(sb.x + sb.w / 2 - width / 2, 8, Math.max(8, viewport.w - width - 8));
   const above = sb.y - 64;
   const top = above > 80 ? above : Math.min(sb.y + sb.h + 14, viewport.h - 70);
@@ -104,6 +104,12 @@ function ConnectorControls({ items, patchAll }: { items: ConnectorElement[]; pat
         <input value={label} onChange={(e) => setLabel(e.target.value)} onBlur={() => patchAll(() => ({ label }))} onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} placeholder="Relation label" />
       </div>
       <Swatches colors={STROKE_COLORS} current={first.stroke} onPick={(c) => patchAll(() => ({ stroke: c }))} />
+      <span className="shape-inspector-divider" />
+      <div className="shape-inspector-group" title="Route">
+        <button type="button" className={(first.route ?? "straight") === "straight" ? "active" : ""} onClick={() => patchAll(() => ({ route: "straight" }))}><Minus size={12} /></button>
+        <button type="button" className={first.route === "curved" ? "active" : ""} onClick={() => patchAll(() => ({ route: "curved" }))}><Spline size={12} /></button>
+        <button type="button" className={first.route === "elbow" ? "active" : ""} onClick={() => patchAll(() => ({ route: "elbow" }))}><CornerDownRight size={12} /></button>
+      </div>
       <span className="shape-inspector-divider" />
       <div className="shape-inspector-group">
         <button type="button" className={first.style === "dashed" ? "active" : ""} onClick={() => patchAll((el) => (el.type === "connector" ? { style: el.style === "dashed" ? "solid" : "dashed" } : null))}><AlignEndHorizontal size={12} /> Dashed</button>

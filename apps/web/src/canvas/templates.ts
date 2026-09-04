@@ -64,7 +64,7 @@ export function textBlock(x: number, y: number, w: number, h: number, title: str
 }
 export function connect(from: string, to: string, label = "", id = nanoid(10), style: "solid" | "dashed" = "solid"): CanvasElement {
   // graph-backed when both ends are cards (the sync ignores it otherwise)
-  return { id, type: "connector", from: { elementId: from }, to: { elementId: to }, label, stroke: "#475569", style, arrowEnd: true, arrowStart: false, z: nextZ(), meta: { relationId: `rel_${nanoid(12)}` } };
+  return { id, type: "connector", from: { elementId: from }, to: { elementId: to }, label, stroke: "#475569", style, route: "curved", arrowEnd: true, arrowStart: false, z: nextZ(), meta: { relationId: `rel_${nanoid(12)}` } };
 }
 
 export function buildTemplate(id: TemplateId): CanvasDocument {

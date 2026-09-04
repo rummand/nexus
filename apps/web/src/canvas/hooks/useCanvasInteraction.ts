@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent,
 import { nanoid } from "nanoid";
 import type { Box, CanvasElement, ElementId, Point } from "../document";
 import { isBoxElement, NOTE_COLORS, TEXT_COLORS, cardColorForKind } from "../document";
-import { boxesIntersect, boxContainsBox, elementBounds, type HandleId, normalizeBox, resizeBox, screenToWorld } from "../geometry";
+import { boxesIntersect, boxContainsBox, elementBounds, type HandleId, normalizeBox, resizeBox, screenToWorld, snapToBoxes, unionBoxes } from "../geometry";
 import { expandSelectionForMove, useCanvasStore, type CanvasState, type Tool } from "../store";
 import { ENTITY_ID_PREFIX, isEntityId, RELATION_ID_PREFIX } from "@/lib/graph-types";
 
@@ -51,6 +51,7 @@ export interface CanvasInteraction {
   onPointerMove(e: ReactPointerEvent<HTMLDivElement>): void;
   onPointerUp(e: ReactPointerEvent<HTMLDivElement>): void;
   onDoubleClick(e: ReactPointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>): void;
+  onContextMenu(e: React.MouseEvent<HTMLDivElement>): void;
   /** Called by the selection overlay's resize handles. */
   beginResize(id: ElementId, handle: HandleId, e: ReactPointerEvent): void;
   cursor: string;
@@ -108,7 +109,8 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const s = store.getState();
-      if (e.button === 2) return; // context menu: ignore for now
+      if (s.contextMenu) s.setContextMenu(null);
+      if (e.button === 2) return; // handled by onContextMenu
       const screen = toScreen(e);
       const world = screenToWorld(screen, s.camera);
       downScreen.current = screen;
@@ -244,8 +246,21 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
             ses.moved = true;
           }
           s.setDragging(true);
-          const dx = world.x - ses.start.x;
-          const dy = world.y - ses.start.y;
+          let dx = world.x - ses.start.x;
+          let dy = world.y - ses.start.y;
+          // smart guides: snap the moving group's bounds to other objects (Alt disables)
+          if (s.snapEnabled && !e.altKey) {
+            const movingIds = new Set(ses.ids);
+            const movingBoxes = ses.ids.map((id) => { const el = s.elements[id]; const o = ses.origins[id]; return el && isBoxElement(el) && o ? { x: o.x + dx, y: o.y + dy, w: el.w, h: el.h } : null; }).filter((b): b is { x: number; y: number; w: number; h: number } => !!b);
+            const group = unionBoxes(movingBoxes);
+            if (group) {
+              const others = Object.values(s.elements).filter(isBoxElement).filter((el) => !movingIds.has(el.id) && el.type !== "frame").map((el) => ({ x: el.x, y: el.y, w: el.w, h: el.h }));
+              const snap = snapToBoxes(group, others, 6 / s.camera.zoom);
+              dx += snap.dx;
+              dy += snap.dy;
+              s.setGuides({ x: snap.guidesX, y: snap.guidesY });
+            }
+          } else s.setGuides({ x: [], y: [] });
           const next: Elements = { ...s.elements };
           for (const id of ses.ids) {
             const el = next[id];
@@ -294,6 +309,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
       const ses = session.current;
       session.current = null;
       s.setDragging(false);
+      s.setGuides({ x: [], y: [] });
       try {
         rootRef.current?.releasePointerCapture(e.pointerId);
       } catch {
@@ -385,6 +401,18 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
     [store, toWorld],
   );
 
+  const onContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const s = store.getState();
+      const hitId = elementIdFromTarget(e.target);
+      const screen = toScreen(e);
+      if (hitId && s.elements[hitId] && !s.selection.includes(hitId)) s.select([hitId]);
+      s.setContextMenu({ x: screen.x, y: screen.y, targetId: hitId, world: screenToWorld(screen, s.camera) });
+    },
+    [store, toScreen],
+  );
+
   const beginResize = useCallback(
     (id: ElementId, handle: HandleId, e: ReactPointerEvent) => {
       const s = store.getState();
@@ -416,5 +444,5 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
   const cursor = tool === "hand" ? "grab" : tool === "select" ? "default" : "crosshair";
   void cursor;
 
-  return { onPointerDown, onPointerMove, onPointerUp, onDoubleClick, beginResize, cursor };
+  return { onPointerDown, onPointerMove, onPointerUp, onDoubleClick, onContextMenu, beginResize, cursor };
 }

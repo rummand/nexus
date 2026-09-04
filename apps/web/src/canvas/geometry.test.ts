@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxEdgePoint, cameraToFit, cameraToFitInsets, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
+import { boxEdgePoint, cameraToFit, cameraToFitInsets, connectorPath, snapToBoxes, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
 import type { CanvasElement } from "./document";
 
 describe("camera", () => {
@@ -83,5 +83,42 @@ describe("connectors", () => {
   it("returns null when an end is missing", () => {
     const c: CanvasElement = { id: "c", type: "connector", from: { elementId: "missing" }, to: { point: { x: 0, y: 0 } }, label: "", stroke: "#000", style: "solid", arrowEnd: true, arrowStart: false, z: 3 };
     expect(connectorGeometry(c, { c })).toBeNull();
+  });
+});
+
+describe("connector routes", () => {
+  const a: CanvasElement = { id: "a", type: "shape", shape: "rect", x: 0, y: 0, w: 100, h: 100, text: "", fill: "#fff", stroke: "#000", z: 1 };
+  const b: CanvasElement = { id: "b", type: "shape", shape: "rect", x: 300, y: 200, w: 100, h: 100, text: "", fill: "#fff", stroke: "#000", z: 2 };
+  const base = { id: "c", type: "connector" as const, from: { elementId: "a" }, to: { elementId: "b" }, label: "", stroke: "#000", style: "solid" as const, arrowEnd: true, arrowStart: false, z: 3 };
+
+  it("elbow routes through two bends and arrives horizontally or vertically", () => {
+    const p = connectorPath({ ...base, route: "elbow" }, { a, b, c: base })!;
+    expect(p.d.split("L")).toHaveLength(4);
+    expect(Math.abs(p.endDir.x) === 1 || Math.abs(p.endDir.y) === 1).toBe(true);
+  });
+
+  it("curved route is a cubic whose midpoint lies between the endpoints", () => {
+    const p = connectorPath({ ...base, route: "curved" }, { a, b, c: base })!;
+    expect(p.d.startsWith("M ") && p.d.includes(" C ")).toBe(true);
+    expect(p.mid.x).toBeGreaterThan(p.from.x);
+    expect(p.mid.x).toBeLessThan(p.to.x);
+  });
+
+  it("straight route keeps the plain line", () => {
+    const p = connectorPath(base, { a, b, c: base })!;
+    expect(p.d).toBe(`M ${p.from.x} ${p.from.y} L ${p.to.x} ${p.to.y}`);
+  });
+});
+
+describe("snapping", () => {
+  it("snaps to the nearest edge or centre within the threshold", () => {
+    const others = [{ x: 100, y: 100, w: 200, h: 100 }];
+    const r = snapToBoxes({ x: 103, y: 260, w: 50, h: 50 }, others, 6);
+    expect(r.dx).toBe(-3); // left edge → 100
+    expect(r.dy).toBe(0); // 260 is not within 6 of 100 / 150 / 200
+    expect(r.guidesX).toEqual([100]);
+    const c = snapToBoxes({ x: 180, y: 0, w: 40, h: 40 }, others, 6);
+    expect(c.dx).toBe(0); // centre 200 already aligned with the other centre
+    expect(c.guidesX).toEqual([200]);
   });
 });

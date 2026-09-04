@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 7 — version history)
+Last updated: 2026-09-04 (rev 8 — canvas polish)
 
 ---
 
@@ -182,10 +182,16 @@ nexus/
   diamond), `frame`, `connector`. Every element carries an `id`, geometry, style and an
   open `meta` bag so graph-backed nodes can later attach entity references.
 - **Connectors** reference element ids (or free points) and are re-routed on every
-  move. Rendered in an SVG layer inside the world transform.
+  move. Three routes: straight, **curved** (cubic Bézier leaving each box along its side
+  normal — the default for relation connectors, as in LeanFlow) and **elbow** (orthogonal,
+  two bends). Labels sit on the path midpoint. Rendered in an SVG layer inside the world
+  transform.
 - **Interaction** is a small state machine driven by pointer events on the root
   (`idle → pan | marquee | move | resize | draw | connect | edit`). Tools: select,
-  hand, sticky, text, rectangle, ellipse, frame, connector.
+  hand, frame, card, note, text, section, shapes, connector. While moving, **smart
+  guides** snap the moving group's edges and centres to other objects (6 screen px;
+  Alt bypasses; magnet toggle in the zoom card). A **right-click menu** offers object
+  actions (expand, focus, duplicate, order, lock, delete) or quick creation on empty canvas.
 - **Navigation.** Trackpad two-finger scroll pans; ctrl/⌘ + wheel or pinch zooms
   around the cursor; space + drag, middle-mouse and the hand tool pan; zoom-to-fit,
   zoom-to-selection, 100 %; keyboard shortcuts; minimap with draggable viewport.
@@ -393,6 +399,11 @@ the schema already separates users, memberships and roles.
 ### Version history (v0.2)
 - Auto / manual / restore checkpoints per board, History panel with restore (§5.9).
 
+### Canvas polish (v0.2)
+- Connector routes (straight / curved / elbow) with route buttons in the property bar;
+  relation connectors default to curved. Smart alignment guides with Alt bypass and toggle.
+  Right-click context menu.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
@@ -405,7 +416,6 @@ the schema already separates users, memberships and roles.
 ### Known gaps (intentional for brief 1)
 - No authentication or authorisation; everyone is the seeded demo user.
 - Single workspace; no multiplayer; no comments; no export; no search.
-- Connectors are straight lines; no orthogonal/curved routing yet.
 - Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
   system stack.
 - SQLite only; Postgres wiring is a config change but not yet exercised.
@@ -458,6 +468,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 8: canvas polish.** Curved and elbow connector routing (relations
+  curved by default), smart alignment guides while dragging, right-click context menu,
+  snapping toggle. Geometry unit tests for routes and snapping.
 
 - **2026-09-04 — Rev 7: version history.** Board checkpoints (auto every 10 minutes of
   editing, manual with label, pre-restore), History panel with one-click restore that

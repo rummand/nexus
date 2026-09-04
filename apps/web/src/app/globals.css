@@ -1028,3 +1028,17 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .history-item button { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 999px; color: #53627a; display: inline-flex; font-size: 10px; font-weight: 900; gap: 4px; min-height: 26px; padding: 0 9px; white-space: nowrap; }
 .history-item button:hover { border-color: #b8d7ff; color: var(--blue); }
 .history-empty { color: #6c7a91; font-size: 12px; padding: 8px; }
+
+/* smart guides + context menu */
+.snap-guide { background: #f0407a; position: absolute; }
+.snap-guide.vertical { bottom: 0; top: 0; width: 1px; }
+.snap-guide.horizontal { height: 1px; left: 0; right: 0; }
+.zoom-card button.active { background: #eef6ff; color: var(--blue); }
+.context-menu { background: rgba(255, 255, 255, 0.98); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); display: grid; gap: 2px; min-width: 220px; padding: 6px; position: absolute; z-index: 40; }
+.context-menu button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: #253247; display: flex; font-size: 13px; font-weight: 700; gap: 10px; min-height: 32px; padding: 0 10px; text-align: left; }
+.context-menu button svg { color: #66809f; }
+.context-menu button:hover { background: #eef6ff; color: var(--blue); }
+.context-menu button:hover svg { color: var(--blue); }
+.context-menu button.danger:hover { background: #fff5f5; color: #c24141; }
+.context-menu button kbd { color: #94a0b3; font-family: var(--mono); font-size: 10px; margin-left: auto; }
+.context-menu hr { border: 0; border-top: 1px solid var(--line); margin: 3px 4px; }

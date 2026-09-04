@@ -52,7 +52,7 @@ export function useGraphActions() {
         const to = cards.get(r.toEntityId);
         if (!from || !to || existingRel.has(r.id) || existingPair.has(`${from.id}>${to.id}`)) continue;
         existingPair.add(`${from.id}>${to.id}`);
-        out.push({ id: nanoid(10), type: "connector", from: { elementId: from.id }, to: { elementId: to.id }, label: r.kind, stroke: "#475569", style: "solid", arrowEnd: true, arrowStart: false, z: 0, meta: { relationId: r.id } });
+        out.push({ id: nanoid(10), type: "connector", from: { elementId: from.id }, to: { elementId: to.id }, label: r.kind, stroke: "#475569", style: "solid", route: "curved", arrowEnd: true, arrowStart: false, z: 0, meta: { relationId: r.id } });
       }
       return out;
     },

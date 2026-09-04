@@ -113,6 +113,13 @@ try {
   await page.mouse.up();
   assert.equal(await count(), beforeDelete + 3, "connector created");
 
+  // context menu on the note
+  const cb = await note.boundingBox();
+  await page.mouse.click(cb.x + cb.width / 2, cb.y + cb.height / 2, { button: "right" });
+  assert.ok(await page.locator(".context-menu").isVisible(), "right-click opens the context menu");
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator(".context-menu").count(), 0, "escape closes the context menu");
+
   // command bar finds the note
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
