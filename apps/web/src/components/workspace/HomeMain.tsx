@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useLocalStorageValue } from "@/lib/useLocalStorageValue";
-import { FileText, Grid3X3, LayoutList, Network, Plus, Search, Sparkles } from "lucide-react";
+import { Database, FileText, Grid3X3, LayoutList, Network, Plus, Search, Sparkles } from "lucide-react";
+import Link from "next/link";
 import type { Space } from "@/db/schema";
 import type { BoardCard } from "@/lib/data";
 import { createBoard } from "@/lib/actions";
@@ -31,6 +32,8 @@ export interface HomeMainProps {
   lastOpened?: BoardCard | null;
   initialQuery?: string;
   headerExtra?: ReactNode;
+  /** Knowledge-graph summary for the home strip. */
+  graph?: { entities: number; kinds: number; relations: number; proposals: number; slug: string };
 }
 
 const VIEW_KEY = "nexus.boardView";
@@ -42,7 +45,7 @@ const STARTERS: Array<{ id: TemplateId; icon: ReactNode; title: string; hint: st
   { id: "integration", icon: <FileText size={32} />, title: "Integration flows", hint: "Systems and the data that moves between them." },
 ];
 
-export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, meta, boards, spaces, mode, spaceId, lastOpened, initialQuery = "", headerExtra }: HomeMainProps) {
+export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, meta, boards, spaces, mode, spaceId, lastOpened, initialQuery = "", headerExtra, graph }: HomeMainProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [storedView, storeView] = useLocalStorageValue(VIEW_KEY, "list");
@@ -115,6 +118,18 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
             ))}
           </section>
         </>
+      )}
+
+      {mode === "home" && graph && !query.trim() && (
+        <Link href={`/w/${graph.slug}/graph`} className="graph-strip" aria-label="Knowledge graph summary">
+          <span className="graph-strip-icon"><Database size={20} /></span>
+          <span className="graph-strip-body">
+            <strong>Knowledge graph</strong>
+            <small>{graph.entities} entities · {graph.kinds} kinds · {graph.relations} relations — every card on every board is part of it</small>
+          </span>
+          {graph.proposals > 0 ? <span className="graph-strip-badge warn">{graph.proposals} agent proposal{graph.proposals === 1 ? "" : "s"}</span> : <span className="graph-strip-badge">consistent</span>}
+          <span className="graph-strip-cta">Open graph →</span>
+        </Link>
       )}
 
       {mode === "home" && !query.trim() && recent.length > 0 && (

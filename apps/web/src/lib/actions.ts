@@ -326,3 +326,10 @@ export async function mergeEntitiesAction(workspaceId: string, survivorId: strin
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
   return { ...result, survivorId, otherIds };
 }
+
+export async function renameRelationKind(workspaceId: string, from: string, to: string) {
+  const db = await getDb();
+  const target = to.trim();
+  await db.update(s.relations_).set({ kind: target, updatedAt: now() }).where(and(eq(s.relations_.workspaceId, workspaceId), eq(s.relations_.kind, from)));
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+}

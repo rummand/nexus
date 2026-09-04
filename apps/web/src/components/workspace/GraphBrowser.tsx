@@ -6,7 +6,7 @@ import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide
 import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
 import { ProposalsPanel } from "./ProposalsPanel";
-import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, updateEntity } from "@/lib/actions";
+import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, renameRelationKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
 
 const SAMPLE = `kind,name,description,lifecycle,owner
@@ -68,7 +68,10 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }:
         {snapshot.relationKinds.length > 0 && (
           <div className="relation-kind-row">
             <span>Relation types</span>
-            {snapshot.relationKinds.map((r) => <i key={r.kind}>{r.kind || "(unlabelled)"} · {r.count}</i>)}
+            {snapshot.relationKinds.map((r) => (
+              <RelationKindChip key={r.kind} kind={r.kind} count={r.count} onRename={(to) => start(() => renameRelationKind(workspaceId, r.kind, to))} />
+            ))}
+            <small className="relation-kind-hint">click a type to rename / merge it</small>
           </div>
         )}
       </section>
@@ -250,4 +253,22 @@ function LayoutDialog({ open, onClose, workspaceId, spaces, kinds }: { open: boo
       </div>
     </Modal>
   );
+}
+
+function RelationKindChip({ kind, count, onRename }: { kind: string; count: number; onRename: (to: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(kind);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className="relation-kind-input"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => { setEditing(false); if (value.trim() !== kind) onRename(value); else setValue(kind); }}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setValue(kind); setEditing(false); } }}
+      />
+    );
+  }
+  return <i role="button" tabIndex={0} title="Rename this relation type (same name merges)" onClick={() => setEditing(true)} onKeyDown={(e) => e.key === "Enter" && setEditing(true)} style={{ cursor: "pointer" }}>{kind || "(unlabelled)"} · {count}</i>;
 }

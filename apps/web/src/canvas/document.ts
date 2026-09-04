@@ -102,9 +102,19 @@ export type BoxElement = StickyElement | TextElement | CardElement | ShapeElemen
 export type CanvasElement = BoxElement | ConnectorElement;
 export type ElementType = CanvasElement["type"];
 
+/** A saved viewpoint: which kinds are dimmed and where the camera sits. */
+export interface SavedViewpoint {
+  id: string;
+  name: string;
+  hiddenKinds: string[];
+  camera: { x: number; y: number; zoom: number } | null;
+  createdAt: string;
+}
+
 export interface CanvasDocument {
   version: typeof DOCUMENT_VERSION;
   elements: Record<ElementId, CanvasElement>;
+  viewpoints?: SavedViewpoint[];
 }
 
 export function emptyDocument(): CanvasDocument {
@@ -172,7 +182,8 @@ export function migrateDocument(doc: Partial<CanvasDocument> & { version?: numbe
     }
     elements[id] = el as CanvasElement;
   }
-  return { version: DOCUMENT_VERSION, elements };
+  const viewpoints = Array.isArray(doc.viewpoints) ? doc.viewpoints.filter((v) => v && typeof v.id === "string" && typeof v.name === "string") : undefined;
+  return viewpoints && viewpoints.length ? { version: DOCUMENT_VERSION, elements, viewpoints } : { version: DOCUMENT_VERSION, elements };
 }
 
 export function serializeDocument(doc: CanvasDocument): string {

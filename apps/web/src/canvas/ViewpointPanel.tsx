@@ -12,6 +12,8 @@ export function ViewpointPanel() {
   const elements = useCanvas((s) => s.elements);
   const selection = useCanvas((s) => s.selection);
   const hiddenKinds = useCanvas((s) => s.hiddenKinds);
+  const saved = useCanvas((s) => s.viewpoints);
+  const [viewName, setViewName] = useState("");
   const { busy, showRelations, expandSelection, arrangeByKind, distributeSelection } = useGraphActions();
   const [depth, setDepth] = useState(1);
   const [direction, setDirection] = useState<"both" | "out" | "in">("both");
@@ -87,6 +89,26 @@ export function ViewpointPanel() {
             </button>
           ))}
           {stats.kinds.length === 0 && <small className="viewpoint-empty">No cards yet. Place entities from the Inventory tab or press C.</small>}
+        </div>
+      </div>
+
+      <div className="viewpoint-group">
+        <span>Saved views</span>
+        <div className="viewpoint-row" style={{ gap: 6 }}>
+          <input className="viewpoint-input" value={viewName} onChange={(e) => setViewName(e.target.value)} placeholder="Name this view" onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") { store.getState().saveViewpoint(viewName); setViewName(""); setStatus("View saved"); } }} />
+          <button type="button" onClick={() => { store.getState().saveViewpoint(viewName); setViewName(""); setStatus("View saved"); }}>Save</button>
+        </div>
+        <div className="viewpoint-saved">
+          {saved.map((v) => (
+            <div key={v.id} className="viewpoint-saved-item">
+              <button type="button" className="viewpoint-saved-apply" onClick={() => { store.getState().applyViewpoint(v.id); setStatus(`Applied “${v.name}”`); }} title={`${v.hiddenKinds.length ? `dims ${v.hiddenKinds.join(", ")}` : "all kinds visible"}${v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}`}>
+                <strong>{v.name}</strong>
+                <small>{v.hiddenKinds.length ? `${v.hiddenKinds.length} kind${v.hiddenKinds.length === 1 ? "" : "s"} dimmed` : "all kinds"}{v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}</small>
+              </button>
+              <button type="button" className="viewpoint-saved-delete" onClick={() => store.getState().deleteViewpoint(v.id)} aria-label={`Delete view ${v.name}`}>×</button>
+            </div>
+          ))}
+          {saved.length === 0 && <small className="viewpoint-empty">Dim kinds and frame the board, then save the view to come back to it later.</small>}
         </div>
       </div>
 

@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 9 — graph query)
+Last updated: 2026-09-04 (rev 10 — saved viewpoints)
 
 ---
 
@@ -243,7 +243,8 @@ board_entities  board_id, entity_id, element_id      (rebuilt on every save)
 - **Selection inspector** shows graph facts for a card: relations (with direction), the
   other boards it appears on, its source.
 - **Knowledge graph page** (`/w/[slug]/graph`): emergent meta-model (kinds with counts and
-  colours, relation types), rename a kind (merges vocabularies), entity table with edit /
+  colours, relation types — click a type to rename / merge it), rename a kind (merges
+  vocabularies), entity table with edit /
   delete and board links, **Import data** (CSV `kind,name,description` + `# relations`
   `from,relation,to`, or JSON; matched by kind + name, idempotent, sources recorded), and
   **Lay out on a board** (frames per kind, cards inside, connectors for relations — a
@@ -285,7 +286,9 @@ through the normal save → sync path.
   removes relation connectors.
 - **Cleanup**: Group cards by kind (one frame per kind under the current content), Distribute
   the selection on a grid, Fit board.
-- **Kind lens**: dim / show card kinds on this board (client-side; not persisted yet).
+- **Kind lens**: dim / show card kinds on this board.
+- **Saved views**: name the current lens + camera and re-apply it later; saved in the board
+  document (`document.viewpoints`), so they travel with the board and its checkpoints.
 - Server: `POST /api/graph/neighborhood` — BFS over relations with depth, direction and an
   optional relation-kind filter; returns discovered entities plus all relations among the set.
 
@@ -348,7 +351,7 @@ the schema already separates users, memberships and roles.
   — see §5.6. ~~Attribute schema per kind~~ done (§5.8). Next: relation-type vocabulary
   management, attribute value normalisation proposals.
 - Optics: ~~load/unload lenses~~ first version done (§5.7: expand, relations, group by kind,
-  kind lens). Next: saved viewpoints per board, relation-type filters, overlays (lifecycle,
+  kind lens, saved views per board). Next: relation-type filters, overlays (lifecycle,
   risk, ownership), automatic layouts (lanes, radial).
 - Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
   ServiceNow, CMDB, wiki).
@@ -425,6 +428,11 @@ the schema already separates users, memberships and roles.
 ### Graph query (v0.2)
 - Structured graph queries from the command bar with place / highlight actions (§5.10).
 
+### Saved views, relation types, home summary (v0.2)
+- Saved viewpoints per board (lens + camera, persisted in the document), relation-type
+  rename / merge on the graph page, knowledge-graph summary strip on the workspace home
+  with the number of open agent proposals.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
@@ -475,7 +483,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Agent proposals start as deterministic rules behind the final `Proposal` contract. | Gives users the review workflow and decision memory now; LLM sources can be added without UI changes, and rule proposals stay explainable. |
 | 2026-09-04 | Merging entities rewrites board documents server-side and the open canvas relinks its cards client-side. | The board document is the client's truth while open; without the client patch the next autosave would resurrect the merged entity. |
 | 2026-09-04 | Viewpoint controls live in a tab of the left Graph panel rather than a third floating panel. | Screen budget: inventory + inspector + map already frame the canvas; LeanFlow's separate panel would overlap content. |
-| 2026-09-04 | Kind lens is client-side only for now. | Cheap to try; persisting viewpoints per board is the next step once we know which lenses matter. |
+| 2026-09-04 | Saved viewpoints live inside the board document rather than in their own table. | They are part of what a board *is*; they version and restore together with it, and boards are already the unit of sync. |
 | 2026-09-04 | Text fields on an *unselected* object are inert: the first click selects (and can drag), the second click edits. | At low zoom a note is mostly text field; without this rule it could not be grabbed. Matches the Miro / Figma model. |
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
@@ -490,6 +498,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 10: saved views, relation types, home strip.** Saved viewpoints in the
+  board document, relation-type renaming on the Knowledge graph page, and a graph summary
+  strip on the home page linking to the graph with the open-proposal count.
 
 - **2026-09-04 — Rev 9: graph query.** Command bar queries the workspace graph with
   kind:, attribute:, related:/from:/to:, rel: and free text; results explain their match,

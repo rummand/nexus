@@ -2,7 +2,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
-import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point } from "./document";
+import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point, SavedViewpoint } from "./document";
 import { DOCUMENT_VERSION, isBoxElement } from "./document";
 import { type Camera, type Insets, cameraToFitInsets, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
 
@@ -52,6 +52,8 @@ export interface CanvasState {
   snapEnabled: boolean;
   /** Context menu anchor (screen coords) and the element under it, if any. */
   contextMenu: { x: number; y: number; targetId: string | null; world: Point } | null;
+  /** Saved viewpoints (persisted with the document). */
+  viewpoints: SavedViewpoint[];
   /** Frame id the inspector should scroll to / highlight after "Focus". */
   isDragging: boolean;
 
@@ -82,6 +84,9 @@ export interface CanvasState {
   setGuides(g: { x: number[]; y: number[] }): void;
   setSnapEnabled(v: boolean): void;
   setContextMenu(m: CanvasState["contextMenu"]): void;
+  saveViewpoint(name: string): void;
+  applyViewpoint(id: string): void;
+  deleteViewpoint(id: string): void;
   /** Select an element and bring it into view. */
   focusElement(id: ElementId): void;
 
@@ -209,6 +214,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       guides: { x: [], y: [] },
       snapEnabled: true,
       contextMenu: null,
+      viewpoints: document.viewpoints ?? [],
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -248,6 +254,18 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setGuides: (guides) => set((s) => (s.guides.x.length === 0 && s.guides.y.length === 0 && guides.x.length === 0 && guides.y.length === 0 ? s : { guides })),
       setSnapEnabled: (snapEnabled) => set({ snapEnabled }),
       setContextMenu: (contextMenu) => set({ contextMenu }),
+      saveViewpoint: (name) => {
+        const s = get();
+        const vp: SavedViewpoint = { id: `vp_${nanoid(8)}`, name: name.trim() || `View ${s.viewpoints.length + 1}`, hiddenKinds: [...s.hiddenKinds], camera: { ...s.camera }, createdAt: new Date().toISOString() };
+        set({ viewpoints: [...s.viewpoints, vp], revision: s.revision + 1, saveState: "dirty" });
+      },
+      applyViewpoint: (id) => {
+        const s = get();
+        const vp = s.viewpoints.find((v) => v.id === id);
+        if (!vp) return;
+        set({ hiddenKinds: [...vp.hiddenKinds], ...(vp.camera ? { camera: { ...vp.camera } } : {}) });
+      },
+      deleteViewpoint: (id) => set((s) => ({ viewpoints: s.viewpoints.filter((v) => v.id !== id), revision: s.revision + 1, saveState: "dirty" })),
       focusElement: (id) => {
         const s = get();
         if (!s.elements[id]) return;
@@ -392,7 +410,10 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         });
       },
 
-      toDocument: () => ({ version: DOCUMENT_VERSION, elements: get().elements }),
+      toDocument: () => {
+        const s = get();
+        return s.viewpoints.length ? { version: DOCUMENT_VERSION, elements: s.elements, viewpoints: s.viewpoints } : { version: DOCUMENT_VERSION, elements: s.elements };
+      },
     };
   });
 }

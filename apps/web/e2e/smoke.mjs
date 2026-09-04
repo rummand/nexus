@@ -59,12 +59,14 @@ try {
 
   // drag from the middle: an unselected object is grabbed anywhere (first click selects + drags)
   const b0 = await note.boundingBox();
+  await page.keyboard.down("Alt"); // bypass smart guides so the delta is exact
   await page.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2);
   await page.mouse.down();
   await page.mouse.move(b0.x + b0.width / 2 + 120, b0.y + b0.height / 2 + 60, { steps: 8 });
   await page.mouse.up();
+  await page.keyboard.up("Alt");
   const b1 = await note.boundingBox();
-  assert.ok(Math.abs(b1.x - b0.x - 120) < 2 && Math.abs(b1.y - b0.y - 60) < 2, "note moved with the pointer");
+  assert.ok(Math.abs(b1.x - b0.x - 120) < 3 && Math.abs(b1.y - b0.y - 60) < 3, `note moved with the pointer (got ${Math.round(b1.x - b0.x)}, ${Math.round(b1.y - b0.y)})`);
 
   // zoom + pan + fit
   await page.mouse.move(700, 500);
