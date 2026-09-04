@@ -18,17 +18,15 @@ export default async function BoardPage({ params }: Props) {
   const [board, user] = await Promise.all([getBoardWithContext(boardId), currentUser()]);
   if (!board) notFound();
   return (
-    <div className="h-full w-full">
-      <BoardCanvas
-        document={parseDocument(board.document)}
-        header={{
-          boardId: board.id,
-          name: board.name,
-          room: { id: board.room.id, name: board.room.name, emoji: board.room.emoji },
-          workspaceSlug: board.workspace.slug,
-          user: { name: user.name, color: user.color },
-        }}
-      />
-    </div>
+    <BoardCanvas
+      document={parseDocument(board.document)}
+      header={{
+        boardId: board.id,
+        name: board.name,
+        space: { id: board.space.id, name: board.space.name, emoji: board.space.emoji },
+        workspace: { slug: board.workspace.slug, name: board.workspace.name },
+        user: { name: user.name, color: user.color },
+      }}
+    />
   );
 }

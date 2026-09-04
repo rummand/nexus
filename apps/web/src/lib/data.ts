@@ -9,9 +9,9 @@ export async function getWorkspaceBySlug(slug: string) {
 
 export async function getWorkspaceShell(workspaceId: string, userId: string) {
   const db = await getDb();
-  const [teams, rooms, favoriteRows] = await Promise.all([
+  const [teams, spaces, favoriteRows] = await Promise.all([
     db.query.teams.findMany({ where: eq(s.teams.workspaceId, workspaceId), orderBy: s.teams.name }),
-    db.query.rooms.findMany({ where: eq(s.rooms.workspaceId, workspaceId), orderBy: s.rooms.name }),
+    db.query.spaces.findMany({ where: eq(s.spaces.workspaceId, workspaceId), orderBy: s.spaces.name }),
     db
       .select({ board: s.boards })
       .from(s.boardFavorites)
@@ -19,51 +19,51 @@ export async function getWorkspaceShell(workspaceId: string, userId: string) {
       .where(and(eq(s.boardFavorites.userId, userId), eq(s.boards.workspaceId, workspaceId)))
       .orderBy(desc(s.boardFavorites.createdAt)),
   ]);
-  return { teams, rooms, favorites: favoriteRows.map((r) => r.board) };
+  return { teams, spaces, favorites: favoriteRows.map((r) => r.board) };
 }
 
-export type BoardCard = s.Board & { roomName: string; roomEmoji: string; favorite: boolean };
+export type BoardCard = s.Board & { spaceName: string; spaceEmoji: string; favorite: boolean };
 
-export async function getBoardsForWorkspace(workspaceId: string, userId: string, opts?: { roomId?: string; limit?: number; recentOnly?: boolean }) {
+export async function getBoardsForWorkspace(workspaceId: string, userId: string, opts?: { spaceId?: string; limit?: number; recentOnly?: boolean }) {
   const db = await getDb();
   const conditions = [eq(s.boards.workspaceId, workspaceId)];
-  if (opts?.roomId) conditions.push(eq(s.boards.roomId, opts.roomId));
+  if (opts?.spaceId) conditions.push(eq(s.boards.spaceId, opts.spaceId));
   if (opts?.recentOnly) conditions.push(isNotNull(s.boards.lastOpenedAt));
   const rows = await db
     .select({
       board: s.boards,
-      roomName: s.rooms.name,
-      roomEmoji: s.rooms.emoji,
+      spaceName: s.spaces.name,
+      spaceEmoji: s.spaces.emoji,
       favorite: sql<number>`(select count(*) from board_favorites f where f.board_id = ${s.boards.id} and f.user_id = ${userId})`,
     })
     .from(s.boards)
-    .innerJoin(s.rooms, eq(s.boards.roomId, s.rooms.id))
+    .innerJoin(s.spaces, eq(s.boards.spaceId, s.spaces.id))
     .where(and(...conditions))
     .orderBy(opts?.recentOnly ? desc(s.boards.lastOpenedAt) : desc(s.boards.updatedAt))
     .limit(opts?.limit ?? 200);
-  return rows.map<BoardCard>((r) => ({ ...r.board, roomName: r.roomName, roomEmoji: r.roomEmoji, favorite: r.favorite > 0 }));
+  return rows.map<BoardCard>((r) => ({ ...r.board, spaceName: r.spaceName, spaceEmoji: r.spaceEmoji, favorite: r.favorite > 0 }));
 }
 
-export async function getRoom(roomId: string) {
+export async function getSpace(spaceId: string) {
   const db = await getDb();
-  return db.query.rooms.findFirst({ where: eq(s.rooms.id, roomId), with: { team: true } });
+  return db.query.spaces.findFirst({ where: eq(s.spaces.id, spaceId), with: { team: true } });
 }
 
-export async function getRoomBoardCounts(workspaceId: string) {
+export async function getSpaceBoardCounts(workspaceId: string) {
   const db = await getDb();
   const rows = await db
-    .select({ roomId: s.boards.roomId, n: sql<number>`count(*)` })
+    .select({ spaceId: s.boards.spaceId, n: sql<number>`count(*)` })
     .from(s.boards)
     .where(eq(s.boards.workspaceId, workspaceId))
-    .groupBy(s.boards.roomId);
-  return new Map(rows.map((r) => [r.roomId, r.n]));
+    .groupBy(s.boards.spaceId);
+  return new Map(rows.map((r) => [r.spaceId, r.n]));
 }
 
 export async function getTeamsWithMembers(workspaceId: string) {
   const db = await getDb();
   return db.query.teams.findMany({
     where: eq(s.teams.workspaceId, workspaceId),
-    with: { members: { with: { user: true } }, rooms: true },
+    with: { members: { with: { user: true } }, spaces: true },
     orderBy: s.teams.name,
   });
 }
@@ -72,7 +72,7 @@ export async function getTeam(teamId: string) {
   const db = await getDb();
   return db.query.teams.findFirst({
     where: eq(s.teams.id, teamId),
-    with: { members: { with: { user: true } }, rooms: true },
+    with: { members: { with: { user: true } }, spaces: true },
   });
 }
 
@@ -85,7 +85,7 @@ export async function getBoardWithContext(boardId: string) {
   const db = await getDb();
   return db.query.boards.findFirst({
     where: eq(s.boards.id, boardId),
-    with: { room: true, workspace: true },
+    with: { space: true, workspace: true },
   });
 }
 

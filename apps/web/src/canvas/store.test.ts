@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createCanvasStore, expandSelectionForMove } from "./store";
 import type { CanvasElement } from "./document";
 
-const sticky = (id: string, x = 0, y = 0): CanvasElement => ({ id, type: "sticky", x, y, w: 100, h: 100, text: id, color: "#fff", z: 1 });
+const sticky = (id: string, x = 0, y = 0): CanvasElement => ({ id, type: "sticky", x, y, w: 100, h: 100, title: "", text: id, color: "#fff", z: 1 });
 
 function makeStore(elements: CanvasElement[] = []) {
-  return createCanvasStore({ boardId: "b", document: { version: 1, elements: Object.fromEntries(elements.map((e) => [e.id, e])) } });
+  return createCanvasStore({ boardId: "b", document: { version: 2, elements: Object.fromEntries(elements.map((e) => [e.id, e])) } });
 }
 
 describe("canvas store", () => {

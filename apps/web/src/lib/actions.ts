@@ -8,6 +8,7 @@ import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "./session";
 import { emptyDocument, serializeDocument } from "@/canvas/document";
+import { buildTemplate, type TemplateId } from "@/canvas/templates";
 
 const now = () => new Date().toISOString();
 
@@ -27,14 +28,14 @@ async function workspaceSlug(workspaceId: string) {
   return ws.slug;
 }
 
-// ---- rooms -----------------------------------------------------------------
+// ---- spaces -----------------------------------------------------------------
 
-export async function createRoom(input: { workspaceId: string; name: string; description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
+export async function createSpace(input: { workspaceId: string; name: string; description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
   const db = await getDb();
   const name = input.name.trim();
   if (!name) return { error: "Name is required" };
-  const id = `room_${nanoid(10)}`;
-  await db.insert(s.rooms).values({
+  const id = `space_${nanoid(10)}`;
+  await db.insert(s.spaces).values({
     id,
     workspaceId: input.workspaceId,
     name,
@@ -45,45 +46,49 @@ export async function createRoom(input: { workspaceId: string; name: string; des
   });
   const slug = await workspaceSlug(input.workspaceId);
   revalidatePath(`/w/${slug}`, "layout");
-  redirect(`/w/${slug}/rooms/${id}`);
+  redirect(`/w/${slug}/spaces/${id}`);
 }
 
-export async function renameRoom(roomId: string, name: string) {
+export async function renameSpace(spaceId: string, name: string) {
   const db = await getDb();
   const trimmed = name.trim();
   if (!trimmed) return;
-  const [room] = await db.update(s.rooms).set({ name: trimmed, updatedAt: now() }).where(eq(s.rooms.id, roomId)).returning();
-  if (room) revalidatePath(`/w/${await workspaceSlug(room.workspaceId)}`, "layout");
+  const [space] = await db.update(s.spaces).set({ name: trimmed, updatedAt: now() }).where(eq(s.spaces.id, spaceId)).returning();
+  if (space) revalidatePath(`/w/${await workspaceSlug(space.workspaceId)}`, "layout");
 }
 
-export async function updateRoom(roomId: string, patch: { description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
+export async function updateSpace(spaceId: string, patch: { description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
   const db = await getDb();
-  const [room] = await db.update(s.rooms).set({ ...patch, updatedAt: now() }).where(eq(s.rooms.id, roomId)).returning();
-  if (room) revalidatePath(`/w/${await workspaceSlug(room.workspaceId)}`, "layout");
+  const [space] = await db.update(s.spaces).set({ ...patch, updatedAt: now() }).where(eq(s.spaces.id, spaceId)).returning();
+  if (space) revalidatePath(`/w/${await workspaceSlug(space.workspaceId)}`, "layout");
 }
 
-export async function deleteRoom(roomId: string) {
+export async function deleteSpace(spaceId: string) {
   const db = await getDb();
-  const [room] = await db.delete(s.rooms).where(eq(s.rooms.id, roomId)).returning();
-  if (!room) return;
-  const slug = await workspaceSlug(room.workspaceId);
+  const [space] = await db.delete(s.spaces).where(eq(s.spaces.id, spaceId)).returning();
+  if (!space) return;
+  const slug = await workspaceSlug(space.workspaceId);
   revalidatePath(`/w/${slug}`, "layout");
   redirect(`/w/${slug}`);
 }
 
 // ---- boards ----------------------------------------------------------------
 
-export async function createBoard(input: { workspaceId: string; roomId: string; name?: string }) {
+export async function createBoard(input: { workspaceId: string; spaceId: string; name?: string; description?: string; template?: TemplateId }) {
   const db = await getDb();
   const user = await currentUser();
   const id = `brd_${nanoid(10)}`;
+  const template = input.template ?? "blank";
+  const document = template === "blank" ? emptyDocument() : buildTemplate(template);
   await db.insert(s.boards).values({
     id,
     workspaceId: input.workspaceId,
-    roomId: input.roomId,
+    spaceId: input.spaceId,
     name: input.name?.trim() || "Untitled board",
+    description: input.description?.trim() ?? "",
     createdById: user.id,
-    document: serializeDocument(emptyDocument()),
+    document: serializeDocument(document),
+    lastOpenedAt: now(),
   });
   revalidatePath(`/w/${await workspaceSlug(input.workspaceId)}`, "layout");
   redirect(`/b/${id}`);
@@ -94,6 +99,20 @@ export async function renameBoard(boardId: string, name: string) {
   const trimmed = name.trim();
   if (!trimmed) return;
   const [board] = await db.update(s.boards).set({ name: trimmed, updatedAt: now() }).where(eq(s.boards.id, boardId)).returning();
+  if (board) revalidatePath(`/w/${await workspaceSlug(board.workspaceId)}`, "layout");
+}
+
+export async function moveBoard(boardId: string, spaceId: string) {
+  const db = await getDb();
+  const space = await db.query.spaces.findFirst({ where: eq(s.spaces.id, spaceId) });
+  if (!space) return;
+  const [board] = await db.update(s.boards).set({ spaceId, updatedAt: now() }).where(eq(s.boards.id, boardId)).returning();
+  if (board) revalidatePath(`/w/${await workspaceSlug(board.workspaceId)}`, "layout");
+}
+
+export async function updateBoardDescription(boardId: string, description: string) {
+  const db = await getDb();
+  const [board] = await db.update(s.boards).set({ description: description.trim(), updatedAt: now() }).where(eq(s.boards.id, boardId)).returning();
   if (board) revalidatePath(`/w/${await workspaceSlug(board.workspaceId)}`, "layout");
 }
 
@@ -112,7 +131,7 @@ export async function duplicateBoard(boardId: string) {
   await db.insert(s.boards).values({
     id,
     workspaceId: src.workspaceId,
-    roomId: src.roomId,
+    spaceId: src.spaceId,
     name: `${src.name} (copy)`,
     description: src.description,
     document: src.document,

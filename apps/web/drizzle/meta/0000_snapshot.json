@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0af4f8d2-0259-4ef7-8851-03400c5b53e1",
+  "id": "98712f7e-6c8c-4086-8229-27dab78803be",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "board_favorites": {
@@ -88,8 +88,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "room_id": {
-          "name": "room_id",
+        "space_id": {
+          "name": "space_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -150,10 +150,10 @@
         }
       },
       "indexes": {
-        "boards_room_idx": {
-          "name": "boards_room_idx",
+        "boards_space_idx": {
+          "name": "boards_space_idx",
           "columns": [
-            "room_id"
+            "space_id"
           ],
           "isUnique": false
         },
@@ -179,12 +179,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "boards_room_id_rooms_id_fk": {
-          "name": "boards_room_id_rooms_id_fk",
+        "boards_space_id_spaces_id_fk": {
+          "name": "boards_space_id_spaces_id_fk",
           "tableFrom": "boards",
-          "tableTo": "rooms",
+          "tableTo": "spaces",
           "columnsFrom": [
-            "room_id"
+            "space_id"
           ],
           "columnsTo": [
             "id"
@@ -210,8 +210,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "rooms": {
-      "name": "rooms",
+    "spaces": {
+      "name": "spaces",
       "columns": {
         "id": {
           "name": "id",
@@ -283,15 +283,15 @@
         }
       },
       "indexes": {
-        "rooms_workspace_idx": {
-          "name": "rooms_workspace_idx",
+        "spaces_workspace_idx": {
+          "name": "spaces_workspace_idx",
           "columns": [
             "workspace_id"
           ],
           "isUnique": false
         },
-        "rooms_team_idx": {
-          "name": "rooms_team_idx",
+        "spaces_team_idx": {
+          "name": "spaces_team_idx",
           "columns": [
             "team_id"
           ],
@@ -299,9 +299,9 @@
         }
       },
       "foreignKeys": {
-        "rooms_workspace_id_workspaces_id_fk": {
-          "name": "rooms_workspace_id_workspaces_id_fk",
-          "tableFrom": "rooms",
+        "spaces_workspace_id_workspaces_id_fk": {
+          "name": "spaces_workspace_id_workspaces_id_fk",
+          "tableFrom": "spaces",
           "tableTo": "workspaces",
           "columnsFrom": [
             "workspace_id"
@@ -312,9 +312,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "rooms_team_id_teams_id_fk": {
-          "name": "rooms_team_id_teams_id_fk",
-          "tableFrom": "rooms",
+        "spaces_team_id_teams_id_fk": {
+          "name": "spaces_team_id_teams_id_fk",
+          "tableFrom": "spaces",
           "tableTo": "teams",
           "columnsFrom": [
             "team_id"

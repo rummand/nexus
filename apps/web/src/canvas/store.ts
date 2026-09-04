@@ -6,7 +6,11 @@ import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point
 import { DOCUMENT_VERSION, isBoxElement } from "./document";
 import { type Camera, cameraToFit, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
 
-export type Tool = "select" | "hand" | "sticky" | "text" | "rect" | "ellipse" | "frame" | "connector";
+export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" | "card" | "rect" | "ellipse" | "diamond" | "connector";
+
+export type ConnectorPreset = "arrow" | "line" | "dashed";
+
+export type PanelName = "inspector" | "map" | "shapePicker" | "help";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error";
 
@@ -36,6 +40,10 @@ export interface CanvasState {
   revision: number;
   scrollMode: ScrollMode;
   spaceDown: boolean;
+  connectorPreset: ConnectorPreset;
+  panels: Record<PanelName, boolean>;
+  /** Frame id the inspector should scroll to / highlight after "Focus". */
+  isDragging: boolean;
 
   // camera
   setViewport(w: number, h: number): void;
@@ -55,6 +63,11 @@ export interface CanvasState {
   setMarquee(b: Box | null): void;
   setPendingConnector(p: CanvasState["pendingConnector"]): void;
   setSaveState(s: SaveState): void;
+  setConnectorPreset(p: ConnectorPreset): void;
+  togglePanel(name: PanelName, value?: boolean): void;
+  setDragging(v: boolean): void;
+  /** Select an element and bring it into view. */
+  focusElement(id: ElementId): void;
 
   // selection
   select(ids: ElementId[], additive?: boolean): void;
@@ -159,6 +172,9 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
       revision: 0,
       scrollMode,
       spaceDown: false,
+      connectorPreset: "arrow",
+      panels: { inspector: true, map: true, shapePicker: false, help: false },
+      isDragging: false,
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -182,13 +198,23 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
         set((s) => ({ camera: { ...s.camera, x: s.viewport.w / 2 - world.x * s.camera.zoom, y: s.viewport.h / 2 - world.y * s.camera.zoom } })),
 
       // ---- ui ----
-      setTool: (tool) => set({ tool, editingId: null, pendingConnector: null }),
+      setTool: (tool) => set((s) => ({ tool, editingId: null, pendingConnector: null, panels: { ...s.panels, shapePicker: s.panels.shapePicker && ["rect", "ellipse", "diamond", "connector"].includes(tool) } })),
       setScrollMode: (scrollMode) => set({ scrollMode }),
       setSpaceDown: (spaceDown) => set({ spaceDown }),
       setHover: (hoverId) => set((s) => (s.hoverId === hoverId ? s : { hoverId })),
       setMarquee: (marquee) => set({ marquee }),
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
+      setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
+      togglePanel: (name, value) => set((s) => ({ panels: { ...s.panels, [name]: value ?? !s.panels[name] } })),
+      setDragging: (isDragging) => set((s) => (s.isDragging === isDragging ? s : { isDragging })),
+      focusElement: (id) => {
+        const s = get();
+        if (!s.elements[id]) return;
+        const bounds = selectionBounds([id], s.elements);
+        if (!bounds) return;
+        set({ selection: [id], editingId: null, camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 160, Math.max(1, s.camera.zoom)) });
+      },
 
       // ---- selection ----
       select: (ids, additive = false) =>

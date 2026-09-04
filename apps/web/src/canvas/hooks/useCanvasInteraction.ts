@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { nanoid } from "nanoid";
 import type { Box, CanvasElement, ElementId, Point } from "../document";
-import { isBoxElement, STICKY_COLORS } from "../document";
+import { isBoxElement, NOTE_COLORS, TEXT_COLORS, cardColorForKind } from "../document";
 import { boxesIntersect, boxContainsBox, elementBounds, type HandleId, normalizeBox, resizeBox, screenToWorld } from "../geometry";
 import { expandSelectionForMove, useCanvasStore, type CanvasState, type Tool } from "../store";
 
@@ -20,10 +20,13 @@ type Session =
 const DRAG_THRESHOLD = 3; // screen px before a click becomes a drag
 
 export const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
-  sticky: { w: 180, h: 120 },
-  text: { w: 240, h: 36 },
-  rect: { w: 180, h: 100 },
-  ellipse: { w: 160, h: 110 },
+  card: { w: 236, h: 124 },
+  sticky: { w: 300, h: 150 },
+  text: { w: 300, h: 140 },
+  section: { w: 480, h: 110 },
+  rect: { w: 200, h: 110 },
+  ellipse: { w: 180, h: 120 },
+  diamond: { w: 180, h: 140 },
   frame: { w: 640, h: 420 },
 };
 
@@ -80,17 +83,22 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
   const createForTool = (tool: Tool, at: Point): CanvasElement | null => {
     const id = nanoid(10);
     const size = DEFAULT_SIZES[tool] ?? { w: 100, h: 100 };
+    const centred = { x: at.x - size.w / 2, y: at.y - size.h / 2, w: size.w, h: size.h };
     switch (tool) {
+      case "card":
+        return { id, type: "card", ...centred, kind: "Application", color: cardColorForKind("Application"), title: "", description: "", z: 0 };
       case "sticky":
-        return { id, type: "sticky", x: at.x - size.w / 2, y: at.y - size.h / 2, w: size.w, h: size.h, text: "", color: STICKY_COLORS[0], z: 0 };
+        return { id, type: "sticky", ...centred, title: "", text: "", color: NOTE_COLORS[0], z: 0 };
       case "text":
-        return { id, type: "text", x: at.x, y: at.y - size.h / 2, w: size.w, h: size.h, text: "", fontSize: 20, color: "#0f172a", align: "left", z: 0 };
+        return { id, type: "text", variant: "text", ...centred, title: "", text: "", color: TEXT_COLORS[0], z: 0 };
+      case "section":
+        return { id, type: "text", variant: "section", ...centred, title: "", text: "", color: TEXT_COLORS[0], z: 0 };
       case "rect":
-        return { id, type: "shape", shape: "rect", x: at.x, y: at.y, w: 0, h: 0, text: "", fill: "#FFFFFF", stroke: "#334155", z: 0 };
       case "ellipse":
-        return { id, type: "shape", shape: "ellipse", x: at.x, y: at.y, w: 0, h: 0, text: "", fill: "#FFFFFF", stroke: "#334155", z: 0 };
+      case "diamond":
+        return { id, type: "shape", shape: tool, x: at.x, y: at.y, w: 0, h: 0, text: "", fill: "#FFFFFF", stroke: "#475569", z: 0 };
       case "frame":
-        return { id, type: "frame", x: at.x, y: at.y, w: 0, h: 0, title: "Frame", color: "#6366F1", z: 0 };
+        return { id, type: "frame", x: at.x, y: at.y, w: 0, h: 0, title: "Frame", color: "#1376d4", z: 0 };
       default:
         return null;
     }
@@ -116,6 +124,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         e.preventDefault();
         capture(e);
         session.current = { kind: "pan", last: screen };
+        s.setDragging(true);
         return;
       }
       if (e.button !== 0) return;
@@ -151,17 +160,21 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
           }
           return;
         }
+        case "card":
         case "sticky":
-        case "text": {
+        case "text":
+        case "section": {
           const el = createForTool(s.tool, world);
           if (!el) return;
           s.addElements([el], { select: true });
           s.setTool("select");
+          // mark as freshly created so the title field takes focus
           store.getState().startEditing(el.id);
           return;
         }
         case "rect":
         case "ellipse":
+        case "diamond":
         case "frame": {
           const el = createForTool(s.tool, world);
           if (!el) return;
@@ -222,6 +235,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
             if (d < DRAG_THRESHOLD) return;
             ses.moved = true;
           }
+          s.setDragging(true);
           const dx = world.x - ses.start.x;
           const dy = world.y - ses.start.y;
           const next: Elements = { ...s.elements };
@@ -271,6 +285,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
       const s = store.getState();
       const ses = session.current;
       session.current = null;
+      s.setDragging(false);
       try {
         rootRef.current?.releasePointerCapture(e.pointerId);
       } catch {
@@ -322,8 +337,8 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
             to: toId && s.elements[toId] && isBoxElement(s.elements[toId]!) ? { elementId: toId } : { point: world },
             label: "",
             stroke: "#475569",
-            style: "solid",
-            arrowEnd: true,
+            style: s.connectorPreset === "dashed" ? "dashed" : "solid",
+            arrowEnd: s.connectorPreset !== "line",
             arrowStart: false,
             z: 0,
           };
@@ -343,7 +358,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
       const hitId = elementIdFromTarget(e.target);
       if (hitId && s.elements[hitId] && s.tool === "select") {
         const el = s.elements[hitId]!;
-        if (el.locked) return;
+        if (el.locked || el.type !== "shape") return;
         s.select([hitId]);
         s.startEditing(hitId);
       } else if (!hitId && s.tool === "select") {
@@ -388,6 +403,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
 
   const tool = store.getState().tool;
   const cursor = tool === "hand" ? "grab" : tool === "select" ? "default" : "crosshair";
+  void cursor;
 
   return { onPointerDown, onPointerMove, onPointerUp, onDoubleClick, beginResize, cursor };
 }

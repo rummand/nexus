@@ -3,7 +3,8 @@
 **AI-native enterprise architecture canvas.** Feed Nexus everything your organisation has —
 portfolios, processes, CMDBs, OT data, wikis, meeting notes — and its agents grow the
 meta-model from the data instead of forcing the data into a vendor's model. Everything
-lives in one graph and is touchable on an infinite, Mural-like canvas.
+lives in one graph and is touchable on an infinite, Miro-like canvas. The look and feel
+follows the LeanFlow Studio reference design.
 
 > Read **[`docs/BRIEF.md`](docs/BRIEF.md)** first. It is the living product brief: vision,
 > architecture, what exists, roadmap, decisions. Every change updates it.

@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04
+Last updated: 2026-09-04 (rev 2 — Miro correction, Spaces, LeanFlow Studio design)
 
 ---
 
@@ -18,7 +18,7 @@ to squeeze the organisation into that model. Nexus turns this upside down. You f
 Nexus **everything the organisation has** — structured and unstructured — and Nexus'
 agents **discover the meta-model from the data**. Each organisation ends up with its
 own model, grown from its own reality rather than imposed by a vendor. Every piece of
-that model is touchable on an **infinite, Mural-like canvas** where people and agents
+that model is touchable on an **infinite, Miro-like canvas** where people and agents
 work side by side: exploring, extending, annotating and reshaping the graph.
 
 ## 2. Vision and principles
@@ -79,32 +79,69 @@ Not a report, not a fact sheet — an **infinite canvas** with best-in-class nav
   Architecture decisions must keep this door open (no hard dependency on a single
   cloud vendor's proprietary services in the core).
 
-## 3. Management structure (Mural-like)
+## 3. Management structure (Miro-like)
 
-Nexus borrows the organisational structure that works in Mural:
+The reference product for structure is **Miro** (the first brief said Mural by mistake;
+corrected 2026-09-04). Miro organises Teams → Spaces → Boards; Nexus adds the tenant
+level on top:
 
 | Concept | Meaning |
 |---|---|
-| **Workspace** | The tenant: one organisation. Owns members, teams, rooms and boards. |
-| **Team** | A group of people inside the workspace (e.g. "Grid Architecture"). Rooms can belong to a team. |
-| **Room** | A group of boards around a topic or initiative. Can be open to the workspace or private to a team. |
-| **Board** | One infinite canvas. Lives in exactly one room. |
+| **Workspace** | The tenant: one organisation. Owns members, teams, spaces and boards. |
+| **Team** | A group of people inside the workspace (e.g. "Grid Architecture"). Spaces can belong to a team. |
+| **Space** | A group of boards around a topic or initiative (Miro "Space"). Open to the workspace or private to a team. |
+| **Board** | One infinite canvas. Lives in exactly one space; can be moved between spaces. |
 
 Cross-cutting: favourites, recently opened, search. The workspace home is the entry
-point; from there users dive into rooms and open boards.
+point; from there users dive into spaces and open boards.
 
 ## 4. Scope of the first brief (this iteration)
 
 The first brief asks for the **foundation**:
 
 1. The living brief (this document) and agent instructions.
-2. A web app with the Mural-like management structure: workspace home, teams, rooms
+2. A web app with the Miro-like management structure: workspace home, teams, spaces
    (groups of boards), boards.
 3. An infinite canvas with extremely good navigation and the basic whiteboard toolkit,
    built so that graph nodes and optics can be layered on top later.
 
 Ingestion, agents and the emergent meta-model come in later briefs, but the data model
 and canvas are designed with them in mind (see §6 and §8).
+
+## 4a. UI/UX reference: LeanFlow Studio
+
+The product owner's earlier repo **`rummand/leanflow-studio`** ("LeanIX Flow Studio", a
+local-first Miro-like canvas for LeanIX data) is the **design reference** for Nexus. Its UI
+and UX were replicated on 2026-09-04 and Nexus must keep following it:
+
+- **Look**: calm, white, spacious, board-first. Type stack Aptos / IBM Plex Sans; ink
+  `#172033`, muted `#657186`, accent blue `#1376d4`, hairlines `#d9e1eb`; translucent
+  white floating panels with 13px radius and soft shadows; uppercase, tracked micro-labels
+  (10–12px, heavy weight); pill-shaped chips and buttons. Tokens live in
+  `apps/web/src/app/globals.css` and mirror LeanFlow's class names (`studio-home-shell`,
+  `canvas-toolbar`, `fact-card`, `impact-note`, `board-frame`, `map-card`, `zoom-card` …).
+- **Home shell**: 320px sidebar (brand mark, search, Home / Recent / Starred / Teams, SPACES
+  and TEAMS lists with hover actions), main column with meta line + big title, "Open last
+  board", grid/list toggle, blue "Create new"; "How do you want to start?" search with ⌘K
+  keycap; four **starter** cards (templates); "Recent boards" strip; **board browser** rows
+  (thumbnail, star glyph, name / description / counts, last opened, space, actions: star,
+  rename, move to space, duplicate, delete) with an inline "Move to space" panel.
+- **Board shell**: 54px topbar (back, brand mark, board name + breadcrumb, mono canvas
+  chip, save pill, Shortcuts, Share, avatar); centred **command bar** (search objects on
+  the board, ⌘K; natural-language questions arrive with the agent layer); left **tool
+  rail** with mono badges (FRAME, CARD, NOTE, TEXT, SECTION, SHAPE + panel toggles);
+  **shape picker** panel (lines: line / arrow / dashed; shapes: rectangle / oval / rhombus);
+  draggable **Selection** inspector (LeanFlow "Impact selection": title, kind, detail grid,
+  actions; board summary when nothing is selected); **Map overview** card (minimap with
+  draggable viewport, readout, "Fit visible board"); **zoom card**; centred status line.
+- **Objects**: architecture **cards** (kind row with colour square, title, description),
+  **notes** (tinted left border, uppercase label, title + body), **text blocks** and
+  **sections** (titled paragraphs), **frames** (translucent, pill titlebar with title /
+  #order / Color / Focus / Delete), shapes, connectors with pill labels. Text fields are
+  always live — no separate edit mode (shapes keep double-click labelling).
+- **Grid**: 80 px major / 20 px minor lines that scale with zoom.
+
+When the reference evolves, port the change here and note it in the changelog.
 
 ## 5. Architecture
 
@@ -116,7 +153,7 @@ and canvas are designed with them in mind (see §6 and §8).
 | Styling | Tailwind CSS v4 | Fast iteration, design tokens in CSS variables. |
 | State (canvas) | Zustand | Tiny, fast, selector-based re-rendering — right for a canvas with many elements. |
 | Persistence | Drizzle ORM + SQLite (libsql) in dev; Postgres target for SaaS | Zero-setup local development; Drizzle keeps the schema portable to Postgres. |
-| Monorepo | pnpm workspaces (`apps/*`, `packages/*`) | Room to split out the canvas core, meta-model and connectors as packages. |
+| Monorepo | pnpm workspaces (`apps/*`, `packages/*`) | Space to split out the canvas core, meta-model and connectors as packages. |
 | Testing | Vitest (unit) + Playwright (e2e/smoke) | Geometry and store logic are pure and unit-testable; the canvas gets browser smoke tests. |
 
 ### 5.2 Repository layout
@@ -126,7 +163,7 @@ nexus/
 ├─ CLAUDE.md / AGENTS.md      agent instructions (read the brief, update the brief)
 ├─ docs/BRIEF.md              this document
 ├─ apps/web/                  the web application
-│  ├─ src/app/                routes: workspace home, rooms, boards, API
+│  ├─ src/app/                routes: workspace home, spaces, boards, API
 │  ├─ src/canvas/             infinite-canvas engine
 │  ├─ src/db/                 Drizzle schema, client, migrations, seed
 │  └─ src/components/         shared UI
@@ -139,9 +176,11 @@ nexus/
   (`x`, `y`, `zoom`) maps world to screen. Elements are rendered inside a single
   CSS-transformed layer; selection handles and overlays are rendered in screen space so
   they stay crisp at any zoom.
-- **Elements** are a discriminated union: `sticky`, `text`, `shape` (rect/ellipse),
-  `frame`, `connector`. Every element carries an `id`, geometry, style and an open
-  `meta` bag so graph-backed nodes can later attach entity references.
+- **Elements** are a discriminated union (document v2): `card` (kind, title,
+  description — the canvas face of a future graph entity), `sticky` (note: title, body,
+  colour), `text` (variant text/section: title, body, colour), `shape` (rect / ellipse /
+  diamond), `frame`, `connector`. Every element carries an `id`, geometry, style and an
+  open `meta` bag so graph-backed nodes can later attach entity references.
 - **Connectors** reference element ids (or free points) and are re-routed on every
   move. Rendered in an SVG layer inside the world transform.
 - **Interaction** is a small state machine driven by pointer events on the root
@@ -152,8 +191,11 @@ nexus/
   zoom-to-selection, 100 %; keyboard shortcuts; minimap with draggable viewport.
 - **History.** Snapshot-based undo/redo on committed operations (not on every mouse
   move).
-- **Persistence.** The board document is versioned JSON (`{ version, elements }`),
-  autosaved to the server with a debounce; save state is visible in the UI.
+- **Persistence.** The board document is versioned JSON (`{ version, elements }`;
+  currently v2 with a v1 → v2 migration), autosaved to the server with a debounce; save
+  state is visible in the UI.
+- **Templates.** `src/canvas/templates.ts` builds starter documents (capability map,
+  application landscape, integration flows, roadmap) used by the home starters and the seed.
 - **Performance.** Off-screen elements are culled; per-element subscriptions keep
   re-renders local.
 
@@ -165,8 +207,8 @@ workspaces       id, slug, name
 workspace_members workspace_id, user_id, role
 teams            id, workspace_id, slug, name, color, description
 team_members     team_id, user_id, role
-rooms            id, workspace_id, team_id?, name, description, emoji, visibility
-boards           id, workspace_id, room_id, name, description, document(json), created_by,
+spaces           id, workspace_id, team_id?, name, description, emoji, visibility
+boards           id, workspace_id, space_id, name, description, document(json), created_by,
                  created_at, updated_at, last_opened_at
 board_favorites  user_id, board_id
 ```
@@ -179,13 +221,13 @@ the schema already separates users, memberships and roles.
 
 ### Now (brief 1 — foundation) — done, see §6a
 - [x] Living brief + agent instructions.
-- [x] Workspace home with teams, rooms and boards (create, rename, favourite, recent).
+- [x] Workspace home with teams, spaces and boards (create, rename, favourite, recent).
 - [x] Infinite canvas: navigation, minimap, tools, selection, move/resize, inline text,
       connectors, frames, undo/redo, copy/paste, autosave.
 
 ### Next (brief 2+ — candidates, to be confirmed by the product owner)
 - Real-time multiplayer on boards (presence, cursors, CRDT/OT).
-- Authentication and enterprise SSO; roles and permissions per team/room/board.
+- Authentication and enterprise SSO; roles and permissions per team/space/board.
 - Graph core: entity + relationship store behind the canvas; canvas elements that are
   *views* of graph nodes.
 - Optics: load/unload lenses (capability view, data-flow view, overlays).
@@ -198,41 +240,48 @@ the schema already separates users, memberships and roles.
 
 ## 6a. What exists today (v0.1, 2026-09-04)
 
-### Management structure
-- **Workspace home** (`/w/[slug]`): greeting, recently edited boards, room cards.
-- **Rooms** (`/w/[slug]/rooms`, `/rooms/[roomId]`): create (icon, name, description, team,
-  open/private), rename inline, settings (description, team, visibility, delete), board
-  grid with "New board" tile.
-- **Boards**: create, rename (card menu or board header), duplicate, delete, favourite,
-  "Recent" (by last opened) and "Favourites" pages, SVG thumbnails rendered from the
-  document.
-- **Teams** (`/w/[slug]/teams`, `/teams/[teamId]`): create with colour, rename inline,
-  add/remove members from the workspace, delete; team page lists its rooms.
-- **Sidebar**: Home / Recent / Favourites, favourite boards, teams, rooms, current user.
-- Seeded demo tenant "Acme Energy" (an energy-grid operator): 4 users, 3 teams, 4 rooms,
-  5 boards including a capability map, an integration overview and a roadmap.
+### Management structure (LeanFlow home shell)
+- **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
+  (remembered), "Create new" (dialog: name, space, template), start panel with search
+  (filters boards by name, description, space and object text), four starters (blank,
+  capability map, application landscape, integration flows), recent boards strip, board
+  browser.
+- **Board browser** rows: thumbnail, star glyph, name / description / object counts, last
+  opened, space; actions star, rename inline, move to another space, duplicate, delete.
+- **Spaces** (`/spaces`, `/spaces/[spaceId]`): create (icon, name, description, team,
+  open/private), rename inline, settings (description, team, visibility, delete); the
+  space page reuses the home shell scoped to that space (starters create boards there).
+- **Teams** (`/teams`, `/teams/[teamId]`): create with colour, rename inline, add/remove
+  members, delete; team page lists its spaces and members.
+- **Sidebar**: brand, search (→ home with `?q=`), Home / Recent / Starred / Teams with
+  counts, SPACES list with hover actions (new board, open), TEAMS list, current user.
+- Seeded demo tenant "Acme Energy" (an energy-grid operator): 4 users, 3 teams, 4 spaces,
+  6 boards built from the templates.
 
 ### Canvas engine (`apps/web/src/canvas`)
 | Area | Delivered |
 |---|---|
 | Navigation | Wheel/two-finger pan, ⌘/ctrl+wheel and pinch zoom at cursor, space+drag / middle-mouse / hand-tool pan, zoom in/out/100 %/fit/selection, adaptive dot grid, minimap with click-and-drag viewport, scroll-mode toggle (trackpad pans vs mouse zooms, remembered per browser). |
-| Elements | Sticky (auto-fit text, 8 colours), text (size, alignment), shape (rect / ellipse / diamond, fill), frame (title, colour; moving a frame carries the elements inside it), connector (element-to-element or free end, label, solid/dashed, arrows either end, re-routed live). |
-| Editing | Click / shift-click / marquee selection (frames need full enclosure), drag-move, 8-handle resize (shift keeps aspect), inline text editing (double-click or Enter; double-click on empty canvas creates a sticky), floating property bar per selection type, lock, bring-to-front / send-to-back, nudge with arrows, duplicate, copy/cut/paste (internal clipboard + system clipboard JSON), delete (connectors follow their elements), undo/redo (snapshot history of committed operations). |
+| Elements | Architecture card (kind with colour, title, description; kind swatches from a starter vocabulary), note (title, body, 7 tints), text block / section (title, body, colour), shape (rectangle / oval / rhombus, fill; double-click to label), frame (pill titlebar: title, #order, Color, Focus, Delete; moving a frame carries the objects inside it), connector (element-to-element or free end, pill label, line / arrow / dashed presets, arrows either end, re-routed live). |
+| Editing | Live text fields on cards, notes, text blocks and frames (new objects focus their title), click / shift-click / marquee selection (frames need full enclosure), drag-move, 8-handle resize (shift keeps aspect), floating property bar per selection type, draggable Selection inspector with editable fields and actions, command bar search (⌘K) that focuses matches, lock, bring-to-front / send-to-back, nudge with arrows, duplicate, copy/cut/paste, delete (connectors follow their elements), undo/redo (snapshot history of committed operations). |
 | Persistence | Versioned JSON document (`{ version: 1, elements }`) per board; debounced autosave (`PUT /api/boards/[id]`) with saved/saving/error indicator; flush on tab hide and unload. |
 | Performance | Off-screen culling of box elements; per-element store subscriptions; `overflow: clip` root so nothing can scroll the canvas surface. |
-| Help | Keyboard-shortcut panel in the board header. |
+| Help | Shortcuts panel (topbar button); empty-board hint card. |
 
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, box/resize/connector geometry, store history and frame behaviour).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
-  the workspace pages and the canvas — create sticky, type, drag, zoom, pan, fit, delete,
-  undo, draw rectangle, draw connector, autosave, reload, create board.
+  the home, space and team pages and the canvas — create note (typing into the focused
+  title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
+  command-bar search, autosave, reload, create board from a starter.
 
 ### Known gaps (intentional for brief 1)
 - No authentication or authorisation; everyone is the seeded demo user.
 - Single workspace; no multiplayer; no comments; no export; no search.
-- Connectors are straight lines; no orthogonal routing yet.
+- Connectors are straight lines; no orthogonal/curved routing yet.
+- Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
+  system stack.
 - SQLite only; Postgres wiring is a config change but not yet exercised.
 - Next.js 16 dev server (Turbopack) occasionally panics on first compile of a route;
   `rm -rf apps/web/.next` and restart fixes it. Not seen in production builds.
@@ -259,10 +308,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Build our own canvas engine instead of adopting tldraw / React Flow. | The canvas is the product. We need full control over rendering graph nodes, optics and agent overlays; libraries optimise for whiteboards or node-graphs, not both, and licensing (tldraw) is a constraint for SaaS. |
 | 2026-09-04 | Drizzle + SQLite in dev, Postgres as the SaaS target. | Zero-setup local dev; Drizzle keeps SQL portable. The graph store (later) may add a dedicated graph engine or Postgres extensions. |
 | 2026-09-04 | No auth in brief 1; seeded demo user/workspace. | Focus on canvas and structure. Schema keeps users/memberships/roles so auth slots in without a migration of intent. |
-| 2026-09-04 | Mural vocabulary: Workspace → Team / Room → Board. | Familiar to the target users; matches the requested management structure. |
+| 2026-09-04 | Miro vocabulary: Workspace → Team / Space → Board. | Familiar to the target users; matches the requested management structure. |
 | 2026-09-04 | Connectors render above all elements. | Labels and arrowheads must stay readable; connectors attach to element borders so they rarely obscure content. |
 | 2026-09-04 | Canvas root uses `overflow: clip`, not `hidden`. | `hidden` containers can still be scrolled by `focus()`/`scrollIntoView`, which shifted the whole UI during testing. |
-| 2026-09-04 | Tools revert to *select* after one use, except *hand* and *connector*. | Matches Mural/Figma muscle memory; connectors are usually drawn in batches. |
+| 2026-09-04 | Tools revert to *select* after one use, except *hand* and *connector*. | Matches Miro/Figma muscle memory; connectors are usually drawn in batches. |
 
 ## 8. Open questions for the product owner
 
@@ -274,10 +323,20 @@ database is empty. Delete the file to reset. Schema changes: edit
 
 ## 9. Changelog
 
+- **2026-09-04 — Rev 2: Miro, Spaces, LeanFlow Studio design.** Corrected the reference
+  product to Miro and renamed Rooms → Spaces everywhere (schema, routes, ids, copy).
+  Replicated the UI/UX of `rummand/leanflow-studio`: new design tokens and CSS, LeanFlow
+  home shell (sidebar, start panel, starters, recent strip, board browser with row
+  actions and move-to-space), LeanFlow board shell (topbar, command bar with board search,
+  badge tool rail with shape picker, draggable Selection inspector, Map overview card,
+  zoom card, status line). Document model v2: architecture cards, notes and text blocks
+  with title + body, section variant, v1 migration. Board templates power the starters
+  and the seed. Agents must now attach screenshots when reporting UI work (CLAUDE.md).
+
 - **2026-09-04 — Brief 1 kick-off.** Captured the vision (agent-built meta-model,
   everything-is-a-graph, infinite canvas, SaaS first / sovereign later). Set up the pnpm
   monorepo, Next.js 16 web app, Drizzle/SQLite persistence with seed data, the
-  Mural-like management structure (workspace home, teams, rooms, boards) and the first
+  Miro-like management structure (workspace home, teams, spaces, boards) and the first
   version of the infinite-canvas engine (navigation, minimap, tools, selection,
   move/resize, inline text editing, connectors, frames, undo/redo, copy/paste,
   autosave).

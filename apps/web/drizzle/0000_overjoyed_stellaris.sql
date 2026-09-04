@@ -10,7 +10,7 @@ CREATE TABLE `board_favorites` (
 CREATE TABLE `boards` (
 	`id` text PRIMARY KEY NOT NULL,
 	`workspace_id` text NOT NULL,
-	`room_id` text NOT NULL,
+	`space_id` text NOT NULL,
 	`name` text NOT NULL,
 	`description` text DEFAULT '' NOT NULL,
 	`document` text DEFAULT '{"version":1,"elements":{}}' NOT NULL,
@@ -19,13 +19,13 @@ CREATE TABLE `boards` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`last_opened_at` text,
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`space_id`) REFERENCES `spaces`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `boards_room_idx` ON `boards` (`room_id`);--> statement-breakpoint
+CREATE INDEX `boards_space_idx` ON `boards` (`space_id`);--> statement-breakpoint
 CREATE INDEX `boards_workspace_idx` ON `boards` (`workspace_id`);--> statement-breakpoint
-CREATE TABLE `rooms` (
+CREATE TABLE `spaces` (
 	`id` text PRIMARY KEY NOT NULL,
 	`workspace_id` text NOT NULL,
 	`team_id` text,
@@ -39,8 +39,8 @@ CREATE TABLE `rooms` (
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `rooms_workspace_idx` ON `rooms` (`workspace_id`);--> statement-breakpoint
-CREATE INDEX `rooms_team_idx` ON `rooms` (`team_id`);--> statement-breakpoint
+CREATE INDEX `spaces_workspace_idx` ON `spaces` (`workspace_id`);--> statement-breakpoint
+CREATE INDEX `spaces_team_idx` ON `spaces` (`team_id`);--> statement-breakpoint
 CREATE TABLE `team_members` (
 	`team_id` text NOT NULL,
 	`user_id` text NOT NULL,

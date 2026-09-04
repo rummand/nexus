@@ -5,7 +5,7 @@ import { isBoxElement } from "./document";
 import { boxToScreen, elementBounds, HANDLES, handleCursor, handlePoint, worldToScreen, type HandleId } from "./geometry";
 import { selectionBounds, useCanvas } from "./store";
 
-const HANDLE = 9;
+const HANDLE = 11;
 
 /** Screen-space selection outlines, resize handles, hover outline and marquee. */
 export function SelectionOverlay({ onBeginResize }: { onBeginResize: (id: string, handle: HandleId, e: ReactPointerEvent) => void }) {
@@ -30,7 +30,7 @@ export function SelectionOverlay({ onBeginResize }: { onBeginResize: (id: string
         if (!b) return null;
         const sb = boxToScreen(b, camera);
         const connectTarget = tool === "connector" || pending;
-        return <div className="absolute rounded-sm" style={{ left: sb.x - 2, top: sb.y - 2, width: sb.w + 4, height: sb.h + 4, border: `${connectTarget ? 2 : 1.5}px solid ${connectTarget ? "#4f46e5" : "#818cf8"}`, background: connectTarget ? "rgb(79 70 229 / 0.08)" : undefined }} />;
+        return <div className="absolute rounded-sm" style={{ left: sb.x - 2, top: sb.y - 2, width: sb.w + 4, height: sb.h + 4, border: `${connectTarget ? 2 : 1.5}px solid ${connectTarget ? "#1376d4" : "#9fc9ff"}`, background: connectTarget ? "rgb(19 118 212 / 0.08)" : undefined }} />;
       })()}
 
       {/* per-element outlines */}
@@ -41,13 +41,13 @@ export function SelectionOverlay({ onBeginResize }: { onBeginResize: (id: string
         if (!b) return null;
         const sb = boxToScreen(b, camera);
         const isEditing = editingId === id;
-        return <div key={id} className="absolute" style={{ left: sb.x - 1, top: sb.y - 1, width: sb.w + 2, height: sb.h + 2, border: `${isEditing ? 2 : 1.5}px solid #4f46e5`, borderRadius: 3 }} />;
+        return <div key={id} className="absolute" style={{ left: sb.x - 1, top: sb.y - 1, width: sb.w + 2, height: sb.h + 2, border: `${isEditing ? 2 : 1.5}px solid #1376d4`, borderRadius: 6 }} />;
       })}
 
       {/* group bounds */}
       {bounds && (() => {
         const sb = boxToScreen(bounds, camera);
-        return <div className="absolute" style={{ left: sb.x - 4, top: sb.y - 4, width: sb.w + 8, height: sb.h + 8, border: "1px dashed #4f46e5", borderRadius: 4 }} />;
+        return <div className="absolute" style={{ left: sb.x - 4, top: sb.y - 4, width: sb.w + 8, height: sb.h + 8, border: "1px dashed #1376d4", borderRadius: 6 }} />;
       })()}
 
       {/* resize handles for a single box element */}
@@ -58,8 +58,8 @@ export function SelectionOverlay({ onBeginResize }: { onBeginResize: (id: string
             <div
               key={h}
               onPointerDown={(e) => onBeginResize(single.id, h, e)}
-              className="pointer-events-auto absolute rounded-[2px] border border-accent-600 bg-white shadow-sm"
-              style={{ left: p.x - HANDLE / 2, top: p.y - HANDLE / 2, width: HANDLE, height: HANDLE, cursor: handleCursor(h) }}
+              className="pointer-events-auto absolute rounded-full border-2 bg-white shadow-sm" 
+              style={{ left: p.x - HANDLE / 2, top: p.y - HANDLE / 2, width: HANDLE, height: HANDLE, cursor: handleCursor(h), borderColor: "#1376d4" }}
             />
           );
         })}
@@ -67,7 +67,7 @@ export function SelectionOverlay({ onBeginResize }: { onBeginResize: (id: string
       {/* marquee */}
       {marquee && (() => {
         const sb = boxToScreen(marquee, camera);
-        return <div className="absolute rounded-sm" style={{ left: sb.x, top: sb.y, width: sb.w, height: sb.h, border: "1px solid #4f46e5", background: "rgb(79 70 229 / 0.08)" }} />;
+        return <div className="absolute rounded-sm" style={{ left: sb.x, top: sb.y, width: sb.w, height: sb.h, border: "1px solid #1376d4", background: "rgb(19 118 212 / 0.08)" }} />;
       })()}
     </div>
   );

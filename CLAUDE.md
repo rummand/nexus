@@ -20,13 +20,26 @@ in the same change:
 
 A change without a brief update is incomplete.
 
+## Show, don't tell
+
+When you change anything visible, take screenshots of the running app (Playwright is
+available; see `apps/web/e2e/smoke.mjs` for the launch pattern) and send them to the
+product owner with your report. Do this periodically during longer UI work, not only at
+the end.
+
+## Design reference
+
+The UI/UX follows the owner's `rummand/leanflow-studio` repo (see `docs/BRIEF.md` §4a).
+Reuse its class names and tokens from `apps/web/src/app/globals.css`; do not invent a
+second visual language.
+
 ## Repository layout
 
 - `apps/web` — Next.js 16 app (App Router, React 19, TypeScript, Tailwind v4).
   - `src/app` — routes (workspace management + board canvas + API).
   - `src/canvas` — the infinite-canvas engine (store, geometry, interaction, rendering).
   - `src/db` — Drizzle ORM schema, client, migrations, seed.
-  - `src/components` — shared UI.
+  - `src/components/workspace` — home shell (sidebar, board browser, dialogs).
 - `docs/` — product brief and design notes.
 - `packages/` — reserved for shared packages (canvas core, meta-model, connectors).
 

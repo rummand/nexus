@@ -3,9 +3,13 @@
  *
  * World coordinates only. The camera (screen mapping) is never stored here.
  * `version` is bumped and migrated in `migrateDocument` whenever the shape changes.
+ *
+ * v2 (2026-09-04): LeanFlow-style objects — `card` (architecture object with kind,
+ * title, description), notes with title + body, text blocks with title/body and a
+ * `section` variant. Legacy v1 text elements are migrated to text blocks.
  */
 
-export const DOCUMENT_VERSION = 1 as const;
+export const DOCUMENT_VERSION = 2 as const;
 
 export type ElementId = string;
 
@@ -32,18 +36,30 @@ interface BaseElement extends Box {
   locked?: boolean;
 }
 
+/** Note (sticky): a local remark with a title and body, tinted by `color`. */
 export interface StickyElement extends BaseElement {
   type: "sticky";
+  title: string;
   text: string;
   color: string;
 }
 
+/** Text block: a titled paragraph; `section` is the tinted heading variant. */
 export interface TextElement extends BaseElement {
   type: "text";
+  variant: "text" | "section";
+  title: string;
   text: string;
-  fontSize: number;
   color: string;
-  align: "left" | "center" | "right";
+}
+
+/** Architecture object card: the canvas face of a (future) graph entity. */
+export interface CardElement extends BaseElement {
+  type: "card";
+  kind: string;
+  color: string;
+  title: string;
+  description: string;
 }
 
 export interface ShapeElement extends BaseElement {
@@ -77,7 +93,7 @@ export interface ConnectorElement {
   locked?: boolean;
 }
 
-export type BoxElement = StickyElement | TextElement | ShapeElement | FrameElement;
+export type BoxElement = StickyElement | TextElement | CardElement | ShapeElement | FrameElement;
 export type CanvasElement = BoxElement | ConnectorElement;
 export type ElementType = CanvasElement["type"];
 
@@ -94,6 +110,30 @@ export function isBoxElement(el: CanvasElement): el is BoxElement {
   return el.type !== "connector";
 }
 
+/** Human label for an element type. */
+export function elementTypeLabel(el: CanvasElement): string {
+  switch (el.type) {
+    case "card": return el.kind || "Card";
+    case "sticky": return "Note";
+    case "text": return el.variant === "section" ? "Section" : "Text";
+    case "shape": return el.shape === "rect" ? "Rectangle" : el.shape === "ellipse" ? "Oval" : "Rhombus";
+    case "frame": return "Frame";
+    case "connector": return "Connector";
+  }
+}
+
+/** Display name of an element (title, text, label …). */
+export function elementName(el: CanvasElement): string {
+  switch (el.type) {
+    case "card": return el.title || "Untitled card";
+    case "sticky": return el.title || el.text.split("\n")[0] || "Note";
+    case "text": return el.title || el.text.split("\n")[0] || (el.variant === "section" ? "Section" : "Text");
+    case "shape": return el.text || elementTypeLabel(el);
+    case "frame": return el.title || "Frame";
+    case "connector": return el.label || "Connector";
+  }
+}
+
 /** Parse a stored document string defensively; corrupt input yields an empty document. */
 export function parseDocument(raw: string | null | undefined): CanvasDocument {
   if (!raw) return emptyDocument();
@@ -105,10 +145,28 @@ export function parseDocument(raw: string | null | undefined): CanvasDocument {
   }
 }
 
+type LegacyV1Text = { type: "text"; text: string; fontSize?: number; color?: string; align?: string } & Box & { id: string; z: number };
+
 export function migrateDocument(doc: Partial<CanvasDocument> & { version?: number }): CanvasDocument {
-  // v1 is the first version; future migrations chain here.
-  const elements =
-    doc.elements && typeof doc.elements === "object" ? (doc.elements as CanvasDocument["elements"]) : {};
+  const raw = doc.elements && typeof doc.elements === "object" ? (doc.elements as Record<string, unknown>) : {};
+  const version = doc.version ?? 1;
+  const elements: CanvasDocument["elements"] = {};
+  for (const [id, value] of Object.entries(raw)) {
+    const el = value as CanvasElement | LegacyV1Text;
+    if (!el || typeof el !== "object" || !("type" in el)) continue;
+    if (version < 2) {
+      if (el.type === "text" && !("variant" in el)) {
+        const legacy = el as LegacyV1Text;
+        elements[id] = { id, type: "text", variant: "text", title: "", text: legacy.text ?? "", color: TEXT_COLORS[0], x: legacy.x, y: legacy.y, w: legacy.w, h: Math.max(legacy.h, 90), z: legacy.z };
+        continue;
+      }
+      if (el.type === "sticky" && !("title" in el)) {
+        elements[id] = { ...(el as StickyElement), title: "" };
+        continue;
+      }
+    }
+    elements[id] = el as CanvasElement;
+  }
   return { version: DOCUMENT_VERSION, elements };
 }
 
@@ -118,28 +176,32 @@ export function serializeDocument(doc: CanvasDocument): string {
 
 // ---- palette ---------------------------------------------------------------
 
-export const STICKY_COLORS = [
-  "#FDE68A", // yellow
-  "#FCA5A5", // red
-  "#FDBA74", // orange
-  "#86EFAC", // green
-  "#93C5FD", // blue
-  "#C4B5FD", // violet
-  "#F9A8D4", // pink
-  "#E5E7EB", // gray
-] as const;
+/** Note tints (left border + wash). First is the LeanFlow amber. */
+export const NOTE_COLORS = ["#ff9800", "#1376d4", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#64748b"] as const;
+/** Backwards-compatible alias. */
+export const STICKY_COLORS = NOTE_COLORS;
 
-export const SHAPE_FILLS = [
-  "#FFFFFF",
-  "#EEF2FF",
-  "#ECFDF5",
-  "#FFF7ED",
-  "#FEF2F2",
-  "#F5F3FF",
-  "#F0F9FF",
-  "#F3F4F6",
-] as const;
+export const TEXT_COLORS = ["#1376d4", "#0f766e", "#f59e0b", "#8b5cf6", "#ef4444", "#64748b"] as const;
 
-export const FRAME_COLORS = ["#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B"] as const;
+export const SHAPE_FILLS = ["#FFFFFF", "#EEF6FF", "#ECFDF5", "#FFF7ED", "#FEF2F2", "#F5F3FF", "#F0F9FF", "#F3F4F6"] as const;
 
-export const STROKE_COLORS = ["#334155", "#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444"] as const;
+export const FRAME_COLORS = ["#1376d4", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"] as const;
+
+export const STROKE_COLORS = ["#475569", "#1376d4", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444"] as const;
+
+/** Suggested card kinds. The real meta-model is meant to emerge from data; these are starters. */
+export const CARD_KINDS: ReadonlyArray<{ kind: string; color: string }> = [
+  { kind: "Application", color: "#f59e0b" },
+  { kind: "Business Capability", color: "#10b981" },
+  { kind: "Process", color: "#ec4899" },
+  { kind: "Interface", color: "#1376d4" },
+  { kind: "IT Component", color: "#8b5cf6" },
+  { kind: "Data Object", color: "#0ea5e9" },
+  { kind: "Provider", color: "#64748b" },
+  { kind: "Objective", color: "#ef4444" },
+];
+
+export function cardColorForKind(kind: string): string {
+  const hit = CARD_KINDS.find((k) => k.kind.toLowerCase() === kind.trim().toLowerCase());
+  return hit?.color ?? "#1376d4";
+}

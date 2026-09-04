@@ -4,7 +4,7 @@ import { relations, sql } from "drizzle-orm";
 /**
  * Nexus data model v0.1 — see docs/BRIEF.md §5.4.
  *
- * Vocabulary (Mural-like): Workspace → Team / Room → Board.
+ * Vocabulary (Miro-like): Workspace → Team / Space → Board.
  * Written for SQLite in development; kept Postgres-portable (text ids, ISO timestamps,
  * JSON stored as text) so the SaaS target is a dialect switch, not a redesign.
  */
@@ -75,14 +75,14 @@ export const teamMembers = sqliteTable(
   (t) => [primaryKey({ columns: [t.teamId, t.userId] })],
 );
 
-export const rooms = sqliteTable(
-  "rooms",
+export const spaces = sqliteTable(
+  "spaces",
   {
     id: text("id").primaryKey(),
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    /** Optional owning team. Null = workspace-level room. */
+    /** Optional owning team. Null = workspace-level space. */
     teamId: text("team_id").references(() => teams.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
@@ -91,7 +91,7 @@ export const rooms = sqliteTable(
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
-  (t) => [index("rooms_workspace_idx").on(t.workspaceId), index("rooms_team_idx").on(t.teamId)],
+  (t) => [index("spaces_workspace_idx").on(t.workspaceId), index("spaces_team_idx").on(t.teamId)],
 );
 
 export const boards = sqliteTable(
@@ -101,9 +101,9 @@ export const boards = sqliteTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    roomId: text("room_id")
+    spaceId: text("space_id")
       .notNull()
-      .references(() => rooms.id, { onDelete: "cascade" }),
+      .references(() => spaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     /** Versioned canvas document, JSON-encoded. See src/canvas/document.ts. */
@@ -113,7 +113,7 @@ export const boards = sqliteTable(
     updatedAt: timestamp("updated_at"),
     lastOpenedAt: text("last_opened_at"),
   },
-  (t) => [index("boards_room_idx").on(t.roomId), index("boards_workspace_idx").on(t.workspaceId)],
+  (t) => [index("boards_space_idx").on(t.spaceId), index("boards_workspace_idx").on(t.workspaceId)],
 );
 
 export const boardFavorites = sqliteTable(
@@ -135,14 +135,14 @@ export const boardFavorites = sqliteTable(
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(workspaceMembers),
   teams: many(teams),
-  rooms: many(rooms),
+  spaces: many(spaces),
   boards: many(boards),
 }));
 
 export const teamsRelations = relations(teams, ({ one, many }) => ({
   workspace: one(workspaces, { fields: [teams.workspaceId], references: [workspaces.id] }),
   members: many(teamMembers),
-  rooms: many(rooms),
+  spaces: many(spaces),
 }));
 
 export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
@@ -155,15 +155,15 @@ export const workspaceMembersRelations = relations(workspaceMembers, ({ one }) =
   user: one(users, { fields: [workspaceMembers.userId], references: [users.id] }),
 }));
 
-export const roomsRelations = relations(rooms, ({ one, many }) => ({
-  workspace: one(workspaces, { fields: [rooms.workspaceId], references: [workspaces.id] }),
-  team: one(teams, { fields: [rooms.teamId], references: [teams.id] }),
+export const spacesRelations = relations(spaces, ({ one, many }) => ({
+  workspace: one(workspaces, { fields: [spaces.workspaceId], references: [workspaces.id] }),
+  team: one(teams, { fields: [spaces.teamId], references: [teams.id] }),
   boards: many(boards),
 }));
 
 export const boardsRelations = relations(boards, ({ one, many }) => ({
   workspace: one(workspaces, { fields: [boards.workspaceId], references: [workspaces.id] }),
-  room: one(rooms, { fields: [boards.roomId], references: [rooms.id] }),
+  space: one(spaces, { fields: [boards.spaceId], references: [spaces.id] }),
   createdBy: one(users, { fields: [boards.createdById], references: [users.id] }),
   favorites: many(boardFavorites),
 }));
@@ -176,5 +176,5 @@ export const boardFavoritesRelations = relations(boardFavorites, ({ one }) => ({
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type Team = typeof teams.$inferSelect;
-export type Room = typeof rooms.$inferSelect;
+export type Space = typeof spaces.$inferSelect;
 export type Board = typeof boards.$inferSelect;

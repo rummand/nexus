@@ -6,7 +6,7 @@ import type { CanvasElement, ConnectorEnd } from "../document";
 import { isBoxElement } from "../document";
 import { useCanvasStore, type Tool } from "../store";
 
-const TOOL_KEYS: Record<string, Tool> = { v: "select", h: "hand", n: "sticky", s: "sticky", t: "text", r: "rect", o: "ellipse", f: "frame", c: "connector", l: "connector" };
+const TOOL_KEYS: Record<string, Tool> = { v: "select", h: "hand", f: "frame", c: "card", n: "sticky", t: "text", s: "section", r: "rect", o: "ellipse", d: "diamond", l: "connector" };
 
 const CLIPBOARD_MIME = "application/x-nexus-elements";
 let internalClipboard: CanvasElement[] | null = null;

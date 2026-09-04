@@ -21,7 +21,7 @@ function shorten(p: Point, toward: Point, by: number): Point {
   return { x: toward.x + (p.x - toward.x) * t, y: toward.y + (p.y - toward.y) * t };
 }
 
-/** SVG layer inside the world transform; all coordinates are world units. */
+/** SVG lines inside the world transform plus HTML pill labels (LeanFlow relation labels). */
 export function ConnectorLayer() {
   const elements = useCanvas((s) => s.elements);
   const selection = useCanvas((s) => s.selection);
@@ -42,38 +42,42 @@ export function ConnectorLayer() {
   }
 
   const hitWidth = Math.max(12, 12 / zoom);
+  const geometries = connectors.map((c) => ({ c, g: connectorGeometry(c, elements) }));
 
   return (
-    <svg className="absolute left-0 top-0" style={{ overflow: "visible", width: 1, height: 1, pointerEvents: "none", zIndex: 1_000_000 }}>
-      {connectors.map((c) => {
-        const g = connectorGeometry(c, elements);
-        if (!g) return null;
-        const selected = selection.includes(c.id);
-        const hovered = hoverId === c.id;
-        const stroke = selected ? "#4f46e5" : c.stroke;
-        const start = c.arrowStart ? shorten(g.from, g.to, ARROW * 0.8) : g.from;
-        const end = c.arrowEnd ? shorten(g.to, g.from, ARROW * 0.8) : g.to;
-        return (
-          <g key={c.id} data-element-id={c.id} data-connectable="false" style={{ pointerEvents: "auto", cursor: "pointer" }}>
-            <line x1={g.from.x} y1={g.from.y} x2={g.to.x} y2={g.to.y} stroke="transparent" strokeWidth={hitWidth} />
-            {(selected || hovered) && <line x1={g.from.x} y1={g.from.y} x2={g.to.x} y2={g.to.y} stroke="#4f46e5" strokeOpacity={0.18} strokeWidth={8} />}
-            <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={stroke} strokeWidth={2} strokeDasharray={c.style === "dashed" ? "8 6" : undefined} strokeLinecap="round" />
-            {c.arrowEnd && <polygon points={arrowHead(g.to, g.from)} fill={stroke} />}
-            {c.arrowStart && <polygon points={arrowHead(g.from, g.to)} fill={stroke} />}
-            {c.label && (
-              <text x={g.mid.x} y={g.mid.y} textAnchor="middle" dominantBaseline="middle" fontSize={12} fontWeight={500} fill="#334155" style={{ paintOrder: "stroke", stroke: "#f8fafc", strokeWidth: 5, strokeLinejoin: "round", fontFamily: "inherit" }}>
-                {c.label}
-              </text>
-            )}
+    <>
+      <svg className="absolute left-0 top-0" style={{ overflow: "visible", width: 1, height: 1, pointerEvents: "none", zIndex: 1_000_000 }}>
+        {geometries.map(({ c, g }) => {
+          if (!g) return null;
+          const selected = selection.includes(c.id);
+          const hovered = hoverId === c.id;
+          const stroke = selected ? "#1376d4" : c.stroke;
+          const start = c.arrowStart ? shorten(g.from, g.to, ARROW * 0.8) : g.from;
+          const end = c.arrowEnd ? shorten(g.to, g.from, ARROW * 0.8) : g.to;
+          return (
+            <g key={c.id} data-element-id={c.id} data-connectable="false" style={{ pointerEvents: "auto", cursor: "pointer" }}>
+              <line x1={g.from.x} y1={g.from.y} x2={g.to.x} y2={g.to.y} stroke="transparent" strokeWidth={hitWidth} />
+              {(selected || hovered) && <line x1={g.from.x} y1={g.from.y} x2={g.to.x} y2={g.to.y} stroke="#1376d4" strokeOpacity={0.16} strokeWidth={8} />}
+              <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={stroke} strokeWidth={2.5} strokeDasharray={c.style === "dashed" ? "8 6" : undefined} strokeLinecap="round" />
+              {c.arrowEnd && <polygon points={arrowHead(g.to, g.from)} fill={stroke} />}
+              {c.arrowStart && <polygon points={arrowHead(g.from, g.to)} fill={stroke} />}
+            </g>
+          );
+        })}
+        {pendingPath && (
+          <g>
+            <line x1={pendingPath.from.x} y1={pendingPath.from.y} x2={pendingPath.to.x} y2={pendingPath.to.y} stroke="#1376d4" strokeWidth={2.5} strokeDasharray="6 5" strokeLinecap="round" />
+            <polygon points={arrowHead(pendingPath.to, pendingPath.from)} fill="#1376d4" />
           </g>
-        );
-      })}
-      {pendingPath && (
-        <g>
-          <line x1={pendingPath.from.x} y1={pendingPath.from.y} x2={pendingPath.to.x} y2={pendingPath.to.y} stroke="#4f46e5" strokeWidth={2} strokeDasharray="6 5" strokeLinecap="round" />
-          <polygon points={arrowHead(pendingPath.to, pendingPath.from)} fill="#4f46e5" />
-        </g>
+        )}
+      </svg>
+      {geometries.map(({ c, g }) =>
+        g && c.label ? (
+          <div key={`${c.id}-label`} data-element-id={c.id} data-connectable="false" className={selection.includes(c.id) ? "board-connector-label selected" : "board-connector-label"} style={{ left: g.mid.x, top: g.mid.y, zIndex: 1_000_001 }} title={c.label}>
+            {c.label}
+          </div>
+        ) : null,
       )}
-    </svg>
+    </>
   );
 }
