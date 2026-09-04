@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 11 — performance)
+Last updated: 2026-09-04 (rev 12 — impact and attribute lenses)
 
 ---
 
@@ -347,6 +347,28 @@ Authentication is **not** part of the first brief: the app runs as a seeded demo
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
 
+### 5.11 Lenses — impact and attribute optics (v0.2)
+
+A *lens* is a client-side optic over a board: it changes how the board is drawn, never what it
+contains (`src/canvas/lens.ts`).
+
+- **Impact lens.** Breadth-first walk from the selected cards along the board's connectors
+  (direction outbound / inbound / both, depth 1–3, sharing the controls of "Expand selection").
+  Cards and connectors that are not reached fade to 12 %; reached cards carry a "n hops" badge.
+  The legend lists hop rings with counts; clicking a ring selects those cards. With nothing
+  selected the lens is armed but shows everything.
+- **Attribute lens.** Colour cards by the value of one attribute (keys offered are those present
+  on the board, most common first). Each distinct value gets a palette colour, a ring and a badge
+  on the card; cards without the attribute fade; connectors stay visible only between two
+  visible cards. The legend is the emergent value set with counts — i.e. the attribute's schema
+  as the data actually uses it.
+- **Derived state.** The lens result (visible set, colours, hops, legend) is computed once per
+  change of lens / selection / elements by a store subscription and stored as `lensResult`;
+  every card and connector reads a per-id slice, so the graph walk never runs per component.
+- **Legend card.** A screen-space card above the status line names the active lens and its
+  legend, with a clear button, so the lens stays legible when the Graph panel is collapsed.
+- **Saved views** carry the lens (`SavedViewpoint.lens`, optional — older views have none).
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -420,6 +442,11 @@ the schema already separates users, memberships and roles.
   untyped entities, unlabelled relations, orphans (§5.6).
 - Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
 - In-canvas duplicate hint with one-click merge in the Selection inspector.
+
+### Lenses (v0.2)
+- Impact lens (direction, depth) and attribute lens (colour by value) in the Viewpoint tab;
+  cards badge their hop distance or attribute value; legend card on the canvas; legend entries
+  select their cards; saved views remember the lens.
 
 ### Viewpoints (v0.2)
 - Graph panel with Inventory | Viewpoint tabs; expand neighbours (depth, direction),
@@ -501,6 +528,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Attributes are schemaless key/values per entity; the schema is *derived* (keys per kind with counts). | This is the vision in miniature: the meta-model emerges from data instead of being configured. Validation / typing can be layered on later as proposals. |
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
+| 2026-09-04 | Lenses never mutate the document; the impact lens walks *board connectors*, not the workspace graph. | What you see is what you traverse: the user controls which relations are on the board (Show all relations / expand) and the lens explains exactly that picture. A graph-backed variant can come later as "expand then lens". |
 | 2026-09-04 | The board canvas is client-only (`dynamic(..., { ssr: false })`) with a loading shell. | Server-rendering a thousand absolutely positioned nodes doubled the payload and the hydration cost for zero benefit — the canvas needs the viewport size before it can place anything. |
 | 2026-09-04 | Grid and minimap are drawn on `<canvas>`; the world transform is set imperatively. | These are the three things that change on *every* pan/zoom frame. Keeping them out of React (and out of CSS gradient repaints) is what made navigation frame-bound instead of render-bound. |
 | 2026-09-04 | Layers memoise children on a joined-ids string; components subscribe to their own slice. | A drag mutates `elements` every pointer move; without id-keyed memoisation React recreated 700 elements per frame even though every child bailed out. |
@@ -515,6 +543,13 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 12: impact and attribute lenses.** Two board optics in the Viewpoint tab:
+  the impact lens fades everything not reachable from the selection along connectors (direction
+  and depth), the attribute lens colours cards by an attribute's values with an emergent legend.
+  Hop / value badges on cards, a legend card on the canvas, legend entries select their cards,
+  saved views carry the lens. E2E now picks a free spot for its test note (the shared dev board
+  accumulates objects) and covers the impact lens.
 
 - **2026-09-04 — Rev 11: performance.** Client-only canvas with a loading shell,
   imperative world transform, canvas-drawn grid and minimap, wheel coalescing per animation

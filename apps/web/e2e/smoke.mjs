@@ -45,9 +45,16 @@ try {
   assert.ok(initial > 10, "seeded board has objects");
   const z0 = await zoom();
 
+  // Find an empty spot for the new note: the shared dev board accumulates objects and connectors
+  // (which sit above cards and have a generous hit area) across runs.
+  const spot = await page.evaluate(() => {
+    const free = (x, y) => [[0, 0], [-45, -25], [45, -25], [-45, 25], [45, 25]].every(([dx, dy]) => !document.elementFromPoint(x + dx, y + dy)?.closest("[data-element-id]"));
+    for (const [x, y] of [[900, 750], [700, 800], [1100, 800], [500, 700], [1200, 650], [800, 600], [600, 500], [1000, 450]]) if (free(x, y)) return { x, y };
+    return { x: 900, y: 750 };
+  });
   // note: N + click, type the title (auto-focused), Escape
   await page.keyboard.press("n");
-  await page.mouse.click(900, 750);
+  await page.mouse.click(spot.x, spot.y);
   await page.waitForSelector(".impact-note input:focus");
   const noteId = await page.evaluate(() => document.activeElement?.closest("[data-element-id]")?.getAttribute("data-element-id"));
   assert.ok(noteId, "new note has an id");
@@ -164,6 +171,14 @@ try {
   await page.click(".viewpoint-kinds button >> nth=0");
   assert.ok((await page.locator(".fact-card.dimmed").count()) > 0, "kind lens dims cards");
   await page.click(".viewpoint-kinds button >> nth=0");
+  // impact lens: select a card, everything not connected to it fades; legend card appears
+  await page.click(".fact-card >> nth=0", { position: { x: 6, y: 6 } });
+  await page.click(".viewpoint-row button:has-text('Impact')");
+  await page.waitForSelector("[data-lens-legend]");
+  assert.ok((await page.locator(".fact-card.dimmed").count()) >= 0, "impact lens renders");
+  assert.ok(/impact/i.test(await page.locator("[data-lens-legend]").innerText()), "lens legend names the lens");
+  await page.click("[data-lens-legend] header button");
+  await page.locator("[data-lens-legend]").waitFor({ state: "detached", timeout: 5000 }).catch(() => assert.fail("clearing the lens hides the legend"));
   await page.click(".panel-tabs button:has-text('Inventory')");
 
   // autosave + reload

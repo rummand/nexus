@@ -61,4 +61,20 @@ describe("canvas store", () => {
     expect(camera.zoom).toBeCloseTo(0.76);
     expect(camera.x + 500 * camera.zoom).toBeCloseTo(500);
   });
+
+  it("derives the lens result from lens, selection and elements", () => {
+    const card = (id: string): CanvasElement => ({ id, type: "card", x: 0, y: 0, w: 200, h: 100, z: 1, kind: "Application", color: "#1376d4", title: id, description: "" });
+    const store = makeStore([card("a"), card("b"), card("c"), { id: "ab", type: "connector", from: { elementId: "a" }, to: { elementId: "b" }, label: "", stroke: "#000", style: "solid", route: "straight", arrowEnd: true, arrowStart: false, z: 5 }]);
+    expect(store.getState().lensResult).toBeNull();
+    store.getState().setLens({ type: "impact", direction: "out", depth: 1 });
+    store.getState().select(["a"]);
+    expect(store.getState().lensResult?.visible.has("b")).toBe(true);
+    expect(store.getState().lensResult?.visible.has("c")).toBe(false);
+    // saved views carry the lens
+    store.getState().saveViewpoint("impact");
+    store.getState().setLens({ type: "none" });
+    expect(store.getState().lensResult).toBeNull();
+    store.getState().applyViewpoint(store.getState().viewpoints[0]!.id);
+    expect(store.getState().lens).toEqual({ type: "impact", direction: "out", depth: 1 });
+  });
 });

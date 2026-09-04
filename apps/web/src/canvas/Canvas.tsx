@@ -15,6 +15,7 @@ import { CommandBar } from "./CommandBar";
 import { Toolbar } from "./Toolbar";
 import { InspectorPanel } from "./InspectorPanel";
 import { InventoryPanel } from "./InventoryPanel";
+import { LensLegend } from "./LensLegend";
 import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
@@ -113,6 +114,7 @@ export function Canvas() {
       {panels.help && <HelpPanel />}
       {panels.history && <HistoryPanel rootRef={rootRef} />}
       <ZoomCard />
+      <LensLegend />
       <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
     </main>
   );

@@ -32,10 +32,19 @@ function usePatch<T extends object>(id: ElementId) {
 
 function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean; fresh: boolean }) {
   const patch = usePatch<CardElement>(el.id);
-  const dimmed = useCanvas((s) => s.hiddenKinds.includes(el.kind));
-  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : ""].filter(Boolean).join(" ");
+  const dimmed = useCanvas((s) => s.hiddenKinds.includes(el.kind) || (s.lensResult !== null && !s.lensResult.visible.has(el.id)));
+  const lensColor = useCanvas((s) => s.lensResult?.colors[el.id]);
+  const lensBadge = useCanvas((s) => {
+    const r = s.lensResult;
+    if (!r) return null;
+    if (r.lens.type === "attribute") return el.attributes?.[r.lens.key] ?? null;
+    const h = r.hops[el.id];
+    return h === undefined || h === 0 ? null : `${h} hop${h === 1 ? "" : "s"}`;
+  });
+  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : ""].filter(Boolean).join(" ");
   return (
-    <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color } as CSSProperties)}>
+    <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>
+      {lensBadge && <span className="fact-lens-badge" style={lensColor ? { background: lensColor } : undefined}>{lensBadge}</span>}
       <span className="fact-kind">
         <i />
         <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />

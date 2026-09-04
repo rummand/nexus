@@ -980,6 +980,28 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .viewpoint-empty { color: #6c7a91; font-size: 11px; }
 .viewpoint-status { background: #edf9f1; border: 1px solid #cbeed7; border-radius: 9px; color: #38734b; font-size: 11px; font-weight: 800; padding: 6px 8px; }
 .fact-card.dimmed { opacity: 0.22; }
+.fact-card.lensed { border-color: var(--lens-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lens-color) 28%, transparent), 0 10px 28px rgba(31, 45, 70, 0.1); }
+.fact-card .fact-lens-badge { background: var(--blue); border-radius: 999px; color: #fff; font-size: 10px; font-weight: 900; letter-spacing: 0.04em; line-height: 1; max-width: 60%; overflow: hidden; padding: 4px 8px; position: absolute; right: 10px; text-overflow: ellipsis; top: -10px; white-space: nowrap; }
+.viewpoint-hint { color: #6c7a91; font-size: 11px; line-height: 1.4; }
+.viewpoint-select { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: #253247; flex: 1; font: inherit; font-size: 12px; font-weight: 800; min-height: 30px; min-width: 0; padding: 0 8px; }
+.viewpoint-legend { background: #f8fbff; border: 1px solid #dbe8f6; border-radius: 10px; display: grid; gap: 4px; padding: 8px; }
+.viewpoint-legend > small { color: #6c7a91; font-size: 11px; font-weight: 800; }
+.viewpoint-legend button { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; display: flex; font-size: 12px; gap: 8px; min-height: 28px; padding: 0 8px; text-align: left; }
+.viewpoint-legend button i { border-radius: 3px; display: inline-block; flex: 0 0 auto; height: 11px; width: 11px; }
+.viewpoint-legend button b { flex: 1; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewpoint-legend button small { color: #6c7a91; font-weight: 800; }
+.lens-legend { background: rgba(255, 255, 255, 0.94); border: 1px solid var(--lines); border-radius: 13px; bottom: 48px; box-shadow: 0 16px 40px rgba(23, 32, 51, 0.12); display: grid; gap: 6px; left: 50%; max-width: 420px; padding: 10px 12px; position: absolute; transform: translateX(-50%); z-index: 6; }
+.lens-legend header { align-items: center; display: flex; gap: 8px; }
+.lens-legend header strong { color: var(--ink); flex: 1; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.lens-legend header button { background: transparent; border: 0; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; }
+.lens-legend header button:hover { color: var(--ink); }
+.lens-legend > small { color: var(--muted); font-size: 11px; font-weight: 700; }
+.lens-legend-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.lens-legend-items button { align-items: center; background: #fff; border: 1px solid #dbe4ef; border-radius: 999px; color: #253247; display: inline-flex; font-size: 11px; font-weight: 800; gap: 6px; min-height: 24px; padding: 0 8px 0 6px; }
+.lens-legend-items button:hover { border-color: #b8d7ff; color: var(--blue); }
+.lens-legend-items button i { border-radius: 50%; display: inline-block; height: 9px; width: 9px; }
+.lens-legend-items button b { color: #6c7a91; }
+.lens-legend-items em { color: var(--muted); font-size: 11px; font-style: normal; font-weight: 800; padding: 4px 6px; }
 
 /* attributes */
 .fact-attributes { display: flex; flex-wrap: wrap; gap: 4px; }

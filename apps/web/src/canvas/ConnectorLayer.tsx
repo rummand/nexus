@@ -88,10 +88,11 @@ const ConnectorView = memo(function ConnectorView({ id }: { id: string }) {
   const { c, p } = useConnectorPath(id);
   const selected = useCanvas((s) => s.selection.includes(id));
   const hovered = useCanvas((s) => s.hoverId === id);
+  const dimmed = useCanvas((s) => s.lensResult !== null && !s.lensResult.visible.has(id));
   if (!c || !p) return null;
   const stroke = selected ? "#1376d4" : c.stroke;
   return (
-    <g data-element-id={c.id} data-connectable="false" style={{ pointerEvents: "auto", cursor: "pointer" }}>
+    <g data-element-id={c.id} data-connectable="false" style={{ pointerEvents: "auto", cursor: "pointer", opacity: dimmed ? 0.12 : 1 }}>
       <path d={p.d} fill="none" stroke="transparent" strokeWidth={HIT_WIDTH} />
       {(selected || hovered) && <path d={p.d} fill="none" stroke="#1376d4" strokeOpacity={0.16} strokeWidth={8} />}
       <path d={p.d} fill="none" stroke={stroke} strokeWidth={2.5} strokeDasharray={c.style === "dashed" ? "8 6" : undefined} strokeLinecap="round" strokeLinejoin="round" />
@@ -104,9 +105,10 @@ const ConnectorView = memo(function ConnectorView({ id }: { id: string }) {
 const ConnectorLabel = memo(function ConnectorLabel({ id }: { id: string }) {
   const { c, p } = useConnectorPath(id);
   const selected = useCanvas((s) => s.selection.includes(id));
+  const dimmed = useCanvas((s) => s.lensResult !== null && !s.lensResult.visible.has(id));
   if (!c || !p || !c.label) return null;
   return (
-    <div data-element-id={id} data-connectable="false" className={selected ? "board-connector-label selected" : "board-connector-label"} style={{ left: p.mid.x, top: p.mid.y, zIndex: 1_000_001 }} title={c.label}>
+    <div data-element-id={id} data-connectable="false" className={selected ? "board-connector-label selected" : "board-connector-label"} style={{ left: p.mid.x, top: p.mid.y, zIndex: 1_000_001, opacity: dimmed ? 0.12 : 1 }} title={c.label}>
       {c.label}
     </div>
   );

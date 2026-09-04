@@ -1,4 +1,5 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
@@ -54,6 +55,9 @@ export interface CanvasState {
   contextMenu: { x: number; y: number; targetId: string | null; world: Point } | null;
   /** Saved viewpoints (persisted with the document). */
   viewpoints: SavedViewpoint[];
+  /** Active lens (client-side optic, saved with viewpoints) and its derived result. */
+  lens: Lens;
+  lensResult: LensResult | null;
   /** Frame id the inspector should scroll to / highlight after "Focus". */
   isDragging: boolean;
 
@@ -84,6 +88,7 @@ export interface CanvasState {
   setGuides(g: { x: number[]; y: number[] }): void;
   setSnapEnabled(v: boolean): void;
   setContextMenu(m: CanvasState["contextMenu"]): void;
+  setLens(lens: Lens): void;
   saveViewpoint(name: string): void;
   applyViewpoint(id: string): void;
   deleteViewpoint(id: string): void;
@@ -176,7 +181,7 @@ export function selectionBounds(selection: ElementId[], elements: Elements): Box
 }
 
 export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan" }: CreateCanvasStoreOptions): CanvasStore {
-  return createStore<CanvasState>((set, get) => {
+  const store = createStore<CanvasState>((set, get) => {
     const mutate = (next: Elements, history: boolean, extra: Partial<CanvasState> = {}) => {
       const s = get();
       set({
@@ -214,6 +219,8 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       guides: { x: [], y: [] },
       snapEnabled: true,
       contextMenu: null,
+      lens: NO_LENS,
+      lensResult: null,
       viewpoints: document.viewpoints ?? [],
 
       // ---- camera ----
@@ -254,16 +261,17 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setGuides: (guides) => set((s) => (s.guides.x.length === 0 && s.guides.y.length === 0 && guides.x.length === 0 && guides.y.length === 0 ? s : { guides })),
       setSnapEnabled: (snapEnabled) => set({ snapEnabled }),
       setContextMenu: (contextMenu) => set({ contextMenu }),
+      setLens: (lens) => set({ lens }),
       saveViewpoint: (name) => {
         const s = get();
-        const vp: SavedViewpoint = { id: `vp_${nanoid(8)}`, name: name.trim() || `View ${s.viewpoints.length + 1}`, hiddenKinds: [...s.hiddenKinds], camera: { ...s.camera }, createdAt: new Date().toISOString() };
+        const vp: SavedViewpoint = { id: `vp_${nanoid(8)}`, name: name.trim() || `View ${s.viewpoints.length + 1}`, hiddenKinds: [...s.hiddenKinds], camera: { ...s.camera }, createdAt: new Date().toISOString(), ...(s.lens.type !== "none" ? { lens: s.lens } : {}) };
         set({ viewpoints: [...s.viewpoints, vp], revision: s.revision + 1, saveState: "dirty" });
       },
       applyViewpoint: (id) => {
         const s = get();
         const vp = s.viewpoints.find((v) => v.id === id);
         if (!vp) return;
-        set({ hiddenKinds: [...vp.hiddenKinds], ...(vp.camera ? { camera: { ...vp.camera } } : {}) });
+        set({ hiddenKinds: [...vp.hiddenKinds], lens: vp.lens ?? NO_LENS, ...(vp.camera ? { camera: { ...vp.camera } } : {}) });
       },
       deleteViewpoint: (id) => set((s) => ({ viewpoints: s.viewpoints.filter((v) => v.id !== id), revision: s.revision + 1, saveState: "dirty" })),
       focusElement: (id) => {
@@ -416,6 +424,14 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       },
     };
   });
+  // The lens result is derived state: recompute it once whenever its inputs change, so every
+  // card / connector can read a cheap per-id slice instead of running a graph walk itself.
+  store.subscribe((s, prev) => {
+    if (s.lens === prev.lens && s.elements === prev.elements && s.selection === prev.selection) return;
+    if (s.lens.type === "none" && s.lensResult === null) return;
+    store.setState({ lensResult: computeLens(s.lens, s.elements, s.selection) });
+  });
+  return store;
 }
 
 // ---- React binding -----------------------------------------------------------

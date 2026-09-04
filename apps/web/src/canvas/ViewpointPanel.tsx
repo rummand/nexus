@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cardColorForKind } from "./document";
+import { attributeKeysOnBoard, NO_LENS } from "./lens";
 import { useCanvas, useCanvasStore } from "./store";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { isEntityId } from "@/lib/graph-types";
@@ -13,10 +14,15 @@ export function ViewpointPanel() {
   const selection = useCanvas((s) => s.selection);
   const hiddenKinds = useCanvas((s) => s.hiddenKinds);
   const saved = useCanvas((s) => s.viewpoints);
+  const lens = useCanvas((s) => s.lens);
+  const lensResult = useCanvas((s) => s.lensResult);
+  const attributeKeys = useMemo(() => attributeKeysOnBoard(elements), [elements]);
   const [viewName, setViewName] = useState("");
   const { busy, showRelations, expandSelection, arrangeByKind, distributeSelection } = useGraphActions();
-  const [depth, setDepth] = useState(1);
-  const [direction, setDirection] = useState<"both" | "out" | "in">("both");
+  const [depth, setDepthState] = useState(1);
+  const [direction, setDirectionState] = useState<"both" | "out" | "in">("both");
+  const setDepth = (d: number) => { setDepthState(d); if (lens.type === "impact") store.getState().setLens({ ...lens, depth: d }); };
+  const setDirection = (d: "both" | "out" | "in") => { setDirectionState(d); if (lens.type === "impact") store.getState().setLens({ ...lens, direction: d }); };
   const [status, setStatus] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -79,6 +85,38 @@ export function ViewpointPanel() {
       </div>
 
       <div className="viewpoint-group">
+        <span>Lens {lens.type !== "none" && <button type="button" className="viewpoint-link" onClick={() => store.getState().setLens(NO_LENS)}>clear</button>}</span>
+        <div className="viewpoint-row">
+          <button type="button" className={lens.type === "none" ? "active" : ""} onClick={() => store.getState().setLens(NO_LENS)}>Off</button>
+          <button type="button" className={lens.type === "impact" ? "active" : ""} onClick={() => store.getState().setLens({ type: "impact", direction, depth })} title="Dim everything not connected to the selected cards">Impact</button>
+          <button type="button" className={lens.type === "attribute" ? "active" : ""} disabled={attributeKeys.length === 0} onClick={() => store.getState().setLens({ type: "attribute", key: attributeKeys[0]!.key })} title={attributeKeys.length === 0 ? "No card on this board has attributes yet" : "Colour cards by an attribute value"}>Attribute</button>
+        </div>
+        {lens.type === "impact" && (
+          <small className="viewpoint-hint">Uses the hop depth and direction above. Select cards to trace what they touch; everything else fades.</small>
+        )}
+        {lens.type === "attribute" && (
+          <div className="viewpoint-row">
+            <em>Colour by</em>
+            <select className="viewpoint-select" value={lens.key} onChange={(e) => store.getState().setLens({ type: "attribute", key: e.target.value })} aria-label="Attribute to colour by">
+              {attributeKeys.map((k) => <option key={k.key} value={k.key}>{k.key} ({k.count})</option>)}
+            </select>
+          </div>
+        )}
+        {lensResult && (
+          <div className="viewpoint-legend">
+            <small>{lensResult.summary}</small>
+            {lensResult.legend.map((entry) => (
+              <button key={entry.value} type="button" onClick={() => store.getState().select(entry.ids)} title="Select these cards">
+                <i style={{ background: entry.color }} />
+                <b>{entry.value}</b>
+                <small>{entry.count}</small>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="viewpoint-group">
         <span>Kinds on this board {hiddenKinds.length > 0 && <button type="button" className="viewpoint-link" onClick={() => store.getState().clearHiddenKinds()}>show all</button>}</span>
         <div className="viewpoint-kinds">
           {stats.kinds.map(([kind, n]) => (
@@ -103,7 +141,7 @@ export function ViewpointPanel() {
             <div key={v.id} className="viewpoint-saved-item">
               <button type="button" className="viewpoint-saved-apply" onClick={() => { store.getState().applyViewpoint(v.id); setStatus(`Applied “${v.name}”`); }} title={`${v.hiddenKinds.length ? `dims ${v.hiddenKinds.join(", ")}` : "all kinds visible"}${v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}`}>
                 <strong>{v.name}</strong>
-                <small>{v.hiddenKinds.length ? `${v.hiddenKinds.length} kind${v.hiddenKinds.length === 1 ? "" : "s"} dimmed` : "all kinds"}{v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}</small>
+                <small>{v.hiddenKinds.length ? `${v.hiddenKinds.length} kind${v.hiddenKinds.length === 1 ? "" : "s"} dimmed` : "all kinds"}{v.lens ? ` · ${v.lens.type === "impact" ? "impact lens" : v.lens.type === "attribute" ? `by ${v.lens.key}` : ""}` : ""}{v.camera ? ` · ${Math.round(v.camera.zoom * 100)}%` : ""}</small>
               </button>
               <button type="button" className="viewpoint-saved-delete" onClick={() => store.getState().deleteViewpoint(v.id)} aria-label={`Delete view ${v.name}`}>×</button>
             </div>

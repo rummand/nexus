@@ -102,13 +102,17 @@ export type BoxElement = StickyElement | TextElement | CardElement | ShapeElemen
 export type CanvasElement = BoxElement | ConnectorElement;
 export type ElementType = CanvasElement["type"];
 
-/** A saved viewpoint: which kinds are dimmed and where the camera sits. */
+import type { Lens } from "./lens";
+
+/** A saved viewpoint: which kinds are dimmed, which lens is active and where the camera sits. */
 export interface SavedViewpoint {
   id: string;
   name: string;
   hiddenKinds: string[];
   camera: { x: number; y: number; zoom: number } | null;
   createdAt: string;
+  /** Optional lens (impact / attribute) — see `lens.ts`. Older views simply have none. */
+  lens?: Lens;
 }
 
 export interface CanvasDocument {
