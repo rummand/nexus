@@ -59,6 +59,12 @@ export async function autoCheckpoint(db: Db, boardId: string, previous: CanvasDo
   return true;
 }
 
+/** The stored document of one version (null when it does not belong to the board). */
+export async function getVersionDocument(db: Db, boardId: string, versionId: string): Promise<CanvasDocument | null> {
+  const version = await db.query.boardVersions.findFirst({ where: and(eq(s.boardVersions.id, versionId), eq(s.boardVersions.boardId, boardId)) });
+  return version ? parseDocument(version.document) : null;
+}
+
 /** Restore a version: checkpoint the current state, then replace the board document. */
 export async function restoreVersion(db: Db, boardId: string, versionId: string, createdById: string | null = null): Promise<CanvasDocument | null> {
   const version = await db.query.boardVersions.findFirst({ where: and(eq(s.boardVersions.id, versionId), eq(s.boardVersions.boardId, boardId)) });

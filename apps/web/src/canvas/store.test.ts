@@ -77,4 +77,21 @@ describe("canvas store", () => {
     store.getState().applyViewpoint(store.getState().viewpoints[0]!.id);
     expect(store.getState().lens).toEqual({ type: "impact", direction: "out", depth: 1 });
   });
+
+  it("aligns the selection and carries frame contents", () => {
+    const store = makeStore([
+      sticky("a", 0, 0),
+      sticky("b", 300, 80),
+      { id: "f", type: "frame", x: 500, y: 500, w: 300, h: 300, title: "F", color: "#000", z: 0 },
+      sticky("child", 550, 550),
+    ]);
+    store.getState().select(["a", "b", "f"]);
+    store.getState().alignSelection("top");
+    const y = (id: string) => { const el = store.getState().elements[id]!; return "y" in el ? el.y : NaN; };
+    expect(y("b")).toBe(0);
+    expect(y("f")).toBe(0);
+    expect(y("child")).toBe(50); // moved with its frame
+    store.getState().undo();
+    expect(y("f")).toBe(500);
+  });
 });

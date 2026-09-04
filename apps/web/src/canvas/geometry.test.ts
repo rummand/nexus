@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxEdgePoint, cameraToFit, cameraToFitInsets, connectorPath, snapToBoxes, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
+import { alignBoxes, distributeBoxes, boxEdgePoint, cameraToFit, cameraToFitInsets, connectorPath, snapToBoxes, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
 import type { CanvasElement } from "./document";
 
 describe("camera", () => {
@@ -120,5 +120,27 @@ describe("snapping", () => {
     const c = snapToBoxes({ x: 180, y: 0, w: 40, h: 40 }, others, 6);
     expect(c.dx).toBe(0); // centre 200 already aligned with the other centre
     expect(c.guidesX).toEqual([200]);
+  });
+});
+
+describe("align / distribute", () => {
+  const boxes = [
+    { id: "a", x: 0, y: 0, w: 100, h: 50 },
+    { id: "b", x: 300, y: 80, w: 50, h: 100 },
+    { id: "c", x: 120, y: 200, w: 200, h: 20 },
+  ];
+  it("aligns to the union's edges and centres", () => {
+    expect(alignBoxes(boxes, "left")).toEqual({ b: { dx: -300, dy: 0 }, c: { dx: -120, dy: 0 } });
+    expect(alignBoxes(boxes, "right")).toEqual({ a: { dx: 250, dy: 0 }, c: { dx: 30, dy: 0 } });
+    expect(alignBoxes(boxes, "top")).toEqual({ b: { dx: 0, dy: -80 }, c: { dx: 0, dy: -200 } });
+    const cy = alignBoxes(boxes, "centerY"); // union 0..220 → centre 110
+    expect(cy.a).toEqual({ dx: 0, dy: 85 });
+    expect(cy.b).toEqual({ dx: 0, dy: -20 });
+    expect(alignBoxes(boxes.slice(0, 1), "left")).toEqual({});
+  });
+  it("distributes with equal gaps between the first and last", () => {
+    const d = distributeBoxes(boxes, "x"); // span 0..350, widths 350 total → gap 0: a@0, c@100, b@300
+    expect(d).toEqual({ c: { dx: -20, dy: 0 } });
+    expect(distributeBoxes(boxes.slice(0, 2), "x")).toEqual({});
   });
 });

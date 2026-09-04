@@ -347,3 +347,46 @@ export function snapToBoxes(moving: Box, others: Box[], threshold: number): Snap
   }
   return { dx: bestX?.delta ?? 0, dy: bestY?.delta ?? 0, guidesX: bestX ? [bestX.guide] : [], guidesY: bestY ? [bestY.guide] : [] };
 }
+
+// ---- alignment ----------------------------------------------------------------------------
+
+export type AlignMode = "left" | "centerX" | "right" | "top" | "centerY" | "bottom";
+
+/** Per-box translation that aligns `boxes` on one edge / axis of their union. */
+export function alignBoxes<T extends Box & { id: string }>(boxes: T[], mode: AlignMode): Record<string, { dx: number; dy: number }> {
+  const out: Record<string, { dx: number; dy: number }> = {};
+  const u = unionBoxes(boxes);
+  if (!u || boxes.length < 2) return out;
+  for (const b of boxes) {
+    let dx = 0, dy = 0;
+    switch (mode) {
+      case "left": dx = u.x - b.x; break;
+      case "centerX": dx = u.x + u.w / 2 - (b.x + b.w / 2); break;
+      case "right": dx = u.x + u.w - (b.x + b.w); break;
+      case "top": dy = u.y - b.y; break;
+      case "centerY": dy = u.y + u.h / 2 - (b.y + b.h / 2); break;
+      case "bottom": dy = u.y + u.h - (b.y + b.h); break;
+    }
+    if (dx || dy) out[b.id] = { dx, dy };
+  }
+  return out;
+}
+
+/** Spread boxes evenly between the first and last along an axis (equal gaps, order kept). */
+export function distributeBoxes<T extends Box & { id: string }>(boxes: T[], axis: "x" | "y"): Record<string, { dx: number; dy: number }> {
+  const out: Record<string, { dx: number; dy: number }> = {};
+  if (boxes.length < 3) return out;
+  const sorted = [...boxes].sort((a, b) => (axis === "x" ? a.x - b.x : a.y - b.y));
+  const first = sorted[0]!, last = sorted[sorted.length - 1]!;
+  const span = axis === "x" ? last.x + last.w - first.x : last.y + last.h - first.y;
+  const total = sorted.reduce((acc, b) => acc + (axis === "x" ? b.w : b.h), 0);
+  const gap = (span - total) / (sorted.length - 1);
+  let cursor = axis === "x" ? first.x : first.y;
+  for (const b of sorted) {
+    const target = cursor;
+    const d = target - (axis === "x" ? b.x : b.y);
+    if (Math.abs(d) > 0.01) out[b.id] = axis === "x" ? { dx: d, dy: 0 } : { dx: 0, dy: d };
+    cursor += (axis === "x" ? b.w : b.h) + gap;
+  }
+  return out;
+}

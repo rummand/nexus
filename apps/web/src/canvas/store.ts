@@ -3,9 +3,9 @@ import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
-import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point, SavedViewpoint } from "./document";
+import type { Box, BoxElement, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point, SavedViewpoint } from "./document";
 import { DOCUMENT_VERSION, isBoxElement } from "./document";
-import { type Camera, type Insets, cameraToFitInsets, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
+import { type AlignMode, type Camera, type Insets, alignBoxes, cameraToFitInsets, contentBounds, distributeBoxes, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
 
 export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" | "card" | "rect" | "ellipse" | "diamond" | "connector";
 
@@ -108,6 +108,8 @@ export interface CanvasState {
   /** Replace the whole element map (used by drags that computed positions externally). */
   replaceElements(next: Elements, opts?: { history?: boolean }): void;
   deleteElements(ids: ElementId[], opts?: { history?: boolean }): void;
+  /** Align or distribute the selected box elements (frames carry their contents). */
+  alignSelection(mode: AlignMode | "distributeX" | "distributeY"): void;
   duplicateSelection(): void;
   bringToFront(ids: ElementId[]): void;
   sendToBack(ids: ElementId[]): void;
@@ -327,6 +329,22 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         const next: Elements = {};
         for (const el of Object.values(s.elements)) if (!doomed.has(el.id)) next[el.id] = el;
         mutate(next, opts.history ?? true, { selection: s.selection.filter((id) => !doomed.has(id)), editingId: null });
+      },
+      alignSelection: (mode) => {
+        const s = get();
+        const items = s.selection.map((id) => s.elements[id]).filter((el): el is BoxElement => !!el && isBoxElement(el) && !el.locked);
+        const moves = mode === "distributeX" || mode === "distributeY" ? distributeBoxes(items, mode === "distributeX" ? "x" : "y") : alignBoxes(items, mode);
+        if (Object.keys(moves).length === 0) return;
+        const patch: Record<ElementId, Partial<CanvasElement>> = {};
+        for (const [id, d] of Object.entries(moves)) {
+          const carried = expandSelectionForMove([id], s.elements);
+          for (const cid of carried) {
+            const el = s.elements[cid];
+            if (!el || !isBoxElement(el) || patch[cid]) continue;
+            patch[cid] = { x: el.x + d.dx, y: el.y + d.dy };
+          }
+        }
+        s.updateElements(patch, { history: true });
       },
       duplicateSelection: () => {
         const s = get();

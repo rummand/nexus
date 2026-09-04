@@ -195,6 +195,10 @@ try {
   await page.click(".history-new button");
   await page.waitForSelector(".history-item.manual", { timeout: 15000 });
   assert.ok((await page.locator(".history-item").count()) >= 1, "history lists checkpoints");
+  // compare the checkpoint with the board as it is now (the note added since shows as "added" or the board is identical)
+  await page.click(".history-item button[title^='Compare']");
+  await page.waitForSelector("[data-history-diff]");
+  assert.ok(/added|changed|removed|identical/i.test(await page.locator("[data-history-diff]").innerText()), "history compare summarises the diff");
   await page.click(".history-panel .panel-title button");
 
   // graph page: import the sample and check the meta-model renders

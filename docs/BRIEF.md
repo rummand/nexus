@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 15 — entity table)
+Last updated: 2026-09-04 (rev 16 — alignment tools, version compare)
 
 ---
 
@@ -186,6 +186,9 @@ nexus/
   normal — the default for relation connectors, as in LeanFlow) and **elbow** (orthogonal,
   two bends). Labels sit on the path midpoint. Rendered in an SVG layer inside the world
   transform.
+- **Alignment.** With two or more objects selected the property bar offers align left / centre /
+  right / top / middle / bottom and, from three objects, distribute horizontally / vertically
+  (`alignBoxes`, `distributeBoxes` in geometry). Frames carry their contents; locked objects stay.
 - **Interaction** is a small state machine driven by pointer events on the root
   (`idle → pan | marquee | move | resize | draw | connect | edit`). Tools: select,
   hand, frame, card, note, text, section, shapes, connector. While moving, **smart
@@ -350,6 +353,14 @@ History panel (topbar → History) lists versions with age, object count and aut
 restores with one click; the restored document re-syncs into the graph. This is the seed of
 the "dated checkpoints / compare over time" idea (§2, LeanFlow's snapshots).
 
+**Compare (rev 16).** Every checkpoint in the History panel has a *Compare* button that loads the
+stored document (`GET /api/boards/[id]/versions/[versionId]`) and diffs it against the board as it
+is now (`src/canvas/diff.ts`: added / removed / changed by element id; `x`/`y` collapse to
+"position", `w`/`h` to "size", z-order is ignored). Added and changed entries focus the element on
+click; removed entries are listed struck through. Diffing runs client-side on the open document,
+so it also shows unsaved edits.
+
+
 ### 5.10 Graph query in the command bar (v0.2)
 
 The board's command bar (⌘K) searches the board **and** queries the workspace graph with a
@@ -500,6 +511,9 @@ contains (`src/canvas/lens.ts`).
   graph sync/hydrate, CSV extra columns → attributes, emergent per-kind schema on the
   Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
 
+### Alignment (v0.2)
+- Align and distribute buttons in the selection bar for multi-selections; one undo step.
+
 ### Version history (v0.2)
 - Auto / manual / restore checkpoints per board, History panel with restore (§5.9).
 
@@ -587,6 +601,11 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 16: alignment tools, version compare.** Align / distribute group in the
+  selection bar (frames carry contents, single undo step). History panel gained *Compare*: a
+  structural diff between any checkpoint and the current board with focus-on-click, backed by a
+  new version-document endpoint and a pure `diffDocuments` helper.
 
 - **2026-09-04 — Rev 15: entity table.** List | Table toggle on the Knowledge graph page: one
   column per attribute key in use, sortable, cells editable in place (empty removes), "Add

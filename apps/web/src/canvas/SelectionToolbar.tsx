@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignEndHorizontal, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, CornerDownRight, Diamond, Lock, Minus, Network, SendToBack, Spline, Square, Trash2, Unlock } from "lucide-react";
+import { AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceBetween, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceBetween, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, CornerDownRight, Diamond, Lock, Minus, Network, SendToBack, Spline, Square, Trash2, Unlock } from "lucide-react";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { useState } from "react";
 import type { CanvasElement, ConnectorElement, ElementId } from "./document";
@@ -39,7 +39,8 @@ export function SelectionToolbar() {
     store.getState().updateElements(patch, { history: true });
   };
 
-  const width = only === "connector" ? 640 : 560;
+  const boxCount = items.filter((i) => i.type !== "connector").length;
+  const width = only === "connector" ? 640 : boxCount >= 2 ? 800 : 560;
   const left = clamp(sb.x + sb.w / 2 - width / 2, 8, Math.max(8, viewport.w - width - 8));
   const above = sb.y - 64;
   const top = above > 80 ? above : Math.min(sb.y + sb.h + 14, viewport.h - 70);
@@ -83,7 +84,22 @@ export function SelectionToolbar() {
       )}
       {only === "connector" && <ConnectorControls key={`${first.id}:${(first as ConnectorElement).label}`} items={items as ConnectorElement[]} patchAll={patchAll} />}
 
-      {only && <span className="shape-inspector-divider" />}
+      {boxCount >= 2 && (
+        <>
+          {only && <span className="shape-inspector-divider" />}
+          <div className="shape-inspector-group icons" data-align-group aria-label="Align">
+            <button type="button" title="Align left" onClick={() => store.getState().alignSelection("left")}><AlignStartVertical size={13} /></button>
+            <button type="button" title="Align horizontal centres" onClick={() => store.getState().alignSelection("centerX")}><AlignCenterVertical size={13} /></button>
+            <button type="button" title="Align right" onClick={() => store.getState().alignSelection("right")}><AlignEndVertical size={13} /></button>
+            <button type="button" title="Align top" onClick={() => store.getState().alignSelection("top")}><AlignStartHorizontal size={13} /></button>
+            <button type="button" title="Align vertical centres" onClick={() => store.getState().alignSelection("centerY")}><AlignCenterHorizontal size={13} /></button>
+            <button type="button" title="Align bottom" onClick={() => store.getState().alignSelection("bottom")}><AlignEndHorizontal size={13} /></button>
+            {boxCount >= 3 && <button type="button" title="Distribute horizontally" onClick={() => store.getState().alignSelection("distributeX")}><AlignHorizontalSpaceBetween size={13} /></button>}
+            {boxCount >= 3 && <button type="button" title="Distribute vertically" onClick={() => store.getState().alignSelection("distributeY")}><AlignVerticalSpaceBetween size={13} /></button>}
+          </div>
+        </>
+      )}
+      {(only || boxCount >= 2) && <span className="shape-inspector-divider" />}
       <div className="shape-inspector-group" style={{ marginLeft: "auto" }}>
         <button type="button" title="Bring to front  ⌘]" onClick={() => store.getState().bringToFront(selection)}><BringToFront size={12} /> Front</button>
         <button type="button" title="Send to back  ⌘[" onClick={() => store.getState().sendToBack(selection)}><SendToBack size={12} /> Back</button>

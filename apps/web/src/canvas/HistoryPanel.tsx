@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
-import { History, RotateCcw } from "lucide-react";
+import { GitCompareArrows, History, RotateCcw } from "lucide-react";
+import { diffDocuments, elementLabel, summarizeDiff, type DocumentDiff } from "./diff";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
 import { useCanvas, useCanvasStore } from "./store";
 import type { CanvasDocument } from "./document";
@@ -27,6 +28,22 @@ export function HistoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement | 
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [compare, setCompare] = useState<{ version: VersionSummary; diff: DocumentDiff } | null>(null);
+
+  const compareWith = async (v: VersionSummary) => {
+    if (compare?.version.id === v.id) { setCompare(null); return; }
+    setBusy(v.id);
+    try {
+      const res = await fetch(`/api/boards/${boardId}/versions/${v.id}`);
+      if (!res.ok) throw new Error(`load failed: ${res.status}`);
+      const data = (await res.json()) as { document: CanvasDocument };
+      setCompare({ version: v, diff: diffDocuments(data.document, store.getState().toDocument()) });
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Compare failed");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   // (re)load after every successful save — saves are when auto checkpoints appear
   useEffect(() => {
@@ -95,6 +112,21 @@ export function HistoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement | 
       </div>
       <p className="history-hint">Checkpoints are taken automatically every 10 minutes while you edit; manual ones are kept forever. Restoring keeps the current state as a checkpoint.</p>
       {message && <div className="viewpoint-status">{message}</div>}
+      {compare && (
+        <div className="history-diff" data-history-diff>
+          <div className="history-diff-head">
+            <strong>Since {compare.version.label || ago(compare.version.createdAt)}</strong>
+            <small>{summarizeDiff(compare.diff)}</small>
+            <button type="button" onClick={() => setCompare(null)} aria-label="Close comparison">×</button>
+          </div>
+          <ul>
+            {compare.diff.added.map((el) => <li key={`a${el.id}`} className="added"><button type="button" onClick={() => store.getState().focusElement(el.id)}><i>+</i><span>{elementLabel(el)}</span><em>{el.type}</em></button></li>)}
+            {compare.diff.changed.map((c) => <li key={`c${c.after.id}`} className="changed"><button type="button" onClick={() => store.getState().focusElement(c.after.id)}><i>~</i><span>{elementLabel(c.after)}</span><em>{c.fields.join(", ")}</em></button></li>)}
+            {compare.diff.removed.map((el) => <li key={`r${el.id}`} className="removed"><i>−</i><span>{elementLabel(el)}</span><em>{el.type}</em></li>)}
+            {compare.diff.added.length + compare.diff.changed.length + compare.diff.removed.length === 0 && <li className="history-empty">The board is identical to this checkpoint.</li>}
+          </ul>
+        </div>
+      )}
       <ul className="history-list">
         {versions === null && <li className="history-empty">Loading…</li>}
         {versions?.length === 0 && <li className="history-empty">No checkpoints yet — the first one appears after your next edit.</li>}
@@ -104,6 +136,7 @@ export function HistoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement | 
               <strong>{v.label || (v.reason === "auto" ? "Auto checkpoint" : v.reason === "restore" ? "Before restore" : "Checkpoint")}</strong>
               <small>{ago(v.createdAt)} · {v.objectCount} objects{v.createdBy ? ` · ${v.createdBy}` : ""}</small>
             </div>
+            <button type="button" title="Compare with the board as it is now" className={compare?.version.id === v.id ? "active" : ""} disabled={busy === v.id} onClick={() => void compareWith(v)}><GitCompareArrows size={13} /></button>
             <button type="button" title="Restore this version" disabled={busy === v.id} onClick={() => void restore(v)}><RotateCcw size={13} /> Restore</button>
           </li>
         ))}
