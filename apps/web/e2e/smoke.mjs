@@ -119,12 +119,34 @@ try {
   assert.ok((await page.locator(".search-suggestions button", { hasText: TEXT }).count()) >= 1, "command bar finds the note");
   await page.keyboard.press("Escape");
 
+  // knowledge graph: inventory panel lists entities; placing one adds a linked card
+  await page.waitForSelector(".inventory-group");
+  const groupsBefore = await page.locator(".inventory-group").count();
+  assert.ok(groupsBefore > 0, "inventory shows kinds");
+  await page.click(".inventory-toggle >> nth=0");
+  const placeable = page.locator(".inventory-group li:not(.on-board) button").first();
+  if ((await placeable.count()) > 0) {
+    const before = await count();
+    await placeable.click();
+    assert.equal(await count(), before + 1, "placing an entity adds a card");
+    assert.ok(await page.locator(".graph-block").isVisible(), "inspector shows graph facts for the placed card");
+  }
+
   // autosave + reload
   await page.waitForTimeout(1500);
   assert.ok(saves >= 1, "autosave issued a PUT");
   await page.reload({ waitUntil: "load" });
   await page.locator(`[data-element-id="${noteId}"]`).waitFor({ timeout: 10000 });
   assert.equal(await page.locator(`[data-element-id="${noteId}"] input`).first().inputValue(), TEXT, "note persisted across reload");
+
+  // graph page: import the sample and check the meta-model renders
+  await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+  assert.ok((await page.locator(".kind-card").count()) > 0, "graph page shows kinds");
+  await page.click("text=Import data");
+  await page.click("text=Use sample");
+  await page.click('.modal-card button:text-is("Import")');
+  await page.waitForSelector(".modal-card .mode-banner");
+  await page.click('.modal-card button:text-is("Done")');
 
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });

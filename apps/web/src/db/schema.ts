@@ -130,6 +130,70 @@ export const boardFavorites = sqliteTable(
   (t) => [primaryKey({ columns: [t.userId, t.boardId] })],
 );
 
+// ---- knowledge graph ---------------------------------------------------------
+//
+// Entities and relations are workspace-wide. Cards on boards are *views* of entities
+// (card.meta.entityId); connectors between entity-backed cards are views of relations
+// (connector.meta.relationId). Boards sync into the graph on save; the graph hydrates
+// cards on load. See docs/BRIEF.md §5.5.
+
+export const entities = sqliteTable(
+  "entities",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default(""),
+    name: text("name").notNull().default(""),
+    description: text("description").notNull().default(""),
+    /** Free-form attributes, JSON-encoded. */
+    attributes: text("attributes").notNull().default("{}"),
+    /** Where the entity came from: canvas, import:<name>, connector:<name> … */
+    source: text("source").notNull().default("canvas"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("entities_workspace_idx").on(t.workspaceId), index("entities_kind_idx").on(t.workspaceId, t.kind)],
+);
+
+export const relations_ = sqliteTable(
+  "relations",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    fromEntityId: text("from_entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    toEntityId: text("to_entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default(""),
+    attributes: text("attributes").notNull().default("{}"),
+    source: text("source").notNull().default("canvas"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("relations_workspace_idx").on(t.workspaceId), index("relations_from_idx").on(t.fromEntityId), index("relations_to_idx").on(t.toEntityId)],
+);
+
+/** Which entities appear on which boards (rebuilt on every board save). */
+export const boardEntities = sqliteTable(
+  "board_entities",
+  {
+    boardId: text("board_id")
+      .notNull()
+      .references(() => boards.id, { onDelete: "cascade" }),
+    entityId: text("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    elementId: text("element_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.boardId, t.entityId, t.elementId] }), index("board_entities_entity_idx").on(t.entityId)],
+);
+
 // ---- relations -------------------------------------------------------------
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
@@ -137,6 +201,22 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   teams: many(teams),
   spaces: many(spaces),
   boards: many(boards),
+  entities: many(entities),
+}));
+
+export const entitiesRelations = relations(entities, ({ one, many }) => ({
+  workspace: one(workspaces, { fields: [entities.workspaceId], references: [workspaces.id] }),
+  boards: many(boardEntities),
+}));
+
+export const relationsRelations = relations(relations_, ({ one }) => ({
+  from: one(entities, { fields: [relations_.fromEntityId], references: [entities.id], relationName: "from" }),
+  to: one(entities, { fields: [relations_.toEntityId], references: [entities.id], relationName: "to" }),
+}));
+
+export const boardEntitiesRelations = relations(boardEntities, ({ one }) => ({
+  board: one(boards, { fields: [boardEntities.boardId], references: [boards.id] }),
+  entity: one(entities, { fields: [boardEntities.entityId], references: [entities.id] }),
 }));
 
 export const teamsRelations = relations(teams, ({ one, many }) => ({
@@ -178,3 +258,5 @@ export type Workspace = typeof workspaces.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Board = typeof boards.$inferSelect;
+export type Entity = typeof entities.$inferSelect;
+export type Relation = typeof relations_.$inferSelect;

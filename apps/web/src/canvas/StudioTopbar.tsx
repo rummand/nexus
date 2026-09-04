@@ -10,6 +10,7 @@ import { useCanvas, useCanvasStore } from "./store";
 
 export interface StudioTopbarProps {
   boardId: string;
+  workspaceId: string;
   name: string;
   space: { id: string; name: string; emoji: string };
   workspace: { slug: string; name: string };

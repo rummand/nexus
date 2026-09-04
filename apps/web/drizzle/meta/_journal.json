@@ -8,6 +8,13 @@
       "when": 1788546362999,
       "tag": "0000_overjoyed_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788553540451,
+      "tag": "0001_zippy_firebird",
+      "breakpoints": true
     }
   ]
 }

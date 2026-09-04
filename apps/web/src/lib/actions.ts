@@ -9,6 +9,8 @@ import * as s from "@/db/schema";
 import { currentUser } from "./session";
 import { emptyDocument, serializeDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
+import { buildBoardFromGraph, graphForWorkspace, importGraph, parseImportText } from "./graph";
+import type { ImportResult } from "./graph-types";
 
 const now = () => new Date().toISOString();
 
@@ -158,7 +160,12 @@ export async function toggleFavorite(boardId: string) {
 
 export async function markBoardOpened(boardId: string) {
   const db = await getDb();
-  await db.update(s.boards).set({ lastOpenedAt: now() }).where(eq(s.boards.id, boardId));
+  try {
+    await db.update(s.boards).set({ lastOpenedAt: now() }).where(eq(s.boards.id, boardId));
+  } catch (e) {
+    // best-effort bookkeeping; a transient lock must never break opening a board
+    console.warn("markBoardOpened failed", e instanceof Error ? e.message : e);
+  }
 }
 
 // ---- teams -----------------------------------------------------------------
@@ -209,4 +216,66 @@ export async function deleteTeam(teamId: string) {
   const slug = await workspaceSlug(team.workspaceId);
   revalidatePath(`/w/${slug}`, "layout");
   redirect(`/w/${slug}/teams`);
+}
+
+// ---- knowledge graph ---------------------------------------------------------
+
+export async function importGraphText(workspaceId: string, text: string, sourceName?: string): Promise<ImportResult | { error: string }> {
+  const db = await getDb();
+  let payload;
+  try {
+    payload = parseImportText(text);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not parse input" };
+  }
+  if (payload.entities.length === 0 && payload.relations.length === 0) return { error: "Nothing to import — expected kind,name[,description] rows or JSON." };
+  const result = await importGraph(db, workspaceId, payload, sourceName ? `import:${sourceName}` : "import");
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+  return result;
+}
+
+export async function renameKind(workspaceId: string, from: string, to: string) {
+  const db = await getDb();
+  const target = to.trim();
+  if (!target) return;
+  await db.update(s.entities).set({ kind: target, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, from)));
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+}
+
+export async function updateEntity(entityId: string, patch: { kind?: string; name?: string; description?: string }) {
+  const db = await getDb();
+  const [row] = await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId)).returning();
+  if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+}
+
+export async function deleteEntity(entityId: string) {
+  const db = await getDb();
+  const [row] = await db.delete(s.entities).where(eq(s.entities.id, entityId)).returning();
+  if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+}
+
+/** Lay the (optionally kind-filtered) graph out on a new board in the given space. */
+export async function createBoardFromGraph(input: { workspaceId: string; spaceId: string; name?: string; kinds?: string[] }) {
+  const db = await getDb();
+  const user = await currentUser();
+  const { entities, relations } = await graphForWorkspace(db, input.workspaceId, input.kinds);
+  if (entities.length === 0) return { error: "The graph has no entities to lay out." };
+  const name = input.name?.trim() || (input.kinds?.length ? `${input.kinds.join(", ")} — from graph` : "Whole graph");
+  const doc = buildBoardFromGraph(entities, relations, name);
+  const id = `brd_${nanoid(10)}`;
+  await db.insert(s.boards).values({
+    id,
+    workspaceId: input.workspaceId,
+    spaceId: input.spaceId,
+    name,
+    description: `Laid out from the knowledge graph: ${entities.length} entities, ${relations.length} relations.`,
+    createdById: user.id,
+    document: serializeDocument(doc),
+    lastOpenedAt: now(),
+  });
+  // index the board's cards right away so the inventory shows them
+  const { syncBoardToGraph } = await import("./graph");
+  await syncBoardToGraph(db, { id, workspaceId: input.workspaceId }, doc);
+  revalidatePath(`/w/${await workspaceSlug(input.workspaceId)}`, "layout");
+  redirect(`/b/${id}`);
 }

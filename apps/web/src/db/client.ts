@@ -4,6 +4,7 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import path from "node:path";
 import fs from "node:fs";
 import * as schema from "./schema";
+import { sql } from "drizzle-orm";
 
 /**
  * Database client. SQLite (libsql) for local development; the connection string comes
@@ -34,6 +35,14 @@ function createDb() {
   return drizzle(client, { schema });
 }
 
+/** SQLite pragmas for a multi-request server: WAL for concurrent readers, wait on locks. */
+async function tuneSqlite(instance: Db) {
+  const url = process.env.DATABASE_URL ?? DEFAULT_URL;
+  if (!url.startsWith("file:")) return;
+  await instance.run(sql`PRAGMA journal_mode = WAL`);
+  await instance.run(sql`PRAGMA busy_timeout = 5000`);
+}
+
 const globalForDb = globalThis as unknown as { __nexusDb?: Db; __nexusReady?: Promise<Db> };
 
 export const db: Db = globalForDb.__nexusDb ?? (globalForDb.__nexusDb = createDb());
@@ -42,6 +51,7 @@ export const db: Db = globalForDb.__nexusDb ?? (globalForDb.__nexusDb = createDb
 export function getDb(): Promise<Db> {
   if (!globalForDb.__nexusReady) {
     globalForDb.__nexusReady = (async () => {
+      await tuneSqlite(db);
       await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
       const { seedIfEmpty } = await import("./seed");
       await seedIfEmpty(db);

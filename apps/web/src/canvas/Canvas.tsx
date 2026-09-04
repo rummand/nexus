@@ -14,6 +14,7 @@ import { SelectionToolbar } from "./SelectionToolbar";
 import { CommandBar } from "./CommandBar";
 import { Toolbar } from "./Toolbar";
 import { InspectorPanel } from "./InspectorPanel";
+import { InventoryPanel } from "./InventoryPanel";
 import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
@@ -110,6 +111,7 @@ export function Canvas() {
       <SelectionToolbar />
       <CommandBar />
       <Toolbar />
+      <InventoryPanel rootRef={rootRef} />
       <InspectorPanel rootRef={rootRef} />
       {panels.map && <MapCard />}
       {panels.help && <HelpPanel />}

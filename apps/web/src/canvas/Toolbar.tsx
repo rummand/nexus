@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Box, Circle, Diamond, Filter, Frame, Hand, Heading, Map as MapIcon, Minus, MousePointer2, Redo2, Shapes, Square, StickyNote, Type, Undo2 } from "lucide-react";
+import { ArrowRight, Box, Circle, Database, Diamond, Filter, Frame, Hand, Heading, Map as MapIcon, Minus, MousePointer2, Redo2, Shapes, Square, StickyNote, Type, Undo2 } from "lucide-react";
 import { useCanvas, useCanvasStore, type ConnectorPreset, type Tool } from "./store";
 
 const TOOLS: Array<{ tool: Tool; label: string; key: string; badge?: string; icon: React.ReactNode }> = [
@@ -44,6 +44,10 @@ export function Toolbar() {
           <span className="tool-button-badge">{shapeActive ? (tool === "connector" ? "line" : "draw") : "shape"}</span>
         </button>
         <hr />
+        <button className={panels.inventory ? "tool-button active" : "tool-button"} type="button" title="Graph inventory" onClick={() => store.getState().togglePanel("inventory")}>
+          <Database size={22} />
+          <span className="tool-button-badge">graph</span>
+        </button>
         <button className={panels.inspector ? "tool-button active" : "tool-button"} type="button" title="Selection inspector" onClick={() => store.getState().togglePanel("inspector")}>
           <Filter size={22} />
           <span className="tool-button-badge">{panels.inspector ? "on" : "off"}</span>

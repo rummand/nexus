@@ -4,13 +4,13 @@ import { createContext, useContext } from "react";
 import { nanoid } from "nanoid";
 import type { Box, CanvasDocument, CanvasElement, ConnectorEnd, ElementId, Point } from "./document";
 import { DOCUMENT_VERSION, isBoxElement } from "./document";
-import { type Camera, cameraToFit, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
+import { type Camera, type Insets, cameraToFitInsets, contentBounds, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
 
 export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" | "card" | "rect" | "ellipse" | "diamond" | "connector";
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 
-export type PanelName = "inspector" | "map" | "shapePicker" | "help";
+export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error";
 
@@ -22,6 +22,7 @@ const HISTORY_LIMIT = 100;
 
 export interface CanvasState {
   boardId: string;
+  workspaceId: string;
   elements: Elements;
   camera: Camera;
   viewport: { w: number; h: number };
@@ -100,6 +101,7 @@ export type CanvasStore = StoreApi<CanvasState>;
 
 export interface CreateCanvasStoreOptions {
   boardId: string;
+  workspaceId: string;
   document: CanvasDocument;
   scrollMode?: ScrollMode;
 }
@@ -131,6 +133,17 @@ export function expandSelectionForMove(selection: ElementId[], elements: Element
   return [...set];
 }
 
+/** Screen-space area hidden by the floating chrome (command bar, panels, map card). */
+export function fitInsets(s: Pick<CanvasState, "panels" | "viewport">, extra = 40): Insets {
+  const narrow = s.viewport.w < 1100;
+  return {
+    top: 140 + extra,
+    bottom: 80 + extra,
+    left: (s.panels.inventory && !narrow ? 370 : 80) + extra,
+    right: (s.panels.inspector && !narrow ? 300 : 80) + extra,
+  };
+}
+
 export function selectionBounds(selection: ElementId[], elements: Elements): Box | null {
   const boxes: Box[] = [];
   for (const id of selection) {
@@ -142,7 +155,7 @@ export function selectionBounds(selection: ElementId[], elements: Elements): Box
   return unionBoxes(boxes);
 }
 
-export function createCanvasStore({ boardId, document, scrollMode = "pan" }: CreateCanvasStoreOptions): CanvasStore {
+export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan" }: CreateCanvasStoreOptions): CanvasStore {
   return createStore<CanvasState>((set, get) => {
     const mutate = (next: Elements, history: boolean, extra: Partial<CanvasState> = {}) => {
       const s = get();
@@ -157,6 +170,7 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
 
     return {
       boardId,
+      workspaceId,
       elements: { ...document.elements },
       camera: { x: 0, y: 0, zoom: 1 },
       viewport: { w: 1, h: 1 },
@@ -173,7 +187,7 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
-      panels: { inspector: true, map: true, shapePicker: false, help: false },
+      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true },
       isDragging: false,
 
       // ---- camera ----
@@ -186,13 +200,13 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
       zoomToFit: () => {
         const s = get();
         const bounds = contentBounds(s.elements) ?? { x: -400, y: -300, w: 800, h: 600 };
-        set({ camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 80, 1.5) });
+        set({ camera: cameraToFitInsets(bounds, s.viewport.w, s.viewport.h, fitInsets(s), 1.5) });
       },
       zoomToSelection: () => {
         const s = get();
         const bounds = selectionBounds(s.selection, s.elements);
         if (!bounds) return;
-        set({ camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 120, 2) });
+        set({ camera: cameraToFitInsets(bounds, s.viewport.w, s.viewport.h, fitInsets(s, 60), 2) });
       },
       centerOn: (world) =>
         set((s) => ({ camera: { ...s.camera, x: s.viewport.w / 2 - world.x * s.camera.zoom, y: s.viewport.h / 2 - world.y * s.camera.zoom } })),
@@ -213,7 +227,7 @@ export function createCanvasStore({ boardId, document, scrollMode = "pan" }: Cre
         if (!s.elements[id]) return;
         const bounds = selectionBounds([id], s.elements);
         if (!bounds) return;
-        set({ selection: [id], editingId: null, camera: cameraToFit(bounds, s.viewport.w, s.viewport.h, 160, Math.max(1, s.camera.zoom)) });
+        set({ selection: [id], editingId: null, camera: cameraToFitInsets(bounds, s.viewport.w, s.viewport.h, fitInsets(s, 80), Math.max(1, s.camera.zoom)) });
       },
 
       // ---- selection ----

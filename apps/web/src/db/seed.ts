@@ -3,6 +3,7 @@ import type { Db } from "./client";
 import * as s from "./schema";
 import { serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { capabilityMap, integration, landscape, note, roadmap } from "@/canvas/templates";
+import { syncBoardToGraph } from "@/lib/graph";
 
 /** The demo identity used while authentication is not yet part of the product. */
 export const DEMO_USER_ID = "usr_demo";
@@ -64,4 +65,6 @@ export async function seed(db: Db) {
     boards.map((b) => ({ ...b, workspaceId, createdById: DEMO_USER_ID, document: serializeDocument(b.document) })),
   );
   await db.insert(s.boardFavorites).values([{ userId: DEMO_USER_ID, boardId: "brd_capabilities" }]);
+  // index the seeded boards into the knowledge graph
+  for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId }, b.document);
 }

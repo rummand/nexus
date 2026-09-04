@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxEdgePoint, cameraToFit, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
+import { boxEdgePoint, cameraToFit, cameraToFitInsets, connectorGeometry, resizeBox, screenToWorld, unionBoxes, worldToScreen, zoomCameraAt } from "./geometry";
 import type { CanvasElement } from "./document";
 
 describe("camera", () => {
@@ -35,6 +35,17 @@ describe("camera", () => {
     const centre = worldToScreen({ x: 500, y: 250 }, cam);
     expect(centre.x).toBeCloseTo(400);
     expect(centre.y).toBeCloseTo(300);
+  });
+});
+
+describe("insets fit", () => {
+  it("centres within the uncovered area", () => {
+    const cam = cameraToFitInsets({ x: 0, y: 0, w: 400, h: 200 }, 1600, 1000, { top: 100, right: 300, bottom: 100, left: 400 }, 2);
+    // available 900×800 → zoom limited by width: 900/400 = 2.25 → clamped to 2
+    expect(cam.zoom).toBe(2);
+    const centre = worldToScreen({ x: 200, y: 100 }, cam);
+    expect(centre.x).toBeCloseTo(400 + 450);
+    expect(centre.y).toBeCloseTo(100 + 400);
   });
 });
 

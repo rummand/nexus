@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { boards } from "@/db/schema";
 import { migrateDocument, parseDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
+import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 
 type Params = { params: Promise<{ boardId: string }> };
 
@@ -16,7 +17,7 @@ export async function GET(_req: Request, { params }: Params) {
     id: board.id,
     name: board.name,
     updatedAt: board.updatedAt,
-    document: parseDocument(board.document),
+    document: await hydrateDocument(db, parseDocument(board.document)),
   });
 }
 
@@ -39,7 +40,8 @@ export async function PUT(req: Request, { params }: Params) {
     .update(boards)
     .set({ document: serializeDocument(doc), updatedAt })
     .where(eq(boards.id, boardId))
-    .returning({ id: boards.id });
+    .returning({ id: boards.id, workspaceId: boards.workspaceId });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await syncBoardToGraph(db, row, doc);
   return NextResponse.json({ ok: true, updatedAt });
 }

@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 2 — Miro correction, Spaces, LeanFlow Studio design)
+Last updated: 2026-09-04 (rev 3 — knowledge graph core)
 
 ---
 
@@ -213,6 +213,38 @@ boards           id, workspace_id, space_id, name, description, document(json), 
 board_favorites  user_id, board_id
 ```
 
+### 5.5 Knowledge graph core (v0.2)
+
+The graph is workspace-wide; boards are **views** of it.
+
+```
+entities        id, workspace_id, kind, name, description, attributes(json), source
+relations       id, workspace_id, from_entity_id, to_entity_id, kind, attributes, source
+board_entities  board_id, entity_id, element_id      (rebuilt on every save)
+```
+
+- Every **card** is graph-backed from birth: `card.meta.entityId` (`ent_…`, generated on
+  the client). A **connector** between two entity-backed cards carries
+  `meta.relationId` (`rel_…`); its label is the relation kind.
+- **Board → graph** (`syncBoardToGraph`, on every save): upsert entities from cards
+  (kind, name, description; last write wins), upsert relations from connectors, rebuild
+  the board's entity index. Removing a card from a board never deletes the entity — the
+  graph outlives boards.
+- **Graph → board** (`hydrateDocument`, on every load): cards and relation labels are
+  refreshed from the graph, so edits made on other boards or via import show everywhere.
+- **Graph inventory** panel on the board (LeanFlow "Factsheet hierarchy"): every entity
+  grouped by kind with on-board markers; place one entity or a whole kind as linked cards.
+- **Selection inspector** shows graph facts for a card: relations (with direction), the
+  other boards it appears on, its source.
+- **Knowledge graph page** (`/w/[slug]/graph`): emergent meta-model (kinds with counts and
+  colours, relation types), rename a kind (merges vocabularies), entity table with edit /
+  delete and board links, **Import data** (CSV `kind,name,description` + `# relations`
+  `from,relation,to`, or JSON; matched by kind + name, idempotent, sources recorded), and
+  **Lay out on a board** (frames per kind, cards inside, connectors for relations — a
+  deterministic preview of "feed data in, get a board").
+- Sources are recorded per entity/relation (`canvas`, `import:<name>`); this is the hook
+  for connectors and agents (§2.1–2.2).
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -228,10 +260,13 @@ the schema already separates users, memberships and roles.
 ### Next (brief 2+ — candidates, to be confirmed by the product owner)
 - Real-time multiplayer on boards (presence, cursors, CRDT/OT).
 - Authentication and enterprise SSO; roles and permissions per team/space/board.
-- Graph core: entity + relationship store behind the canvas; canvas elements that are
-  *views* of graph nodes.
+- ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
+  *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
+- Entity resolution proposals (same name / kind across boards → merge), attribute
+  schema per kind, relation-type vocabulary management.
 - Optics: load/unload lenses (capability view, data-flow view, overlays).
-- Connectors framework and first sources (file import, ServiceNow, CMDB, wiki).
+- Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
+  ServiceNow, CMDB, wiki).
 - Agent framework: classification, meta-model proposal, entity resolution, enrichment,
   with human review queue.
 - Search across boards and the graph.
@@ -268,9 +303,20 @@ the schema already separates users, memberships and roles.
 | Performance | Off-screen culling of box elements; per-element store subscriptions; `overflow: clip` root so nothing can scroll the canvas surface. |
 | Help | Shortcuts panel (topbar button); empty-board hint card. |
 
+### Knowledge graph (v0.2)
+- Cards are entities, connectors between cards are relations; board saves sync into the
+  graph and board loads hydrate from it (§5.5).
+- Graph inventory panel on every board (search, kinds with counts, place one / place all,
+  focus cards already on the board).
+- Inspector "Knowledge graph" block: relations with direction, other boards, source.
+- Knowledge graph page: emergent meta-model, rename kind, entity edit/delete, CSV/JSON
+  import with result summary, "Lay out on a board" (optionally filtered by kinds).
+- Seeded boards are indexed into the graph at seed time (28 entities, 13 relations).
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
-  math, box/resize/connector geometry, store history and frame behaviour).
+  math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
+  graph sync / hydrate / import / layout against an in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
@@ -312,6 +358,9 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Connectors render above all elements. | Labels and arrowheads must stay readable; connectors attach to element borders so they rarely obscure content. |
 | 2026-09-04 | Canvas root uses `overflow: clip`, not `hidden`. | `hidden` containers can still be scrolled by `focus()`/`scrollIntoView`, which shifted the whole UI during testing. |
 | 2026-09-04 | Tools revert to *select* after one use, except *hand* and *connector*. | Matches Miro/Figma muscle memory; connectors are usually drawn in batches. |
+| 2026-09-04 | Graph ids are minted on the client (`ent_…`, `rel_…`) and the server upserts on save. | No round-trip needed to link a card; saves stay idempotent; imports and layouts reuse the same ids. |
+| 2026-09-04 | The graph outlives boards: deleting a card never deletes its entity; deleting an entity only unlinks cards. | Boards are views; the workspace graph is the asset. |
+| 2026-09-04 | Zoom-to-fit targets the viewport area not covered by floating panels. | With inventory + inspector open, a naive fit hid content under the panels. |
 
 ## 8. Open questions for the product owner
 
@@ -322,6 +371,15 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 3: knowledge graph core.** Entities, relations and a board↔entity
+  index in the database; cards are graph-backed from birth and connectors between cards
+  are relations; boards sync into the graph on save and hydrate from it on load. New
+  Graph inventory panel on boards (place entities as linked cards), graph facts in the
+  Selection inspector, a Knowledge graph page with the emergent meta-model, kind renaming,
+  entity editing, CSV/JSON import and "Lay out on a board". Panel-aware zoom-to-fit,
+  SQLite WAL + busy timeout, text-field clicks select the owning card. Graph logic covered
+  by unit tests against in-memory SQLite; e2e extended with inventory placement and import.
 
 - **2026-09-04 — Rev 2: Miro, Spaces, LeanFlow Studio design.** Corrected the reference
   product to Miro and renamed Rooms → Spaces everywhere (schema, routes, ids, copy).

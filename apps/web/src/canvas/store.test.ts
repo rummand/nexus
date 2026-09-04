@@ -5,7 +5,7 @@ import type { CanvasElement } from "./document";
 const sticky = (id: string, x = 0, y = 0): CanvasElement => ({ id, type: "sticky", x, y, w: 100, h: 100, title: "", text: id, color: "#fff", z: 1 });
 
 function makeStore(elements: CanvasElement[] = []) {
-  return createCanvasStore({ boardId: "b", document: { version: 2, elements: Object.fromEntries(elements.map((e) => [e.id, e])) } });
+  return createCanvasStore({ boardId: "b", workspaceId: "w", document: { version: 2, elements: Object.fromEntries(elements.map((e) => [e.id, e])) } });
 }
 
 describe("canvas store", () => {
@@ -52,13 +52,13 @@ describe("canvas store", () => {
     expect(store.getState().elements.out).toMatchObject({ x: 900 });
   });
 
-  it("zoom to fit centres the content", () => {
+  it("zoom to fit centres the content in the area not covered by panels", () => {
     const store = makeStore([sticky("a", 0, 0), sticky("b", 900, 0)]);
-    store.getState().setViewport(1000, 800);
+    store.getState().setViewport(1000, 800); // narrow viewport: panel insets collapse to 80 + 40
     store.getState().zoomToFit();
     const { camera } = store.getState();
-    // content 1000 wide, viewport 1000 with 80 padding => zoom 0.84
-    expect(camera.zoom).toBeCloseTo(0.84);
+    // content 1000 wide, available width 1000 - 2*120 = 760 => zoom 0.76
+    expect(camera.zoom).toBeCloseTo(0.76);
     expect(camera.x + 500 * camera.zoom).toBeCloseTo(500);
   });
 });

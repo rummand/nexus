@@ -41,7 +41,8 @@ export function LiveField({ value, onChange, placeholder, className, style, mult
     tabIndex: inert ? -1 : undefined,
     "aria-label": ariaLabel,
     spellCheck: false,
-    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    // pointerdown bubbles to the canvas so the owning object gets selected; the canvas
+    // recognises text fields and does not start a drag from them
     onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
     onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
       e.stopPropagation();

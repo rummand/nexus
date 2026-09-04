@@ -1,6 +1,9 @@
 "use client";
 
-import { type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
+import Link from "next/link";
+import type { EntityDetail } from "@/lib/graph-types";
+import { isEntityId } from "@/lib/graph-types";
 import { Filter } from "lucide-react";
 import { elementName, elementTypeLabel, isBoxElement, type CanvasElement, type ElementId } from "./document";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
@@ -22,6 +25,7 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
   const connectionsOf = (id: ElementId) => Object.values(elements).filter((e) => e.type === "connector" && (("elementId" in e.from && e.from.elementId === id) || ("elementId" in e.to && e.to.elementId === id))).length;
 
   const patch = (p: Partial<CanvasElement>) => single && store.getState().updateElements({ [single.id]: p }, { history: true });
+  const entityId = single?.type === "card" && isEntityId(single.meta?.entityId) ? single.meta.entityId : null;
 
   return (
     <section
@@ -84,6 +88,7 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
               </div>
             )}
           </div>
+          {entityId && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
           <div className="inspector-actions">
             <button type="button" onClick={() => store.getState().focusElement(single.id)}>Focus</button>
             <button type="button" onClick={() => store.getState().duplicateSelection()}>Duplicate</button>
@@ -138,4 +143,43 @@ function summarise(items: CanvasElement[]) {
   const counts = new Map<string, number>();
   for (const it of items) counts.set(elementTypeLabel(it), (counts.get(elementTypeLabel(it)) ?? 0) + 1);
   return [...counts.entries()].map(([k, n]) => `${n} ${k.toLowerCase()}${n === 1 ? "" : "s"}`).join(" · ");
+}
+
+/** Graph facts for an entity-backed card: where else it appears and how it is related. */
+function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }) {
+  const [detail, setDetail] = useState<EntityDetail | null>(null);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch(`/api/graph/entities/${entityId}`)
+        .then((r) => (r.ok ? (r.json() as Promise<EntityDetail>) : null))
+        .then((d) => { if (cancelled) return; if (d) setDetail(d); else setMissing(true); })
+        .catch(() => !cancelled && setMissing(true));
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [entityId]);
+  const otherBoards = detail?.boards.filter((b) => b.id !== boardId) ?? [];
+  return (
+    <div className="graph-block">
+      <span className="label">Knowledge graph</span>
+      {missing && <small>Not in the graph yet — it will be indexed on the next save.</small>}
+      {!detail && !missing && <small>Loading…</small>}
+      {detail && (
+        <>
+          <strong>{detail.relations.length} relation{detail.relations.length === 1 ? "" : "s"} · on {detail.boards.length} board{detail.boards.length === 1 ? "" : "s"}</strong>
+          {detail.relations.length > 0 && (
+            <ul>
+              {detail.relations.slice(0, 6).map((r) => (
+                <li key={r.id}>{r.direction === "out" ? "→" : "←"} <b>{r.kind || "related to"}</b> {r.other.name}{r.other.kind ? ` (${r.other.kind})` : ""}</li>
+              ))}
+              {detail.relations.length > 6 && <li>… {detail.relations.length - 6} more</li>}
+            </ul>
+          )}
+          {otherBoards.length > 0 && <small>Also on: {otherBoards.map((b, i) => <span key={b.id}>{i > 0 && ", "}<Link href={`/b/${b.id}`}>{b.name}</Link></span>)}</small>}
+          <small>Source: {detail.entity.source}</small>
+        </>
+      )}
+    </div>
+  );
 }

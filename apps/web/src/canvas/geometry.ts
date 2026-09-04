@@ -63,6 +63,24 @@ export function cameraToFit(bounds: Box, w: number, h: number, padding = 64, max
   return { zoom, x: w / 2 - cx * zoom, y: h / 2 - cy * zoom };
 }
 
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** Fit `bounds` into the viewport area that remains after subtracting `insets` (screen px). */
+export function cameraToFitInsets(bounds: Box, w: number, h: number, insets: Insets, maxZoom = 1): Camera {
+  const availW = Math.max(120, w - insets.left - insets.right);
+  const availH = Math.max(120, h - insets.top - insets.bottom);
+  const cx = insets.left + availW / 2;
+  const cy = insets.top + availH / 2;
+  if (bounds.w <= 0 || bounds.h <= 0) return { x: cx - bounds.x, y: cy - bounds.y, zoom: 1 };
+  const zoom = clamp(Math.min(availW / bounds.w, availH / bounds.h), MIN_ZOOM, maxZoom);
+  return { zoom, x: cx - (bounds.x + bounds.w / 2) * zoom, y: cy - (bounds.y + bounds.h / 2) * zoom };
+}
+
 // ---- boxes -----------------------------------------------------------------
 
 export function unionBoxes(boxes: Box[]): Box | null {

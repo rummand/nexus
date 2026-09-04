@@ -6,6 +6,7 @@ import type { Box, CanvasElement, ElementId, Point } from "../document";
 import { isBoxElement, NOTE_COLORS, TEXT_COLORS, cardColorForKind } from "../document";
 import { boxesIntersect, boxContainsBox, elementBounds, type HandleId, normalizeBox, resizeBox, screenToWorld } from "../geometry";
 import { expandSelectionForMove, useCanvasStore, type CanvasState, type Tool } from "../store";
+import { ENTITY_ID_PREFIX, isEntityId, RELATION_ID_PREFIX } from "@/lib/graph-types";
 
 type Elements = CanvasState["elements"];
 
@@ -86,7 +87,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
     const centred = { x: at.x - size.w / 2, y: at.y - size.h / 2, w: size.w, h: size.h };
     switch (tool) {
       case "card":
-        return { id, type: "card", ...centred, kind: "Application", color: cardColorForKind("Application"), title: "", description: "", z: 0 };
+        return { id, type: "card", ...centred, kind: "Application", color: cardColorForKind("Application"), title: "", description: "", z: 0, meta: { entityId: `${ENTITY_ID_PREFIX}${nanoid(12)}` } };
       case "sticky":
         return { id, type: "sticky", ...centred, title: "", text: "", color: NOTE_COLORS[0], z: 0 };
       case "text":
@@ -128,6 +129,13 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         return;
       }
       if (e.button !== 0) return;
+
+      // Pointer down inside a live text field: select the owning object, let the field work.
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+        if (hitId && s.elements[hitId] && !s.selection.includes(hitId)) s.select([hitId]);
+        return;
+      }
 
       switch (s.tool) {
         case "select": {
@@ -330,9 +338,12 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
           if (!fromEl) return;
           const distance = Math.hypot(e.clientX - (downScreen.current.x + (rootRef.current?.getBoundingClientRect().left ?? 0)), e.clientY - (downScreen.current.y + (rootRef.current?.getBoundingClientRect().top ?? 0)));
           if (!toId && distance < DRAG_THRESHOLD * 3) return; // a plain click on an element: nothing to connect
+          const toEl = toId ? s.elements[toId] : undefined;
+          const graphBacked = fromEl.type === "card" && isEntityId(fromEl.meta?.entityId) && toEl?.type === "card" && isEntityId(toEl.meta?.entityId);
           const connector: CanvasElement = {
             id: nanoid(10),
             type: "connector",
+            ...(graphBacked ? { meta: { relationId: `${RELATION_ID_PREFIX}${nanoid(12)}` } } : {}),
             from: { elementId: ses.fromId },
             to: toId && s.elements[toId] && isBoxElement(s.elements[toId]!) ? { elementId: toId } : { point: world },
             label: "",

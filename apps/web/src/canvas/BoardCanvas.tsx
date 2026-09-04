@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "./document";
 import { CanvasStoreContext, createCanvasStore, type ScrollMode } from "./store";
 import { Canvas } from "./Canvas";
@@ -19,10 +19,13 @@ export function BoardCanvas({ document, header }: { document: CanvasDocument; he
     } catch {
       /* ignore */
     }
-    return createCanvasStore({ boardId: header.boardId, document, scrollMode });
+    return createCanvasStore({ boardId: header.boardId, workspaceId: header.workspaceId, document, scrollMode });
   });
 
+  const opened = useRef<string | null>(null);
   useEffect(() => {
+    if (opened.current === header.boardId) return; // strict-mode double effect
+    opened.current = header.boardId;
     void markBoardOpened(header.boardId);
   }, [header.boardId]);
 

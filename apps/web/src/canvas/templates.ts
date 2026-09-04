@@ -36,7 +36,8 @@ export function note(x: number, y: number, title: string, text: string, color = 
   return { id, type: "sticky", x, y, w: 300, h: 150, title, text, color, z: nextZ() };
 }
 export function card(x: number, y: number, kind: string, title: string, description = "", id = nanoid(10)): CanvasElement {
-  return { id, type: "card", x, y, w: 236, h: 120, kind, color: cardColorForKind(kind), title, description, z: nextZ() };
+  // every card is graph-backed from birth; the entity is created on the first save
+  return { id, type: "card", x, y, w: 236, h: 124, kind, color: cardColorForKind(kind), title, description, z: nextZ(), meta: { entityId: `ent_${nanoid(12)}` } };
 }
 export function shape(x: number, y: number, w: number, h: number, text: string, fill: string, id = nanoid(10), kind: "rect" | "ellipse" | "diamond" = "rect"): CanvasElement {
   return { id, type: "shape", shape: kind, x, y, w, h, text, fill, stroke: "#475569", z: nextZ() };
@@ -45,7 +46,8 @@ export function textBlock(x: number, y: number, w: number, h: number, title: str
   return { id, type: "text", variant, x, y, w, h, title, text, color, z: nextZ() };
 }
 export function connect(from: string, to: string, label = "", id = nanoid(10), style: "solid" | "dashed" = "solid"): CanvasElement {
-  return { id, type: "connector", from: { elementId: from }, to: { elementId: to }, label, stroke: "#475569", style, arrowEnd: true, arrowStart: false, z: nextZ() };
+  // graph-backed when both ends are cards (the sync ignores it otherwise)
+  return { id, type: "connector", from: { elementId: from }, to: { elementId: to }, label, stroke: "#475569", style, arrowEnd: true, arrowStart: false, z: nextZ(), meta: { relationId: `rel_${nanoid(12)}` } };
 }
 
 export function buildTemplate(id: TemplateId): CanvasDocument {
