@@ -165,8 +165,12 @@ export async function entityDetail(db: Db, entityId: string): Promise<EntityDeta
   const others = otherIds.length ? await db.select().from(s.entities).where(inArray(s.entities.id, otherIds)) : [];
   const otherById = new Map(others.map((o) => [o.id, o]));
   const seenBoards = new Set<string>();
+  const dupes = entity.name.trim()
+    ? (await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, entity.workspaceId), sql`lower(trim(${s.entities.name})) = ${entity.name.trim().toLowerCase()}`))).filter((d) => d.id !== entity.id)
+    : [];
   return {
     entity: { id: entity.id, kind: entity.kind, name: entity.name, description: entity.description, source: entity.source, updatedAt: entity.updatedAt },
+    duplicates: dupes.map((d) => ({ id: d.id, kind: d.kind, name: d.name, description: d.description })),
     boards: boards.filter((b) => (seenBoards.has(b.id) ? false : (seenBoards.add(b.id), true))),
     relations: rels.map((r) => {
       const out = r.fromEntityId === entityId;

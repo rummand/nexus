@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 3 — knowledge graph core)
+Last updated: 2026-09-04 (rev 4 — agent proposals)
 
 ---
 
@@ -245,6 +245,26 @@ board_entities  board_id, entity_id, element_id      (rebuilt on every save)
 - Sources are recorded per entity/relation (`canvas`, `import:<name>`); this is the hook
   for connectors and agents (§2.1–2.2).
 
+### 5.6 Agent proposals (v0.2)
+
+The first rung of the agent layer (§2.2). Proposals are computed deterministically from the
+graph, explained with evidence, and resolved through one accept / dismiss workflow that
+remembers decisions (`agent_decisions`). LLM-backed classifiers will later emit the same
+`Proposal` shape, so the UI and the decision memory do not change.
+
+| Rule | Confidence | Accept does |
+|---|---|---|
+| Same name, same kind (e.g. three "Asset Register") | high | **Merge**: repoint relations (de-duplicated), relink cards in every board document, rebuild the board index, delete the others. Survivor = most relations, then most boards, then oldest. |
+| Same name, different kinds | medium | Merge, keeping the survivor's kind. |
+| Kind variants (case / plural / whitespace) | high | Rename the minority kind to the majority one. |
+| Untyped entity | medium/low | Set a kind (guessed from similarly named entities, editable). |
+| Unlabelled relation | medium/low | Label it (suggested from other relations between the same kinds, editable). |
+| Orphan (no relations, on no board) | low | Delete the entity. |
+
+Surfaces: the **Agent proposals** section at the top of the Knowledge graph page, and an
+"Agent proposal · possible duplicate" block in the board's Selection inspector with a
+one-click merge that relinks the open board's cards immediately.
+
 Authentication is **not** part of the first brief: the app runs as a seeded demo user
 inside a seeded demo workspace. Auth (SSO/OIDC for enterprises) is on the roadmap and
 the schema already separates users, memberships and roles.
@@ -262,13 +282,14 @@ the schema already separates users, memberships and roles.
 - Authentication and enterprise SSO; roles and permissions per team/space/board.
 - ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
   *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
-- Entity resolution proposals (same name / kind across boards → merge), attribute
-  schema per kind, relation-type vocabulary management.
+- ~~Entity resolution proposals (same name / kind across boards → merge)~~ **Done (v0.2)**
+  — see §5.6. Next: attribute schema per kind, relation-type vocabulary management.
 - Optics: load/unload lenses (capability view, data-flow view, overlays).
 - Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
   ServiceNow, CMDB, wiki).
-- Agent framework: classification, meta-model proposal, entity resolution, enrichment,
-  with human review queue.
+- Agent framework: classification, meta-model proposal, ~~entity resolution~~ (rules done),
+  enrichment, with human review queue (the accept / dismiss flow exists; LLM-backed
+  proposal sources are next).
 - Search across boards and the graph.
 - Board templates; export (PNG/PDF); comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
@@ -313,10 +334,16 @@ the schema already separates users, memberships and roles.
   import with result summary, "Lay out on a board" (optionally filtered by kinds).
 - Seeded boards are indexed into the graph at seed time (28 entities, 13 relations).
 
+### Agent proposals (v0.2)
+- Rule-based proposals with evidence and confidence: duplicate merge, kind normalisation,
+  untyped entities, unlabelled relations, orphans (§5.6).
+- Accept / dismiss with remembered decisions; inline inputs for kinds and labels.
+- In-canvas duplicate hint with one-click merge in the Selection inspector.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
   math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
-  graph sync / hydrate / import / layout against an in-memory SQLite).
+  graph sync / hydrate / import / layout and proposal rules / merge against an in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
@@ -361,6 +388,8 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Graph ids are minted on the client (`ent_…`, `rel_…`) and the server upserts on save. | No round-trip needed to link a card; saves stay idempotent; imports and layouts reuse the same ids. |
 | 2026-09-04 | The graph outlives boards: deleting a card never deletes its entity; deleting an entity only unlinks cards. | Boards are views; the workspace graph is the asset. |
 | 2026-09-04 | Zoom-to-fit targets the viewport area not covered by floating panels. | With inventory + inspector open, a naive fit hid content under the panels. |
+| 2026-09-04 | Agent proposals start as deterministic rules behind the final `Proposal` contract. | Gives users the review workflow and decision memory now; LLM sources can be added without UI changes, and rule proposals stay explainable. |
+| 2026-09-04 | Merging entities rewrites board documents server-side and the open canvas relinks its cards client-side. | The board document is the client's truth while open; without the client patch the next autosave would resurrect the merged entity. |
 
 ## 8. Open questions for the product owner
 
@@ -371,6 +400,12 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 4: agent proposals.** Deterministic entity-resolution and meta-model
+  hygiene rules (duplicates, kind variants, untyped, unlabelled relations, orphans) with
+  evidence, confidence, accept / dismiss and remembered decisions; merge relinks cards on
+  every board. Proposals section on the Knowledge graph page and a duplicate hint with
+  one-click merge in the board inspector. Unit tests for the rules and the merge.
 
 - **2026-09-04 — Rev 3: knowledge graph core.** Entities, relations and a board↔entity
   index in the database; cards are graph-backed from birth and connectors between cards

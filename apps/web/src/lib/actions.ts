@@ -10,7 +10,8 @@ import { currentUser } from "./session";
 import { emptyDocument, serializeDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
 import { buildBoardFromGraph, graphForWorkspace, importGraph, parseImportText } from "./graph";
-import type { ImportResult } from "./graph-types";
+import type { ImportResult, Proposal } from "./graph-types";
+import { mergeEntities, recordDecision } from "./proposals";
 
 const now = () => new Date().toISOString();
 
@@ -278,4 +279,50 @@ export async function createBoardFromGraph(input: { workspaceId: string; spaceId
   await syncBoardToGraph(db, { id, workspaceId: input.workspaceId }, doc);
   revalidatePath(`/w/${await workspaceSlug(input.workspaceId)}`, "layout");
   redirect(`/b/${id}`);
+}
+
+// ---- agent proposals ---------------------------------------------------------
+
+export async function acceptProposal(workspaceId: string, proposal: Proposal, override?: string) {
+  const db = await getDb();
+  const a = proposal.action;
+  switch (a.kind) {
+    case "merge":
+      await mergeEntities(db, workspaceId, a.survivorId, a.otherIds);
+      break;
+    case "renameKind":
+      await db.update(s.entities).set({ kind: override ?? a.to, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, a.from)));
+      break;
+    case "setKind": {
+      const to = (override ?? a.to).trim();
+      if (!to) return { error: "A kind is required" };
+      await db.update(s.entities).set({ kind: to, updatedAt: now() }).where(eq(s.entities.id, a.entityId));
+      break;
+    }
+    case "setRelationKind": {
+      const to = (override ?? a.to).trim();
+      if (!to) return { error: "A label is required" };
+      await db.update(s.relations_).set({ kind: to, updatedAt: now() }).where(eq(s.relations_.id, a.relationId));
+      break;
+    }
+    case "deleteEntity":
+      await db.delete(s.entities).where(eq(s.entities.id, a.entityId));
+      break;
+  }
+  await recordDecision(db, workspaceId, proposal.key, "accepted");
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+}
+
+export async function dismissProposal(workspaceId: string, key: string) {
+  const db = await getDb();
+  await recordDecision(db, workspaceId, key, "dismissed");
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+}
+
+/** Merge from a board: returns the id mapping so the open canvas can relink its cards. */
+export async function mergeEntitiesAction(workspaceId: string, survivorId: string, otherIds: string[]) {
+  const db = await getDb();
+  const result = await mergeEntities(db, workspaceId, survivorId, otherIds);
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+  return { ...result, survivorId, otherIds };
 }

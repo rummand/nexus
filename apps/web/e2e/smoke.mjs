@@ -142,6 +142,7 @@ try {
   // graph page: import the sample and check the meta-model renders
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   assert.ok((await page.locator(".kind-card").count()) > 0, "graph page shows kinds");
+  assert.ok(await page.locator("text=Agent proposals").isVisible(), "graph page shows agent proposals");
   await page.click("text=Import data");
   await page.click("text=Use sample");
   await page.click('.modal-card button:text-is("Import")');

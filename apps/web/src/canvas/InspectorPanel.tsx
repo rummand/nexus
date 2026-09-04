@@ -4,6 +4,7 @@ import { useEffect, useState, type RefObject } from "react";
 import Link from "next/link";
 import type { EntityDetail } from "@/lib/graph-types";
 import { isEntityId } from "@/lib/graph-types";
+import { mergeEntitiesAction } from "@/lib/actions";
 import { Filter } from "lucide-react";
 import { elementName, elementTypeLabel, isBoxElement, type CanvasElement, type ElementId } from "./document";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
@@ -147,8 +148,27 @@ function summarise(items: CanvasElement[]) {
 
 /** Graph facts for an entity-backed card: where else it appears and how it is related. */
 function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }) {
+  const store = useCanvasStore();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [missing, setMissing] = useState(false);
+  const [merging, setMerging] = useState(false);
+
+  const merge = async (otherId: string) => {
+    setMerging(true);
+    try {
+      const s = store.getState();
+      const r = await mergeEntitiesAction(s.workspaceId, entityId, [otherId]);
+      // relink cards on this board that pointed at the merged entity
+      const patch: Record<string, Partial<CanvasElement>> = {};
+      for (const el of Object.values(s.elements)) {
+        if (el.type === "card" && r.otherIds.includes(String(el.meta?.entityId))) patch[el.id] = { meta: { ...el.meta, entityId: r.survivorId } };
+      }
+      if (Object.keys(patch).length) s.updateElements(patch, { history: true });
+      setDetail((d) => (d ? { ...d, duplicates: d.duplicates.filter((x) => x.id !== otherId) } : d));
+    } finally {
+      setMerging(false);
+    }
+  };
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(() => {
@@ -161,6 +181,19 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
   }, [entityId]);
   const otherBoards = detail?.boards.filter((b) => b.id !== boardId) ?? [];
   return (
+    <>
+      {detail && detail.duplicates.length > 0 && (
+        <div className="graph-block warn">
+          <span className="label">Agent proposal</span>
+          <strong>Possible duplicate{detail.duplicates.length > 1 ? "s" : ""}</strong>
+          <small>{detail.duplicates.map((d) => `${d.name} (${d.kind || "untyped"})`).join(", ")} share this name. Merge keeps this card&apos;s entity and relinks the others everywhere.</small>
+          <div className="dupe-actions">
+            {detail.duplicates.map((d) => (
+              <button key={d.id} type="button" disabled={merging} onClick={() => void merge(d.id)}>Merge “{d.name}” into this</button>
+            ))}
+          </div>
+        </div>
+      )}
     <div className="graph-block">
       <span className="label">Knowledge graph</span>
       {missing && <small>Not in the graph yet — it will be indexed on the next save.</small>}
@@ -181,5 +214,6 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
         </>
       )}
     </div>
+    </>
   );
 }

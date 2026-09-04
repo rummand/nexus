@@ -33,6 +33,28 @@ export interface EntityDetail {
   entity: { id: string; kind: string; name: string; description: string; source: string; updatedAt: string };
   boards: Array<{ id: string; name: string; spaceName: string }>;
   relations: Array<{ id: string; kind: string; direction: "out" | "in"; other: { id: string; name: string; kind: string } }>;
+  /** Other entities with the same name — candidates for a merge. */
+  duplicates: Array<{ id: string; kind: string; name: string; description: string }>;
+}
+
+export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "orphan";
+
+export type ProposalAction =
+  | { kind: "merge"; survivorId: string; otherIds: string[] }
+  | { kind: "renameKind"; from: string; to: string }
+  | { kind: "setKind"; entityId: string; to: string }
+  | { kind: "setRelationKind"; relationId: string; to: string }
+  | { kind: "deleteEntity"; entityId: string };
+
+export interface Proposal {
+  key: string;
+  type: ProposalType;
+  confidence: "high" | "medium" | "low";
+  title: string;
+  detail: string;
+  entityIds: string[];
+  action: ProposalAction;
+  evidence?: string[];
 }
 
 export interface ImportPayload {

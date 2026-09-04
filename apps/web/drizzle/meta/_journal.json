@@ -15,6 +15,13 @@
       "when": 1788553540451,
       "tag": "0001_zippy_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788556105977,
+      "tag": "0002_yellow_tana_nile",
+      "breakpoints": true
     }
   ]
 }

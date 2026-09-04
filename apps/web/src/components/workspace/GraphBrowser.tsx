@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
 import type { Space } from "@/db/schema";
-import type { GraphSnapshot, ImportResult } from "@/lib/graph-types";
+import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
+import { ProposalsPanel } from "./ProposalsPanel";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
 
@@ -20,7 +21,7 @@ Customer API,consumed by,ERP Core
 CRM Cloud,supports,Revenue Management`;
 
 /** Workspace knowledge graph: inventory, emergent meta-model, import, lay out on a board. */
-export function GraphBrowser({ workspaceId, slug, snapshot, spaces }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[] }) {
+export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[] }) {
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -48,6 +49,8 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces }: { workspac
           <button className="primary-home-button" type="button" onClick={() => setImportOpen(true)}><Upload size={18} /> Import data</button>
         </div>
       </header>
+
+      <ProposalsPanel workspaceId={workspaceId} proposals={proposals} />
 
       <section className="studio-board-browser" aria-label="Meta-model">
         <div className="studio-board-browser-title">

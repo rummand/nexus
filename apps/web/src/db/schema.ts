@@ -194,6 +194,20 @@ export const boardEntities = sqliteTable(
   (t) => [primaryKey({ columns: [t.boardId, t.entityId, t.elementId] }), index("board_entities_entity_idx").on(t.entityId)],
 );
 
+/** Remembered decisions on agent proposals (dismissed / accepted), keyed by proposal key. */
+export const agentDecisions = sqliteTable(
+  "agent_decisions",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    decision: text("decision", { enum: ["accepted", "dismissed"] }).notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.key] })],
+);
+
 // ---- relations -------------------------------------------------------------
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
