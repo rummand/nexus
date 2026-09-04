@@ -2,17 +2,17 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowLeft, GitMerge, Trash2, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, GitMerge, Plus, Trash2, X } from "lucide-react";
 import type { EntityDetail } from "@/lib/graph-types";
 import { attributeIsRisk } from "@/canvas/document";
-import { deleteEntity, mergeEntitiesAction, setEntityAttributeAction, updateEntity } from "@/lib/actions";
+import { createRelationAction, deleteEntity, deleteRelationAction, mergeEntitiesAction, setEntityAttributeAction, updateEntity } from "@/lib/actions";
 
 /**
  * Entity detail drawer on the Knowledge graph page: the one place to see and edit everything the
  * graph knows about an entity — kind / name / description, attributes (with the kind's schema as
  * suggestions), relations (navigable), boards it appears on, and duplicate candidates to merge.
  */
-export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavigate }: { entityId: string | null; workspaceId: string; kindColor: (kind: string) => string; onClose: () => void; onNavigate: (id: string) => void }) {
+export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavigate, entities = [], relationKinds = [] }: { entityId: string | null; workspaceId: string; kindColor: (kind: string) => string; onClose: () => void; onNavigate: (id: string) => void; entities?: Array<{ id: string; name: string; kind: string }>; relationKinds?: string[] }) {
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -20,6 +20,8 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [tick, setTick] = useState(0);
+  const [rel, setRel] = useState<{ direction: "out" | "in"; kind: string; target: string }>({ direction: "out", kind: "", target: "" });
+  const [relError, setRelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!entityId) return;
@@ -94,18 +96,45 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
               )}
             </div>
 
-            <section className="entity-drawer-section">
+            <section className="entity-drawer-section" data-drawer-relations>
               <span>Relations <small>{detail!.relations.length}</small></span>
-              {detail!.relations.length === 0 && <p className="muted">No relations yet. Connect cards on a board or import a relations CSV.</p>}
+              {detail!.relations.length === 0 && <p className="muted">No relations yet. Add one below, connect cards on a board, or import a relations CSV.</p>}
               <ul>
                 {detail!.relations.map((r) => (
                   <li key={r.id}>
                     {r.direction === "out" ? <ArrowRight size={13} /> : <ArrowLeft size={13} />}
                     <b>{r.kind || "(unlabelled)"}</b>
                     <button type="button" onClick={() => onNavigate(r.other.id)} title="Open this entity">{r.other.name}<small> · {r.other.kind || "Untyped"}</small></button>
+                    <button type="button" className="entity-drawer-remove" aria-label="Delete relation" title="Delete this relation (also removes it from boards)" disabled={pending} onClick={() => run(() => deleteRelationAction(workspaceId, r.id))}>×</button>
                   </li>
                 ))}
               </ul>
+              <form
+                className="entity-drawer-addrel"
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  const target = entities.find((x) => x.name.toLowerCase() === rel.target.trim().toLowerCase() || `${x.kind}: ${x.name}`.toLowerCase() === rel.target.trim().toLowerCase());
+                  if (!target) { setRelError(`No entity called “${rel.target.trim()}”`); return; }
+                  setRelError(null);
+                  const [from, to] = rel.direction === "out" ? [e.id, target.id] : [target.id, e.id];
+                  start(async () => {
+                    const r = await createRelationAction(workspaceId, from, rel.kind, to);
+                    if ("error" in r) setRelError(r.error);
+                    else { setRel({ direction: rel.direction, kind: "", target: "" }); refresh(); }
+                  });
+                }}
+              >
+                <select value={rel.direction} onChange={(ev) => setRel({ ...rel, direction: ev.target.value as "out" | "in" })} aria-label="Direction">
+                  <option value="out">this →</option>
+                  <option value="in">→ this</option>
+                </select>
+                <input value={rel.kind} onChange={(ev) => setRel({ ...rel, kind: ev.target.value })} placeholder="relation, e.g. depends on" list="drawer-rel-kinds" aria-label="Relation type" />
+                <datalist id="drawer-rel-kinds">{relationKinds.map((k) => <option key={k} value={k} />)}</datalist>
+                <input value={rel.target} onChange={(ev) => setRel({ ...rel, target: ev.target.value })} placeholder="other entity" list="drawer-rel-targets" aria-label="Other entity" required />
+                <datalist id="drawer-rel-targets">{entities.filter((x) => x.id !== e.id).slice(0, 400).map((x) => <option key={x.id} value={x.name}>{x.kind}</option>)}</datalist>
+                <button type="submit" className="ghost-button" disabled={pending || !rel.target.trim()} aria-label="Add relation"><Plus size={14} /></button>
+              </form>
+              {relError && <p className="form-error" style={{ margin: 0 }}>{relError}</p>}
             </section>
 
             <section className="entity-drawer-section">

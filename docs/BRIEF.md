@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 21 — note promotion, attribute key rename, shortcuts)
+Last updated: 2026-09-04 (rev 22 — graph-first relation editing)
 
 ---
 
@@ -280,6 +280,12 @@ change), attributes with the kind's schema as suggestions (blur saves, × remove
 one-click merge, and delete. Esc or the backdrop closes it. Data comes from the existing
 `GET /api/graph/entities/[id]`; edits go through the same server actions the canvas uses.
 
+**Relations without a board (rev 22).** The drawer's relation list has an add form (direction,
+relation type with the workspace's types as suggestions, other entity by name) and a delete
+button per relation (`src/lib/relations.ts`). Creating dedupes on ends + type; deleting also
+strips the connectors that draw the relation from every board document, otherwise the next
+autosave of such a board would recreate it. Boards stay the *other* way to create relations.
+
 
 ### 5.6 Agent proposals (v0.2)
 
@@ -517,7 +523,8 @@ contains (`src/canvas/lens.ts`).
 
 ### Entity drawer (v0.2)
 - Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
-  relations, jump to boards, merge duplicates, delete.
+  relations, add / delete relations (board connectors cleaned up), jump to boards, merge
+  duplicates, delete.
 
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
@@ -630,6 +637,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
 | 2026-09-04 | Missing-attribute proposals need ≥ 80 % coverage within a kind of ≥ 3 entities. | Below that the "schema" is not established and the proposals would be noise; the threshold is a constant to tune once real data arrives. |
+| 2026-09-04 | Deleting a graph relation rewrites board documents to drop its connectors. | Same resurrection problem as merge: the board document is the client's truth while open and `syncBoardToGraph` upserts relations from connectors on every save. Rewriting the stored document (and letting an open board reload) is the only consistent option. |
 | 2026-09-04 | Export is SVG generated from the document, not a DOM/canvas screenshot. | Vector output scales into slides and design tools, needs no headless browser on the server, and works offline in the client; PNG can be derived from it later. Fidelity is "faithful enough" rather than pixel identical. |
 | 2026-09-04 | Lenses never mutate the document; the impact lens walks *board connectors*, not the workspace graph. | What you see is what you traverse: the user controls which relations are on the board (Show all relations / expand) and the lens explains exactly that picture. A graph-backed variant can come later as "expand then lens". |
 | 2026-09-04 | The board canvas is client-only (`dynamic(..., { ssr: false })`) with a loading shell. | Server-rendering a thousand absolutely positioned nodes doubled the payload and the hydration cost for zero benefit — the canvas needs the viewport size before it can place anything. |
@@ -646,6 +654,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-04 — Rev 22: graph-first relation editing.** Add and delete relations from the
+  entity drawer (deduped create, delete strips board connectors), with unit tests and two new
+  server actions.
 
 - **2026-09-04 — Rev 21: note promotion, attribute key rename, shortcuts.** Context-menu *Turn
   into card* for notes (single undo step, unit + e2e tested), click-to-rename attribute keys on

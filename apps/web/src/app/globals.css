@@ -1202,3 +1202,10 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .kind-card-attrs i button { background: transparent; border: 0; color: inherit; cursor: text; font: inherit; padding: 0; }
 .kind-card-attrs i button:hover { color: var(--blue); text-decoration: underline; }
 .kind-card-attr-input { background: #fff; border: 1px solid var(--blue); border-radius: 999px; color: var(--ink); font-size: 10px; font-weight: 800; height: 18px; outline: 0; padding: 0 7px; width: 110px; }
+
+.entity-drawer-remove { background: transparent !important; border: 0 !important; color: #b6bfcc !important; font-size: 15px !important; line-height: 1; margin-left: auto; padding: 0 4px !important; }
+.entity-drawer-remove:hover { color: #c24141 !important; text-decoration: none !important; }
+.entity-drawer-addrel { align-items: center; display: grid; gap: 6px; grid-template-columns: 84px 1fr 1fr 34px; margin-top: 4px; }
+.entity-drawer-addrel select, .entity-drawer-addrel input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: var(--ink); font: inherit; font-size: 12px; height: 32px; min-width: 0; padding: 0 8px; }
+.entity-drawer-addrel select:focus, .entity-drawer-addrel input:focus { border-color: var(--blue); outline: 0; }
+.entity-drawer-addrel .ghost-button { height: 32px; min-height: 32px; padding: 0; width: 34px; }

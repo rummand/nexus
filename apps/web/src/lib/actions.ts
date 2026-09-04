@@ -12,6 +12,7 @@ import { buildTemplate, type TemplateId } from "@/canvas/templates";
 import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, parseImportText } from "./graph";
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
+import { createRelation, deleteRelation } from "./relations";
 
 const now = () => new Date().toISOString();
 
@@ -247,6 +248,26 @@ export async function updateEntity(entityId: string, patch: { kind?: string; nam
   const db = await getDb();
   const [row] = await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId)).returning();
   if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+}
+
+/** Entity drawer: add a relation between two entities (deduped by ends + kind). */
+export async function createRelationAction(workspaceId: string, fromEntityId: string, kind: string, toEntityId: string) {
+  const db = await getDb();
+  try {
+    const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId);
+    revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+    return r;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not create the relation" };
+  }
+}
+
+/** Entity drawer: delete a relation (and the connectors drawing it on boards). */
+export async function deleteRelationAction(workspaceId: string, relationId: string) {
+  const db = await getDb();
+  const r = await deleteRelation(db, relationId);
+  revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
+  return r;
 }
 
 /** Rename an attribute key across the workspace (the kind card's schema chips). */
