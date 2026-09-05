@@ -19,8 +19,11 @@ FROM base AS runtime
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 \
     DATABASE_URL=file:/data/nexus.db
 COPY --from=build /app /app
-RUN mkdir -p /data && chown -R node:node /data /app
-USER node
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# /data is chowned here for the no-volume case; the entrypoint redoes it at runtime because a
+# mounted volume arrives root-owned and masks this.
+RUN mkdir -p /data && chown -R node:node /data /app && chmod +x /usr/local/bin/docker-entrypoint.sh
 WORKDIR /app/apps/web
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm exec next start -p ${PORT:-3000}"]
+# Starts as root only to fix the volume's ownership, then drops to `node`.
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
