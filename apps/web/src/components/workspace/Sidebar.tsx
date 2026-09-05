@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Boxes, Clock3, Database, Home, Plus, Star, Users, Waypoints } from "lucide-react";
+import { Boxes, Clock3, Database, Home, Inbox, Plus, Star, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -25,14 +25,19 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarSearch slug={workspace.slug} />
       </Suspense>
 
+      {/*
+        Explicit keys on static children: past a certain number of siblings the React compiler
+        builds this list as an array, and React then warns that its items have no key.
+      */}
       <nav className="studio-home-nav" aria-label="Studio navigation">
-        <SidebarLink href={base} exact icon={<Home size={20} />}>Home</SidebarLink>
-        <SidebarLink href={`${base}/recent`} icon={<Clock3 size={20} />}>Recent</SidebarLink>
-        <SidebarLink href={`${base}/favorites`} icon={<Star size={20} />} trailing={favorites.length}>Starred</SidebarLink>
-        <SidebarLink href={`${base}/teams`} icon={<Users size={20} />} trailing={teams.length}>Teams</SidebarLink>
-        <SidebarLink href={`${base}/graph`} icon={<Database size={20} />}>Knowledge graph</SidebarLink>
-        <SidebarLink href={`${base}/explore`} icon={<Waypoints size={20} />}>Graph explorer</SidebarLink>
-        <SidebarLink href={`${base}/meta`} icon={<Boxes size={20} />}>Meta-model</SidebarLink>
+        <SidebarLink key="home" href={base} exact icon={<Home size={20} />}>Home</SidebarLink>
+        <SidebarLink key="recent" href={`${base}/recent`} icon={<Clock3 size={20} />}>Recent</SidebarLink>
+        <SidebarLink key="favorites" href={`${base}/favorites`} icon={<Star size={20} />} trailing={favorites.length}>Starred</SidebarLink>
+        <SidebarLink key="teams" href={`${base}/teams`} icon={<Users size={20} />} trailing={teams.length}>Teams</SidebarLink>
+        <SidebarLink key="graph" href={`${base}/graph`} icon={<Database size={20} />}>Knowledge graph</SidebarLink>
+        <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={20} />}>Graph explorer</SidebarLink>
+        <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={20} />}>Meta-model</SidebarLink>
+        <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={20} />}>Intake</SidebarLink>
       </nav>
 
       <div className="studio-spaces-header">

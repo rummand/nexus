@@ -596,6 +596,58 @@ diagram immediately: the model is watched as it evolves rather than inspected af
 Rules and data types are advisory today — they describe and surface drift rather than reject
 writes. Enforcement (and agent proposals driven by these violations) is the natural next step.
 
+### 5.15 Intake — the ingestion layer (v0.2)
+
+`/w/[slug]/intake`, a top-level menu item. Sources in, graph out; the screen is deliberately
+unlike the canvas and the meta-model builder, because the work is different: this is where
+unconsolidated data is read, argued with and accepted.
+
+**A source is a node.** An uploaded transcript, a pasted document, a connector sync — each is
+stored whole (`sources`, migration 0005), and once accepted it *becomes an entity in the graph*
+of kind Meeting / Document / Dataset / Sync. A meeting is therefore as touchable as the
+applications discussed in it: open it on a board, pull on it, and the estate it talked about
+comes with it. Provenance is graph-native rather than a side table — every `mentions` edge
+carries the sentence that justified it, so "why does the graph think this?" is a click, not a log.
+
+**The pipeline is watchable.** A run (`source_runs`) is seven reported stages — read, segment,
+recognise, resolve, relate, viewpoints, stage for review — each with what went in, what came out,
+how long it took and one line in the run's own numbers ("7 passages from 3 speakers", "5 of 9
+already exist in the graph"). The screen draws them as a flow. An importer that says "23 objects
+imported" is unarguable in the bad sense; this one can be blamed.
+
+**What it reads out of a meeting** (`src/lib/intake/extract.ts`, deterministic and pure):
+
+| | how it is recognised |
+|---|---|
+| **known things** | the name is already an entity here — the meeting links to the graph rather than duplicating it |
+| **typed things** | a phrase names its own type: "the Maximo application", "the billing capability" |
+| **emergent things** | a proper noun nobody declared, said more than once — the meta-model growing from what people actually say |
+| **people** | whoever spoke; they `attended` the meeting, and own the actions they took |
+| **subjects** | what the meeting was *about* — target architecture, the application portfolio, data governance — joined with `about` rather than `mentions` |
+| **connections** | a relation verb between two names in one sentence ("Maximo depends on SCADA") |
+| **viewpoints** | what a person made of it: a decision, an action, a risk, a question, a need — each becoming an object of its own, raised by its speaker and about what was under discussion |
+
+Every row carries its confidence, its reason and the quote behind it. Low-confidence guesses are
+shown but start unticked. **Nothing reaches the graph until a human accepts it** — extraction and
+commitment are separate actions, which is the only thing that makes reading meetings
+automatically defensible.
+
+**The landscape.** A second view on the same screen: everything intake has brought in, as a
+graph — meetings, who was in them, the subjects they covered, the systems they touched. It reuses
+the explorer (§5.13) rather than growing a second, weaker viewer, so search, focus and path
+tracing come with it. Click a person and their meetings light up; sixteen meetings with your name
+on them is a shape, not a list.
+
+**The connector catalogue** (`src/lib/intake/connectors.ts`) is the ecosystem: conversations,
+files, enterprise systems (ServiceNow, Jira, Confluence, SharePoint, Entra ID, SAP, Ardoq/LeanIX)
+and repositories (Git, Databricks/Snowflake, OT historian). Four are built — meeting transcript,
+notes & documents, CSV/JSON — and the rest say "planned" plainly rather than being hidden, because
+the reach of the catalogue *is* the pitch.
+
+The extractor is rule-based today. That is a deliberate first rung of §2.2, not the destination:
+an LLM classifier plugs into the same `Candidate` / `CandidateRelation` / `Viewpoint` shapes and
+the same review workflow, and nothing above this line changes when it does.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -625,7 +677,7 @@ writes. Enforcement (and agent proposals driven by these violations) is the natu
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 33)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 39)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -698,6 +750,15 @@ writes. Enforcement (and agent proposals driven by these violations) is the natu
 ### Drag from the inventory (v0.2)
 - Entities drag out of the board's Graph inventory and drop where you release them; the kind
   header drags the whole un-placed group. The "+" buttons still place into a centred grid.
+
+### Intake — ingestion layer (v0.2)
+- `/w/[slug]/intake`: sources (transcript / document / CSV upload or paste), a seven-stage
+  pipeline drawn as a flow, and a review of everything it found — objects, connections and
+  viewpoints (decisions, actions, risks, questions, needs) — each with its confidence and the
+  sentence behind it. Accepted objects are written to the graph with the source itself as a node,
+  `mentions` edges carrying their evidence, and people joined to the meetings they attended.
+- Landscape view: everything taken in, as a navigable graph (the explorer, scoped to intake).
+- Connector catalogue: 16 enterprise sources, 4 built and the rest marked planned.
 
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
@@ -856,6 +917,12 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-04 | Layers memoise children on a joined-ids string; components subscribe to their own slice. | A drag mutates `elements` every pointer move; without id-keyed memoisation React recreated 700 elements per frame even though every child bailed out. |
 | 2026-09-04 | Fonts load from a client component after mount rather than a `<link>` in `<head>`. | The render-blocking stylesheet stalled first paint for up to 13 s behind the sandbox proxy; the fallback stack (Aptos / system sans) is close enough that the swap is barely visible. |
 
+| 2026-09-05 | An ingested source becomes a node in the graph, and provenance rides on the edges. | A meeting is not metadata hanging off the applications it mentioned — it is a thing with attendees, subjects and decisions, and the questions worth asking ("which meetings touched this system?") are graph questions. Putting the quote on the `mentions` edge means evidence is navigable instead of buried in an audit table. |
+| 2026-09-05 | Extraction and commitment are separate actions; nothing is written without a human tick. | The whole argument for reading meetings automatically only holds if a person can see what was concluded, and the evidence for it, before the graph believes it. It also makes the extractor safe to improve aggressively. |
+| 2026-09-05 | The extractor is deterministic and rule-based, behind shapes a model can replace. | The interesting half of the design is the evidence-carrying review workflow, not the classifier. Rules are testable, explainable and need no key; an LLM slots in behind `Candidate`/`Viewpoint` without changing a line of the UI. |
+| 2026-09-05 | Objects intake writes itself (Meeting, Decision, Risk, Action, Question, Need) are excluded from the recognition vocabulary. | A risk is named by the sentence somebody said. Left in the vocabulary, the next run over the same meeting finds that sentence in the text and offers the risk as a thing being discussed — the graph reading its own notes back to itself. |
+| 2026-09-05 | The intake landscape reuses the graph explorer rather than adding a second viewer. | Search, focus, hop-limiting and path tracing already exist and are better than anything a scoped-down second implementation would have; the explorer only needed an `embedded` mode. |
+
 ## 8. Open questions for the product owner
 
 - Which first data source should the ingestion work start with (ServiceNow? file
@@ -865,6 +932,21 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 39: intake, the ingestion layer.** A new top-level view at `/w/[slug]/intake`
+  that turns unconsolidated data into graph. Upload or paste a Teams/Zoom transcript, minutes or a
+  CSV; a seven-stage pipeline is drawn as a flow with its counts, and everything it found is
+  listed for review with a confidence, a reason and the quote that produced it: objects (known,
+  typed, emergent), the people who spoke, the subjects the source was *about*, the connections it
+  described, and viewpoints — decisions, actions, risks, questions and needs, attributed to
+  whoever raised them. Accepting writes it into the graph with the source itself as a node, so a
+  meeting is an object connected to its attendees, its subjects and the systems it touched, and
+  every `mentions` edge carries its evidence. A second Landscape view draws all of that as a
+  navigable graph (the explorer, embedded and scoped). New tables `sources` and `source_runs`
+  (migration 0005), a connector catalogue of 16 enterprise sources with four built, 22 unit tests
+  across parsing, extraction, the pipeline report and the commit, and e2e that reads the sample
+  meeting end to end. Also fixed: the workspace sidebar emitted a React key warning once its nav
+  grew past seven links (the compiler builds the list as an array at that size).
 
 - **2026-09-05 — Rev 38: the meta-model on a canvas.** The builder's right pane gained a
   *Diagram* tab beside *Details*: the meta-model drawn as a type-level graph — one box per node

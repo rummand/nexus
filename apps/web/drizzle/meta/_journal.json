@@ -36,6 +36,13 @@
       "when": 1788610171165,
       "tag": "0004_late_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788614233265,
+      "tag": "0005_stormy_the_renegades",
+      "breakpoints": true
     }
   ]
 }

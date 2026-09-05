@@ -226,6 +226,63 @@ export const agentDecisions = sqliteTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.key] })],
 );
 
+// ---- intake ----------------------------------------------------------------
+// Unconsolidated data arrives as a *source*: an uploaded transcript, a pasted document, a
+// connector sync. A source is kept whole and raw, because an extraction is only arguable if the
+// text that produced it is still there to argue with. Running the pipeline over a source
+// produces a *run*, whose report and staged objects are stored as JSON — the shapes belong to
+// src/lib/intake, and pinning them into columns would freeze an extractor that is meant to keep
+// getting better.
+
+export const sources = sqliteTable(
+  "sources",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** transcript | document | table | connector — see src/lib/intake/types.ts */
+    kind: text("kind").notNull().default("document"),
+    /** Which connector it came through (see src/lib/intake/connectors.ts). */
+    connector: text("connector").notNull().default("notes"),
+    /** The raw text, kept so an extraction can always be traced back to its words. */
+    text: text("text").notNull().default(""),
+    characters: integer("characters").notNull().default(0),
+    /** new → extracted → committed. */
+    status: text("status", { enum: ["new", "extracted", "committed"] }).notNull().default("new"),
+    /** The source's own node in the graph, once committed: a meeting is an object too. */
+    entityId: text("entity_id").references(() => entities.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("sources_workspace_idx").on(t.workspaceId, t.createdAt)],
+);
+
+/** One pass of the pipeline over one source. The newest run of a source is the current one. */
+export const sourceRuns = sqliteTable(
+  "source_runs",
+  {
+    id: text("id").primaryKey(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "cascade" }),
+    /** The whole Extraction, JSON-encoded: stages, passages, candidates, relations, viewpoints. */
+    extraction: text("extraction").notNull(),
+    candidateCount: integer("candidate_count").notNull().default(0),
+    relationCount: integer("relation_count").notNull().default(0),
+    viewpointCount: integer("viewpoint_count").notNull().default(0),
+    /** Objects actually written to the graph from this run. */
+    committedCount: integer("committed_count").notNull().default(0),
+    ms: integer("ms").notNull().default(0),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("source_runs_source_idx").on(t.sourceId, t.createdAt)],
+);
+
+export type Source = typeof sources.$inferSelect;
+export type SourceRun = typeof sourceRuns.$inferSelect;
+
 // ---- relations -------------------------------------------------------------
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({

@@ -357,6 +357,46 @@ try {
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
 
+  // intake: read a source through the pipeline, review what it found, and see the landscape
+  await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
+  await page.waitForSelector(".intake-shell");
+  await page.click(".intake-new");
+  await page.waitForSelector("[data-new-source]");
+  const sourceName = `e2e meeting ${Date.now().toString().slice(-5)}`;
+  await page.click('button:has-text("Use the sample meeting")');
+  await page.fill('input[aria-label="Source name"]', sourceName);
+  await page.click('button:has-text("Add source")');
+  // a source was probably already selected, so wait for the heading to become the new one
+  await page.waitForFunction((n) => document.querySelector(".intake-source-head h2")?.textContent === n, sourceName, { timeout: 30000 })
+    .catch(() => assert.fail("the new source opens"));
+
+  await page.click('button:has-text("Run pipeline")');
+  await page.waitForFunction(() => document.querySelectorAll(".pipeline-stage").length >= 7, null, { timeout: 30000 })
+    .catch(() => assert.fail("the pipeline reports every stage"));
+  const segment = await page.locator('[data-stage="segment"] p').textContent();
+  assert.match(segment ?? "", /speakers/, "the segment stage counts the speakers it found");
+  assert.ok((await page.locator("[data-candidate]").count()) > 0, "the run proposes objects");
+  // every proposal shows the sentence behind it
+  assert.ok((await page.locator("[data-candidate] .intake-quote").count()) > 0, "each object carries its evidence");
+
+  await page.click('.intake-tabs button:has-text("Viewpoints")');
+  await page.waitForSelector("[data-viewpoint]");
+  const viewpointTypes = (await page.locator(".intake-viewpoint").allTextContents()).join(" ").toLowerCase();
+  assert.match(viewpointTypes, /decision/, "a decision is extracted from what people said");
+  assert.match(viewpointTypes, /risk/, "a risk is extracted from what people said");
+
+  // the landscape shows what intake has brought in, as a graph
+  await page.click('.intake-view-tabs a:has-text("Landscape")');
+  await page.waitForSelector(".explorer-shell.embedded, .intake-empty", { timeout: 30000 });
+
+  // leave the shared database as we found it
+  await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
+  await page.locator(`.intake-source:has-text("${sourceName}")`).click();
+  await page.waitForSelector(".intake-source-head");
+  await page.click('button:has-text("Remove")');
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator(`.intake-source:has-text("${sourceName}")`).count(), 0, "a source can be removed");
+
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });
   await page.click(".studio-starters button >> nth=0");

@@ -18,7 +18,16 @@ import { buildAdjacency, components, shortestPath, withinHops } from "@/lib/grap
 const NODE_MIN = 5;
 const NODE_MAX = 20;
 
-export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: string; slug: string }) {
+export function GraphExplorer({ graph, title = "Graph explorer", subtitle, embedded = false }: {
+  graph: ExplorerGraph;
+  workspaceId?: string;
+  slug?: string;
+  /** Heading, so the same explorer can be shown scoped to a subject (intake, a space, a lens). */
+  title?: string;
+  subtitle?: string;
+  /** Embedded in another screen: no page topbar, and the controls move into the canvas. */
+  embedded?: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,7 +37,7 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
    * cannot be initialised from props at render time, and the React compiler forbids mutating a
    * memo's result — which this must do on every frame.
    */
-  const simRef = useRef<{ nodes: ForceNode[]; alpha: number; ready: boolean } | null>(null);
+  const simRef = useRef<{ nodes: ForceNode[]; alpha: number; ready: boolean; settled: boolean } | null>(null);
   const hoverRef = useRef<string | null>(null);
   const dragRef = useRef<{ id: string | null; startX: number; startY: number; camX: number; camY: number; moved: boolean } | null>(null);
 
@@ -98,7 +107,7 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
 
   // Seed (and re-seed) the layout whenever the graph itself changes.
   useEffect(() => {
-    simRef.current = { nodes: initialLayout(graph.nodes.map((n) => n.id), 1), alpha: 1, ready: false };
+    simRef.current = { nodes: initialLayout(graph.nodes.map((n) => n.id), 1), alpha: 1, ready: false, settled: false };
   }, [graph.nodes]);
 
   // Simulation + render loop.
@@ -185,7 +194,11 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
       if (sim && running && sim.alpha > 0.02) {
         tick(sim.nodes, edges, sim.alpha);
         sim.alpha *= 0.985;
+        // Fit once the shape is readable, then again when it stops moving: the layout keeps
+        // spreading after the first fit, and a graph that drifts off the edge is worse than one
+        // that appears a moment later.
         if (!sim.ready && sim.alpha < 0.55) { fit(); sim.ready = true; }
+        if (!sim.settled && sim.alpha < 0.06) { fit(); sim.settled = true; }
       }
       draw();
       raf = requestAnimationFrame(loop);
@@ -302,11 +315,11 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
   const searchHits = matches ? graph.nodes.filter((n) => matches.has(n.id)).slice(0, 12) : [];
 
   return (
-    <div className="explorer-shell">
+    <div className={`explorer-shell ${embedded ? "embedded" : ""}`}>
       <header className="explorer-topbar">
         <div className="explorer-title">
-          <h1>Graph explorer</h1>
-          <p>{graph.nodes.length} entities · {graph.edges.length} relations{graph.truncated ? ` · showing the ${graph.nodes.length} most connected of ${graph.totalNodes}` : ""}</p>
+          {embedded ? <strong>{title}</strong> : <h1>{title}</h1>}
+          <p>{subtitle ?? `${graph.nodes.length} entities · ${graph.edges.length} relations${graph.truncated ? ` · showing the ${graph.nodes.length} most connected of ${graph.totalNodes}` : ""}`}</p>
         </div>
         <label className="studio-home-search explorer-search">
           <Search size={15} />
