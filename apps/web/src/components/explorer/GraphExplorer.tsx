@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Crosshair, Maximize2, Pause, Play, Search } from "lucide-react";
+import { Crosshair, Maximize2, Pause, Play, Route, Search, X } from "lucide-react";
 import type { ExplorerGraph, ExplorerNode } from "@/lib/explorer";
 import { initialLayout, layoutBounds, tick, type ForceNode } from "@/lib/force";
+import { buildAdjacency, components, shortestPath, withinHops } from "@/lib/graph-algo";
 
 /**
  * Whole-graph explorer. Rendered on a <canvas>: at several hundred nodes a DOM element each is
@@ -35,6 +36,11 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
   const [query, setQuery] = useState("");
   const [hiddenKinds, setHiddenKinds] = useState<string[]>([]);
   const [running, setRunning] = useState(true);
+  /** Path tracing: pick a source, then a target, and the shortest route between them lights up. */
+  const [pathFrom, setPathFrom] = useState<string | null>(null);
+  const [pathTo, setPathTo] = useState<string | null>(null);
+  /** Hop-limited focus: show only what is within N hops of the selection. 0 = show everything. */
+  const [focusHops, setFocusHops] = useState(0);
 
   const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph.nodes]);
   const adjacency = useMemo(() => {
@@ -46,6 +52,25 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
     return m;
   }, [graph.edges]);
 
+  const algoAdj = useMemo(() => buildAdjacency(graph.edges.map((e) => ({ id: e.id, from: e.from, to: e.to }))), [graph.edges]);
+
+  /** Shortest route between the two picked entities — the "how are these connected?" question. */
+  const path = useMemo(() => {
+    if (!pathFrom || !pathTo) return null;
+    return shortestPath(algoAdj, pathFrom, pathTo);
+  }, [algoAdj, pathFrom, pathTo]);
+  const pathNodes = useMemo(() => new Set(path?.nodes ?? []), [path]);
+  const pathEdges = useMemo(() => new Set(path?.edges ?? []), [path]);
+
+  /** Nodes within `focusHops` of the selection; null when the limit is off. */
+  const focusSet = useMemo(() => {
+    if (!selected || focusHops === 0) return null;
+    return withinHops(algoAdj, [selected], focusHops);
+  }, [algoAdj, selected, focusHops]);
+
+  /** How fragmented the graph is — a portfolio of isolated islands is itself a finding. */
+  const fragments = useMemo(() => components(algoAdj, graph.nodes.map((n) => n.id)), [algoAdj, graph.nodes]);
+
   const hidden = useMemo(() => new Set(hiddenKinds), [hiddenKinds]);
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,6 +80,9 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
 
   const maxDegree = useMemo(() => Math.max(1, ...graph.nodes.map((n) => n.degree)), [graph.nodes]);
   const radiusOf = useCallback((n: ExplorerNode) => NODE_MIN + (NODE_MAX - NODE_MIN) * Math.sqrt(n.degree / maxDegree), [maxDegree]);
+
+  /** A node is off the view when its kind is hidden or a hop limit excludes it. */
+  const isHiddenNode = useCallback((id: string, kind: string) => hidden.has(kind) || (focusSet ? !focusSet.has(id) : false), [hidden, focusSet]);
 
   const fit = useCallback(() => {
     const canvas = canvasRef.current;
@@ -106,9 +134,14 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
         const a = pos.get(e.from), b = pos.get(e.to);
         if (!a || !b) continue;
         const na = byId.get(e.from), nb = byId.get(e.to);
-        if (!na || !nb || hidden.has(na.kind) || hidden.has(nb.kind)) continue;
-        const lit = focus ? e.from === focus || e.to === focus : false;
-        ctx.strokeStyle = lit ? "rgba(19,118,212,0.9)" : focus ? "rgba(148,163,184,0.18)" : "rgba(100,116,139,0.6)";
+        if (!na || !nb || isHiddenNode(e.from, na.kind) || isHiddenNode(e.to, nb.kind)) continue;
+        const onPath = pathEdges.has(e.id);
+        const lit = onPath || (focus ? e.from === focus || e.to === focus : false);
+        ctx.lineWidth = onPath ? Math.max(3, cam.zoom * 3) : Math.max(1, cam.zoom * 1.2);
+        ctx.strokeStyle = onPath
+          ? "rgba(217,119,6,0.95)"
+          : lit ? "rgba(19,118,212,0.9)"
+          : (focus || path) ? "rgba(148,163,184,0.16)" : "rgba(100,116,139,0.6)";
         ctx.beginPath();
         ctx.moveTo(sx(a.x), sy(a.y));
         ctx.lineTo(sx(b.x), sy(b.y));
@@ -117,21 +150,26 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
 
       for (const n of sim.nodes) {
         const meta = byId.get(n.id);
-        if (!meta || hidden.has(meta.kind)) continue;
+        if (!meta || isHiddenNode(n.id, meta.kind)) continue;
         const r = radiusOf(meta) * Math.max(0.55, Math.min(1.6, cam.zoom));
-        const dim = (matches && !matches.has(n.id)) || (focus && n.id !== focus && !near?.has(n.id));
+        const onPath = pathNodes.has(n.id);
+        const dim = !onPath && (
+          (matches && !matches.has(n.id)) ||
+          (path ? true : false) ||
+          (focus && n.id !== focus && !near?.has(n.id))
+        );
         ctx.globalAlpha = dim ? 0.16 : 1;
         ctx.beginPath();
         ctx.arc(sx(n.x), sy(n.y), r, 0, Math.PI * 2);
         ctx.fillStyle = meta.color;
         ctx.fill();
-        if (n.id === selected || n.id === hoverRef.current) {
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = "#1376d4";
+        if (onPath || n.id === selected || n.id === hoverRef.current) {
+          ctx.lineWidth = onPath ? 3 : 2.5;
+          ctx.strokeStyle = onPath ? "#d97706" : "#1376d4";
           ctx.stroke();
         }
         // Labels only where they will be readable, or the view becomes a wall of text.
-        if (!dim && (cam.zoom > 0.55 || r > 11 || n.id === selected)) {
+        if (!dim && (cam.zoom > 0.55 || r > 11 || n.id === selected || onPath)) {
           ctx.globalAlpha = dim ? 0.2 : 0.92;
           ctx.font = "600 11px Aptos, 'IBM Plex Sans', system-ui, sans-serif";
           ctx.fillStyle = "#334155";
@@ -154,7 +192,7 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [graph.edges, byId, adjacency, hidden, matches, selected, radiusOf, running, fit]);
+  }, [graph.edges, byId, adjacency, isHiddenNode, matches, selected, radiusOf, running, fit, path, pathNodes, pathEdges]);
 
   // Fit once the first layout has cooled, and on resize.
   useEffect(() => {
@@ -175,7 +213,7 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
     let bestDist = Infinity;
     for (const n of sim.nodes) {
       const meta = byId.get(n.id);
-      if (!meta || hidden.has(meta.kind)) continue;
+      if (!meta || isHiddenNode(n.id, meta.kind)) continue;
       const r = radiusOf(meta) / cam.zoom + 4 / cam.zoom;
       const d = Math.hypot(n.x - x, n.y - y);
       if (d <= r && d < bestDist) { best = n.id; bestDist = d; }
@@ -217,9 +255,17 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     const drag = dragRef.current;
-    if (drag && !drag.moved) setSelected(drag.id);
+    if (drag && !drag.moved) {
+      if (e.shiftKey && drag.id) {
+        // shift-click: first pick starts a trace, second completes it
+        if (!pathFrom || (pathFrom && pathTo)) { setPathFrom(drag.id); setPathTo(null); }
+        else setPathTo(drag.id);
+      } else {
+        setSelected(drag.id);
+      }
+    }
     if (drag?.id) {
       const n = simRef.current?.nodes.find((x) => x.id === drag.id);
       if (n) n.fixed = false;
@@ -248,7 +294,10 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
     setSelected(id);
   };
 
+  const clearPath = () => { setPathFrom(null); setPathTo(null); };
   const detail = selected ? byId.get(selected) : null;
+  const pathFromNode = pathFrom ? byId.get(pathFrom) : null;
+  const pathToNode = pathTo ? byId.get(pathTo) : null;
   const neighbours = selected ? [...(adjacency.get(selected) ?? [])].map((id) => byId.get(id)).filter((n): n is ExplorerNode => !!n).sort((a, b) => b.degree - a.degree) : [];
   const searchHits = matches ? graph.nodes.filter((n) => matches.has(n.id)).slice(0, 12) : [];
 
@@ -267,6 +316,9 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
           {running ? <Pause size={15} /> : <Play size={15} />} {running ? "Pause" : "Resume"}
         </button>
         <button type="button" className="ghost-button" onClick={fit} title="Fit the whole graph"><Maximize2 size={15} /> Fit</button>
+        <button type="button" className={pathFrom ? "ghost-button active" : "ghost-button"} onClick={() => (pathFrom ? clearPath() : setPathFrom(selected))} disabled={!pathFrom && !selected} title={pathFrom ? "Clear the traced path" : "Trace from the selected entity — then shift-click a second one"}>
+          <Route size={15} /> {pathFrom ? "Clear path" : "Trace from"}
+        </button>
         <button type="button" className="ghost-button" onClick={() => { if (simRef.current) simRef.current.alpha = 1; setRunning(true); }} title="Re-run the layout"><Crosshair size={15} /> Relayout</button>
       </header>
 
@@ -313,7 +365,7 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
                 <small>{detail.kind || "Untyped"}</small>
                 <strong>{detail.name || "(unnamed)"}</strong>
               </div>
-              <button type="button" onClick={() => setSelected(null)} aria-label="Close">×</button>
+              <button type="button" onClick={() => { setSelected(null); setFocusHops(0); }} aria-label="Close">×</button>
             </header>
             {Object.keys(detail.attributes).length > 0 && (
               <div className="explorer-attrs">
@@ -321,6 +373,15 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
               </div>
             )}
             <p className="explorer-degree">{detail.degree} relation{detail.degree === 1 ? "" : "s"}</p>
+            <div className="explorer-hops" role="group" aria-label="Limit the view to hops from this entity">
+              <em>Show within</em>
+              {[0, 1, 2, 3].map((d) => (
+                <button key={d} type="button" className={focusHops === d ? "active" : ""} onClick={() => setFocusHops(d)} title={d === 0 ? "Show the whole graph" : `Show only what is within ${d} hop${d === 1 ? "" : "s"}`}>
+                  {d === 0 ? "All" : `${d}`}
+                </button>
+              ))}
+              {focusHops > 0 && focusSet && <small>{focusSet.size} shown</small>}
+            </div>
             <div className="explorer-neighbours">
               {neighbours.slice(0, 40).map((n) => (
                 <button key={n.id} type="button" onClick={() => focusNode(n.id)}>
@@ -335,7 +396,24 @@ export function GraphExplorer({ graph }: { graph: ExplorerGraph; workspaceId: st
           </aside>
         )}
 
-        <span className="explorer-hint">Drag to pan · scroll to zoom · drag a node to pull it · click to focus</span>
+        {pathFrom && (
+          <div className="explorer-path" data-explorer-path>
+            <Route size={14} />
+            {!pathTo ? (
+              <span>Tracing from <b>{pathFromNode?.name}</b> — shift-click another entity</span>
+            ) : path ? (
+              <span><b>{path.nodes.length - 1}</b> hop{path.nodes.length === 2 ? "" : "s"}: {path.nodes.map((id) => byId.get(id)?.name ?? "?").join(" → ")}</span>
+            ) : (
+              <span><b>{pathFromNode?.name}</b> and <b>{pathToNode?.name}</b> are not connected</span>
+            )}
+            <button type="button" onClick={clearPath} aria-label="Clear path"><X size={13} /></button>
+          </div>
+        )}
+
+        <span className="explorer-hint">
+          Drag to pan · scroll to zoom · drag a node to pull it · click to focus · shift-click two entities to trace a path
+          {fragments.length > 1 ? ` · ${fragments.length} disconnected groups (largest ${fragments[0]!.length})` : ""}
+        </span>
       </div>
     </div>
   );

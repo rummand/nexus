@@ -527,6 +527,16 @@ whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explo
   while held and the neighbourhood re-settles), click to focus. Focusing dims everything except
   the node and its neighbours and lights the connecting edges. The detail panel lists attributes
   and clickable neighbours, and links through to the entity drawer via `/e/:id`.
+- **Path tracing (rev 35).** *"How are these two systems connected?"* — the question an impact
+  assessment actually asks. Arm a trace from the selected entity, shift-click a second, and the
+  shortest route lights amber while everything else dims; the banner spells out the chain
+  (`Settlement Engine → Data Lake`) or says the two are in different components. Breadth-first
+  over an undirected view of the relations, because connectivity does not care which way a
+  relation was drawn.
+- **Hop focus (rev 35).** *Show within 1 / 2 / 3* in the detail panel reduces the view to a
+  neighbourhood, which is how a large graph becomes readable.
+- **Fragmentation (rev 35).** The hint line reports connected components ("23 disconnected
+  groups, largest 7") — a portfolio that is mostly islands is itself a finding about the data.
 - **Filtering.** Node colour is the kind and radius is degree; the legend hides kinds; search
   dims non-matches and lists hits that focus on click. Pause / Fit / Relayout control the
   simulation.
@@ -795,6 +805,13 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
   rendering, pan/zoom/drag navigation, focus highlighting of a node and its neighbours, kind
   legend, search, and a detail panel that links through to the entity drawer. E2E now loads the
   explorer, asserts the canvas actually painted, and opens an entity through search.
+
+- **2026-09-05 — Rev 35: path tracing, hop focus, fragmentation.** The explorer can answer "how
+  are these two connected?": shift-click two entities and the shortest route lights up, with the
+  chain named in a banner. The detail panel gained a *show within N hops* filter, and the hint
+  line reports how many disconnected groups the graph has. Algorithms live in a pure
+  `src/lib/graph-algo.ts` (BFS shortest path, hop distances, connected components) with 7 unit
+  tests; e2e traces a real path between two entities.
 
 - **2026-09-05 — Rev 33: PNG export.** "Download PNG" in the export menu rasterises the existing
   SVG client-side at 2×, with the longest edge clamped to 8000 px. Verified end to end: the

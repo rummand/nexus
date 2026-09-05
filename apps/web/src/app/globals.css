@@ -1308,3 +1308,15 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .explorer-neighbours em { color: var(--muted); font-size: 11px; font-style: normal; font-weight: 700; padding: 2px; }
 .explorer-open { justify-content: center; width: 100%; }
 .explorer-hint { bottom: 12px; color: #8a95a8; font-size: 11px; left: 50%; position: absolute; transform: translateX(-50%); white-space: nowrap; }
+
+.explorer-path { align-items: center; background: rgba(255, 251, 235, 0.97); border: 1px solid #f3d79b; border-radius: 999px; bottom: 40px; box-shadow: var(--shadow-tight); color: #92400e; display: flex; font-size: 12px; font-weight: 700; gap: 8px; left: 50%; max-width: min(760px, calc(100% - 40px)); padding: 7px 10px 7px 12px; position: absolute; transform: translateX(-50%); }
+.explorer-path span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.explorer-path b { color: #78350f; font-weight: 900; }
+.explorer-path button { background: transparent; border: 0; color: #b45309; display: inline-flex; padding: 2px; }
+.explorer-path button:hover { color: #78350f; }
+.explorer-hops { align-items: center; display: flex; flex-wrap: wrap; gap: 4px; }
+.explorer-hops em { color: #7c8799; font-size: 10px; font-style: normal; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
+.explorer-hops button { background: #fff; border: 1px solid #dbe4ef; border-radius: 7px; color: #344156; font-size: 11px; font-weight: 800; min-height: 24px; padding: 0 8px; }
+.explorer-hops button.active { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
+.explorer-hops small { color: #8a95a8; font-size: 11px; font-weight: 800; margin-left: auto; }
+.explorer-topbar .ghost-button.active { background: #fff7e6; border-color: #f3d79b; color: #b45309; }

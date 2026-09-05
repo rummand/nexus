@@ -263,6 +263,25 @@ try {
   await page.locator(".explorer-results button").first().click();
   await page.waitForSelector(".explorer-detail", { timeout: 10000 });
   assert.ok((await page.locator(".explorer-detail header strong").innerText()).length > 0, "explorer opens an entity");
+  // trace a path: arm from the selected entity, then shift-click a neighbour that is centred by focus
+  const neighbourName = await page.locator(".explorer-neighbours button b").first().innerText().catch(() => "");
+  if (neighbourName) {
+    await page.click(".explorer-topbar button:has-text('Trace from')");
+    await page.waitForSelector("[data-explorer-path]");
+    await page.fill(".explorer-search input", neighbourName.slice(0, 8));
+    await page.waitForSelector(".explorer-results button");
+    await page.locator(".explorer-results button").first().click();
+    await page.waitForTimeout(600);
+    await page.fill(".explorer-search input", "");
+    await page.waitForTimeout(300);
+    const cbox = await page.locator(".explorer-canvas").boundingBox();
+    await page.keyboard.down("Shift");
+    await page.mouse.click(cbox.x + cbox.width / 2, cbox.y + cbox.height / 2);
+    await page.keyboard.up("Shift");
+    await page.waitForTimeout(500);
+    assert.ok(/hop|not connected/.test(await page.locator("[data-explorer-path]").innerText()), "explorer traces a path between two entities");
+    await page.click("[data-explorer-path] button");
+  }
 
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });
