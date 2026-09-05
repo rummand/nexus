@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useCanvas, useCanvasStore } from "./store";
+import { screenToWorld } from "./geometry";
+import { cardCentredAt, cardsInGrid, ENTITY_DRAG_TYPE, parseEntityDrag } from "./entityCard";
 import { useCanvasInteraction } from "./hooks/useCanvasInteraction";
 import { useWheel } from "./hooks/useWheel";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -34,6 +36,32 @@ export function Canvas() {
   const dragging = useCanvas((s) => s.isDragging);
   const panels = useCanvas((s) => s.panels);
   const presenting = useCanvas((s) => s.presenting);
+  const [dropActive, setDropActive] = useState(false);
+
+  /** Entities dragged out of the Graph inventory land where they are dropped. */
+  const onDrop = (e: React.DragEvent) => {
+    setDropActive(false);
+    const raw = e.dataTransfer.getData(ENTITY_DRAG_TYPE);
+    if (!raw) return;
+    const entities = parseEntityDrag(raw);
+    if (!entities) return;
+    e.preventDefault();
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const s = store.getState();
+    const world = screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top }, s.camera);
+    const already = new Set(Object.values(s.elements).map((el) => (el.type === "card" ? el.meta?.entityId : undefined)));
+    const fresh = entities.filter((x) => !already.has(x.id));
+    if (fresh.length === 0) return;
+    s.addElements(fresh.length === 1 ? [cardCentredAt(fresh[0]!, world.x, world.y)] : cardsInGrid(fresh, world), { select: true });
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(ENTITY_DRAG_TYPE)) return;
+    e.preventDefault(); // required, or the browser refuses the drop
+    e.dataTransfer.dropEffect = "copy";
+    if (!dropActive) setDropActive(true);
+  };
   const presentIndex = useCanvas((s) => s.presentIndex);
   const frameCount = useCanvas((s) => { let n = 0; for (const el of Object.values(s.elements)) if (el.type === "frame") n++; return n; });
   useProposals();
@@ -78,10 +106,13 @@ export function Canvas() {
   return (
     <main
       ref={rootRef}
-      className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""}`}
+      className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""} ${dropActive ? "is-drop-target" : ""}`}
       aria-label="Nexus canvas"
       onMouseDown={(e) => {
         const t = e.target as HTMLElement;
+        // preventDefault stops the canvas stealing focus, but it also cancels a native drag
+        // before dragstart fires — so leave draggable sources (the Graph inventory) alone.
+        if (t.closest('[draggable="true"]')) return;
         if (!(t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT" || t.isContentEditable)) e.preventDefault();
       }}
       onPointerDown={interaction.onPointerDown}
@@ -90,6 +121,9 @@ export function Canvas() {
       onPointerCancel={interaction.onPointerUp}
       onDoubleClick={interaction.onDoubleClick}
       onContextMenu={interaction.onContextMenu}
+      onDragOver={onDragOver}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDropActive(false); }}
+      onDrop={onDrop}
     >
       <GridCanvas />
       {/* world layer */}

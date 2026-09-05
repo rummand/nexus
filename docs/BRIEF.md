@@ -640,6 +640,10 @@ whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explo
 ### Link to existing (v0.2)
 - Title matches an existing entity → one click links the card to it (dedupe at creation).
 
+### Drag from the inventory (v0.2)
+- Entities drag out of the board's Graph inventory and drop where you release them; the kind
+  header drags the whole un-placed group. The "+" buttons still place into a centred grid.
+
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
   pan/zoom, node dragging, focus-and-neighbours highlighting, kind legend, search and a detail
@@ -799,6 +803,19 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 36: drag entities onto the canvas.** The Graph inventory's rows (and a kind
+  header, for the whole un-placed group) are now drag sources; dropping on the canvas creates the
+  card centred on the pointer instead of in the middle of the viewport, with a dashed drop
+  affordance while dragging. Card construction moved to `src/canvas/entityCard.ts` so the drop
+  and the "+" button build identical, correctly linked cards.
+
+  Worth recording because it cost the bug: the canvas root's `onMouseDown` calls
+  `preventDefault()` to stop the canvas stealing focus, and the panels live *inside* that root.
+  preventDefault on mousedown also cancels a native drag before `dragstart` fires, so the drag
+  silently did nothing. The root now leaves `[draggable="true"]` sources alone. (Note for future
+  testing: synthetic `mouse.down/move/up` does not trigger HTML5 drag events — e2e uses
+  Playwright's `dragTo`.)
 
 - **2026-09-05 — Rev 34: graph explorer.** A new whole-graph view at `/w/[slug]/explore`,
   complementing the curated boards: force-directed layout (pure, seeded, unit-tested), canvas

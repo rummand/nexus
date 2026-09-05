@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type RefObject } from "react";
-import { nanoid } from "nanoid";
 import { ChevronDown, ChevronRight, Database, Plus, Search } from "lucide-react";
-import { cardColorForKind, type CanvasElement } from "./document";
+import { cardColorForKind } from "./document";
+import { cardsInGrid, ENTITY_DRAG_TYPE } from "./entityCard";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
 import { useCanvas, useCanvasStore } from "./store";
 import type { EntitySummary, GraphSnapshot } from "@/lib/graph-types";
@@ -57,26 +57,16 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
   const place = (list: EntitySummary[]) => {
     const s = store.getState();
     const centre = { x: (s.viewport.w / 2 - s.camera.x) / s.camera.zoom, y: (s.viewport.h / 2 - s.camera.y) / s.camera.zoom };
-    const perRow = Math.max(1, Math.ceil(Math.sqrt(list.length)));
-    const w = 236, h = 124, gap = 24;
-    const totalW = perRow * w + (perRow - 1) * gap;
-    const rows = Math.ceil(list.length / perRow);
-    const totalH = rows * h + (rows - 1) * gap;
-    const els: CanvasElement[] = list.map((e, i) => ({
-      id: nanoid(10),
-      type: "card",
-      x: centre.x - totalW / 2 + (i % perRow) * (w + gap),
-      y: centre.y - totalH / 2 + Math.floor(i / perRow) * (h + gap),
-      w, h,
-      kind: e.kind,
-      color: cardColorForKind(e.kind),
-      title: e.name,
-      description: e.description,
-      attributes: e.attributes,
-      z: 0,
-      meta: { entityId: e.id },
-    }));
-    s.addElements(els, { select: true });
+    s.addElements(cardsInGrid(list, centre), { select: true });
+  };
+
+  /** Hand the entities to the canvas as a drag payload; the drop decides where they land. */
+  const startDrag = (e: React.DragEvent, list: EntitySummary[]) => {
+    const payload = list.map((x) => ({ id: x.id, kind: x.kind, name: x.name, description: x.description, attributes: x.attributes }));
+    e.dataTransfer.setData(ENTITY_DRAG_TYPE, JSON.stringify(payload));
+    // a plain-text fallback keeps the drag meaningful if it lands outside the canvas
+    e.dataTransfer.setData("text/plain", payload.map((x) => x.name).join(", "));
+    e.dataTransfer.effectAllowed = "copy";
   };
 
   const total = snapshot?.entities.length ?? 0;
@@ -127,12 +117,26 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
                       <span>{kind || "Untyped"}</span>
                       <small>{placed}/{list.length}</small>
                     </button>
-                    <button type="button" className="inventory-place" title={`Place all ${kind} not yet on this board`} onClick={() => place(list.filter((e) => !onBoard.has(e.id)))} disabled={placed === list.length}><Plus size={14} /></button>
+                    <button
+                      type="button"
+                      className="inventory-place"
+                      title={`Drag onto the canvas, or click to place all ${kind} not yet on this board`}
+                      draggable={placed !== list.length}
+                      onDragStart={(ev) => startDrag(ev, list.filter((e) => !onBoard.has(e.id)))}
+                      onClick={() => place(list.filter((e) => !onBoard.has(e.id)))}
+                      disabled={placed === list.length}
+                    ><Plus size={14} /></button>
                   </div>
                   {isOpen && (
                     <ul>
                       {list.map((e) => (
-                        <li key={e.id} className={onBoard.has(e.id) ? "on-board" : ""}>
+                        <li
+                          key={e.id}
+                          className={onBoard.has(e.id) ? "on-board draggable" : "draggable"}
+                          draggable={!onBoard.has(e.id)}
+                          onDragStart={(ev) => startDrag(ev, [e])}
+                          title={onBoard.has(e.id) ? undefined : "Drag onto the canvas, or use + to place it"}
+                        >
                           <span title={e.description || e.name}>{e.name || "(unnamed)"}</span>
                           {onBoard.has(e.id) ? (
                             <button type="button" title="Focus on this board" onClick={() => { const s = store.getState(); const el = Object.values(s.elements).find((x) => x.type === "card" && x.meta?.entityId === e.id); if (el) s.focusElement(el.id); }}>●</button>

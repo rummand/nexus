@@ -168,6 +168,31 @@ try {
     assert.ok(await page.locator(".graph-block:not(.proposal-block)").isVisible(), "inspector shows graph facts for the placed card");
   }
 
+  // drag an entity out of the Graph inventory and drop it on the canvas
+  const invHeaders = page.locator(".inventory-toggle");
+  let dragRow = null;
+  for (let i = 0; i < (await invHeaders.count()); i++) {
+    await invHeaders.nth(i).click();
+    await page.waitForTimeout(250);
+    const candidate = page.locator(".inventory-group li.draggable[draggable='true']").first();
+    if (await candidate.count()) { dragRow = candidate; break; }
+    await invHeaders.nth(i).click();
+  }
+  if (dragRow) {
+    const beforeDrop = await count();
+    const cbox = await page.locator(".canvas-viewport").boundingBox();
+    const dropAt = { x: cbox.width * 0.62, y: cbox.height * 0.7 };
+    await dragRow.dragTo(page.locator(".canvas-viewport"), { targetPosition: dropAt });
+    await page.waitForTimeout(600);
+    assert.equal(await count(), beforeDrop + 1, "dragging an entity onto the canvas creates one card");
+    const dropped = await page.locator(".fact-card.selected").boundingBox();
+    assert.ok(
+      Math.abs(dropped.x + dropped.width / 2 - (cbox.x + dropAt.x)) < 40 && Math.abs(dropped.y + dropped.height / 2 - (cbox.y + dropAt.y)) < 40,
+      "the dropped card lands where it was dropped",
+    );
+    await page.keyboard.press("Escape");
+  }
+
   // viewpoint tab: show relations between cards on the board (idempotent), kind lens toggles
   await page.click(".panel-tabs button:has-text('Viewpoint')");
   await page.waitForSelector(".viewpoint-body");
