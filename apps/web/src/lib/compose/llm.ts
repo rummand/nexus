@@ -194,8 +194,8 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
   return { instructions: [], reply: "", rejected: ["the planner never produced a plan"], engine: "model", looked };
 }
 
-/** One call to the Messages API. */
-async function callModel(apiKey: string, model: string, payload: Record<string, unknown>): Promise<{ content?: ToolUseBlock[] }> {
+/** One call to the Messages API. Shared with the intake extractor. */
+export async function callModel(apiKey: string, model: string, payload: Record<string, unknown>): Promise<{ content?: ToolUseBlock[] }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {

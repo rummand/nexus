@@ -8,6 +8,8 @@ import * as s from "@/db/schema";
 import { commitExtraction, INTAKE_RECORD_KINDS, type CommitSelection } from "./commit";
 import { providerById } from "../catalog/providers";
 import { runPipeline } from "./pipeline";
+import { extractWithModel, modelConfigured } from "./model";
+import { parsePassages } from "./transcript";
 import { detectSourceKind } from "./transcript";
 import type { Extraction } from "./types";
 import type { Vocabulary } from "./extract";
@@ -82,7 +84,20 @@ export async function runSource(sourceId: string) {
   if (!source) return { error: "That source is gone" };
 
   const started = Date.now();
-  const extraction = runPipeline({ name: source.name, text: source.text, vocabulary: await vocabulary(source.workspaceId) });
+  const vocab = await vocabulary(source.workspaceId);
+
+  // A model reads the source when one is configured; the rules read it when not. Either way the
+  // result is validated against the passages and reviewed by a human before it reaches the graph.
+  let read: Awaited<ReturnType<typeof extractWithModel>> | undefined;
+  if (modelConfigured()) {
+    try {
+      read = await extractWithModel(source.name, parsePassages(source.text), vocab);
+    } catch {
+      read = undefined; // a planner that is down is not a reason to read nothing
+    }
+  }
+
+  const extraction = runPipeline({ name: source.name, text: source.text, vocabulary: vocab, read });
   const ms = Date.now() - started;
 
   await db.insert(s.sourceRuns).values({

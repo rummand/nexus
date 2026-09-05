@@ -194,6 +194,24 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
                 </button>
               </div>
 
+              {extraction && (
+                <p className="intake-engine-line">
+                  <em className={`compose-engine ${extraction.engine}`}>
+                    {extraction.engine === "model" ? "read by the model" : "read by the rules"}
+                  </em>
+                  {(extraction.rejected?.length ?? 0) > 0 && (
+                    <span>{extraction.rejected!.length} claim{extraction.rejected!.length === 1 ? "" : "s"} dropped for lack of evidence in the source</span>
+                  )}
+                </p>
+              )}
+
+              {extraction && (extraction.rejected?.length ?? 0) > 0 && (
+                <ul className="compose-rejected intake-rejected" aria-label="Dropped for lack of evidence">
+                  {extraction.rejected!.slice(0, 8).map((r, i) => <li key={i}>{r}</li>)}
+                  {extraction.rejected!.length > 8 && <li>…and {extraction.rejected!.length - 8} more</li>}
+                </ul>
+              )}
+
               <PipelineFlow stages={extraction?.stages ?? []} running={pending} />
 
               {extraction && (

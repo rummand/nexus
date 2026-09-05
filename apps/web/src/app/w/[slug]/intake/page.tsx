@@ -118,7 +118,12 @@ export default async function IntakePage({ params, searchParams }: {
       .where(eq(s.sourceRuns.sourceId, selected.id))
       .orderBy(desc(s.sourceRuns.createdAt))
       .limit(1);
-    if (run) extraction = JSON.parse(run.extraction) as Extraction;
+    if (run) {
+      // Runs stored before the model reader existed have neither field; give them the shape the
+      // screen expects rather than letting an old row break the page.
+      const parsed = JSON.parse(run.extraction) as Extraction;
+      extraction = { ...parsed, engine: parsed.engine ?? "rules", rejected: parsed.rejected ?? [] };
+    }
   }
 
   return (

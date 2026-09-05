@@ -94,6 +94,10 @@ export interface StageReport {
 }
 
 export interface Extraction {
+  /** Which reader produced this: a model, or the deterministic rules. Absent on older runs. */
+  engine?: "model" | "rules";
+  /** Claims a model made that could not be evidenced in the source, and why. */
+  rejected?: string[];
   sourceKind: SourceKind;
   sourceName: string;
   passages: Passage[];

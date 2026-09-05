@@ -644,9 +644,20 @@ and repositories (Git, Databricks/Snowflake, OT historian). Four are built — m
 notes & documents, CSV/JSON — and the rest say "planned" plainly rather than being hidden, because
 the reach of the catalogue *is* the pitch.
 
-The extractor is rule-based today. That is a deliberate first rung of §2.2, not the destination:
-an LLM classifier plugs into the same `Candidate` / `CandidateRelation` / `Viewpoint` shapes and
-the same review workflow, and nothing above this line changes when it does.
+**A model reads it, and every claim is checked against the source.** Where a model is configured
+(`ANTHROPIC_API_KEY` + `NEXUS_MODEL`), the passages go to it and it returns objects, connections
+and viewpoints in the same shapes the rules produce — but it must **quote the source for every
+one**, and `src/lib/intake/validate-extraction.ts` checks the quote against the passage it cites.
+Not the shape of the citation: the words. A claim whose evidence is not in the text is dropped and
+shown as dropped ("*Salesforce: quoted words that are not in p1*"), a connection between things it
+did not itself propose is refused, a viewpoint is attributed to whoever actually spoke that
+passage rather than to whoever the model named, and kinds and relation types are snapped onto the
+vocabulary this workspace already uses.
+
+That check is stronger than anything available on the board-scripting side, and it is why a model
+belongs here: an extraction is a claim about a document that is sitting right there to compare
+against. With no model configured the rules read the source instead, and the screen says which
+ran. The rules remain the fallback and the floor, not the destination.
 
 ### 5.16 The source catalogue (v0.2)
 
@@ -831,7 +842,7 @@ server bundle into the browser.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 46)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 47)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1137,6 +1148,18 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 47: a model reads the sources, and has to show its working.** Intake's
+  extraction is now done by a model where one is configured: the passages go to it and it returns
+  objects, connections and viewpoints in the same shapes the rules produce, with the same review
+  screen in front of them. What makes it safe is not the prompt but the check — every claim must
+  quote the source, and the quote is verified against the passage it cites, words and all. A
+  fabricated system is dropped ("quoted words that are not in p1"), a connection between things it
+  did not propose is refused, viewpoints are attributed to whoever actually spoke, and kinds are
+  snapped onto the workspace's vocabulary. The workbench says which reader ran and lists what was
+  dropped. 8 unit tests over the validation boundary, including invented quotes, invented
+  endpoints, invented viewpoint types and outright rubbish; the whole path was exercised against a
+  stand-in endpoint returning a reading with two fabrications, both of which were refused.
 
 - **2026-09-05 — Rev 46: a written board remembers its words, and the gates run themselves.**
   The Compose script is now part of the board document, so reopening a written board shows the

@@ -1,6 +1,6 @@
 import { detectSourceKind, parsePassages, speakersOf } from "./transcript";
 import { extractCandidates, extractRelations, extractViewpoints, type Vocabulary } from "./extract";
-import type { Extraction, StageReport } from "./types";
+import type { Candidate, CandidateRelation, Extraction, StageReport, Viewpoint } from "./types";
 
 /**
  * One pass over one source, reported stage by stage.
@@ -31,9 +31,21 @@ export interface PipelineInput {
   vocabulary: Vocabulary;
   /** Injectable clock so stage timings are deterministic in tests. */
   clock?: () => number;
+  /**
+   * What a model read out of the source, already validated against the passages
+   * (src/lib/intake/validate-extraction.ts). When present the rule extractors are skipped and the
+   * stages report the model's numbers, so the run stays one watchable shape either way.
+   */
+  read?: {
+    candidates: Candidate[];
+    relations: CandidateRelation[];
+    viewpoints: Viewpoint[];
+    rejected: string[];
+  };
 }
 
-export function runPipeline({ name, text, vocabulary, clock = () => Date.now() }: PipelineInput): Extraction {
+export function runPipeline({ name, text, vocabulary, clock = () => Date.now(), read }: PipelineInput): Extraction {
+  const by = read ? " (read by the model)" : "";
   const stages: StageReport[] = [];
   const timed = <T>(id: StageId, inCount: number, run: () => { out: number; detail: string; value: T }): T => {
     const started = clock();
@@ -79,11 +91,12 @@ export function runPipeline({ name, text, vocabulary, clock = () => Date.now() }
   const speakers = speakersOf(passages);
 
   const candidates = timed("recognise", passages.length, () => {
-    const found = extractCandidates(passages, vocabulary);
+    const found = read ? read.candidates : extractCandidates(passages, vocabulary);
     const emergent = found.filter((c) => !c.kind).length;
+    const dropped = read?.rejected.length ? `, ${read.rejected.length} claim${read.rejected.length === 1 ? "" : "s"} dropped for lack of evidence` : "";
     return {
       out: found.length,
-      detail: `${found.length} candidate${found.length === 1 ? "" : "s"}${emergent ? `, ${emergent} of a kind nobody has declared` : ""}`,
+      detail: `${found.length} candidate${found.length === 1 ? "" : "s"}${emergent ? `, ${emergent} of a kind nobody has declared` : ""}${by}${dropped}`,
       value: found,
     };
   });
@@ -100,23 +113,23 @@ export function runPipeline({ name, text, vocabulary, clock = () => Date.now() }
   });
 
   const relations = timed("relate", candidates.length, () => {
-    const found = extractRelations(passages, candidates, vocabulary);
+    const found = read ? read.relations : extractRelations(passages, candidates, vocabulary);
     const kinds = new Set(found.map((r) => r.kind));
     return {
       out: found.length,
-      detail: `${found.length} connection${found.length === 1 ? "" : "s"} across ${kinds.size} relation kind${kinds.size === 1 ? "" : "s"}`,
+      detail: `${found.length} connection${found.length === 1 ? "" : "s"} across ${kinds.size} relation kind${kinds.size === 1 ? "" : "s"}${by}`,
       value: found,
     };
   });
 
   const viewpoints = timed("viewpoints", passages.length, () => {
-    const found = extractViewpoints(passages, candidates);
+    const found = read ? read.viewpoints : extractViewpoints(passages, candidates);
     const counts = new Map<string, number>();
     for (const v of found) counts.set(v.type, (counts.get(v.type) ?? 0) + 1);
     const detail = found.length
       ? [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${n} ${t}${n === 1 ? "" : "s"}`).join(", ")
       : "nothing decided, asked or owed";
-    return { out: found.length, detail, value: found };
+    return { out: found.length, detail: `${detail}${by}`, value: found };
   });
 
   const total = candidates.length + relations.length + viewpoints.length;
@@ -127,6 +140,8 @@ export function runPipeline({ name, text, vocabulary, clock = () => Date.now() }
   }));
 
   return {
+    engine: read ? "model" : "rules",
+    rejected: read?.rejected ?? [],
     sourceKind,
     sourceName: name,
     passages,
