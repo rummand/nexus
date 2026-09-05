@@ -23,7 +23,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # corepack rather than a third-party setup action: first-party actions only, so this runs
+      # under a repository policy that allows nothing else.
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -39,7 +41,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # corepack rather than a third-party setup action: first-party actions only, so this runs
+      # under a repository policy that allows nothing else.
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 22
