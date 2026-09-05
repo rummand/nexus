@@ -411,21 +411,52 @@ try {
   await page.click('.intake-view-tabs a:has-text("Catalogue")');
   await page.waitForSelector(".catalog");
   assert.ok((await page.locator("[data-provider]").count()) > 10, "the catalogue lists what Nexus can reach");
+  // the scan says where it looked before it says what it found
+  await page.waitForSelector("[data-scan]");
+  await page.click('.scan-line button:has-text("Where it looked")');
+  const channels = await page.locator("[data-channel]").count();
+  assert.equal(channels, 5, "the scan reports every channel it read");
   const discovered = await page.locator("[data-discovery]").count();
   if (discovered > 0) {
-    // every proposal shows its evidence before it asks for anything
-    assert.ok((await page.locator("[data-discovery] .catalog-evidence li").count()) > 0, "a discovery shows the evidence behind it");
+    // every proposal quotes the exact strings behind it before it asks for anything
+    assert.ok((await page.locator("[data-discovery] .catalog-evidence li b").count()) > 0, "a discovery quotes the signals behind it");
     await page.locator('[data-discovery] button:has-text("Review what it may read")').first().click();
   } else {
     await page.locator('[data-provider="sap"]').click();
   }
   await page.waitForSelector("[data-provider-panel]");
+  await page.locator('.catalog-panel button[aria-label="Close"]').click();
+  await page.waitForTimeout(300);
+
+  // a modelled provider shows exactly what may be read, scope by scope
+  await page.locator('[data-provider="sap"]').click();
+  await page.waitForSelector("[data-provider-panel]");
   assert.ok((await page.locator("[data-scope]").count()) > 0, "the grant panel lists what may be read, scope by scope");
-  // every scope says what it puts in the graph
   assert.ok((await page.locator("[data-scope] .scope-yields").count()) > 0, "each scope says what it yields");
-  await page.keyboard.press("Escape");
-  await page.locator('.catalog-panel button[aria-label="Close"]').click().catch(() => {});
+  await page.locator('.catalog-panel button[aria-label="Close"]').click();
   await page.waitForTimeout(400);
+
+  // a host nobody's catalogue claims can be added to it, and is recognised from then on
+  const unknownCount = await page.locator("[data-unknown-domain]").count();
+  if (unknownCount > 0) {
+    const before = await page.locator("[data-provider]").count();
+    const domain = await page.locator("[data-unknown-domain]").first().getAttribute("data-unknown-domain");
+    await page.locator('[data-unknown-domain] button:has-text("Add to the catalogue")').first().click();
+    await page.waitForSelector(".catalog-register");
+    const registered = `e2e source ${Date.now().toString().slice(-5)}`;
+    await page.fill('.catalog-register input[aria-label="Source name"]', registered);
+    await page.locator('.catalog-register button:has-text("Add")').first().click();
+    await page.waitForFunction((n) => document.querySelectorAll("[data-provider]").length > n, before, { timeout: 30000 })
+      .catch(() => assert.fail("an unrecognised system can be added to the catalogue"));
+    assert.equal(await page.locator(`[data-unknown-domain="${domain}"]`).count(), 0, "a registered system is no longer unrecognised");
+
+    // and can be taken back out again, which is how this run leaves no trace
+    await page.locator(".catalog-card", { hasText: registered }).click();
+    await page.waitForSelector("[data-provider-panel]");
+    await page.click("[data-unregister]");
+    await page.waitForFunction((n) => document.querySelectorAll("[data-provider]").length === n, before, { timeout: 30000 })
+      .catch(() => assert.fail("a registered source can be removed from the catalogue"));
+  }
 
   // leave the shared database as we found it
   await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });

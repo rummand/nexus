@@ -656,11 +656,12 @@ The third view on the intake screen, and the answer to a question the connector 
 A catalogue of connectors is a menu. This is a **negotiation surface between the agent and the
 human about access**, and three things are first-class — none of which is the connection:
 
-- **Evidence.** The discovery agent (`src/lib/catalog/discovery.ts`) does not scan a network. It
-  reads what Nexus already knows: entities somebody drew with no source behind them, and systems
-  the ingested meetings kept naming. Four meetings arguing about SAP PM is stronger evidence that
-  the system matters here than a port being open. Every proposal quotes what it is going on, and a
-  proposal with no evidence is not made.
+- **Evidence.** The discovery agent (`src/lib/catalog/discovery.ts`) does not probe a network. It
+  reads what Nexus already holds, across five channels — entities, their attributes, ingested
+  sources, board text and the declared meta-model — and reports how much of each it read. Four
+  meetings arguing about SAP PM is stronger evidence that the system matters here than a port
+  being open, and it comes with the human context a port scan never has. Every proposal quotes the
+  exact strings behind it, and a proposal with no evidence is not made.
 - **Scope.** Access is granted as a tree — system → module → object — never as a switch.
   `sap/pm/equi`, not `sap`. Ticking a module takes its objects with it; taking one object back
   drops the module, because a module whose objects are not all granted is not itself granted.
@@ -681,6 +682,28 @@ enterprise systems (SAP, ServiceNow, Entra ID, Jira, Confluence, SharePoint, Ard
 and data platforms (Git, Databricks/Snowflake) and operations (OT historian/OPC UA, SCADA/EMS) —
 with scope trees down to named tables. Three are built; the rest say "planned" out loud, because
 the reach of the catalogue is the pitch and hiding the ambition helps nobody.
+
+**Fingerprints, not just names.** Name matching finds a system only when somebody wrote its name.
+`src/lib/catalog/signals.ts` gives every provider a fingerprint set — instance hostnames
+(`*.service-now.com`, `*.atlassian.net`), table and column names (`cmdb_ci`, `EQUI`, `IFLOT`),
+transaction codes (`IW32`), endpoints (`opc.tcp://…`), and files only one toolchain produces
+(`package.json`, a Helm chart). Each carries a weight, and confidence is the weighted sum: a
+hostname is near-proof, a passing product name is a hint that on its own stays below the floor.
+Hosts are normalised to the machine — scheme, port and path removed — so one system seen three
+ways is one finding, and filenames are rejected as hosts, because proposing `package.json` as a
+system is the fastest way to make a discovery agent look foolish.
+
+**Systems nobody's catalogue knows.** Hosts that match no vendor are grouped by registrable
+domain and listed as unrecognised, with where they were seen. These are usually the systems that
+matter most — the in-house scheduler, the acquired company's portal, the box in the control room —
+because nothing off the shelf describes them. Registering one adds it to *this workspace's*
+catalogue (`catalog_entries`, migration 0007) with the hosts it was seen at as its signals, so the
+next scan recognises it instead of listing it as unknown again. The catalogue grows to fit the
+estate rather than the other way round.
+
+**Model without provenance.** The scan also reports system-like entities that nothing explains —
+no ingested source, no edge from a source node. On the seed workspace that is 50 of them, which is
+the honest state of most architecture repositories and the argument for the whole intake layer.
 
 Nothing here fetches data yet: this is the decision layer, and the decisions it records are what
 a fetching layer will be bound by.
@@ -714,7 +737,7 @@ a fetching layer will be bound by.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 40)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 41)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -799,10 +822,14 @@ a fetching layer will be bound by.
 
 ### Source catalogue (v0.2)
 - `/w/[slug]/intake?view=catalog`: a browsable catalogue of 17 sources with scope trees down to
-  named modules and tables; a discovery agent that proposes systems it found evidence for in the
-  graph and in ingested meetings; and a grant panel where a human allows access scope by scope,
-  with what each scope yields, what it enables and how sensitive it is written next to the box.
-  Grants, declines and revocations are recorded (`connections`, `connection_scopes`).
+  named modules and tables; a grant panel where a human allows access scope by scope, with what
+  each scope yields, what it enables and how sensitive it is written next to the box. Grants,
+  declines and revocations are recorded (`connections`, `connection_scopes`).
+- Estate scan: five channels read (entities, attributes, ingested sources, boards, meta-model),
+  fingerprint matching on hostnames, table names, transaction codes, endpoints and build files,
+  and a report saying where it looked and what it found. Systems no vendor catalogue knows are
+  grouped by domain and can be registered into this workspace's own catalogue
+  (`catalog_entries`); entities nothing explains are reported as gaps.
 
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
@@ -971,6 +998,9 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | The discovery agent proposes only from evidence already in Nexus (the graph and ingested sources), never from a network scan. | It is the honest version of "the agent found SAP", and in practice the stronger one — four meetings arguing about SAP PM say more about whether it matters here than an open port does. It also keeps the agent inside data the workspace already holds. |
 | 2026-09-05 | Grants are materialised: a module grant stores every path it covers. | Storing only the parent is more compact and reads on screen as a narrower grant than it is. On a consent record, being imprecise in that direction is the wrong bug to have. |
 
+| 2026-09-05 | Discovery matches fingerprints — hostnames, table names, tcodes, endpoints, build files — not only product names, and scores them by weight. | A system is usually visible in an organisation's own material long before anyone writes its name down: a ServiceNow instance host in a meeting is proof, where "we should look at ticketing" is nothing. Weighting is what lets a single passing mention stay below the floor instead of generating noise. |
+| 2026-09-05 | Hosts nobody's catalogue claims are first-class findings, and can be registered into the workspace's own catalogue. | Every enterprise runs systems no vendor list contains, and they are usually the ones that matter. A catalogue that cannot grow to fit the estate quietly redefines the estate as whatever the catalogue already knew. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -982,6 +1012,20 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 41: the estate scan.** Discovery grew from name matching into a proper
+  survey. It now reads five channels — entities, their attributes, ingested sources, board text
+  and the declared meta-model — and reports how much of each it read, so a survey that cannot say
+  where it looked is no longer possible. Every provider gained a fingerprint set: instance
+  hostnames, table and column names, SAP transaction codes, OPC UA endpoints, and build files only
+  one toolchain produces. Confidence is the weighted sum of what matched, so a hostname is
+  near-proof and one passing product name stays below the floor. Hosts are normalised to the
+  machine, and filenames are rejected as hosts. Hosts no vendor claims are grouped by registrable
+  domain, listed as unrecognised with where they were seen, and can be registered into this
+  workspace's own catalogue (`catalog_entries`, migration 0007) — after which the next scan
+  recognises them. The scan also reports system-like entities that nothing explains: on the seed
+  workspace, 50 of them. 14 unit tests, e2e over the scan report, the grant panel, registering an
+  unrecognised system and removing it again.
 
 - **2026-09-05 — Rev 40: the source catalogue.** Intake gained a third view: a browsable
   catalogue of everywhere Nexus could reach, and the machinery for deciding what an agent may

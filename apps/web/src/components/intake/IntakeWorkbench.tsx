@@ -10,7 +10,8 @@ import {
 import type { ExplorerGraph } from "@/lib/explorer";
 import { GraphExplorer } from "@/components/explorer/GraphExplorer";
 import type { ConnectionRow } from "@/lib/catalog/read";
-import type { Discovery } from "@/lib/catalog/types";
+import type { ScanReport } from "@/lib/catalog/discovery";
+import type { Provider } from "@/lib/catalog/types";
 import { SourceCatalog } from "@/components/catalog/SourceCatalog";
 import { PROVIDERS, providerById } from "@/lib/catalog/providers";
 import { commitSource, deleteSource, runSource } from "@/lib/intake/actions";
@@ -47,7 +48,7 @@ const KIND_LABEL: Record<SourceKind, string> = {
   connector: "Sync",
 };
 
-export function IntakeWorkbench({ workspaceId, slug, sources, selected, extraction, view, landscape, discoveries, connections }: {
+export function IntakeWorkbench({ workspaceId, slug, sources, selected, extraction, view, landscape, scan, customProviders, connections }: {
   workspaceId: string;
   slug: string;
   sources: SourceRow[];
@@ -55,7 +56,8 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
   extraction: Extraction | null;
   view: "workbench" | "landscape" | "catalog";
   landscape: ExplorerGraph | null;
-  discoveries: Discovery[];
+  scan: ScanReport | null;
+  customProviders: Provider[];
   connections: ConnectionRow[];
 }) {
   const router = useRouter();
@@ -134,7 +136,7 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
           {error && <p className="intake-error">{error}</p>}
 
           {view === "catalog" && (
-            <SourceCatalog workspaceId={workspaceId} discoveries={discoveries} connections={connections} />
+            <SourceCatalog workspaceId={workspaceId} slug={slug} scan={scan} custom={customProviders} connections={connections} />
           )}
 
           {view === "landscape" && (

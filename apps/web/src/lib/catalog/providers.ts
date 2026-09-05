@@ -36,6 +36,7 @@ export const PROVIDERS: Provider[] = [
     auth: "No connection — the file is uploaded or pasted.",
     produces: "transcript",
     signals: [],
+    fingerprints: [],
     scopes: [],
   },
   {
@@ -50,6 +51,7 @@ export const PROVIDERS: Provider[] = [
     auth: "No connection — the file is uploaded or pasted.",
     produces: "document",
     signals: [],
+    fingerprints: [],
     scopes: [],
   },
   {
@@ -64,6 +66,10 @@ export const PROVIDERS: Provider[] = [
     auth: "OAuth, delegated — the agent sees only what the granting user sees.",
     produces: "transcript",
     signals: ["outlook", "slack", "teams chat"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b(?:teams|outlook)\\.(?:microsoft|office)\\.com\\b", weight: 3, note: "a Microsoft 365 collaboration host" },
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.slack\\.com\\b", weight: 3, note: "a Slack workspace host" },
+    ],
     scopes: [
       {
         path: "email/channels", name: "Named channels", description: "Specific Teams channels or Slack channels, chosen one by one.",
@@ -91,6 +97,7 @@ export const PROVIDERS: Provider[] = [
     auth: "No connection — the file is uploaded or pasted.",
     produces: "table",
     signals: [],
+    fingerprints: [],
     scopes: [],
   },
   {
@@ -105,6 +112,7 @@ export const PROVIDERS: Provider[] = [
     auth: "No connection — the file is uploaded.",
     produces: "table",
     signals: [],
+    fingerprints: [],
     scopes: [],
   },
   {
@@ -119,6 +127,7 @@ export const PROVIDERS: Provider[] = [
     auth: "No connection — the file is uploaded.",
     produces: "table",
     signals: [],
+    fingerprints: [],
     scopes: [],
   },
 
@@ -135,6 +144,12 @@ export const PROVIDERS: Provider[] = [
     auth: "OData service user with read-only authorisations, scoped per module.",
     produces: "connector",
     signals: ["sap", "s/4hana", "s4hana", "ecc", "netweaver", "fiori"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\bsap[a-z0-9-]*\\.[a-z0-9.-]+\\.[a-z]{2,}\\b", weight: 3, note: "a host named for SAP" },
+      { kind: "identifier", pattern: "\\bS/?4\\s?HANA\\b|\\bNetWeaver\\b|\\bFiori\\b|\\bBAPI\\b|\\bIDoc\\b", weight: 3, note: "SAP-only terminology" },
+      { kind: "identifier", pattern: "\\b(?:EQUI|IFLOT|AUFK|AFIH|MARA|LFA1|KNA1|BKPF)\\b", weight: 3, note: "an SAP table name" },
+      { kind: "identifier", pattern: "\\b(?:IW3[0-9]|ME2[1-3]N|VA0[123]|SE16N?|SM3[0-7])\\b", weight: 3, note: "an SAP transaction code" },
+    ],
     scopes: [
       {
         path: "sap/landscape", name: "System landscape", technical: "SLD / LMDB",
@@ -194,6 +209,11 @@ export const PROVIDERS: Provider[] = [
     auth: "OAuth client with a read-only role, table by table.",
     produces: "connector",
     signals: ["servicenow", "snow", "cmdb", "service-now"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.service-now\\.com\\b", weight: 4, note: "a ServiceNow instance host" },
+      { kind: "identifier", pattern: "\\bcmdb_ci(?:_[a-z_]+)?\\b|\\bcmdb_rel_ci\\b|\\bsys_id\\b", weight: 3, note: "a ServiceNow table or column" },
+      { kind: "identifier", pattern: "\\bINC\\d{6,}\\b|\\bCHG\\d{6,}\\b|\\bRITM\\d{6,}\\b", weight: 3, note: "a ServiceNow record number" },
+    ],
     scopes: [
       {
         path: "snow/cmdb", name: "CMDB", technical: "cmdb_ci",
@@ -228,6 +248,10 @@ export const PROVIDERS: Provider[] = [
     auth: "Microsoft Graph, application permissions, read-only and consented per scope.",
     produces: "connector",
     signals: ["entra", "azure ad", "active directory", "aad"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\blogin\\.microsoftonline\\.com\\b|\\bgraph\\.microsoft\\.com\\b", weight: 4, note: "a Microsoft identity endpoint" },
+      { kind: "identifier", pattern: "\\b(?:tenant|client|application)[ _-]?id\\b|\\bservice principal\\b|\\bapp registration\\b", weight: 2, note: "Entra ID terminology" },
+    ],
     scopes: [
       { path: "entra/apps", name: "App registrations", technical: "applications", description: "Registered applications and service principals, with their owners.", yields: ["Application", "Person", "'owns' relations"], enables: "Find the applications in use that no register lists — shadow IT, discovered rather than surveyed.", sensitivity: "internal", volume: "~1.2k apps" },
       { path: "entra/groups", name: "Groups", technical: "groups", description: "Security and Microsoft 365 groups, and who is in them.", yields: ["Team", "'member of' relations"], sensitivity: "personal", volume: "~2k groups" },
@@ -246,6 +270,10 @@ export const PROVIDERS: Provider[] = [
     auth: "OAuth, project by project.",
     produces: "connector",
     signals: ["jira", "atlassian"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.atlassian\\.net(?!/wiki)\\b", weight: 4, note: "an Atlassian cloud site" },
+      { kind: "identifier", pattern: "\\b[A-Z][A-Z0-9]{1,9}-\\d{1,6}\\b", weight: 2, note: "a Jira issue key" },
+    ],
     scopes: [
       { path: "jira/projects", name: "Projects", description: "The projects themselves, with their leads.", yields: ["Project", "Person"], sensitivity: "internal", volume: "~120 projects" },
       { path: "jira/epics", name: "Epics & initiatives", description: "Planned work, with target dates and status.", yields: ["Initiative", "'changes' relations"], enables: "Ask what is scheduled to happen to a system before proposing to change it.", sensitivity: "internal", volume: "~8k issues" },
@@ -264,6 +292,10 @@ export const PROVIDERS: Provider[] = [
     auth: "OAuth, space by space.",
     produces: "document",
     signals: ["confluence", "wiki"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.atlassian\\.net/wiki\\b|\\bconfluence\\.[a-z0-9.-]+\\b", weight: 4, note: "a Confluence site" },
+      { kind: "identifier", pattern: "\\b(?:ADR|architecture decision record)\\b", weight: 1, note: "decision records, usually kept in a wiki" },
+    ],
     scopes: [
       { path: "confluence/spaces", name: "Named spaces", description: "Specific spaces, chosen one by one.", yields: ["Document", "Application", "Decision"], enables: "Extract the systems and decisions buried in pages, with the page as evidence.", sensitivity: "internal", volume: "per space" },
       { path: "confluence/adr", name: "Decision records", description: "Pages matching an ADR template or label.", yields: ["Decision", "'about' relations"], enables: "A decision log that assembles itself.", sensitivity: "internal", volume: "~300 pages" },
@@ -281,6 +313,9 @@ export const PROVIDERS: Provider[] = [
     auth: "Microsoft Graph, site by site.",
     produces: "document",
     signals: ["sharepoint", "onedrive"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.sharepoint\\.com\\b|\\b[a-z0-9-]+-my\\.sharepoint\\.com\\b", weight: 4, note: "a SharePoint tenant host" },
+    ],
     scopes: [
       { path: "sharepoint/sites", name: "Named sites", description: "Specific sites and libraries.", yields: ["Document", "Dataset"], sensitivity: "confidential", volume: "per site" },
       { path: "sharepoint/lists", name: "Lists", description: "SharePoint lists used as registers.", yields: ["Dataset", "typed entities"], enables: "Adopt an existing register without asking anyone to retype it.", sensitivity: "internal", volume: "per list" },
@@ -298,6 +333,10 @@ export const PROVIDERS: Provider[] = [
     auth: "API token, read-only.",
     produces: "connector",
     signals: ["ardoq", "leanix", "bizzdesign", "orbus"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]*\\.?ardoq\\.com\\b|\\b[a-z0-9-]+\\.leanix\\.net\\b", weight: 4, note: "an EA repository host" },
+      { kind: "identifier", pattern: "\\bcomponent type\\b|\\breference type\\b", weight: 1, note: "EA repository vocabulary" },
+    ],
     scopes: [
       { path: "ardoq/components", name: "Components", description: "Every modelled component and its fields.", yields: ["entities of the repository's own kinds"], sensitivity: "internal", volume: "~5k components" },
       { path: "ardoq/references", name: "References", description: "The modelled relationships between them.", yields: ["relations"], sensitivity: "internal", volume: "~15k references" },
@@ -318,6 +357,10 @@ export const PROVIDERS: Provider[] = [
     auth: "App installation, read-only, organisation or repository scoped.",
     produces: "connector",
     signals: ["github", "gitlab", "azure devops", "bitbucket"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\bgithub\\.com\\b|\\bgitlab\\.[a-z0-9.-]+\\b|\\bdev\\.azure\\.com\\b|\\bbitbucket\\.org\\b", weight: 4, note: "a code hosting service" },
+      { kind: "file", pattern: "\\b(?:package\\.json|pom\\.xml|build\\.gradle|requirements\\.txt|go\\.mod|Dockerfile|docker-compose\\.ya?ml|\\.tf|helm chart)\\b", weight: 3, note: "a build or deployment manifest" },
+    ],
     scopes: [
       { path: "git/repos", name: "Repositories", description: "Names, owners, topics and activity.", yields: ["IT Component", "Team", "'owns' relations"], sensitivity: "internal", volume: "~600 repos" },
       { path: "git/manifests", name: "Manifests & IaC", description: "package.json, pom.xml, Dockerfiles, Terraform, Helm charts.", yields: ["IT Component", "'runs on' and 'depends on' relations"], enables: "Derive the runtime topology from what is actually deployed.", sensitivity: "internal", volume: "~4k files" },
@@ -336,6 +379,10 @@ export const PROVIDERS: Provider[] = [
     auth: "Service principal with USAGE on named catalogues only.",
     produces: "connector",
     signals: ["databricks", "snowflake", "unity catalog", "delta"],
+    fingerprints: [
+      { kind: "hostname", pattern: "\\b[a-z0-9-]+\\.(?:cloud\\.databricks\\.com|azuredatabricks\\.net|snowflakecomputing\\.com)\\b", weight: 4, note: "a data platform workspace host" },
+      { kind: "identifier", pattern: "\\bunity catalog\\b|\\bdelta (?:lake|table)\\b|\\bwarehouse\\b|\\bmedallion\\b", weight: 2, note: "data platform vocabulary" },
+    ],
     scopes: [
       { path: "data/catalog", name: "Catalogues & schemas", description: "The shape of the platform, without reading any rows.", yields: ["Data Product", "Dataset"], sensitivity: "internal", volume: "~40 catalogues" },
       { path: "data/lineage", name: "Table lineage", description: "Which job reads what and writes where.", yields: ["'sends data to' relations"], enables: "Draw the real integration landscape from lineage instead of interviews.", sensitivity: "internal", volume: "~12k edges" },
@@ -356,6 +403,10 @@ export const PROVIDERS: Provider[] = [
     auth: "Read-only OPC UA session or historian API key, namespace by namespace.",
     produces: "connector",
     signals: ["opc", "historian", "pi server", "aveva", "scada", "kepware"],
+    fingerprints: [
+      { kind: "identifier", pattern: "\\bopc\\.tcp://[\\w\\-.:@/]+", weight: 4, note: "an OPC UA endpoint" },
+      { kind: "identifier", pattern: "\\bPI (?:server|system|AF|vision)\\b|\\basset framework\\b|\\bhistorian\\b|\\btag list\\b", weight: 3, note: "historian terminology" },
+    ],
     scopes: [
       { path: "ot/assets", name: "Asset hierarchy", description: "The AF/asset model: plants, units, equipment.", yields: ["Asset", "Location", "'part of' relations"], enables: "Put substations and their equipment on the same canvas as the applications that run them.", sensitivity: "internal", volume: "~15k assets" },
       { path: "ot/tags", name: "Tag catalogue", description: "Tag names, units and their asset — the catalogue, not the readings.", yields: ["Signal", "'measured at' relations"], enables: "Trace a metering signal from the sensor to the settlement system.", sensitivity: "internal", volume: "~400k tags" },
@@ -374,6 +425,9 @@ export const PROVIDERS: Provider[] = [
     auth: "Read-only export from the model server; never a live control interface.",
     produces: "connector",
     signals: ["scada", "ems", "spectrum", "cim", "network model"],
+    fingerprints: [
+      { kind: "identifier", pattern: "\\bCGMES\\b|\\bIEC ?61850\\b|\\bIEC ?60870\\b|\\bRTU\\b|\\bnetwork model\\b|\\bbusbar\\b|\\bfeeder\\b", weight: 3, note: "grid operations terminology" },
+    ],
     scopes: [
       { path: "scada/model", name: "Network model", technical: "CIM / CGMES", description: "Substations, bays, lines and transformers as modelled.", yields: ["Asset", "'connected to' relations"], enables: "Ask which IT systems an outage in one substation would affect.", sensitivity: "confidential", volume: "~50k elements" },
       { path: "scada/points", name: "Point list", description: "Telemetry points and their mapping to equipment.", yields: ["Signal", "'measured at' relations"], sensitivity: "confidential", volume: "~200k points" },

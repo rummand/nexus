@@ -329,6 +329,32 @@ export const connectionScopes = sqliteTable(
 export type Connection = typeof connections.$inferSelect;
 export type ConnectionScope = typeof connectionScopes.$inferSelect;
 
+/**
+ * Sources this enterprise has that no vendor catalogue contains — the in-house scheduler, the
+ * acquired company's portal, the box in the control room. Registering one adds it to the
+ * catalogue for this workspace, so the next scan recognises it instead of listing it as unknown.
+ * The catalogue grows to fit the estate, not the other way round.
+ */
+export const catalogEntries = sqliteTable(
+  "catalog_entries",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    vendor: text("vendor").notNull().default(""),
+    category: text("category").notNull().default("systems"),
+    summary: text("summary").notNull().default(""),
+    /** Hostnames and names that identify it, JSON-encoded. */
+    signals: text("signals").notNull().default("[]"),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [uniqueIndex("catalog_entries_name_idx").on(t.workspaceId, t.name)],
+);
+
+export type CatalogEntry = typeof catalogEntries.$inferSelect;
+
 // ---- relations -------------------------------------------------------------
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({

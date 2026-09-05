@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Check, CircleSlash, Radar, RotateCcw, Search, ShieldCheck, Sparkles, X,
+  AlertTriangle, Check, CircleHelp, CircleSlash, Plus, Radar, RotateCcw, Search, ShieldCheck, Sparkles, Trash2, X,
 } from "lucide-react";
-import { PROVIDER_CATEGORIES, PROVIDERS, providerById } from "@/lib/catalog/providers";
-import { declineProvider, grantScopes, reopenProvider, revokeProvider } from "@/lib/catalog/actions";
+import { PROVIDER_CATEGORIES, PROVIDERS } from "@/lib/catalog/providers";
+import { declineProvider, grantScopes, registerSource, reopenProvider, revokeProvider, unregisterSource } from "@/lib/catalog/actions";
 import { expandScopes, flattenScopes, toggleScope, type Discovery, type Provider, type ScopeNode } from "@/lib/catalog/types";
+import type { ScanReport, UnknownSystem } from "@/lib/catalog/discovery";
+import { CHANNEL_LABEL, type Signal } from "@/lib/catalog/signals";
 import type { ConnectionRow } from "@/lib/catalog/read";
 import { ScopeTree } from "./ScopeTree";
 
@@ -21,11 +24,16 @@ import { ScopeTree } from "./ScopeTree";
 
 type Filter = "all" | "granted" | "found" | Provider["category"];
 
-export function SourceCatalog({ workspaceId, discoveries, connections }: {
+export function SourceCatalog({ workspaceId, slug, scan, custom, connections }: {
   workspaceId: string;
-  discoveries: Discovery[];
+  slug: string;
+  scan: ScanReport | null;
+  /** Sources registered in this workspace: the catalogue grows to fit the estate. */
+  custom: Provider[];
   connections: ConnectionRow[];
 }) {
+  const discoveries = useMemo(() => scan?.discoveries ?? [], [scan]);
+  const catalogue = useMemo(() => [...custom, ...PROVIDERS], [custom]);
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -35,7 +43,7 @@ export function SourceCatalog({ workspaceId, discoveries, connections }: {
   const discoveryOf = useMemo(() => new Map(discoveries.map((d) => [d.providerId, d])), [discoveries]);
 
   const q = query.trim().toLowerCase();
-  const shown = PROVIDERS.filter((p) => {
+  const shown = catalogue.filter((p) => {
     if (q && !`${p.name} ${p.vendor} ${p.summary} ${p.signals.join(" ")}`.toLowerCase().includes(q)) return false;
     if (filter === "all") return true;
     if (filter === "granted") return connectionOf.get(p.id)?.status === "granted";
@@ -44,7 +52,7 @@ export function SourceCatalog({ workspaceId, discoveries, connections }: {
   });
 
   const grantedCount = connections.filter((c) => c.status === "granted").length;
-  const current = openProvider ? providerById(openProvider) ?? null : null;
+  const current = openProvider ? catalogue.find((p) => p.id === openProvider) ?? null : null;
 
   return (
     <div className="catalog">
@@ -54,16 +62,22 @@ export function SourceCatalog({ workspaceId, discoveries, connections }: {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the catalogue" aria-label="Search the catalogue" />
         </label>
         <div className="catalog-filters" role="tablist" aria-label="Filter the catalogue">
-          <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>All <em>{PROVIDERS.length}</em></button>
+          <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>All <em>{catalogue.length}</em></button>
           <button type="button" className={filter === "found" ? "active" : ""} onClick={() => setFilter("found")}><Radar size={12} /> Found here <em>{discoveries.length}</em></button>
           <button type="button" className={filter === "granted" ? "active" : ""} onClick={() => setFilter("granted")}><ShieldCheck size={12} /> Granted <em>{grantedCount}</em></button>
           {PROVIDER_CATEGORIES.map((c) => (
             <button type="button" key={c.id} className={filter === c.id ? "active" : ""} onClick={() => setFilter(c.id)}>
-              {c.name} <em>{PROVIDERS.filter((p) => p.category === c.id).length}</em>
+              {c.name} <em>{catalogue.filter((p) => p.category === c.id).length}</em>
             </button>
           ))}
         </div>
       </header>
+
+      {scan && <ScanSummary scan={scan} slug={slug} />}
+
+      {scan && scan.unknown.length > 0 && filter !== "granted" && (
+        <UnknownSystems workspaceId={workspaceId} unknown={scan.unknown} />
+      )}
 
       {discoveries.length > 0 && filter !== "granted" && (
         <section className="catalog-discovered" data-discoveries>
@@ -73,7 +87,7 @@ export function SourceCatalog({ workspaceId, discoveries, connections }: {
           </p>
           <ul>
             {discoveries.map((d) => {
-              const provider = providerById(d.providerId);
+              const provider = catalogue.find((p) => p.id === d.providerId);
               if (!provider) return null;
               return (
                 <li key={d.providerId} data-discovery={d.providerId}>
@@ -83,11 +97,7 @@ export function SourceCatalog({ workspaceId, discoveries, connections }: {
                     <em className={`intake-confidence ${d.confidence}`}>{d.confidence}</em>
                   </div>
                   <p className="catalog-reason">{d.reason}</p>
-                  <ul className="catalog-evidence">
-                    {d.evidence.map((e, i) => (
-                      <li key={i}><span className={`catalog-origin ${e.origin}`}>{e.origin}</span> {e.detail}</li>
-                    ))}
-                  </ul>
+                  <SignalList signals={d.signals} />
                   <div className="catalog-discovered-actions">
                     <button type="button" className="primary-home-button" onClick={() => setOpenProvider(d.providerId)}>
                       Review what it may read
@@ -156,7 +166,7 @@ function DeclineButton({ workspaceId, discovery, onDone }: { workspaceId: string
       className="ghost-button"
       disabled={pending}
       onClick={() => start(async () => {
-        await declineProvider({ workspaceId, providerId: discovery.providerId, reason: discovery.reason, evidence: discovery.evidence });
+        await declineProvider({ workspaceId, providerId: discovery.providerId, reason: discovery.reason, evidence: discovery.signals });
         onDone();
       })}
     >
@@ -211,9 +221,7 @@ function ProviderPanel({ workspaceId, provider, discovery, connection, onClose, 
           <div className="catalog-ask">
             <strong><Sparkles size={13} /> What the agent is asking for</strong>
             <p>{discovery.reason}</p>
-            <ul className="catalog-evidence">
-              {discovery.evidence.map((e, i) => <li key={i}><span className={`catalog-origin ${e.origin}`}>{e.origin}</span> {e.detail}</li>)}
-            </ul>
+            <SignalList signals={discovery.signals} />
           </div>
         )}
 
@@ -247,6 +255,17 @@ function ProviderPanel({ workspaceId, provider, discovery, connection, onClose, 
         {error && <p className="intake-error">{error}</p>}
 
         <div className="modal-actions">
+          {provider.id.startsWith("custom:") && (
+            <button
+              type="button"
+              className="ghost-button danger spacer"
+              disabled={pending}
+              onClick={() => run(() => unregisterSource(workspaceId, provider.id.slice("custom:".length)))}
+              data-unregister
+            >
+              <Trash2 size={14} /> Remove from the catalogue
+            </button>
+          )}
           {connection?.status === "granted" && (
             <button type="button" className="ghost-button danger spacer" disabled={pending} onClick={() => run(() => revokeProvider(workspaceId, provider.id))}>
               Revoke everything
@@ -264,7 +283,7 @@ function ProviderPanel({ workspaceId, provider, discovery, connection, onClose, 
                 type="button"
                 className="ghost-button"
                 disabled={pending}
-                onClick={() => run(() => declineProvider({ workspaceId, providerId: provider.id, note, reason: discovery?.reason, evidence: discovery?.evidence }))}
+                onClick={() => run(() => declineProvider({ workspaceId, providerId: provider.id, note, reason: discovery?.reason, evidence: discovery?.signals }))}
               >
                 Decline
               </button>
@@ -272,7 +291,7 @@ function ProviderPanel({ workspaceId, provider, discovery, connection, onClose, 
                 type="button"
                 className="primary-home-button"
                 disabled={pending || picked.size === 0}
-                onClick={() => run(() => grantScopes({ workspaceId, providerId: provider.id, paths: [...picked], note, reason: discovery?.reason, evidence: discovery?.evidence }))}
+                onClick={() => run(() => grantScopes({ workspaceId, providerId: provider.id, paths: [...picked], note, reason: discovery?.reason, evidence: discovery?.signals }))}
               >
                 <Check size={15} /> {connection?.status === "granted" ? `Update the grant (${picked.size})` : `Grant ${picked.size} scope${picked.size === 1 ? "" : "s"}`}
               </button>
@@ -281,5 +300,166 @@ function ProviderPanel({ workspaceId, provider, discovery, connection, onClose, 
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The scan, reported like the intake pipeline: which channels were read, how much of each, and
+ * what came out. A survey of an enterprise that cannot say where it looked is not a survey.
+ */
+function ScanSummary({ scan, slug }: { scan: ScanReport; slug: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="scan-summary" data-scan>
+      <div className="scan-line">
+        <Radar size={14} />
+        <strong>
+          {scan.scannedRecords.toLocaleString("en")} records read · {scan.totalSignals} signals ·{" "}
+          {scan.discoveries.length} system{scan.discoveries.length === 1 ? "" : "s"} recognised ·{" "}
+          {scan.unknown.length} unrecognised
+        </strong>
+        <button type="button" className="ghost-button" onClick={() => setOpen((v) => !v)}>
+          {open ? "Hide" : "Where it looked"}
+        </button>
+      </div>
+      {open && (
+        <>
+          <ul className="scan-channels">
+            {scan.channels.map((c) => (
+              <li key={c.channel} className={c.scanned === 0 ? "empty" : ""} data-channel={c.channel}>
+                <span>{c.label}</span>
+                <strong>{c.scanned.toLocaleString("en")}</strong>
+                <em>{c.signals} signal{c.signals === 1 ? "" : "s"}</em>
+              </li>
+            ))}
+          </ul>
+          <p className="scan-note">
+            Nexus reads what this workspace already holds — it does not probe your network. Every
+            proposal below quotes the exact string that produced it.
+          </p>
+        </>
+      )}
+      {scan.unsourced.length > 0 && (
+        <p className="scan-gap">
+          <AlertTriangle size={13} />
+          {scan.unsourced.length} system{scan.unsourced.length === 1 ? "" : "s"} in the graph
+          {scan.unsourced.length === 1 ? " has" : " have"} no source behind
+          {scan.unsourced.length === 1 ? " it" : " them"} — {scan.unsourced.slice(0, 4).map((u) => u.name).join(", ")}
+          {scan.unsourced.length > 4 ? ` and ${scan.unsourced.length - 4} more` : ""}.{" "}
+          <Link href={`/w/${slug}/graph`}>Open the graph</Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Hosts and endpoints nobody's catalogue claims.
+ *
+ * Every enterprise runs systems no vendor list contains — the in-house scheduler, the acquired
+ * company's portal, the box in the control room. The catalogue has to grow to fit the estate
+ * rather than the other way round, so these can be added to it.
+ */
+function UnknownSystems({ workspaceId, unknown }: { workspaceId: string; unknown: UnknownSystem[] }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="catalog-unknown" data-unknown>
+      <h3>
+        <CircleHelp size={14} /> {unknown.length} system{unknown.length === 1 ? "" : "s"} nobody&rsquo;s catalogue knows
+        <button type="button" className="ghost-button" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Show"}</button>
+      </h3>
+      <p className="catalog-discovered-hint">
+        Hosts and endpoints seen in your own material that match no vendor in the catalogue. These are
+        usually the systems that matter most, because nothing off the shelf describes them.
+      </p>
+      {open && (
+        <ul>
+          {unknown.slice(0, 12).map((u) => (
+            <li key={u.domain} data-unknown-domain={u.domain}>
+              <div className="catalog-discovered-head">
+                <strong>{u.domain}</strong>
+                <span className="catalog-vendor">{u.hosts.length} host{u.hosts.length === 1 ? "" : "s"} · seen {u.sightings.length} time{u.sightings.length === 1 ? "" : "s"}</span>
+              </div>
+              <p className="catalog-hosts">{u.hosts.slice(0, 4).join(" · ")}{u.hosts.length > 4 ? ` +${u.hosts.length - 4}` : ""}</p>
+              <ul className="catalog-evidence">
+                {u.sightings.slice(0, 2).map((sight, i) => (
+                  <li key={i}><span className={`catalog-origin ${sight.channel}`}>{CHANNEL_LABEL[sight.channel]}</span> {sight.refName}: {sight.context}</li>
+                ))}
+              </ul>
+              <RegisterUnknown workspaceId={workspaceId} unknown={u} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Add an unrecognised system to this workspace's catalogue, seeded with the hosts it was seen at. */
+function RegisterUnknown({ workspaceId, unknown }: { workspaceId: string; unknown: UnknownSystem }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(suggestName(unknown.domain));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <div className="catalog-discovered-actions">
+        <button type="button" className="ghost-button" onClick={() => setOpen(true)}><Plus size={14} /> Add to the catalogue</button>
+      </div>
+    );
+  }
+  return (
+    <div className="catalog-register">
+      <label>
+        <span>Call it</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Source name" />
+      </label>
+      <button
+        type="button"
+        className="primary-home-button"
+        disabled={pending || !name.trim()}
+        onClick={() => start(async () => {
+          const r = await registerSource({
+            workspaceId,
+            name,
+            vendor: "",
+            category: "systems",
+            summary: `Seen at ${unknown.hosts.slice(0, 3).join(", ")} in your own material.`,
+            signals: [...unknown.hosts, unknown.domain],
+          });
+          if ("error" in r && r.error) { setError(r.error); return; }
+          setOpen(false);
+          router.refresh();
+        })}
+      >
+        Add
+      </button>
+      <button type="button" className="ghost-button" onClick={() => setOpen(false)}>Cancel</button>
+      {error && <p className="intake-error">{error}</p>}
+    </div>
+  );
+}
+
+/** "kamstrup-api.internal" → "Kamstrup Api". A starting point, not a decision. */
+function suggestName(domain: string): string {
+  const label = domain.split(".")[0] ?? domain;
+  return label.split(/[-_]/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+/** The strongest signals behind a proposal, quoted. */
+function SignalList({ signals }: { signals: Signal[] }) {
+  return (
+    <ul className="catalog-evidence">
+      {signals.map((s, i) => (
+        <li key={i}>
+          <span className={`catalog-origin ${s.channel}`}>{CHANNEL_LABEL[s.channel]}</span>
+          <b>{s.match}</b> — {s.note}, in “{s.refName}”
+          {(s.occurrences ?? 1) > 1 && <em className="catalog-times">and {s.occurrences! - 1} more place{s.occurrences! - 1 === 1 ? "" : "s"}</em>}
+          {s.context && <span className="catalog-context">{s.context}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }

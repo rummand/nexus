@@ -117,3 +117,50 @@ export async function reopenProvider(workspaceId: string, providerId: string) {
   await touched(workspaceId);
   return { ok: true };
 }
+
+/**
+ * Add a system this enterprise runs but no vendor catalogue lists.
+ *
+ * The registered entry becomes part of *this workspace's* catalogue, with the hosts it was seen at
+ * as its signals — so the next scan recognises it rather than listing it as unknown again. It has
+ * no scope tree yet: modelling what is worth reading out of an in-house system is a conversation,
+ * not a default.
+ */
+export async function registerSource(input: {
+  workspaceId: string;
+  name: string;
+  vendor?: string;
+  category?: string;
+  summary?: string;
+  signals: string[];
+}) {
+  const name = input.name.trim();
+  if (!name) return { error: "Give it a name" };
+  const db = await getDb();
+  const clash = await db
+    .select()
+    .from(s.catalogEntries)
+    .where(and(eq(s.catalogEntries.workspaceId, input.workspaceId), eq(s.catalogEntries.name, name)));
+  if (clash.length) return { error: `“${name}” is already in your catalogue` };
+  const id = `cat_${nanoid(10)}`;
+  await db.insert(s.catalogEntries).values({
+    id,
+    workspaceId: input.workspaceId,
+    name,
+    vendor: input.vendor?.trim() ?? "",
+    category: input.category ?? "systems",
+    summary: input.summary?.trim() ?? "",
+    signals: JSON.stringify([...new Set(input.signals.map((v) => v.trim()).filter(Boolean))]),
+    createdAt: now(),
+  });
+  await touched(input.workspaceId);
+  return { id };
+}
+
+/** Remove a registered entry. The scan will list its hosts as unknown again. */
+export async function unregisterSource(workspaceId: string, id: string) {
+  const db = await getDb();
+  await db.delete(s.catalogEntries).where(eq(s.catalogEntries.id, id));
+  await touched(workspaceId);
+  return { ok: true };
+}

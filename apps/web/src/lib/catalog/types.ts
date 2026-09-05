@@ -13,6 +13,8 @@
  *              nobody can justify is a scope nobody should grant.
  */
 
+import type { Fingerprint, Signal } from "./signals";
+
 export type ProviderCategory = "conversations" | "files" | "systems" | "repositories" | "operations";
 
 /** Built and usable, on the roadmap, or reachable only by upload today. */
@@ -60,25 +62,24 @@ export interface Provider {
   /** The source kind a sync produces (see src/lib/intake/types.ts). */
   produces: "transcript" | "document" | "table" | "connector";
   scopes: ScopeNode[];
-  /** Signals the discovery agent looks for. Names, hostnames, acronyms. */
+  /** Names the discovery agent looks for, matched whole-word. */
   signals: string[];
-}
-
-/** Why the agent believes a system is here. Shown verbatim; never summarised away. */
-export interface DiscoveryEvidence {
-  /** graph | intake | environment — where the signal came from. */
-  origin: "graph" | "intake" | "environment";
-  detail: string;
-  /** Entity or source ids behind it, so the evidence is clickable later. */
-  refs: string[];
+  /**
+   * How the system gives itself away when nobody wrote its name: hostnames, table names,
+   * transaction codes, files only its toolchain produces. See src/lib/catalog/signals.ts.
+   */
+  fingerprints: Fingerprint[];
 }
 
 export interface Discovery {
   providerId: string;
   confidence: "high" | "medium" | "low";
+  /** Summed signal weight — what the confidence is derived from. */
+  score: number;
   /** The agent's case, in one sentence. */
   reason: string;
-  evidence: DiscoveryEvidence[];
+  /** The strongest signals, verbatim. Never summarised away. */
+  signals: Signal[];
   /** Scope paths the agent would like, and would justify. */
   wants: string[];
 }

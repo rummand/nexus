@@ -1680,3 +1680,38 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .intake-catalog-card strong { color: var(--ink); font-size: 12px; }
 .intake-catalog-card span { color: #6c7a91; font-size: 11px; line-height: 1.45; }
 .intake-catalog-card em { color: var(--blue); font-size: 11px; font-style: normal; font-weight: 800; }
+
+/* ---- estate scan (where the agent looked, and what it could not place) ---------------------- */
+.scan-summary { background: #fff; border: 1px solid var(--line); border-radius: 13px; display: grid; gap: 9px; padding: 11px 13px; }
+.scan-line { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.scan-line svg { color: var(--blue); }
+.scan-line strong { color: var(--ink); flex: 1; font-size: 12.5px; font-weight: 700; min-width: 200px; }
+.scan-line .ghost-button { height: 26px; min-height: 26px; width: auto; }
+.scan-channels { display: grid; gap: 7px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.scan-channels li { background: #fbfdff; border: 1px solid #e3ecf6; border-radius: 10px; display: grid; gap: 1px; padding: 8px 10px; }
+.scan-channels li.empty { background: #fcfcfd; opacity: 0.6; }
+.scan-channels span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+.scan-channels strong { color: var(--ink); font-size: 17px; font-variant-numeric: tabular-nums; }
+.scan-channels em { color: #6c7a91; font-size: 11px; font-style: normal; }
+.scan-note { color: #8a95a8; font-size: 11.5px; line-height: 1.5; margin: 0; }
+.scan-gap { align-items: center; background: #fff4e5; border-radius: 10px; color: #92400e; display: flex; flex-wrap: wrap; font-size: 12px; gap: 6px; line-height: 1.5; margin: 0; padding: 8px 11px; }
+.scan-gap a { color: #92400e; font-weight: 800; }
+
+.catalog-unknown { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; }
+.catalog-unknown h3 { align-items: center; color: var(--ink); display: flex; font-size: 13px; gap: 7px; margin: 0 0 2px; }
+.catalog-unknown h3 svg { color: #6d4bb5; }
+.catalog-unknown h3 .ghost-button { height: 26px; margin-left: auto; min-height: 26px; width: auto; }
+.catalog-unknown > ul { display: grid; gap: 9px; list-style: none; margin: 8px 0 0; padding: 0; }
+.catalog-unknown > ul > li { border: 1px solid #eef2f7; border-radius: 12px; display: grid; gap: 5px; padding: 10px 12px; }
+.catalog-hosts { color: #46556d; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; margin: 0; overflow-wrap: anywhere; }
+.catalog-context { color: #8a95a8; display: block; font-size: 11px; margin-left: 4px; }
+.catalog-origin.attributes { background: #e8f7ee; color: #17803d; }
+.catalog-origin.board { background: #fff4e5; color: #b45309; }
+.catalog-origin.model { background: #f4f0ff; color: #6d4bb5; }
+.catalog-register { align-items: end; display: flex; flex-wrap: wrap; gap: 7px; }
+.catalog-register label { display: grid; flex: 1; gap: 3px; min-width: 180px; }
+.catalog-register span { color: #46556d; font-size: 11px; font-weight: 800; }
+.catalog-register input { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; font: inherit; font-size: 12.5px; min-height: 32px; padding: 0 10px; width: 100%; }
+.catalog-register input:focus { border-color: var(--blue); outline: 0; }
+.catalog-register .ghost-button, .catalog-register .primary-home-button { height: 32px; min-height: 32px; width: auto; }
+.catalog-times { color: #8a95a8; font-size: 10.5px; font-style: normal; margin-left: 5px; }
