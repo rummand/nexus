@@ -13,6 +13,15 @@ must live on a **persistent volume**; without one every redeploy starts from the
    - `DATABASE_URL` = `file:/data/nexus.db` (already the image default; set it explicitly so it
      is visible)
    - `PORT` is injected by Railway; the image honours it.
+   - `ANTHROPIC_API_KEY` and `NEXUS_MODEL` — optional, and required together. With both set,
+     Compose (§5.17) answers requests written in plain English; with either missing it falls back
+     to the rule compiler and says so in the panel. `NEXUS_MODEL` takes a model id from the
+     provider's own list. There is deliberately no default: a board built by a model the operator
+     did not choose is not a good surprise.
+   - `NEXUS_MODEL_BASE_URL` — optional, for an enterprise gateway or proxy in front of the
+     Messages API. It is a distinct name on purpose, so the application never inherits an
+     `ANTHROPIC_BASE_URL` that belongs to some other tool on the host.
+   - `NEXUS_ACCESS_PASSWORD` — optional; when set, every page sits behind a shared password.
 4. **Networking** → *Generate domain*. Open `https://<domain>/api/health` — the first call runs
    the migrations and seeds the demo workspace, then returns `{"ok":true,...}`. The app then
    redirects `/` to the demo workspace.

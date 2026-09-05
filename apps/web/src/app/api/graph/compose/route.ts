@@ -3,9 +3,9 @@ import { getDb } from "@/db/client";
 import { parseDocument } from "@/canvas/document";
 import { composeBoard } from "@/lib/compose/run";
 
-/** Compile a board script and return the document it produces. Reads the graph; writes nothing. */
+/** Plan a board from a request and return the document it produces. Reads the graph; writes nothing. */
 export async function POST(request: Request) {
-  const body = (await request.json()) as { workspaceId?: string; script?: string; document?: unknown; mode?: "rebuild" | "extend" };
+  const body = (await request.json()) as { workspaceId?: string; script?: string; document?: unknown; mode?: "rebuild" | "extend"; engine?: "auto" | "model" | "rules" };
   if (!body.workspaceId || typeof body.script !== "string") {
     return NextResponse.json({ error: "workspaceId and script are required" }, { status: 400 });
   }
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     // the client posts the live document as an object; parseDocument takes the stored string
     parseDocument(body.document ? JSON.stringify(body.document) : null),
     body.mode === "extend" ? "extend" : "rebuild",
+    body.engine === "model" || body.engine === "rules" ? body.engine : "auto",
   );
   return NextResponse.json(result);
 }

@@ -1,26 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Sparkles, X } from "lucide-react";
+import { MessageSquare, Play, Sparkles, X } from "lucide-react";
 import { useCanvas, useCanvasStore } from "./store";
 import type { CanvasDocument } from "./document";
-import type { ComposeStep } from "@/lib/compose/run";
+import type { ComposeResult, ComposeStep } from "@/lib/compose/run";
+
+type ComposeResponse = Omit<ComposeResult, "document"> & { document: CanvasDocument };
 import type { Vocabulary } from "@/lib/compose/script";
 
 /**
- * Compose — write the board.
+ * Compose — ask for a board and get one.
  *
- * No dragging, no placing: you write what the board should contain and it is built. Each line is
- * compiled against the workspace's real vocabulary and shown back as the query it became, so the
- * English is a convenience and the query is the truth. A rebuild starts from an empty board, which
- * is what keeps the text and the picture the same thing: the script *is* the board.
+ * No dragging, no placing: you say what you want and it is built. A model plans the answer as a
+ * board script; the script is validated against a closed instruction set and executed. Both halves
+ * are shown — the answer in English, and the steps it actually ran — because a board you cannot
+ * interrogate is a board you cannot trust. Where no model is configured, the rule compiler reads
+ * the lines instead and the panel says so.
  */
 
-const STARTER = `title Metering landscape
-add all applications
-connect them
-lay out as flow
-group by lifecycle`;
+const EXAMPLES = [
+  "Show me the applications that depend on SCADA, and what they support",
+  "Which applications have no owner? Group them by lifecycle",
+  "Build the metering landscape around Maximo, two hops out",
+  "Everything the architecture board discussed, laid out as a flow",
+];
 
 const VERBS: Array<[string, string]> = [
   ["add", "add all applications · add anything that depends on SCADA · add applications without an owner"],
@@ -37,10 +41,14 @@ const VERBS: Array<[string, string]> = [
 export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement | null> }) {
   const store = useCanvasStore();
   const workspaceId = useCanvas((s) => s.workspaceId);
-  const [script, setScript] = useState(STARTER);
+  const [script, setScript] = useState("");
   const [mode, setMode] = useState<"rebuild" | "extend">("rebuild");
   const [steps, setSteps] = useState<ComposeStep[]>([]);
   const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
+  const [reply, setReply] = useState("");
+  const [engine, setEngine] = useState<"model" | "rules" | null>(null);
+  const [status, setStatus] = useState("");
+  const [rejected, setRejected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -65,13 +73,17 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
         body: JSON.stringify({ workspaceId, script, mode, document: store.getState().toDocument() }),
       });
       if (!res.ok) throw new Error(`the build failed (${res.status})`);
-      const data = (await res.json()) as { document: CanvasDocument; steps: ComposeStep[]; vocabulary: Vocabulary };
+      const data = (await res.json()) as ComposeResponse;
       const s = store.getState();
       s.clearSelection();
       s.replaceElements(data.document.elements, { history: true });
       s.zoomToFit();
       setSteps(data.steps);
       setVocabulary(data.vocabulary);
+      setReply(data.reply ?? "");
+      setEngine(data.engine);
+      setStatus(data.status ?? "");
+      setRejected(data.rejected ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "the build failed");
     } finally {
@@ -87,7 +99,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
         <Sparkles size={15} />
         <div>
           <strong>Compose</strong>
-          <span>Write the board. Nothing is dragged.</span>
+          <span>Ask for a board. Nothing is dragged.</span>
         </div>
         <button type="button" onClick={() => store.getState().togglePanel("compose", false)} aria-label="Close compose"><X size={16} /></button>
       </header>
@@ -102,9 +114,17 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void build(); }
           e.stopPropagation(); // the canvas owns single-key shortcuts; this is a text field
         }}
-        aria-label="Board script"
-        placeholder={STARTER}
+        aria-label="What the board should show"
+        placeholder={"Ask for a board in your own words — or write the script yourself:\n\n  add all applications\n  connect them\n  lay out as flow"}
       />
+
+      {script.trim() === "" && (
+        <ul className="compose-examples">
+          {EXAMPLES.map((e) => (
+            <li key={e}><button type="button" onClick={() => setScript(e)}>{e}</button></li>
+          ))}
+        </ul>
+      )}
 
       <div className="compose-actions">
         <label className="compose-mode">
@@ -112,11 +132,24 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
           {mode === "rebuild" ? `Rebuild — replaces ${onBoard} object${onBoard === 1 ? "" : "s"}` : "Add to what is here"}
         </label>
         <button type="button" className="primary-home-button" disabled={busy || !script.trim()} onClick={() => void build()}>
-          <Play size={14} /> {busy ? "Building…" : "Build"}
+          <Play size={14} /> {busy ? "Thinking…" : "Build"}
         </button>
       </div>
 
       {error && <p className="compose-error">{error}</p>}
+      {status && <p className="compose-status">{status}</p>}
+
+      {reply && (
+        <p className="compose-reply" data-reply>
+          <MessageSquare size={13} /> {reply}
+        </p>
+      )}
+
+      {rejected.length > 0 && (
+        <ul className="compose-rejected" aria-label="Not allowed through">
+          {rejected.map((r, i) => <li key={i}>{r}</li>)}
+        </ul>
+      )}
 
       {steps.length > 0 && (
         <ol className="compose-steps" aria-label="What each line did">
@@ -131,7 +164,10 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
       )}
 
       {steps.length > 0 && (
-        <p className="compose-summary">{built} of {steps.length} line{steps.length === 1 ? "" : "s"} did something.</p>
+        <p className="compose-summary">
+          {built} of {steps.length} step{steps.length === 1 ? "" : "s"} did something ·{" "}
+          <em className={`compose-engine ${engine}`}>{engine === "model" ? "planned by the model" : "read by the rule compiler"}</em>
+        </p>
       )}
 
       <details className="compose-help">

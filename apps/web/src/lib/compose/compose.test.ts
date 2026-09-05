@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { parseLine, parseScript, toQuery, type Vocabulary } from "./script";
 import { applyInstruction, matchEntities, runScript, type ComposeContext } from "./apply";
+import { validateInstructions } from "./validate";
+import { describeInstruction } from "./run";
+import { modelConfigured, modelStatus, planWithModel } from "./llm";
 import { emptyDocument, type CanvasDocument, type CardElement } from "@/canvas/document";
 
 const vocab: Vocabulary = {
@@ -176,5 +179,80 @@ describe("one instruction at a time", () => {
     const { document } = applyInstruction(doc, ctx, { verb: "add", query: "kind:Application", limit: 10 });
     expect(Object.keys(doc.elements)).toHaveLength(0);
     expect(Object.keys(document.elements)).toHaveLength(3);
+  });
+});
+
+describe("what the planner is allowed to return", () => {
+  it("accepts the instruction set and rejects everything else", () => {
+    const { instructions, rejected } = validateInstructions([
+      { verb: "add", query: "kind:Application", limit: 5 },
+      { verb: "connect", relationKinds: ["depends on"] },
+      { verb: "layout", style: "flow" },
+      { verb: "delete_all_entities" },
+      { verb: "add" },
+      { verb: "fetch", url: "https://example.com" },
+      "not an object",
+    ], vocab);
+    expect(instructions.map((i) => i.verb)).toEqual(["add", "connect", "layout"]);
+    expect(rejected).toHaveLength(4);
+    expect(rejected.join(" ")).toContain("delete_all_entities");
+  });
+
+  it("clamps what a planner could otherwise inflate", () => {
+    const { instructions } = validateInstructions([
+      { verb: "add", query: "kind:Application", limit: 999999 },
+      { verb: "expand", hops: 400 },
+    ], vocab);
+    expect(instructions[0]).toMatchObject({ verb: "add", limit: 200 });
+    expect(instructions[1]).toMatchObject({ verb: "expand", hops: 4 });
+  });
+
+  it("snaps proposed values onto what the workspace actually has", () => {
+    const { instructions } = validateInstructions([
+      { verb: "group", by: "Lifecycle" },
+      { verb: "connect", relationKinds: ["depends"] },
+      { verb: "layout", style: "spiral" },
+    ], vocab);
+    expect(instructions[0]).toMatchObject({ by: "lifecycle", isAttribute: true });
+    expect(instructions[1]).toMatchObject({ relationKinds: ["depends on"] });
+    expect(instructions[2]).toMatchObject({ style: "grid" }); // an unknown style is not a crash
+  });
+
+  it("keeps a plan short enough to be a board", () => {
+    const many = Array.from({ length: 40 }, () => ({ verb: "connect" }));
+    const { instructions, rejected } = validateInstructions(many, vocab);
+    expect(instructions).toHaveLength(24);
+    expect(rejected.join(" ")).toContain("first 24");
+  });
+
+  it("writes an instruction back as the line a person would have typed", () => {
+    expect(describeInstruction({ verb: "add", query: "kind:Application", limit: 60 })).toBe("add kind:Application");
+    expect(describeInstruction({ verb: "expand", hops: 2, relationKinds: ["depends on"], direction: "in" })).toBe("expand 2 hops via depends on upstream");
+    expect(describeInstruction({ verb: "layout", style: "columns", by: "lifecycle" })).toBe("lay out as columns by lifecycle");
+  });
+});
+
+describe("choosing a planner", () => {
+  const env = { ...process.env };
+  afterEach(() => { process.env = { ...env }; });
+
+  it("uses the model only when both the key and the model are set", () => {
+    process.env = { ...env, ANTHROPIC_API_KEY: "", NEXUS_MODEL: "" };
+    expect(modelConfigured()).toBe(false);
+    expect(modelStatus()).toContain("ANTHROPIC_API_KEY and NEXUS_MODEL");
+
+    process.env = { ...env, ANTHROPIC_API_KEY: "k", NEXUS_MODEL: "" };
+    expect(modelConfigured()).toBe(false);
+    expect(modelStatus()).toContain("NEXUS_MODEL");
+    expect(modelStatus()).not.toContain("ANTHROPIC_API_KEY");
+
+    process.env = { ...env, ANTHROPIC_API_KEY: "k", NEXUS_MODEL: "m" };
+    expect(modelConfigured()).toBe(true);
+    expect(modelStatus()).toBe("");
+  });
+
+  it("refuses to plan without configuration rather than calling anything", async () => {
+    process.env = { ...env, ANTHROPIC_API_KEY: "", NEXUS_MODEL: "" };
+    await expect(planWithModel("anything", { vocabulary: vocab, sampleNames: [], onBoard: 0 })).rejects.toThrow(/no model configured/);
   });
 });

@@ -726,6 +726,26 @@ Six lines, and the board is fourteen cards and twenty-five connectors — the me
 it, the decision they took, the risks they raised and the systems they discussed — with nothing
 dragged and nothing placed by hand.
 
+**A model plans; the code decides what runs.** Asked in plain English — *"show me the applications
+that depend on SCADA, and what they support"* — the request goes to a model that returns a *plan*:
+a list of steps in the board instruction set, plus a sentence answering the person. It never
+touches the graph, the document or the database. `src/lib/compose/validate.ts` then decides what
+of that plan is executable: every step is checked against the closed instruction set, numbers are
+clamped, proposed kinds and attributes are snapped onto what this workspace actually has, and
+anything else is dropped and shown as dropped. A step named `drop_database` comes back as *“not
+something a board script can do”*.
+
+That split is the safety story, and it is why the rule compiler was worth building first. Entity
+names and meeting transcripts go into the prompt, so anything in the workspace could in principle
+try to instruct the model — and it does not matter, because the only thing the model can express
+is a board script, and a board script can only read entities and arrange a document. There is no
+verb for deleting data, changing a grant, or calling anything.
+
+Both `ANTHROPIC_API_KEY` and `NEXUS_MODEL` must be set, together and deliberately; with either
+missing the rule compiler reads the lines instead and the panel says which ran and what to set.
+`NEXUS_MODEL_BASE_URL` points at a gateway — a distinct name, so the app never inherits an
+`ANTHROPIC_BASE_URL` belonging to something else on the host.
+
 **Every line compiles to the query grammar, and says so.** `add all applications` is echoed as
 `kind:Application`; `add anything that depends on SCADA` as `to:SCADA rel:"depends on"`. The
 English is the convenience and the query is the truth, and the screen shows you which is which,
@@ -748,8 +768,8 @@ the coordinates — `src/lib/compose/apply.ts` is pure, and that is tested. Beca
 discards what is there, it says how much it will replace and asks first; the board's own version
 history is the backstop. Unticking it adds to what is already on the board instead.
 
-This is the first half of "ask Nexus": the question language and the answer surface are the same
-thing, so an answer is not a list you read but a board you keep.
+This is "ask Nexus": the question and the answer are the same surface, so an answer is not a list
+you read but a board you keep, and every step that produced it is on screen next to it.
 
 ## 6. Roadmap
 
@@ -780,7 +800,7 @@ thing, so an answer is not a list you read but a board you keep.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 42)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 43)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -864,10 +884,10 @@ thing, so an answer is not a list you read but a board you keep.
 - Connector catalogue: 16 enterprise sources, 4 built and the rest marked planned.
 
 ### Compose — writing the board (v0.2)
-- A Compose panel on every board: write lines (`add all applications`, `expand 1 hop`,
-  `connect them`, `lay out as flow`, `group by lifecycle`) and the board is built from them. Each
-  line is compiled against the workspace vocabulary, echoed as the query it became, and reported
-  with what it did. Deterministic and pure, so a script always gives the same board.
+- A Compose panel on every board: ask in plain English and a model plans the board, or write the
+  script yourself. Either way the plan is validated into one closed instruction set and executed
+  by the same pure executor, with the answer, every step, and anything refused shown on screen.
+  Needs `ANTHROPIC_API_KEY` + `NEXUS_MODEL`; without them the rule compiler runs and says so.
 
 ### Source catalogue (v0.2)
 - `/w/[slug]/intake?view=catalog`: a browsable catalogue of 17 sources with scope trees down to
@@ -1053,6 +1073,9 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | A written board compiles to the existing query grammar rather than interpreting English directly, and shows the compiled form. | The grammar is already the single definition of what a question means (§5.10). Compiling into it keeps one source of truth, makes every line arguable, and means an LLM front-end later changes only the compiler — not what the board is. |
 | 2026-09-05 | A compose build rebuilds the board from empty by default. | If the script only ever added to what was there, the text and the picture would drift apart within minutes and the script would stop describing the board. The cost is that a rebuild discards work, so it says how much it will replace and asks first. |
 
+| 2026-09-05 | The model plans; a closed instruction set is the boundary. Nothing the planner returns reaches the executor unvalidated. | Workspace content — entity names, meeting transcripts — is in the prompt, so the prompt is untrusted by construction. Making the model's only expressible output a board script means an injected instruction has nothing to reach: there is no verb for deleting data or calling out. It also means the model can be swapped, degraded or absent without changing what a board is. |
+| 2026-09-05 | No default model id in the repo; `ANTHROPIC_API_KEY` and `NEXUS_MODEL` are required together. | A board built by a model the operator did not choose, at a cost they did not agree, is not a good surprise. The rule compiler makes the unconfigured case useful rather than broken. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1064,6 +1087,18 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 43: Compose answers in plain English.** The front end of Compose is now a
+  model. Ask *"show me the applications that depend on SCADA, and what they support"* and a
+  planner returns a board script plus a sentence answering you; the script is validated against
+  the closed instruction set — steps clamped, kinds and attributes snapped onto what this
+  workspace has, anything else dropped and shown as dropped — and executed by the same pure
+  executor as before. The panel shows the answer, every step with what it did, which planner ran,
+  and what was refused. Configuration is deliberate and joint (`ANTHROPIC_API_KEY` +
+  `NEXUS_MODEL`, optional `NEXUS_MODEL_BASE_URL` for a gateway); without it the rule compiler
+  reads the lines and the panel says what to set. 7 new unit tests over the validation boundary
+  and the configuration gate; the whole request/response path was exercised against a stand-in
+  endpoint, including a planner returning a `drop_database` step, which is refused.
 
 - **2026-09-05 — Rev 42: compose — write the board.** A Compose panel on every board: type what it
   should contain and it is built, with nothing dragged. `add all applications`, `add anything that
