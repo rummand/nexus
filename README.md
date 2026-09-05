@@ -50,11 +50,18 @@ No configuration needed.
 | `pnpm db:generate` | Generate a Drizzle migration after editing the schema |
 | `pnpm db:reset` | Delete the local SQLite file (stop the dev server first); the next start re-seeds the demo |
 
+## Deploy
+
+Railway: deploy the repo, add a volume mounted at `/data`, set `DATABASE_URL=file:/data/nexus.db`,
+generate a domain. Details in [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Layout
 
 ```
 apps/web/          Next.js 16 app — routes, canvas engine, database
 docs/BRIEF.md      living product brief (read me first)
 docs/API.md        HTTP routes, server actions, query and import formats
+docs/DEPLOY.md     deploying to Railway / Docker (persistent SQLite volume)
+Dockerfile         production image; railway.json sets the health check
 CLAUDE.md          rules for agents working in this repo
 ```

@@ -5,7 +5,7 @@
 > contributor reads it before working and updates it after adding or changing
 > functionality. See `CLAUDE.md` for the update rules.
 
-Last updated: 2026-09-04 (rev 29 — link to existing entity)
+Last updated: 2026-09-05 (rev 30 — Railway deployment)
 
 ---
 
@@ -679,6 +679,13 @@ database is empty. Delete the file to reset. Schema changes: edit
 - The HTTP routes, server actions, query grammar and import format are documented in
   `docs/API.md`; keep it in step with `src/app/api` and `src/lib/actions.ts`.
 
+### Deploying
+
+`Dockerfile` + `railway.json` deploy the app to Railway (or any Docker host). The database is
+the same SQLite file, on a volume mounted at `/data` (`DATABASE_URL=file:/data/nexus.db`);
+`GET /api/health` runs migrations + seed on first call and reports readiness. One instance
+only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
+
 
 ## 7. Decision log
 
@@ -703,6 +710,7 @@ database is empty. Delete the file to reset. Schema changes: edit
 | 2026-09-04 | Checkpoints store the full document (not diffs), time-based auto + manual + pre-restore. | Documents are small JSON; full snapshots make restore trivial and diffing possible later. Pruning keeps growth bounded. |
 | 2026-09-04 | A deterministic query language precedes natural-language questions. | Gives an unambiguous target for the future LLM translation step, keeps results explainable ("why" per hit), and is useful today. |
 | 2026-09-04 | Missing-attribute proposals need ≥ 80 % coverage within a kind of ≥ 3 entities. | Below that the "schema" is not established and the proposals would be noise; the threshold is a constant to tune once real data arrives. |
+| 2026-09-05 | First deployment keeps SQLite on a Railway volume instead of adding Postgres now. | One service, one file, zero extra infrastructure gets the product in front of users today; Drizzle keeps the SQL portable and `DATABASE_URL` is the only switch. The trade-off (single instance, no read replicas) is acceptable for a pilot. |
 | 2026-09-04 | Deleting a graph relation rewrites board documents to drop its connectors. | Same resurrection problem as merge: the board document is the client's truth while open and `syncBoardToGraph` upserts relations from connectors on every save. Rewriting the stored document (and letting an open board reload) is the only consistent option. |
 | 2026-09-04 | Export is SVG generated from the document, not a DOM/canvas screenshot. | Vector output scales into slides and design tools, needs no headless browser on the server, and works offline in the client; PNG can be derived from it later. Fidelity is "faithful enough" rather than pixel identical. |
 | 2026-09-04 | Lenses never mutate the document; the impact lens walks *board connectors*, not the workspace graph. | What you see is what you traverse: the user controls which relations are on the board (Show all relations / expand) and the lens explains exactly that picture. A graph-backed variant can come later as "expand then lens". |
@@ -720,6 +728,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 30: Railway deployment.** Root `Dockerfile` (pnpm monorepo build, Next
+  production server, `/data` volume for the SQLite file), `railway.json` with a health check,
+  `GET /api/health` readiness route, `docs/DEPLOY.md` with the click-through.
 
 - **2026-09-04 — Rev 29: link to existing entity.** Cards offer to link to an existing entity
   when their title matches one; entity names are suggested while typing. Vocabulary (kinds,
