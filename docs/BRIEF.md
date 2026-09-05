@@ -507,6 +507,30 @@ unset changes nothing, so local development, the seeded demo and the e2e suite a
 This is a deployment lock, not an identity system: it says *whether* you may open the instance,
 not *who* you are. Real auth (§6 roadmap) replaces it.
 
+### 5.13 Graph explorer (v0.2)
+
+Boards are *curated* slices: you choose what goes on them. The explorer is the complement — the
+whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explore`.
+
+- **Data.** `src/lib/explorer.ts` returns nodes *and* individual edges (`graphSnapshot` only has
+  relation types aggregated). Capped at 1 500 nodes, keeping the most connected ones, because the
+  whole graph ships in one response; the UI says when it truncated.
+- **Layout.** `src/lib/force.ts` is a small Fruchterman–Reingold: pairwise repulsion, attraction
+  along edges, a cooling schedule, and a gentle pull to the origin so disconnected components do
+  not drift away. It is pure and seeded, so a graph always lays out the same way and the
+  behaviour is unit-tested (determinism, no NaN when nodes coincide, connected nodes ending up
+  closer than unconnected ones, pinned nodes staying put).
+- **Rendering.** A single `<canvas>`, for the same reason as the board's grid and minimap: a DOM
+  node per entity is far too slow at this scale. One simulation tick per animation frame, so the
+  structure visibly settles rather than appearing pre-arranged.
+- **Navigating.** Drag to pan, scroll to zoom at the cursor, drag a node to pull it (it pins
+  while held and the neighbourhood re-settles), click to focus. Focusing dims everything except
+  the node and its neighbours and lights the connecting edges. The detail panel lists attributes
+  and clickable neighbours, and links through to the entity drawer via `/e/:id`.
+- **Filtering.** Node colour is the kind and radius is degree; the legend hides kinds; search
+  dims non-matches and lists hits that focus on click. Pause / Fit / Relayout control the
+  simulation.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -524,8 +548,9 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
   — see §5.6. ~~Attribute schema per kind~~ done (§5.8). Next: relation-type vocabulary
   management, attribute value normalisation proposals.
 - Optics: ~~load/unload lenses~~ first version done (§5.7: expand, relations, group by kind,
-  kind lens, saved views per board). Next: relation-type filters, overlays (lifecycle,
-  risk, ownership), automatic layouts (lanes, radial).
+  kind lens, saved views per board). ~~Automatic layouts~~ force-directed done in the explorer
+  (§5.13). Next: relation-type filters, overlays (lifecycle, risk, ownership), lanes/radial
+  layouts on boards.
 - Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
   ServiceNow, CMDB, wiki).
 - Agent framework: classification, meta-model proposal, ~~entity resolution~~ (rules done),
@@ -604,6 +629,11 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
 
 ### Link to existing (v0.2)
 - Title matches an existing entity → one click links the card to it (dedupe at creation).
+
+### Graph explorer (v0.2)
+- `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
+  pan/zoom, node dragging, focus-and-neighbours highlighting, kind legend, search and a detail
+  panel. Sidebar entry next to Knowledge graph.
 
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
@@ -759,6 +789,12 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 34: graph explorer.** A new whole-graph view at `/w/[slug]/explore`,
+  complementing the curated boards: force-directed layout (pure, seeded, unit-tested), canvas
+  rendering, pan/zoom/drag navigation, focus highlighting of a node and its neighbours, kind
+  legend, search, and a detail panel that links through to the entity drawer. E2E now loads the
+  explorer, asserts the canvas actually painted, and opens an entity through search.
 
 - **2026-09-05 — Rev 33: PNG export.** "Download PNG" in the export menu rasterises the existing
   SVG client-side at 2×, with the longest edge clamped to 8000 px. Verified end to end: the

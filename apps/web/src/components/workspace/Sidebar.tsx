@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Clock3, Database, Home, Plus, Star, Users } from "lucide-react";
+import { Clock3, Database, Home, Plus, Star, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -31,6 +31,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarLink href={`${base}/favorites`} icon={<Star size={20} />} trailing={favorites.length}>Starred</SidebarLink>
         <SidebarLink href={`${base}/teams`} icon={<Users size={20} />} trailing={teams.length}>Teams</SidebarLink>
         <SidebarLink href={`${base}/graph`} icon={<Database size={20} />}>Knowledge graph</SidebarLink>
+        <SidebarLink href={`${base}/explore`} icon={<Waypoints size={20} />}>Graph explorer</SidebarLink>
       </nav>
 
       <div className="studio-spaces-header">

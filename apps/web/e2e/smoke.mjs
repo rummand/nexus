@@ -244,6 +244,26 @@ try {
   await page.waitForSelector(".modal-card .mode-banner");
   await page.click('.modal-card button:text-is("Done")');
 
+  // graph explorer: whole-graph view loads, paints, and selects a node
+  await page.goto(`${base}/w/acme-energy/explore`, { waitUntil: "load" });
+  await page.waitForSelector(".explorer-canvas");
+  assert.ok((await page.locator(".explorer-legend button").count()) > 0, "explorer lists kinds");
+  await page.waitForTimeout(3500); // let the force layout settle
+  const painted = await page.evaluate(() => {
+    const c = document.querySelector(".explorer-canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) n++;
+    return n;
+  });
+  assert.ok(painted > 0, "explorer canvas painted the graph");
+  const firstKind = await page.locator(".explorer-legend button b").first().innerText();
+  await page.fill(".explorer-search input", firstKind.slice(0, 4));
+  await page.waitForSelector(".explorer-results button", { timeout: 10000 });
+  await page.locator(".explorer-results button").first().click();
+  await page.waitForSelector(".explorer-detail", { timeout: 10000 });
+  assert.ok((await page.locator(".explorer-detail header strong").innerText()).length > 0, "explorer opens an entity");
+
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });
   await page.click(".studio-starters button >> nth=0");
