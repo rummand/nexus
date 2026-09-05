@@ -54,11 +54,11 @@ describe("canvas store", () => {
 
   it("zoom to fit centres the content in the area not covered by panels", () => {
     const store = makeStore([sticky("a", 0, 0), sticky("b", 900, 0)]);
-    store.getState().setViewport(1000, 800); // narrow viewport: panel insets collapse to 80 + 40
+    store.getState().setViewport(1000, 800); // narrow viewport: panel insets collapse to 66 + 40
     store.getState().zoomToFit();
     const { camera } = store.getState();
-    // content 1000 wide, available width 1000 - 2*120 = 760 => zoom 0.76
-    expect(camera.zoom).toBeCloseTo(0.76);
+    // content 1000 wide, available width 1000 - 2*106 = 788 => zoom 0.788
+    expect(camera.zoom).toBeCloseTo(0.788);
     expect(camera.x + 500 * camera.zoom).toBeCloseTo(500);
   });
 

@@ -729,6 +729,13 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+- **2026-09-05 — Rev 31: denser chrome, bigger canvas.** The board shell was taking too much
+  room from the drawing surface. Topbar 54→46 px, graph panel 280→238, inspector 270→234,
+  command bar 850→720 with 17→14 px input, tool rail and map/zoom cards tightened, panel and
+  status type down a step. `fitInsets` was updated to match the real widths (they are duplicated
+  in `store.ts` and must move together) — zoom-to-fit on the seeded landscape board goes from
+  76 % to 86 % at 1600×1000, i.e. the same board renders ~13 % larger.
+
 - **2026-09-05 — Rev 30: Railway deployment.** Root `Dockerfile` (pnpm monorepo build, Next
   production server, `/data` volume for the SQLite file), `railway.json` with a health check,
   `GET /api/health` readiness route, `docs/DEPLOY.md` with the click-through.

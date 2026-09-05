@@ -215,11 +215,13 @@ export function documentFromFrame(frameId: ElementId, elements: Elements): Canva
 export function fitInsets(s: Pick<CanvasState, "panels" | "viewport" | "presenting">, extra = 40): Insets {
   if (s.presenting) return { top: extra, bottom: extra, left: extra, right: extra };
   const narrow = s.viewport.w < 1100;
+  // These mirror the chrome's real widths in globals.css (tool rail 44 + graph panel 238,
+  // inspector 234, topbar 46 + command bar). Keep them in step when the chrome is resized.
   return {
-    top: 140 + extra,
-    bottom: 80 + extra,
-    left: (s.panels.inventory && !narrow ? 370 : 80) + extra,
-    right: (s.panels.inspector && !narrow ? 300 : 80) + extra,
+    top: 112 + extra,
+    bottom: 66 + extra,
+    left: (s.panels.inventory && !narrow ? 300 : 66) + extra,
+    right: (s.panels.inspector && !narrow ? 258 : 66) + extra,
   };
 }
 
