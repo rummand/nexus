@@ -283,6 +283,52 @@ export const sourceRuns = sqliteTable(
 export type Source = typeof sources.$inferSelect;
 export type SourceRun = typeof sourceRuns.$inferSelect;
 
+// ---- source catalogue ------------------------------------------------------
+// A connection is the *decision* about a source system, not a live session: an agent proposed it
+// (or a human picked it from the catalogue), and a human granted, declined or revoked it. The
+// grant is a set of scope paths — "sap/pm/equi", never "sap" — because the unit of consent is a
+// module or an object, not a system. See src/lib/catalog.
+
+export const connections = sqliteTable(
+  "connections",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Catalogue provider id, e.g. "sap" (src/lib/catalog/providers.ts). */
+    providerId: text("provider_id").notNull(),
+    /** proposed → granted → (revoked); declined ends it. */
+    status: text("status", { enum: ["proposed", "granted", "declined", "revoked"] }).notNull().default("proposed"),
+    /** Who raised it: the discovery agent, or a person browsing the catalogue. */
+    origin: text("origin", { enum: ["agent", "human"] }).notNull().default("human"),
+    /** The agent's case at the time of proposing, JSON-encoded, kept as the record of why. */
+    evidence: text("evidence").notNull().default("[]"),
+    reason: text("reason").notNull().default(""),
+    /** Free text a human added when granting or declining. */
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [uniqueIndex("connections_provider_idx").on(t.workspaceId, t.providerId)],
+);
+
+/** One granted scope path. Absence is refusal — there is no "denied" row. */
+export const connectionScopes = sqliteTable(
+  "connection_scopes",
+  {
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => connections.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [primaryKey({ columns: [t.connectionId, t.path] })],
+);
+
+export type Connection = typeof connections.$inferSelect;
+export type ConnectionScope = typeof connectionScopes.$inferSelect;
+
 // ---- relations -------------------------------------------------------------
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({

@@ -5,6 +5,9 @@ import * as s from "@/db/schema";
 import { getWorkspaceBySlug } from "@/lib/data";
 import type { Extraction, SourceKind } from "@/lib/intake/types";
 import { intakeLandscape } from "@/lib/intake/landscape";
+import { discoverProviders } from "@/lib/catalog/discovery";
+import { connectionsFor, type ConnectionRow } from "@/lib/catalog/read";
+import type { Discovery } from "@/lib/catalog/types";
 import type { ExplorerGraph } from "@/lib/explorer";
 import { IntakeWorkbench, type SourceRow } from "@/components/intake/IntakeWorkbench";
 
@@ -67,6 +70,23 @@ export default async function IntakePage({ params, searchParams }: {
   // The landscape is the whole intake neighbourhood, so it is loaded only when that view is open.
   const landscape: ExplorerGraph | null = view === "landscape" ? await intakeLandscape(db, workspace.id) : null;
 
+  // The catalogue: what has been decided here, and what the discovery agent proposes on top of
+  // the evidence already in the workspace.
+  let discoveries: Discovery[] = [];
+  let connections: ConnectionRow[] = [];
+  if (view === "catalog") {
+    connections = await connectionsFor(db, workspace.id);
+    const [entityRows, sourceTexts] = await Promise.all([
+      db.select({ id: s.entities.id, name: s.entities.name, kind: s.entities.kind }).from(s.entities).where(eq(s.entities.workspaceId, workspace.id)),
+      db.select({ id: s.sources.id, name: s.sources.name, text: s.sources.text }).from(s.sources).where(eq(s.sources.workspaceId, workspace.id)),
+    ]);
+    discoveries = discoverProviders({
+      entities: entityRows,
+      sources: sourceTexts,
+      decided: connections.filter((c) => c.status !== "proposed").map((c) => c.providerId),
+    });
+  }
+
   const selected = sources.find((row) => row.id === requested) ?? sources[0] ?? null;
   let extraction: Extraction | null = null;
   if (selected) {
@@ -86,8 +106,10 @@ export default async function IntakePage({ params, searchParams }: {
       sources={sources}
       selected={selected}
       extraction={extraction}
-      view={view === "landscape" ? "landscape" : "workbench"}
+      view={view === "landscape" ? "landscape" : view === "catalog" ? "catalog" : "workbench"}
       landscape={landscape}
+      discoveries={discoveries}
+      connections={connections}
     />
   );
 }

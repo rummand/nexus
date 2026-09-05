@@ -222,7 +222,12 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
         <PresenceTag presence={type.presence} />
       </header>
 
-      {type.presence === "undeclared" ? (
+      {/*
+        Gated on the declaration id, not on presence: for the moment between declaring and the
+        refreshed model arriving there is no id to post, and a form that quietly submits null is
+        worse than one that is not there yet.
+      */}
+      {type.id === null ? (
         <div className="meta-callout">
           <p><b>{type.name}</b> grew from the data and has never been declared. Declaring it lets you describe it, fix its field list and constrain its relations.</p>
           <button type="button" className="primary-home-button" disabled={pending} onClick={() => run(() => declareNodeType(workspaceId, type.name))}>Declare this type</button>
@@ -312,7 +317,8 @@ function RelationTypeDetail({ type, allTypeNames, pending, run, workspaceId, onR
         <PresenceTag presence={type.presence} />
       </header>
 
-      {type.presence === "undeclared" ? (
+      {/* Gated on the id for the same reason as node types above. */}
+      {type.id === null ? (
         <div className="meta-callout">
           <p><b>{type.name}</b> exists only in the data. Declare it to describe it and constrain which node types it may join.</p>
           <button type="button" className="primary-home-button" disabled={pending} onClick={() => run(() => createRelationType(workspaceId, type.name))}>Declare this type</button>

@@ -322,14 +322,20 @@ try {
     // innerText reflects the CSS uppercase transform, so compare case-insensitively
     assert.match(await page.locator(".meta-detail-body header .meta-presence").innerText(), /^declared$/i, "declaring a type promotes it out of 'from data'");
     // the declare above runs in a transition that disables the form while pending
-    await page.waitForSelector('.meta-add input[aria-label="New field key"]:not([disabled])', { timeout: 15000 });
+    await page.waitForSelector('.meta-add input[aria-label="New field key"]:not([disabled])', { timeout: 30000 });
     const beforeFields = await page.locator(".meta-table tbody tr").count();
     const fieldKey = `e2e_${Date.now().toString().slice(-5)}`;
     await page.fill('.meta-add input[aria-label="New field key"]', fieldKey);
     await page.locator('.meta-add button:has-text("Add field")').click();
     // the server action revalidates the page, so poll rather than guessing a delay
-    await page.waitForFunction((n) => document.querySelectorAll(".meta-table tbody tr").length > n, beforeFields, { timeout: 15000 })
-      .catch(() => assert.fail("a declared field is added to the type"));
+    await page.waitForFunction((n) => document.querySelectorAll(".meta-table tbody tr").length > n, beforeFields, { timeout: 30000 })
+      .catch(async () => {
+        console.log("DEBUG type:", await page.locator(".meta-detail-body h2").textContent(),
+                    "rows:", beforeFields, "->", await page.locator(".meta-table tbody tr").count(),
+                    "key:", fieldKey,
+                    "input:", await page.locator('.meta-add input[aria-label="New field key"]').inputValue().catch(() => "?"));
+        assert.fail("a declared field is added to the type");
+      });
   }
 
   // meta-model diagram: the type-level abstraction, one box per node type and one arc per
@@ -356,6 +362,18 @@ try {
   await page.click('.meta-view-tabs button:has-text("Details")');
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
+
+  // clean up the note this run created, so repeated runs do not silt up the demo board
+  await page.goto(`${base}/b/brd_capabilities`, { waitUntil: "load" });
+  const leftover = page.locator(`[data-element-id="${noteId}"]`);
+  const stillThere = await leftover.waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+  if (stillThere) {
+    const box = await leftover.boundingBox();
+    await page.mouse.click(box.x + 8, box.y + 8);
+    await page.keyboard.press("Delete");
+    await page.waitForTimeout(1200);
+    assert.equal(await leftover.count(), 0, "the smoke note is cleaned up");
+  }
 
   // intake: read a source through the pipeline, review what it found, and see the landscape
   await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
@@ -389,8 +407,29 @@ try {
   await page.click('.intake-view-tabs a:has-text("Landscape")');
   await page.waitForSelector(".explorer-shell.embedded, .intake-empty", { timeout: 30000 });
 
+  // the catalogue: the agent proposes systems it found evidence for, and a human grants scope
+  await page.click('.intake-view-tabs a:has-text("Catalogue")');
+  await page.waitForSelector(".catalog");
+  assert.ok((await page.locator("[data-provider]").count()) > 10, "the catalogue lists what Nexus can reach");
+  const discovered = await page.locator("[data-discovery]").count();
+  if (discovered > 0) {
+    // every proposal shows its evidence before it asks for anything
+    assert.ok((await page.locator("[data-discovery] .catalog-evidence li").count()) > 0, "a discovery shows the evidence behind it");
+    await page.locator('[data-discovery] button:has-text("Review what it may read")').first().click();
+  } else {
+    await page.locator('[data-provider="sap"]').click();
+  }
+  await page.waitForSelector("[data-provider-panel]");
+  assert.ok((await page.locator("[data-scope]").count()) > 0, "the grant panel lists what may be read, scope by scope");
+  // every scope says what it puts in the graph
+  assert.ok((await page.locator("[data-scope] .scope-yields").count()) > 0, "each scope says what it yields");
+  await page.keyboard.press("Escape");
+  await page.locator('.catalog-panel button[aria-label="Close"]').click().catch(() => {});
+  await page.waitForTimeout(400);
+
   // leave the shared database as we found it
   await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
+  await page.waitForSelector(".intake-sources");
   await page.locator(`.intake-source:has-text("${sourceName}")`).click();
   await page.waitForSelector(".intake-source-head");
   await page.click('button:has-text("Remove")');

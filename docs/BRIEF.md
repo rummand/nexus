@@ -648,6 +648,43 @@ The extractor is rule-based today. That is a deliberate first rung of §2.2, not
 an LLM classifier plugs into the same `Candidate` / `CandidateRelation` / `Viewpoint` shapes and
 the same review workflow, and nothing above this line changes when it does.
 
+### 5.16 The source catalogue (v0.2)
+
+The third view on the intake screen, and the answer to a question the connector list dodged:
+*who decides what an agent may read?*
+
+A catalogue of connectors is a menu. This is a **negotiation surface between the agent and the
+human about access**, and three things are first-class — none of which is the connection:
+
+- **Evidence.** The discovery agent (`src/lib/catalog/discovery.ts`) does not scan a network. It
+  reads what Nexus already knows: entities somebody drew with no source behind them, and systems
+  the ingested meetings kept naming. Four meetings arguing about SAP PM is stronger evidence that
+  the system matters here than a port being open. Every proposal quotes what it is going on, and a
+  proposal with no evidence is not made.
+- **Scope.** Access is granted as a tree — system → module → object — never as a switch.
+  `sap/pm/equi`, not `sap`. Ticking a module takes its objects with it; taking one object back
+  drops the module, because a module whose objects are not all granted is not itself granted.
+  Grants are materialised (`connection_scopes`, migration 0006), so what is stored is exactly what
+  was shown.
+- **Purpose.** Every grantable node says what it puts in the Nexus graph, what the organisation
+  could then ask, how sensitive it is and roughly how much of it there is. "SAP PM · EQUI ·
+  ~80k rows · into the graph: Asset · answer which applications touch which physical assets."
+  A scope nobody can justify is a scope nobody should grant.
+
+The agent asks for at most three scopes at a time, least sensitive first — an agent that asks for
+everything gets refused everything. A grant carries a note (who agreed it, on what basis), a
+selection containing personal data says so before it is saved, declining is remembered so the
+same system is not proposed again, and revoking deletes the scope rows rather than setting a flag.
+
+The catalogue itself is seventeen sources across five categories — conversations, files,
+enterprise systems (SAP, ServiceNow, Entra ID, Jira, Confluence, SharePoint, Ardoq/LeanIX), code
+and data platforms (Git, Databricks/Snowflake) and operations (OT historian/OPC UA, SCADA/EMS) —
+with scope trees down to named tables. Three are built; the rest say "planned" out loud, because
+the reach of the catalogue is the pitch and hiding the ambition helps nobody.
+
+Nothing here fetches data yet: this is the decision layer, and the decisions it records are what
+a fetching layer will be bound by.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -677,7 +714,7 @@ the same review workflow, and nothing above this line changes when it does.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 39)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 40)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -759,6 +796,13 @@ the same review workflow, and nothing above this line changes when it does.
   `mentions` edges carrying their evidence, and people joined to the meetings they attended.
 - Landscape view: everything taken in, as a navigable graph (the explorer, scoped to intake).
 - Connector catalogue: 16 enterprise sources, 4 built and the rest marked planned.
+
+### Source catalogue (v0.2)
+- `/w/[slug]/intake?view=catalog`: a browsable catalogue of 17 sources with scope trees down to
+  named modules and tables; a discovery agent that proposes systems it found evidence for in the
+  graph and in ingested meetings; and a grant panel where a human allows access scope by scope,
+  with what each scope yields, what it enables and how sensitive it is written next to the box.
+  Grants, declines and revocations are recorded (`connections`, `connection_scopes`).
 
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
@@ -923,15 +967,40 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Objects intake writes itself (Meeting, Decision, Risk, Action, Question, Need) are excluded from the recognition vocabulary. | A risk is named by the sentence somebody said. Left in the vocabulary, the next run over the same meeting finds that sentence in the text and offers the risk as a thing being discussed — the graph reading its own notes back to itself. |
 | 2026-09-05 | The intake landscape reuses the graph explorer rather than adding a second viewer. | Search, focus, hop-limiting and path tracing already exist and are better than anything a scoped-down second implementation would have; the explorer only needed an `embedded` mode. |
 
+| 2026-09-05 | The catalogue is a grant surface, not a connector list: access is granted per scope path, with purpose and sensitivity shown at the point of decision. | "Connect SAP" is not a decision anyone can take responsibly. "Read Plant Maintenance equipment and functional locations, nothing else, because it answers which applications touch which assets" is. Least privilege is a product surface here rather than a config file. |
+| 2026-09-05 | The discovery agent proposes only from evidence already in Nexus (the graph and ingested sources), never from a network scan. | It is the honest version of "the agent found SAP", and in practice the stronger one — four meetings arguing about SAP PM say more about whether it matters here than an open port does. It also keeps the agent inside data the workspace already holds. |
+| 2026-09-05 | Grants are materialised: a module grant stores every path it covers. | Storing only the parent is more compact and reads on screen as a narrower grant than it is. On a consent record, being imprecise in that direction is the wrong bug to have. |
+
 ## 8. Open questions for the product owner
 
-- Which first data source should the ingestion work start with (ServiceNow? file
-  import? a process-modelling tool)?
+- Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
+  registrations? SAP PM)? The scope trees are modelled; the fetching is not.
+- Should a granted scope also carry a schedule (read once, nightly, on demand), or is that a
+  property of the connection rather than the grant?
 - Should optics be user-authored (query + layout), agent-suggested, or both?
 - Real-time collaboration: how early is it needed relative to ingestion and agents?
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 40: the source catalogue.** Intake gained a third view: a browsable
+  catalogue of everywhere Nexus could reach, and the machinery for deciding what an agent may
+  actually read. A discovery agent proposes systems it found evidence for — entities in the graph
+  with no source behind them, and systems the ingested meetings kept naming — quoting that
+  evidence and asking for at most three scopes, least sensitive first. A human then grants access
+  scope by scope down to named modules and tables (SAP PM → EQUI), with what each scope yields in
+  the graph, what it would let the organisation ask, its sensitivity and its rough volume written
+  next to the checkbox. Ticking a module takes its objects; taking one object back drops the
+  module. Grants carry a note, personal-data selections are called out, declines are remembered
+  and revoking removes the rows. Seventeen sources across five categories, three built. New tables
+  `connections` and `connection_scopes` (migration 0006), 8 unit tests over discovery and the
+  grant algebra, e2e over the catalogue and the grant panel.
+
+  Two bugs fixed on the way: the meta-model builder rendered its field and rule forms as soon as a
+  type's *presence* said declared, which for the moment before the refreshed model arrived meant
+  posting a null type id and silently doing nothing — both are now gated on the declaration id.
+  And the smoke suite now removes the note it creates, instead of silting up the demo board a
+  little more on every run.
 
 - **2026-09-05 — Rev 39: intake, the ingestion layer.** A new top-level view at `/w/[slug]/intake`
   that turns unconsolidated data into graph. Upload or paste a Teams/Zoom transcript, minutes or a

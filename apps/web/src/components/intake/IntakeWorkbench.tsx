@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle, CheckCircle2, CircleHelp, FileText, Flag, Link2, ListChecks,
-  MessageSquareQuote, Play, Plus, Rows3, Sparkles, Trash2, Users, Waypoints,
+  LibraryBig, MessageSquareQuote, Play, Plus, Rows3, Sparkles, Trash2, Users, Waypoints,
 } from "lucide-react";
 import type { ExplorerGraph } from "@/lib/explorer";
 import { GraphExplorer } from "@/components/explorer/GraphExplorer";
-import { CONNECTOR_GROUPS, CONNECTORS, connectorById } from "@/lib/intake/connectors";
+import type { ConnectionRow } from "@/lib/catalog/read";
+import type { Discovery } from "@/lib/catalog/types";
+import { SourceCatalog } from "@/components/catalog/SourceCatalog";
+import { PROVIDERS, providerById } from "@/lib/catalog/providers";
 import { commitSource, deleteSource, runSource } from "@/lib/intake/actions";
 import type { Candidate, CandidateRelation, Extraction, SourceKind, Viewpoint } from "@/lib/intake/types";
 import { PipelineFlow } from "./PipelineFlow";
@@ -44,14 +47,16 @@ const KIND_LABEL: Record<SourceKind, string> = {
   connector: "Sync",
 };
 
-export function IntakeWorkbench({ workspaceId, slug, sources, selected, extraction, view, landscape }: {
+export function IntakeWorkbench({ workspaceId, slug, sources, selected, extraction, view, landscape, discoveries, connections }: {
   workspaceId: string;
   slug: string;
   sources: SourceRow[];
   selected: SourceRow | null;
   extraction: Extraction | null;
-  view: "workbench" | "landscape";
+  view: "workbench" | "landscape" | "catalog";
   landscape: ExplorerGraph | null;
+  discoveries: Discovery[];
+  connections: ConnectionRow[];
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<string | null>(null);
@@ -89,6 +94,9 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
           <Link href={`/w/${slug}/intake?view=landscape`} role="tab" className={view === "landscape" ? "active" : ""}>
             <Waypoints size={13} /> Landscape
           </Link>
+          <Link href={`/w/${slug}/intake?view=catalog`} role="tab" className={view === "catalog" ? "active" : ""}>
+            <LibraryBig size={13} /> Catalogue
+          </Link>
         </div>
         <Link className="ghost-button" href={`/w/${slug}/graph`}>Knowledge graph →</Link>
       </header>
@@ -114,30 +122,20 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
             ))}
           </ul>
 
-          <div className="meta-tree-section">Connect to <small>{CONNECTORS.length}</small></div>
-          {CONNECTOR_GROUPS.map((group) => (
-            <div className="intake-group" key={group.id}>
-              <h3>{group.name}<em>{group.detail}</em></h3>
-              {CONNECTORS.filter((c) => c.group === group.id).map((c) => (
-                <button
-                  type="button"
-                  key={c.id}
-                  className={`intake-connector ${c.status}`}
-                  disabled={c.status !== "available"}
-                  title={c.summary}
-                  onClick={() => setDialog(c.id)}
-                  data-connector={c.id}
-                >
-                  <span>{c.name}</span>
-                  {c.status === "planned" && <em>planned</em>}
-                </button>
-              ))}
-            </div>
-          ))}
+          <div className="meta-tree-section">Sources it can reach <small>{PROVIDERS.length}</small></div>
+          <Link className="intake-catalog-card" href={`/w/${slug}/intake?view=catalog`}>
+            <strong>{PROVIDERS.filter((p) => p.status === "available").length} connected · {PROVIDERS.filter((p) => p.status === "planned").length} in the catalogue</strong>
+            <span>Browse the catalogue, review what the agent has found on the estate, and grant it what it may read.</span>
+            <em>Open the catalogue →</em>
+          </Link>
         </aside>
 
         <main className={`intake-main ${view === "landscape" ? "landscape" : ""}`}>
           {error && <p className="intake-error">{error}</p>}
+
+          {view === "catalog" && (
+            <SourceCatalog workspaceId={workspaceId} discoveries={discoveries} connections={connections} />
+          )}
 
           {view === "landscape" && (
             landscape && landscape.nodes.length > 0 ? (
@@ -175,7 +173,7 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
                 <div>
                   <h2>{selected.name}</h2>
                   <p>
-                    {KIND_LABEL[selected.kind]} · via {connectorById(selected.connector)?.name ?? selected.connector} ·{" "}
+                    {KIND_LABEL[selected.kind]} · via {providerById(selected.connector)?.name ?? selected.connector} ·{" "}
                     {selected.characters.toLocaleString("en")} characters
                     {extraction?.speakers.length ? ` · ${extraction.speakers.length} speakers` : ""}
                   </p>
@@ -213,7 +211,7 @@ export function IntakeWorkbench({ workspaceId, slug, sources, selected, extracti
       {dialog && (
         <NewSourceDialog
           workspaceId={workspaceId}
-          connectorId={connectorById(dialog)?.status === "available" ? dialog : "transcript"}
+          connectorId={providerById(dialog)?.status === "available" ? dialog : "transcript"}
           onClose={() => setDialog(null)}
           onCreated={(id) => { setDialog(null); router.push(`/w/${slug}/intake?source=${id}`); router.refresh(); }}
         />

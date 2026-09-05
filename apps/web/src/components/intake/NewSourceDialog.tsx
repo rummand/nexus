@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { FileUp, X } from "lucide-react";
-import { availableConnectors } from "@/lib/intake/connectors";
+import { availableProviders } from "@/lib/catalog/providers";
 import { createSource } from "@/lib/intake/actions";
 import { SAMPLE_TRANSCRIPT } from "./sample";
 
@@ -47,7 +47,7 @@ export function NewSourceDialog({ workspaceId, connectorId, onClose, onCreated }
           <label>
             <span>Through</span>
             <select value={connector} onChange={(e) => setConnector(e.target.value)}>
-              {availableConnectors().map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {availableProviders().map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
           <label>

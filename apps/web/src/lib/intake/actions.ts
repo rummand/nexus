@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { commitExtraction, INTAKE_RECORD_KINDS, type CommitSelection } from "./commit";
-import { connectorById } from "./connectors";
+import { providerById } from "../catalog/providers";
 import { runPipeline } from "./pipeline";
 import { detectSourceKind } from "./transcript";
 import type { Extraction } from "./types";
@@ -52,7 +52,7 @@ async function vocabulary(workspaceId: string): Promise<Vocabulary> {
 export async function createSource(input: { workspaceId: string; name: string; text: string; connector: string }) {
   const text = input.text.slice(0, MAX_SOURCE_CHARS);
   if (!text.trim()) return { error: "There is nothing to read in that source" };
-  const connector = connectorById(input.connector);
+  const connector = providerById(input.connector);
   if (!connector) return { error: `Unknown connector “${input.connector}”` };
   if (connector.status !== "available") return { error: `${connector.name} is on the roadmap, not connected yet` };
 
