@@ -486,6 +486,23 @@ contains (`src/canvas/lens.ts`).
   legend, with a clear button, so the lens stays legible when the Graph panel is collapsed.
 - **Saved views** carry the lens (`SavedViewpoint.lens`, optional — older views have none).
 
+### 5.12 Optional access gate (v0.2)
+
+Brief 1 has no per-user identity, so a public deployment would be world-editable. Setting
+`NEXUS_ACCESS_PASSWORD` puts one shared password in front of the whole instance; leaving it
+unset changes nothing, so local development, the seeded demo and the e2e suite are unaffected.
+
+- `src/proxy.ts` (Next 16's `proxy` convention, formerly `middleware`) redirects anything
+  without a valid cookie to `/login?next=…`.
+- The cookie is an HMAC of a fixed message keyed by the password, so it verifies with no session
+  store and the password never leaves the server. Comparison is length-independent.
+- `/api/health` and Next's own assets bypass the gate — a platform health check must never be
+  redirected, or deploys never go green.
+- `?next=` only accepts same-site paths, so it cannot bounce a visitor to another origin.
+
+This is a deployment lock, not an identity system: it says *whether* you may open the instance,
+not *who* you are. Real auth (§6 roadmap) replaces it.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -650,8 +667,9 @@ contains (`src/canvas/lens.ts`).
   command-bar search, autosave, reload, create board from a starter.
 
 ### Known gaps (intentional for brief 1)
-- No authentication or authorisation; everyone is the seeded demo user.
-- Single workspace; no multiplayer; no comments; no export; no search.
+- No per-user authentication or authorisation; everyone is the seeded demo user. A deployed
+  instance can be closed off with a single shared password (§5.12) until real auth lands.
+- Single workspace; no multiplayer; no comments.
 - Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
   system stack.
 - SQLite only; Postgres wiring is a config change but not yet exercised.
@@ -728,6 +746,12 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 32: optional shared-password access gate.** `NEXUS_ACCESS_PASSWORD` closes
+  a deployed instance behind one password (§5.12); unset, nothing changes. Implemented on Next
+  16's `proxy` convention with an HMAC cookie, a `/login` page, and `/api/health` deliberately
+  exempt so platform health checks still pass. Verified end to end: health bypasses, protected
+  paths redirect, a wrong password is rejected, a correct one lands on the requested page.
 
 - **2026-09-05 — Rev 31: denser chrome, bigger canvas.** The board shell was taking too much
   room from the drawing surface. Topbar 54→46 px, graph panel 280→238, inspector 270→234,

@@ -35,3 +35,15 @@ docker run -p 3000:3000 -v nexus-data:/data nexus
 - No authentication yet (brief 1): anyone with the URL can edit. Put the service behind Railway's
   private networking, an access proxy or basic auth until auth lands.
 - Fonts load from Google Fonts at runtime; the app falls back to system fonts when blocked.
+
+## Closing off a public instance
+
+There is no per-user login yet, so a deployed instance is editable by anyone with the URL. To put
+one shared password in front of it, set a variable on the service:
+
+```
+NEXUS_ACCESS_PASSWORD=<something long>
+```
+
+Visitors then get a `/login` page and a 30-day cookie. `/api/health` stays open so the platform
+health check keeps passing. Unset the variable to remove the gate.
