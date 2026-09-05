@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Keyboard, Loader2, Presentation, Share2 } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2 } from "lucide-react";
 import { documentToSvg } from "./export";
+import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
 import { NexusMark } from "@/components/workspace/NexusMark";
 import { initials } from "@/components/workspace/Sidebar";
@@ -48,16 +49,25 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   };
 
   const svg = () => documentToSvg(store.getState().toDocument(), { title: name });
-  const downloadSvg = () => {
-    const blob = new Blob([svg()], { type: "image/svg+xml;charset=utf-8" });
+  const save = (blob: Blob, extension: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${name.replace(/[^\w.-]+/g, "_") || "board"}.svg`;
+    a.download = `${name.replace(/[^\w.-]+/g, "_") || "board"}.${extension}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+  const downloadSvg = () => {
+    save(new Blob([svg()], { type: "image/svg+xml;charset=utf-8" }), "svg");
     setExportNote("SVG downloaded");
     setExportOpen(false);
+  };
+  const downloadPng = () => {
+    setExportOpen(false);
+    setExportNote("Rendering PNG…");
+    void svgToPngBlob(svg(), 2)
+      .then((blob) => { save(blob, "png"); setExportNote("PNG downloaded"); })
+      .catch((e) => setExportNote(e instanceof Error ? e.message : "PNG export failed"));
   };
   const copySvg = async () => {
     try {
@@ -97,6 +107,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
           {exportOpen && (
             <div className="export-menu" role="menu" data-export-menu>
               <button type="button" role="menuitem" onClick={downloadSvg}><Download size={14} /> Download SVG<small>Vector, opens in Figma / PowerPoint / browsers</small></button>
+              <button type="button" role="menuitem" onClick={downloadPng} data-export-png><ImageIcon size={14} /> Download PNG<small>2× raster for slides and chat</small></button>
               <button type="button" role="menuitem" onClick={() => void copySvg()}><Copy size={14} /> Copy SVG<small>Paste into a document or design tool</small></button>
               <button type="button" role="menuitem" onClick={present}><Presentation size={14} /> Present<small>Hide the chrome and fit the board · Esc to leave</small></button>
             </div>

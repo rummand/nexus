@@ -215,10 +215,14 @@ nexus/
 - **Persistence.** The board document is versioned JSON (`{ version, elements }`;
   currently v2 with a v1 → v2 migration), autosaved to the server with a debounce; save
   state is visible in the UI.
+- **PNG export.** `src/canvas/png.ts` rasterises that SVG in the browser (blob URL → `<img>` →
+  canvas → `toBlob`) at 2× for slides and chat. No server round trip and no headless browser.
+  The scale is clamped so the longest edge stays within 8000 px, which keeps a very large board
+  from exhausting browser memory; `fitScale` never drops below 1:1.
 - **Export.** `src/canvas/export.ts` renders a document to a standalone SVG (frames, cards with
   kind / title / attribute chips / description, notes, text blocks, shapes, connectors with
   arrowheads and label pills; greedy text wrapping on an approximate glyph width). The topbar
-  *Export* menu offers Download SVG, Copy SVG and *Present* — presentation mode hides all chrome,
+  *Export* menu offers Download SVG, Download PNG, Copy SVG and *Present* — presentation mode hides all chrome,
   fits the board to the full viewport and leaves on Esc or a click on the pill. **Frames are
   slides**: → / space / PageDown step through the board's frames in reading order (rows top to
   bottom, then left to right), ← / PageUp step back, Home shows the whole board; the pill reads
@@ -528,7 +532,7 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
   enrichment, with human review queue (the accept / dismiss flow exists; LLM-backed
   proposal sources are next).
 - ~~Search across boards and the graph~~ done: home search over boards + objects, board command bar with structured graph queries (§5.10). Next: natural-language translation by the agent layer.
-- Board templates; export (PNG/PDF); comments.
+- Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
 ## 6a. What exists today (v0.1, 2026-09-04)
@@ -634,7 +638,7 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
   Knowledge graph page (§5.8). Demo data ships lifecycle / criticality / owner.
 
 ### Export & present (v0.2)
-- Export menu in the topbar: Download SVG, Copy SVG, Present (chrome-free, frames as slides with
+- Export menu in the topbar: Download SVG, Download PNG (2×), Copy SVG, Present (chrome-free, frames as slides with
   arrow keys, Esc to leave).
 - Command-bar autocomplete for the query language from the live vocabulary.
 
@@ -746,6 +750,10 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 33: PNG export.** "Download PNG" in the export menu rasterises the existing
+  SVG client-side at 2×, with the longest edge clamped to 8000 px. Verified end to end: the
+  download produces a valid 2480×1252 PNG of the seeded landscape board.
 
 - **2026-09-05 — Rev 32: optional shared-password access gate.** `NEXUS_ACCESS_PASSWORD` closes
   a deployed instance behind one password (§5.12); unset, nothing changes. Implemented on Next
