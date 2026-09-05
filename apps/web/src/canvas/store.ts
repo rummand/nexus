@@ -14,7 +14,7 @@ export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" |
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 
-export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history";
+export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history" | "compose";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error";
 
@@ -220,7 +220,7 @@ export function fitInsets(s: Pick<CanvasState, "panels" | "viewport" | "presenti
   return {
     top: 112 + extra,
     bottom: 66 + extra,
-    left: (s.panels.inventory && !narrow ? 300 : 66) + extra,
+    left: (s.panels.compose && !narrow ? 404 : s.panels.inventory && !narrow ? 300 : 66) + extra,
     right: (s.panels.inspector && !narrow ? 258 : 66) + extra,
   };
 }
@@ -268,7 +268,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
-      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false },
+      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false },
       isDragging: false,
       hiddenKinds: [],
       graphTab: "inventory",
@@ -315,7 +315,13 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
-      togglePanel: (name, value) => set((s) => ({ panels: { ...s.panels, [name]: value ?? !s.panels[name] } })),
+      togglePanel: (name, value) => set((s) => {
+        const open = value ?? !s.panels[name];
+        // Compose and the Graph inventory are two answers to the same question — where do objects
+        // come from — and they sit in the same corner. Opening one puts the other away.
+        const inventory = name === "compose" && open ? false : s.panels.inventory;
+        return { panels: { ...s.panels, [name]: open, inventory } };
+      }),
       setDragging: (isDragging) => set((s) => (s.isDragging === isDragging ? s : { isDragging })),
       toggleKind: (kind) => set((s) => ({ hiddenKinds: s.hiddenKinds.includes(kind) ? s.hiddenKinds.filter((k) => k !== kind) : [...s.hiddenKinds, kind] })),
       clearHiddenKinds: () => set({ hiddenKinds: [] }),

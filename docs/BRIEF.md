@@ -708,6 +708,49 @@ the honest state of most architecture repositories and the argument for the whol
 Nothing here fetches data yet: this is the decision layer, and the decisions it records are what
 a fetching layer will be bound by.
 
+### 5.17 Compose — writing the board (v0.2)
+
+A board you write instead of draw. Open **Compose** on any board, type what it should contain, and
+it is built:
+
+```
+title Metering landscape
+add Maximo
+expand 1 hop
+connect them
+lay out as flow
+colour by kind
+```
+
+Six lines, and the board is fourteen cards and twenty-five connectors — the meeting, the people in
+it, the decision they took, the risks they raised and the systems they discussed — with nothing
+dragged and nothing placed by hand.
+
+**Every line compiles to the query grammar, and says so.** `add all applications` is echoed as
+`kind:Application`; `add anything that depends on SCADA` as `to:SCADA rel:"depends on"`. The
+English is the convenience and the query is the truth, and the screen shows you which is which,
+line by line, with what each one did ("added 60 objects, 1 more not placed", "drew 25 relations").
+A line it cannot read says so and lists the verbs it knows, rather than failing silently.
+
+Compilation happens on the server against the workspace's *real* vocabulary — its kinds, relation
+types and attribute keys — so "capabilities" resolves to `Business Capability` here and to
+whatever this organisation calls it elsewhere. Irregular plurals and multi-word kinds are handled;
+the fuzzy fallback is single-word only, because over a phrase it would swallow
+`applications criticality:high` whole.
+
+The verbs: `add`, `remove`, `expand` (N hops, optionally via a relation type, upstream or
+downstream), `connect`, `group by`, `colour by`, `lay out` (grid, columns/rows by an attribute,
+circle, flow), `title`, `note`, `clear`.
+
+**The script is the board.** A build starts from an empty board by default, so the text and the
+picture cannot drift apart, and the same script over the same graph gives the same board down to
+the coordinates — `src/lib/compose/apply.ts` is pure, and that is tested. Because a rebuild
+discards what is there, it says how much it will replace and asks first; the board's own version
+history is the backstop. Unticking it adds to what is already on the board instead.
+
+This is the first half of "ask Nexus": the question language and the answer surface are the same
+thing, so an answer is not a list you read but a board you keep.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -737,7 +780,7 @@ a fetching layer will be bound by.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 41)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 42)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -819,6 +862,12 @@ a fetching layer will be bound by.
   `mentions` edges carrying their evidence, and people joined to the meetings they attended.
 - Landscape view: everything taken in, as a navigable graph (the explorer, scoped to intake).
 - Connector catalogue: 16 enterprise sources, 4 built and the rest marked planned.
+
+### Compose — writing the board (v0.2)
+- A Compose panel on every board: write lines (`add all applications`, `expand 1 hop`,
+  `connect them`, `lay out as flow`, `group by lifecycle`) and the board is built from them. Each
+  line is compiled against the workspace vocabulary, echoed as the query it became, and reported
+  with what it did. Deterministic and pure, so a script always gives the same board.
 
 ### Source catalogue (v0.2)
 - `/w/[slug]/intake?view=catalog`: a browsable catalogue of 17 sources with scope trees down to
@@ -1001,6 +1050,9 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Discovery matches fingerprints — hostnames, table names, tcodes, endpoints, build files — not only product names, and scores them by weight. | A system is usually visible in an organisation's own material long before anyone writes its name down: a ServiceNow instance host in a meeting is proof, where "we should look at ticketing" is nothing. Weighting is what lets a single passing mention stay below the floor instead of generating noise. |
 | 2026-09-05 | Hosts nobody's catalogue claims are first-class findings, and can be registered into the workspace's own catalogue. | Every enterprise runs systems no vendor list contains, and they are usually the ones that matter. A catalogue that cannot grow to fit the estate quietly redefines the estate as whatever the catalogue already knew. |
 
+| 2026-09-05 | A written board compiles to the existing query grammar rather than interpreting English directly, and shows the compiled form. | The grammar is already the single definition of what a question means (§5.10). Compiling into it keeps one source of truth, makes every line arguable, and means an LLM front-end later changes only the compiler — not what the board is. |
+| 2026-09-05 | A compose build rebuilds the board from empty by default. | If the script only ever added to what was there, the text and the picture would drift apart within minutes and the script would stop describing the board. The cost is that a rebuild discards work, so it says how much it will replace and asks first. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1012,6 +1064,18 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 42: compose — write the board.** A Compose panel on every board: type what it
+  should contain and it is built, with nothing dragged. `add all applications`, `add anything that
+  depends on SCADA`, `expand 1 hop via "depends on"`, `connect them`, `group by lifecycle`,
+  `lay out as flow`, `colour by criticality`, `title`, `note`, `clear`. Every line is compiled on
+  the server against the workspace's real kinds, relation types and attribute keys, echoed back as
+  the query grammar it became, and reported with what it did; a line it cannot read says so and
+  lists the verbs it knows. A build rebuilds from empty by default so the script and the board stay
+  the same thing, warning first about what it replaces. The executor is pure, so the same script
+  over the same graph gives the same board down to the coordinates — 19 unit tests cover the
+  compiler, the matcher, each verb, reproducibility and layout wrapping; e2e writes a board on a
+  freshly created one. `src/lib/compose/`, `POST /api/graph/compose`.
 
 - **2026-09-05 — Rev 41: the estate scan.** Discovery grew from name matching into a proper
   survey. It now reads five channels — entities, their attributes, ingested sources, board text

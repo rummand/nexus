@@ -23,6 +23,7 @@ import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
 import { HelpPanel } from "./HelpPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { ComposePanel } from "./ComposePanel";
 import { ContextMenu } from "./ContextMenu";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { GridCanvas } from "./GridCanvas";
@@ -152,6 +153,7 @@ export function Canvas() {
       {!presenting && panels.map && <MapCard />}
       {!presenting && panels.help && <HelpPanel />}
       {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
+      {!presenting && panels.compose && <ComposePanel rootRef={rootRef} />}
       {!presenting && <ZoomCard />}
       <LensLegend />
       <KindSuggestions />

@@ -1715,3 +1715,34 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .catalog-register input:focus { border-color: var(--blue); outline: 0; }
 .catalog-register .ghost-button, .catalog-register .primary-home-button { height: 32px; min-height: 32px; width: auto; }
 .catalog-times { color: #8a95a8; font-size: 10.5px; font-style: normal; margin-left: 5px; }
+
+/* ---- compose: writing the board ------------------------------------------------------------- */
+.compose-panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; left: 78px; max-height: calc(100vh - 150px); padding: 12px; position: absolute; top: 96px; width: 372px; z-index: 22; }
+.compose-panel > header { align-items: flex-start; display: flex; gap: 8px; }
+.compose-panel > header svg { color: var(--blue); margin-top: 2px; }
+.compose-panel > header div { flex: 1; }
+.compose-panel > header strong { color: var(--ink); display: block; font-size: 13px; }
+.compose-panel > header span { color: var(--muted); font-size: 11px; }
+.compose-panel > header button { background: transparent; border: 0; color: #8a95a8; padding: 2px; }
+.compose-script { background: #fbfdff; border: 1px solid #dbe4ef; border-radius: 10px; color: var(--ink); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.7; min-height: 148px; padding: 10px 11px; resize: vertical; width: 100%; }
+.compose-script:focus { border-color: var(--blue); outline: 0; }
+.compose-actions { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.compose-mode { align-items: center; color: #46556d; display: flex; font-size: 11.5px; gap: 6px; }
+.compose-mode input { accent-color: var(--blue); height: 14px; width: 14px; }
+.compose-actions .primary-home-button { height: 32px; min-height: 32px; width: auto; }
+.compose-error { background: #fff5f5; border: 1px solid #f3c2c2; border-radius: 9px; color: #b42323; font-size: 12px; margin: 0; padding: 7px 10px; }
+.compose-steps { display: grid; gap: 6px; list-style: none; margin: 0; max-height: 34vh; overflow: auto; padding: 0; }
+.compose-steps li { border-left: 2px solid #d7e6f7; display: grid; gap: 1px; padding: 2px 0 2px 9px; }
+.compose-steps li.failed { border-left-color: #f6c9c9; }
+.compose-steps code { color: var(--ink); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }
+.compose-steps em { color: #1d5fa4; font-size: 11px; font-style: normal; }
+.compose-steps li.failed em { color: #b45309; }
+.compose-steps span { color: #8a95a8; font-size: 11px; }
+.compose-steps li.failed span { color: #b42323; }
+.compose-summary { color: #8a95a8; font-size: 11.5px; margin: 0; }
+.compose-help summary { color: var(--blue); cursor: pointer; font-size: 11.5px; font-weight: 700; }
+.compose-help dl { display: grid; gap: 5px; margin: 8px 0 0; }
+.compose-help dt { color: var(--ink); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; font-weight: 700; }
+.compose-help dd { color: #6c7a91; font-size: 11px; line-height: 1.5; margin: 0 0 4px; }
+.compose-vocab { border-top: 1px solid #eef2f7; color: #6c7a91; font-size: 11px; line-height: 1.5; margin: 8px 0 0; padding-top: 7px; }
+.compose-vocab b { color: #46556d; }

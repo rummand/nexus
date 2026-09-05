@@ -472,6 +472,34 @@ try {
   await page.click(".studio-starters button >> nth=0");
   await page.waitForURL(/\/b\//, { timeout: 30000 });
 
+  // compose: write the board instead of drawing it. Safe to rebuild — this board was just made.
+  await page.waitForSelector(".canvas-viewport");
+  await page.click('button:has-text("Compose")');
+  await page.waitForSelector("[data-compose]");
+  // rebuilding warns before it replaces a board: accept it
+  page.on("dialog", (d) => d.accept());
+  await page.fill(".compose-script", "title Written by hand, without hands\nadd all applications\nconnect them\nlay out as flow");
+  await page.click('.compose-actions button:has-text("Build")');
+  await page.waitForSelector("[data-step]", { timeout: 40000 });
+  await page.waitForTimeout(1500);
+
+  const composeSteps = await page.$$eval("[data-step]", (els) => els.map((e) => ({
+    line: e.querySelector("code")?.textContent ?? "",
+    echo: e.querySelector("em")?.textContent ?? "",
+    ok: !e.classList.contains("failed"),
+  })));
+  assert.equal(composeSteps.length, 4, "every written line is reported back");
+  assert.ok(composeSteps.every((s2) => s2.ok), `every line did something (${JSON.stringify(composeSteps)})`);
+  // the English is compiled to the query grammar, and shown as such
+  assert.match(composeSteps[1].echo, /kind:Application/, "the line is echoed as the query it became");
+  assert.ok((await page.locator("[data-element-id]").count()) > 5, "the board was built from the script");
+
+  // a line it cannot read says so instead of failing silently
+  await page.fill(".compose-script", "make it look nice");
+  await page.click('.compose-actions button:has-text("Build")');
+  await page.waitForTimeout(1500);
+  assert.match(await page.locator("[data-step] em").first().innerText(), /do not understand/i, "an unreadable line explains itself");
+
   assert.deepEqual(problems, [], "no browser errors");
   console.log("smoke: all checks passed");
 } finally {

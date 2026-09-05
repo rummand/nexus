@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2 } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2, Sparkles } from "lucide-react";
 import { documentToSvg } from "./export";
 import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
@@ -31,6 +31,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   const zoom = useCanvas((s) => s.camera.zoom);
   const helpOpen = useCanvas((s) => s.panels.help);
   const historyOpen = useCanvas((s) => s.panels.history);
+  const composeOpen = useCanvas((s) => s.panels.compose);
 
   const commit = () => {
     const v = name.trim();
@@ -100,6 +101,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
           {saveState === "saving" ? <Loader2 size={13} className="spin" /> : saveState === "saved" ? <Check size={13} /> : <CircleDot size={13} />}
           {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
         </span>
+        <button className={composeOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("compose")} title="Write the board instead of drawing it"><Sparkles size={16} /> Compose</button>
         <button className={historyOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("history")} title="Version history"><History size={16} /> History</button>
         <button className={helpOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("help")} title="Keyboard shortcuts"><Keyboard size={16} /> Shortcuts</button>
         <span className="export-anchor">
