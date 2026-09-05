@@ -1,20 +1,22 @@
-import { sqliteTable, text, integer, primaryKey, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+// Generated from schema.ts by scripts/generate-pg-schema.mjs — do not edit by hand.
+// Run `pnpm db:pg:schema` after changing the SQLite schema.
+
+import { pgTable, text, integer, boolean, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
 /**
  * Nexus data model v0.1 — see docs/BRIEF.md §5.4.
  *
  * Vocabulary (Miro-like): Workspace → Team / Space → Board.
- * Written for SQLite in development; kept Postgres-portable (text ids, ISO timestamps,
- * JSON stored as text) so the SaaS target is a dialect switch, not a redesign.
+ * The Postgres dialect, generated from the SQLite one. Same tables, same columns, same names.
  */
 
 const timestamp = (name: string) =>
   text(name)
     .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`);
+    .default(sql`to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`);
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -22,14 +24,14 @@ export const users = sqliteTable("users", {
   createdAt: timestamp("created_at"),
 });
 
-export const workspaces = sqliteTable("workspaces", {
+export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   createdAt: timestamp("created_at"),
 });
 
-export const workspaceMembers = sqliteTable(
+export const workspaceMembers = pgTable(
   "workspace_members",
   {
     workspaceId: text("workspace_id")
@@ -45,7 +47,7 @@ export const workspaceMembers = sqliteTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.userId] })],
 );
 
-export const teams = sqliteTable(
+export const teams = pgTable(
   "teams",
   {
     id: text("id").primaryKey(),
@@ -61,7 +63,7 @@ export const teams = sqliteTable(
   (t) => [index("teams_workspace_idx").on(t.workspaceId)],
 );
 
-export const teamMembers = sqliteTable(
+export const teamMembers = pgTable(
   "team_members",
   {
     teamId: text("team_id")
@@ -75,7 +77,7 @@ export const teamMembers = sqliteTable(
   (t) => [primaryKey({ columns: [t.teamId, t.userId] })],
 );
 
-export const spaces = sqliteTable(
+export const spaces = pgTable(
   "spaces",
   {
     id: text("id").primaryKey(),
@@ -94,7 +96,7 @@ export const spaces = sqliteTable(
   (t) => [index("spaces_workspace_idx").on(t.workspaceId), index("spaces_team_idx").on(t.teamId)],
 );
 
-export const boards = sqliteTable(
+export const boards = pgTable(
   "boards",
   {
     id: text("id").primaryKey(),
@@ -122,7 +124,7 @@ export const boards = sqliteTable(
   (t) => [index("boards_space_idx").on(t.spaceId), index("boards_workspace_idx").on(t.workspaceId)],
 );
 
-export const boardFavorites = sqliteTable(
+export const boardFavorites = pgTable(
   "board_favorites",
   {
     userId: text("user_id")
@@ -143,7 +145,7 @@ export const boardFavorites = sqliteTable(
 // (connector.meta.relationId). Boards sync into the graph on save; the graph hydrates
 // cards on load. See docs/BRIEF.md §5.5.
 
-export const entities = sqliteTable(
+export const entities = pgTable(
   "entities",
   {
     id: text("id").primaryKey(),
@@ -163,7 +165,7 @@ export const entities = sqliteTable(
   (t) => [index("entities_workspace_idx").on(t.workspaceId), index("entities_kind_idx").on(t.workspaceId, t.kind)],
 );
 
-export const relations_ = sqliteTable(
+export const relations_ = pgTable(
   "relations",
   {
     id: text("id").primaryKey(),
@@ -186,7 +188,7 @@ export const relations_ = sqliteTable(
 );
 
 /** Which entities appear on which boards (rebuilt on every board save). */
-export const boardEntities = sqliteTable(
+export const boardEntities = pgTable(
   "board_entities",
   {
     boardId: text("board_id")
@@ -201,7 +203,7 @@ export const boardEntities = sqliteTable(
 );
 
 /** Board checkpoints: automatic (time-based while editing), manual, or taken before a restore. */
-export const boardVersions = sqliteTable(
+export const boardVersions = pgTable(
   "board_versions",
   {
     id: text("id").primaryKey(),
@@ -219,7 +221,7 @@ export const boardVersions = sqliteTable(
 );
 
 /** Remembered decisions on agent proposals (dismissed / accepted), keyed by proposal key. */
-export const agentDecisions = sqliteTable(
+export const agentDecisions = pgTable(
   "agent_decisions",
   {
     workspaceId: text("workspace_id")
@@ -240,7 +242,7 @@ export const agentDecisions = sqliteTable(
 // src/lib/intake, and pinning them into columns would freeze an extractor that is meant to keep
 // getting better.
 
-export const sources = sqliteTable(
+export const sources = pgTable(
   "sources",
   {
     id: text("id").primaryKey(),
@@ -266,7 +268,7 @@ export const sources = sqliteTable(
 );
 
 /** One pass of the pipeline over one source. The newest run of a source is the current one. */
-export const sourceRuns = sqliteTable(
+export const sourceRuns = pgTable(
   "source_runs",
   {
     id: text("id").primaryKey(),
@@ -295,7 +297,7 @@ export type SourceRun = typeof sourceRuns.$inferSelect;
 // grant is a set of scope paths — "sap/pm/equi", never "sap" — because the unit of consent is a
 // module or an object, not a system. See src/lib/catalog.
 
-export const connections = sqliteTable(
+export const connections = pgTable(
   "connections",
   {
     id: text("id").primaryKey(),
@@ -320,7 +322,7 @@ export const connections = sqliteTable(
 );
 
 /** One granted scope path. Absence is refusal — there is no "denied" row. */
-export const connectionScopes = sqliteTable(
+export const connectionScopes = pgTable(
   "connection_scopes",
   {
     connectionId: text("connection_id")
@@ -341,7 +343,7 @@ export type ConnectionScope = typeof connectionScopes.$inferSelect;
  * catalogue for this workspace, so the next scan recognises it instead of listing it as unknown.
  * The catalogue grows to fit the estate, not the other way round.
  */
-export const catalogEntries = sqliteTable(
+export const catalogEntries = pgTable(
   "catalog_entries",
   {
     id: text("id").primaryKey(),
@@ -437,7 +439,7 @@ export type BoardVersion = typeof boardVersions.$inferSelect;
 // and what the data actually contains is visible rather than hidden.
 
 /** A declared node (object) type. Matched to entities by `name` = entities.kind. */
-export const nodeTypes = sqliteTable(
+export const nodeTypes = pgTable(
   "node_types",
   {
     id: text("id").primaryKey(),
@@ -456,7 +458,7 @@ export const nodeTypes = sqliteTable(
 );
 
 /** A field declared on a node type — the schema half of the emergent attribute keys. */
-export const nodeTypeFields = sqliteTable(
+export const nodeTypeFields = pgTable(
   "node_type_fields",
   {
     id: text("id").primaryKey(),
@@ -467,7 +469,7 @@ export const nodeTypeFields = sqliteTable(
     /** text | number | date | boolean | enum — advisory today, enforced later. */
     dataType: text("data_type").notNull().default("text"),
     description: text("description").notNull().default(""),
-    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    required: boolean("required").notNull().default(false),
     /** Allowed values for `enum`, JSON-encoded array. */
     options: text("options").notNull().default("[]"),
     position: integer("position").notNull().default(0),
@@ -476,7 +478,7 @@ export const nodeTypeFields = sqliteTable(
 );
 
 /** A declared relation (reference) type. Matched to relations by `name` = relations.kind. */
-export const relationTypes = sqliteTable(
+export const relationTypes = pgTable(
   "relation_types",
   {
     id: text("id").primaryKey(),
@@ -492,7 +494,7 @@ export const relationTypes = sqliteTable(
 );
 
 /** "Application —depends on→ Application": which node types a relation type may join. */
-export const relationRules = sqliteTable(
+export const relationRules = pgTable(
   "relation_rules",
   {
     id: text("id").primaryKey(),

@@ -16,7 +16,8 @@ export type ConnectorPreset = "arrow" | "line" | "dashed";
 
 export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history" | "compose";
 
-export type SaveState = "saved" | "dirty" | "saving" | "error";
+/** "conflict": the server refused the save because the board changed elsewhere. Terminal until reload. */
+export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
 export type ScrollMode = "pan" | "zoom";
 
@@ -43,6 +44,11 @@ export interface CanvasState {
   saveState: SaveState;
   /** Increments on every document mutation; the autosave hook watches it. */
   revision: number;
+  /**
+   * The server-side revision of the board this client loaded, bumped by every accepted save.
+   * Sent with each PUT so a stale client is refused instead of overwriting somebody else (§5.19).
+   */
+  boardRevision: number;
   scrollMode: ScrollMode;
   spaceDown: boolean;
   connectorPreset: ConnectorPreset;
@@ -94,6 +100,7 @@ export interface CanvasState {
   setMarquee(b: Box | null): void;
   setPendingConnector(p: CanvasState["pendingConnector"]): void;
   setSaveState(s: SaveState): void;
+  setBoardRevision(n: number): void;
   setConnectorPreset(p: ConnectorPreset): void;
   togglePanel(name: PanelName, value?: boolean): void;
   /** Remember the script this board was written from. */
@@ -156,6 +163,8 @@ export interface CreateCanvasStoreOptions {
   workspaceId: string;
   document: CanvasDocument;
   scrollMode?: ScrollMode;
+  /** Server revision of the loaded document; 0 for a document that was never saved. */
+  boardRevision?: number;
 }
 
 export function nextZ(elements: Elements): number {
@@ -240,7 +249,7 @@ export function selectionBounds(selection: ElementId[], elements: Elements): Box
   return unionBoxes(boxes);
 }
 
-export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan" }: CreateCanvasStoreOptions): CanvasStore {
+export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan", boardRevision = 0 }: CreateCanvasStoreOptions): CanvasStore {
   const store = createStore<CanvasState>((set, get) => {
     const mutate = (next: Elements, history: boolean, extra: Partial<CanvasState> = {}) => {
       const s = get();
@@ -269,6 +278,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       future: [],
       saveState: "saved",
       revision: 0,
+      boardRevision,
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
@@ -319,6 +329,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setMarquee: (marquee) => set({ marquee }),
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
+      setBoardRevision: (boardRevision) => set({ boardRevision }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
       setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: "dirty" })),
 

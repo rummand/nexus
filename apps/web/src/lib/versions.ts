@@ -1,4 +1,4 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -73,6 +73,8 @@ export async function restoreVersion(db: Db, boardId: string, versionId: string,
   const current = parseDocument(board.document);
   await createVersion(db, boardId, current, "restore", `Before restoring ${new Date(version.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`, createdById);
   const doc = parseDocument(version.document);
-  await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString() }).where(eq(s.boards.id, boardId));
+  // Bump the revision: an editor still holding the pre-restore document must be refused, not
+  // allowed to save the version we just replaced back over the top.
+  await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString(), revision: sql`${s.boards.revision} + 1` }).where(eq(s.boards.id, boardId));
   return doc;
 }

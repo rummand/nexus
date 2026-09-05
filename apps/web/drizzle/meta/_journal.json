@@ -57,6 +57,13 @@
       "when": 1788626211290,
       "tag": "0007_real_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788644429245,
+      "tag": "0008_outstanding_tombstone",
+      "breakpoints": true
     }
   ]
 }

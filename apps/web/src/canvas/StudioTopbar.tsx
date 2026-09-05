@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
 import { documentToSvg } from "./export";
 import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
@@ -97,10 +97,22 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
       </div>
       <div className="topbar-meta">
         <span className="canvas-chip">Canvas: {count} objects / Zoom: {Math.round(zoom * 100)}%</span>
-        <span className={saveState === "error" ? "sync-pill warn" : saveState === "saved" ? "sync-pill" : "sync-pill board-save-pill"}>
-          {saveState === "saving" ? <Loader2 size={13} className="spin" /> : saveState === "saved" ? <Check size={13} /> : <CircleDot size={13} />}
-          {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
-        </span>
+        {saveState === "conflict" ? (
+          <button
+            type="button"
+            className="sync-pill warn"
+            title="Somebody else saved this board while you were editing it. Your changes since then are only in this tab."
+            onClick={() => window.location.reload()}
+            data-save-conflict
+          >
+            <TriangleAlert size={13} /> Changed elsewhere — reload
+          </button>
+        ) : (
+          <span className={saveState === "error" ? "sync-pill warn" : saveState === "saved" ? "sync-pill" : "sync-pill board-save-pill"}>
+            {saveState === "saving" ? <Loader2 size={13} className="spin" /> : saveState === "saved" ? <Check size={13} /> : <CircleDot size={13} />}
+            {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
+          </span>
+        )}
         <button className={composeOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("compose")} title="Write the board instead of drawing it"><Sparkles size={16} /> Compose</button>
         <button className={historyOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("history")} title="Version history"><History size={16} /> History</button>
         <button className={helpOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("help")} title="Keyboard shortcuts"><Keyboard size={16} /> Shortcuts</button>

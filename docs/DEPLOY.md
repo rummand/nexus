@@ -1,6 +1,7 @@
 # Deploying Nexus (Railway)
 
-Nexus is a single Next.js server plus a SQLite database file (libsql). In production the file
+Nexus is a single Next.js server plus a database — a SQLite file (libsql) by default, or Postgres
+when `DATABASE_URL` says so (see Notes). With SQLite, in production the file
 must live on a **persistent volume**; without one every redeploy starts from the seeded demo.
 
 ## Railway, step by step
@@ -38,9 +39,14 @@ docker run -p 3000:3000 -v nexus-data:/data nexus
 
 ## Notes
 
-- Single instance only: SQLite in WAL mode serves one server process well but does not share a
-  volume between replicas. Scaling out means moving `DATABASE_URL` to Postgres (Drizzle keeps
-  the SQL portable; that is the SaaS target in `docs/BRIEF.md` §7).
+- SQLite is single-instance: WAL mode serves one server process well but does not share a volume
+  between replicas. To scale out, point `DATABASE_URL` at Postgres — the app picks the driver from
+  the connection string and runs the Postgres migrations in `apps/web/drizzle-pg` on first request.
+  On Railway: add a Postgres database to the project and set
+  `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the web service (the `/data` volume is then unused).
+  TLS is negotiated unless the URL says `sslmode=disable` or `DATABASE_SSL=false` is set;
+  `DATABASE_POOL_MAX` sizes the pool (default 10). `GET /api/health` reports which dialect is live.
+  Nothing migrates the data across for you — a switch starts from the seed.
 - No authentication yet (brief 1): anyone with the URL can edit. Put the service behind Railway's
   private networking, an access proxy or basic auth until auth lands.
 - Fonts load from Google Fonts at runtime; the app falls back to system fonts when blocked.

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { sql } from "drizzle-orm";
-import { getDb } from "@/db/client";
+import { count } from "drizzle-orm";
+import { dialect, getDb } from "@/db/client";
+import * as s from "@/db/schema";
 
 /** Liveness + readiness: runs migrations/seed on first call and checks the database answers. */
 export async function GET() {
   try {
     const db = await getDb();
-    const [row] = await db.all<{ n: number }>(sql`select count(*) as n from workspaces`);
-    return NextResponse.json({ ok: true, workspaces: row?.n ?? 0, database: (process.env.DATABASE_URL ?? "file:./data/nexus.db").startsWith("file:") ? "sqlite" : "remote" });
+    // A portable count: db.all() is libsql's, and this endpoint has to answer on either dialect.
+    const [row] = await db.select({ n: count() }).from(s.workspaces);
+    return NextResponse.json({ ok: true, workspaces: Number(row?.n ?? 0), database: dialect() });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 503 });
   }

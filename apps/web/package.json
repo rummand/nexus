@@ -13,7 +13,9 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "node scripts/reset-db.mjs",
     "e2e": "node e2e/run.mjs",
-    "e2e:attach": "BASE_URL=${BASE_URL:-http://localhost:3000} node e2e/smoke.mjs"
+    "e2e:attach": "BASE_URL=${BASE_URL:-http://localhost:3000} node e2e/smoke.mjs",
+    "db:pg:schema": "node scripts/generate-pg-schema.mjs",
+    "db:pg:generate": "node scripts/generate-pg-schema.mjs && drizzle-kit generate --config drizzle.pg.config.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
@@ -21,6 +23,7 @@
     "lucide-react": "^1.41.0",
     "nanoid": "^5.1.5",
     "next": "16.3.4",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zustand": "^5.0.15"
@@ -28,6 +31,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",

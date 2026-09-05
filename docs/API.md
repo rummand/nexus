@@ -11,8 +11,8 @@ Shapes referenced below live in `apps/web/src/lib/graph-types.ts` (graph) and
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
-| GET | `/api/boards/:boardId` | — | `{ id, name, updatedAt, document }` — the stored document **hydrated** from the graph (card kind / title / description / attributes and connector labels refreshed from their entities). |
-| PUT | `/api/boards/:boardId` | `{ document: CanvasDocument }` | `{ ok: true, updatedAt }`. Migrates older document versions, takes a time-based auto checkpoint of the previous state, saves, then **syncs the board into the graph** (cards → entities, connectors between cards → relations, `board_entities` membership). |
+| GET | `/api/boards/:boardId` | — | `{ id, name, updatedAt, revision, document }` — the stored document **hydrated** from the graph (card kind / title / description / attributes and connector labels refreshed from their entities). |
+| PUT | `/api/boards/:boardId` | `{ document: CanvasDocument, revision?: number }` | `{ ok: true, updatedAt, revision }`. Migrates older document versions, takes a time-based auto checkpoint of the previous state, saves, then **syncs the board into the graph** (cards → entities, connectors between cards → relations, `board_entities` membership). When `revision` is sent the write is conditional on it: a client that missed somebody else's save gets **409** `{ error, conflict: true, revision }` and must reload. Omitting it keeps last-writer-wins. |
 
 The client autosaves with a debounce and flushes on tab hide / unload (`useAutosave`).
 
@@ -23,7 +23,7 @@ The client autosaves with a debounce and flushes on tab hide / unload (`useAutos
 | GET | `/api/boards/:boardId/versions` | — | `{ versions: VersionSummary[] }` newest first. |
 | POST | `/api/boards/:boardId/versions` | `{ label?, document? }` | `{ id, versions }` — manual checkpoint of the given document (or the stored one). |
 | GET | `/api/boards/:boardId/versions/:versionId` | — | `{ document }` — the checkpointed document (used by *Compare*). |
-| POST | `/api/boards/:boardId/versions/:versionId/restore` | — | `{ document, versions }` — checkpoints the current state ("Before restore …"), then replaces the board document. |
+| POST | `/api/boards/:boardId/versions/:versionId/restore` | — | `{ document, revision, versions }` — checkpoints the current state ("Before restore …"), then replaces the board document. |
 
 Auto checkpoints are taken at most every 10 minutes while editing and pruned to the last 30;
 manual and pre-restore checkpoints are kept.

@@ -23,6 +23,7 @@ export default async function BoardPage({ params }: Props) {
   return (
     <BoardCanvasClient
       document={document}
+      boardRevision={board.revision}
       header={{
         boardId: board.id,
         workspaceId: board.workspaceId,

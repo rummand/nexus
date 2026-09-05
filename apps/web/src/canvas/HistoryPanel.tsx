@@ -76,8 +76,9 @@ export function HistoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement | 
     try {
       const res = await fetch(`/api/boards/${boardId}/versions/${v.id}/restore`, { method: "POST" });
       if (!res.ok) throw new Error(`restore failed: ${res.status}`);
-      const data = (await res.json()) as { document: CanvasDocument; versions: VersionSummary[] };
+      const data = (await res.json()) as { document: CanvasDocument; revision?: number; versions: VersionSummary[] };
       const s = store.getState();
+      if (typeof data.revision === "number") s.setBoardRevision(data.revision);
       s.clearSelection();
       s.replaceElements(data.document.elements, { history: true });
       setVersions(data.versions);

@@ -14,5 +14,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ boardI
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const board = await db.query.boards.findFirst({ where: eq(boards.id, boardId) });
   if (board) await syncBoardToGraph(db, { id: board.id, workspaceId: board.workspaceId }, doc);
-  return NextResponse.json({ document: doc, versions: await listVersions(db, boardId) });
+  // The restore bumped the revision; hand it back so the editing tab keeps saving instead of
+  // being told it is stale by its own restore.
+  return NextResponse.json({ document: doc, revision: board?.revision ?? 0, versions: await listVersions(db, boardId) });
 }

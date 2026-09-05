@@ -10,7 +10,7 @@ import { markBoardOpened } from "@/lib/actions";
 const SCROLL_MODE_KEY = "nexus.scrollMode";
 
 /** Client entry point for a board: owns the store and renders the studio shell. */
-export function BoardCanvas({ document, header }: { document: CanvasDocument; header: StudioTopbarProps }) {
+export function BoardCanvas({ document, header, boardRevision = 0 }: { document: CanvasDocument; header: StudioTopbarProps; boardRevision?: number }) {
   const [store] = useState(() => {
     let scrollMode: ScrollMode = "pan";
     try {
@@ -19,7 +19,7 @@ export function BoardCanvas({ document, header }: { document: CanvasDocument; he
     } catch {
       /* ignore */
     }
-    return createCanvasStore({ boardId: header.boardId, workspaceId: header.workspaceId, document, scrollMode });
+    return createCanvasStore({ boardId: header.boardId, workspaceId: header.workspaceId, document, scrollMode, boardRevision });
   });
 
   const opened = useRef<string | null>(null);

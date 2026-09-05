@@ -828,6 +828,33 @@ the estate measures: a decision has no owner and no lifecycle, and that is not a
 sounds: it is rendered by a client component, and pulling in the database client dragged the whole
 server bundle into the browser.
 
+### 5.19 The store: two dialects, and a save that can be refused (v0.2)
+
+The database was SQLite on a single volume: one instance, one writer, no backups worth the name.
+It is now **either dialect, chosen by the connection string** — `DATABASE_URL=file:…` keeps the
+zero-setup local file, `postgres://…` opens a pool and runs the Postgres migrations. Application
+code did not change: `src/db/schema.pg.ts` is *generated* from `src/db/schema.ts` by
+`scripts/generate-pg-schema.mjs` (table builder, boolean columns, the timestamp default), and a
+unit test runs the generator with `--check` so a hand-edited schema can never drift from the copy
+that ships. Both dialects have their own migration folder (`drizzle/`, `drizzle-pg/`) generated
+from the same source. The full browser suite has been run against a real Postgres 16, not just
+compiled against one.
+
+More than one writer is only safe if two of them cannot silently overwrite each other, so
+`boards` now carries a **revision**. The canvas sends the revision it loaded with every autosave;
+the update is conditional on it, and a client that did not see the last save is refused with 409
+rather than allowed to write. The topbar turns into "Changed elsewhere — reload", the retry loop
+stops — retrying is exactly the wrong thing here, since it would land our document over theirs a
+few seconds later — and nothing is lost that was not already lost. Server-side writers of the
+document (a version restore, a merge accepted from the graph page, deleting a relation type) bump
+the revision too, so an editor holding the pre-restore document is refused instead of quietly
+undoing the restore on its next keystroke; the restore hands the new revision back to the tab that
+asked for it, which is why restoring from your own History panel does not conflict with itself.
+Requests with no revision keep last-writer-wins, so an older client degrades rather than breaks.
+
+Not done: the save is still the whole document. Element-level persistence is a bigger change to
+the document contract (§7) and the guard is what actually made concurrent editing safe.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -857,7 +884,7 @@ server bundle into the browser.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 48)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 49)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1029,6 +1056,12 @@ server bundle into the browser.
   rename / merge on the graph page, knowledge-graph summary strip on the workspace home
   with the number of open agent proposals.
 
+### The store (v0.2)
+- SQLite or Postgres from one schema: `schema.pg.ts` generated from `schema.ts`, drift caught by a
+  unit test, a migration folder per dialect, and the browser suite verified against Postgres 16.
+- Conditional board saves: `boards.revision`, a 409 on a stale write, "Changed elsewhere — reload"
+  in the topbar, and server-side document writers bumping the revision so a restore wins.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
   camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
@@ -1092,8 +1125,10 @@ database is empty. Delete the file to reset. Schema changes: edit
 
 `Dockerfile` + `railway.json` deploy the app to Railway (or any Docker host). The database is
 the same SQLite file, on a volume mounted at `/data` (`DATABASE_URL=file:/data/nexus.db`);
-`GET /api/health` runs migrations + seed on first call and reports readiness. One instance
-only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
+`GET /api/health` runs migrations + seed on first call, reports readiness and names the dialect it
+is running on. Point `DATABASE_URL` at a Postgres instance to leave the single-volume limit behind
+(§5.19); `pnpm db:pg:schema` regenerates the Postgres schema and `pnpm db:pg:generate` its
+migrations. Steps in `docs/DEPLOY.md`.
 
 
 ## 7. Decision log
@@ -1151,6 +1186,8 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-05 | The Postgres schema is generated from the SQLite one, not maintained by hand. | Two hand-written schemas diverge the first time someone is in a hurry, and the divergence shows up as a missing column in production. A generator plus a `--check` test makes drift a failing test instead. |
+| 2026-09-05 | A stale board save is refused (409) rather than merged or retried. | We have no merge, so writing anyway would drop somebody's work silently — the worst outcome. Retrying is the same thing on a delay. Refusing, saying so, and offering a reload is the only honest option until real-time collaboration exists. |
 
 ## 8. Open questions for the product owner
 
@@ -1163,6 +1200,19 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 49: two dialects and a save that can be refused.** The store is no longer tied
+  to one SQLite file on one volume: the connection string picks the driver, and the Postgres schema
+  is generated from the SQLite one so the two cannot drift (a unit test runs the generator with
+  `--check`). The full browser suite passes against a real Postgres 16. With more than one writer
+  possible, `boards` gained a revision: the canvas sends the revision it loaded, the update is
+  conditional on it, and a client that missed somebody else's save is told so (409, "Changed
+  elsewhere — reload") instead of overwriting them — and the retry loop stops, because retrying
+  would do the overwrite a few seconds later. Version restore, entity merges and relation deletion
+  bump the revision too, so an open tab cannot quietly undo them; the restore route hands the new
+  revision back so your own restore never conflicts with itself. Clients that send no revision keep
+  the old behaviour. 6 new unit tests. Element-level incremental persistence is explicitly not part
+  of this — the whole document is still written on save.
 
 - **2026-09-05 — Rev 48: health that can be fixed, not just read.** Estate health now shows, per
   measure, how much of the gap the agent can already close from evidence the graph holds, and a

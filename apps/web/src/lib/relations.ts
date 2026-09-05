@@ -1,4 +1,4 @@
-import { and, eq, like } from "drizzle-orm";
+import { and, eq, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -40,7 +40,7 @@ export async function deleteRelation(db: Db, relationId: string): Promise<{ dele
     const doomed = Object.values(doc.elements).filter((el) => el.type === "connector" && el.meta?.relationId === relationId).map((el) => el.id);
     if (!doomed.length) continue;
     for (const id of doomed) delete doc.elements[id];
-    await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString() }).where(eq(s.boards.id, board.id));
+    await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString(), revision: sql`${s.boards.revision} + 1` }).where(eq(s.boards.id, board.id));
     boardsUpdated++;
   }
   await db.delete(s.relations_).where(eq(s.relations_.id, relationId));

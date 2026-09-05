@@ -383,7 +383,7 @@ export async function mergeEntities(db: Db, workspaceId: string, survivorId: str
       }
     }
     if (changed) {
-      await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: ts }).where(eq(s.boards.id, boardId));
+      await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: ts, revision: sql`${s.boards.revision} + 1` }).where(eq(s.boards.id, boardId));
       boardsUpdated++;
     }
     // the index is rebuilt on the next save anyway; keep it consistent now
