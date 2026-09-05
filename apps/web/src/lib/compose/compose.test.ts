@@ -4,6 +4,7 @@ import { applyInstruction, matchEntities, runScript, type ComposeContext } from 
 import { validateInstructions } from "./validate";
 import { describeInstruction } from "./run";
 import { modelConfigured, modelStatus, planWithModel } from "./llm";
+import { runInspection, validateInspection } from "./inspect";
 import { emptyDocument, type CanvasDocument, type CardElement } from "@/canvas/document";
 
 const vocab: Vocabulary = {
@@ -253,6 +254,46 @@ describe("choosing a planner", () => {
 
   it("refuses to plan without configuration rather than calling anything", async () => {
     process.env = { ...env, ANTHROPIC_API_KEY: "", NEXUS_MODEL: "" };
-    await expect(planWithModel("anything", { vocabulary: vocab, sampleNames: [], onBoard: 0 })).rejects.toThrow(/no model configured/);
+    await expect(planWithModel("anything", { vocabulary: vocab, sampleNames: [], onBoard: 0, graph: ctx })).rejects.toThrow(/no model configured/);
+  });
+});
+
+describe("what the planner may look at", () => {
+  it("counts, samples and reads attribute values", () => {
+    expect(runInspection(ctx, { op: "kinds" }).text).toContain("Application: 3");
+    expect(runInspection(ctx, { op: "count", query: "kind:Application" }).text).toBe("3 entities match kind:Application");
+
+    const sample = runInspection(ctx, { op: "sample", query: "kind:Application", limit: 2 });
+    expect(sample.text).toContain("Maximo");
+    expect(sample.text).toContain("owner: Grid Operations");
+    expect(sample.label).toContain("3 match");
+
+    // the answer to "which have no owner?" is now something it can read rather than guess
+    const values = runInspection(ctx, { op: "values", attribute: "owner", query: "kind:Application" });
+    expect(values.text).toContain("Grid Operations: 2");
+    expect(values.text).toContain("1 have none");
+  });
+
+  it("reads a neighbourhood and the relation types", () => {
+    expect(runInspection(ctx, { op: "neighbours", name: "Maximo" }).text).toContain("Maximo —depends on→ SCADA");
+    expect(runInspection(ctx, { op: "neighbours", name: "Nothing here" }).text).toContain("nothing here is called");
+    expect(runInspection(ctx, { op: "relations" }).text).toContain("depends on: 2");
+  });
+
+  it("refuses an inspection it does not offer, rather than guessing", () => {
+    expect(validateInspection({ op: "exfiltrate", query: "*" })).toBeNull();
+    expect(validateInspection({ op: "count" })).toBeNull(); // no query
+    expect(validateInspection({ op: "sample", query: "kind:Application", limit: 9999 })).toMatchObject({ limit: 40 });
+    expect(validateInspection("kinds")).toBeNull();
+  });
+
+  it("bounds what one look can return", () => {
+    const many: ComposeContext = {
+      relations: [],
+      entities: Array.from({ length: 200 }, (_, i) => ({ id: `x${i}`, kind: "Application", name: `App ${i}`, description: "", attributes: {}, boards: [] })),
+    };
+    const sample = runInspection(many, { op: "sample", query: "kind:Application", limit: 40 });
+    expect(sample.text.split("\n").length).toBeLessThanOrEqual(42);
+    expect(sample.text).toContain("200 match");
   });
 });

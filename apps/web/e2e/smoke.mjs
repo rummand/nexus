@@ -308,6 +308,29 @@ try {
     await page.click("[data-explorer-path] button");
   }
 
+  // estate health: one number, the measures behind it, and the number leading to the work
+  await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+  await page.waitForSelector("[data-health]");
+  await page.waitForTimeout(600);
+  await page.click(".health-head");
+  await page.waitForSelector("[data-measure]");
+  assert.equal(await page.locator("[data-measure]").count(), 6, "health reports every measure");
+  const headline = await page.locator(".health-head").innerText();
+  assert.match(headline, /Estate health/, "health has a headline");
+  assert.match(headline, /\d+ entities/, "health says what it measured");
+  // every measure states what good looks like, so the number is not a mystery
+  assert.equal(await page.locator("[data-measure] .health-goal").count(), 6, "every measure says what good looks like");
+
+  const show = page.locator('[data-measure] button:has-text("Show the")').first();
+  if (await show.count()) {
+    await show.click();
+    await page.waitForTimeout(800);
+    const shown = await page.locator("#entities p").first().innerText();
+    assert.match(shown, /show everything again/, "the number pins the offenders into the entity table");
+    await page.click("#entities .link-button");
+    await page.waitForTimeout(400);
+  }
+
   // meta-model builder: the tree lists types, and an undeclared type can be declared
   await page.goto(`${base}/w/acme-energy/meta`, { waitUntil: "load" });
   await page.waitForSelector(".meta-tree");

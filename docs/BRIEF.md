@@ -726,6 +726,15 @@ Six lines, and the board is fourteen cards and twenty-five connectors — the me
 it, the decision they took, the risks they raised and the systems they discussed — with nothing
 dragged and nothing placed by hand.
 
+**It looks before it answers.** The planner has a second, read-only tool — `inspect_graph` — for
+counts, samples, distinct attribute values, relation types and neighbourhoods
+(`src/lib/compose/inspect.ts`). It calls that a few times, sees what is actually there, and only
+then builds. That is the difference between a board builder and an analyst: without it a planner
+can write *"two of them have no owner"* but cannot know it. Every look is bounded, every look is
+shown to the person — *"read the values of owner (5 distinct, 50 missing)"* — so the reply can be
+checked against what produced it, and an inspection it was not offered is refused rather than
+guessed at.
+
 **A model plans; the code decides what runs.** Asked in plain English — *"show me the applications
 that depend on SCADA, and what they support"* — the request goes to a model that returns a *plan*:
 a list of steps in the board instruction set, plus a sentence answering the person. It never
@@ -771,6 +780,26 @@ history is the backstop. Unticking it adds to what is already on the board inste
 This is "ask Nexus": the question and the answer are the same surface, so an answer is not a list
 you read but a board you keep, and every step that produced it is on screen next to it.
 
+### 5.18 Estate health (v0.2)
+
+One number on the Knowledge graph page, and the six measures behind it: provenance, duplicates,
+typing, connectedness, ownership, lifecycle. Each says what good looks like, how far off this
+workspace is *in a sentence about this workspace*, and what would move it — with a button that
+takes you there. Where the fix is bulk editing, the number pins its offenders into the entity
+table; where it is a merge, it points at the proposals already computed on the same page.
+
+The seed workspace scores **40 — "thin"**: 56 systems drawn by hand that no source explains, 51
+nodes connected to nothing, 54 with no owner. That is the honest state of most architecture
+repositories, and it is the argument for intake, the catalogue and the meta-model in one number
+that moves when the work is done.
+
+Scoring is weighted by population, so a measure over three nodes cannot swing the headline, and
+intake's own records — meetings, decisions, risks, the people who raised them — are excluded from
+the estate measures: a decision has no owner and no lifecycle, and that is not a fault.
+`src/lib/health.ts` is pure over rows and imports nothing but types, which matters more than it
+sounds: it is rendered by a client component, and pulling in the database client dragged the whole
+server bundle into the browser.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -800,7 +829,7 @@ you read but a board you keep, and every step that produced it is on screen next
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 43)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 44)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -882,6 +911,10 @@ you read but a board you keep, and every step that produced it is on screen next
   `mentions` edges carrying their evidence, and people joined to the meetings they attended.
 - Landscape view: everything taken in, as a navigable graph (the explorer, scoped to intake).
 - Connector catalogue: 16 enterprise sources, 4 built and the rest marked planned.
+
+### Estate health (v0.2)
+- One score on the Knowledge graph page over six measures, each with what good looks like, a
+  sentence about this workspace, and a route to the fix — bulk edit, merge proposal or Intake.
 
 ### Compose — writing the board (v0.2)
 - A Compose panel on every board: ask in plain English and a model plans the board, or write the
@@ -1076,6 +1109,9 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | The model plans; a closed instruction set is the boundary. Nothing the planner returns reaches the executor unvalidated. | Workspace content — entity names, meeting transcripts — is in the prompt, so the prompt is untrusted by construction. Making the model's only expressible output a board script means an injected instruction has nothing to reach: there is no verb for deleting data or calling out. It also means the model can be swapped, degraded or absent without changing what a board is. |
 | 2026-09-05 | No default model id in the repo; `ANTHROPIC_API_KEY` and `NEXUS_MODEL` are required together. | A board built by a model the operator did not choose, at a cost they did not agree, is not a good surprise. The rule compiler makes the unconfigured case useful rather than broken. |
 
+| 2026-09-05 | The planner may read the graph before it answers, through a second read-only tool with its own bounded vocabulary. | A planner that cannot look can only produce plausible sentences; one that can look produces checkable ones. Keeping inspection a separate, read-only tool means the thing it can *see* and the thing it can *do* are validated independently — and both are shown to the person. |
+| 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1087,6 +1123,22 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 44: the planner looks, and the estate has a score.** Two improvements to
+  what was already there. Compose's planner gained `inspect_graph`, a read-only tool for counts,
+  samples, distinct attribute values, relation types and neighbourhoods: it now looks two or three
+  times before it plans, every look is bounded and shown to the person, and an inspection it was
+  not offered is refused. And the Knowledge graph page gained **estate health** — one weighted
+  score over provenance, duplicates, typing, connectedness, ownership and lifecycle, each measure
+  saying what good looks like, what is true here, and where the fix lives. The seed workspace
+  scores 40. Clicking a measure pins its offenders into the entity table; the duplicates measure
+  points at the merge proposals already on the page. 12 new unit tests over inspection bounds and
+  the health arithmetic, e2e over the panel and the drill-through.
+
+  One bug worth recording: the health panel rendered but could not be clicked, because as a flex
+  item in an already-overflowing column it was shrunk to two pixels tall and painted clipped. The
+  same shape of bug as the inventory panel in rev 20. `flex: 0 0 auto` on anything dropped into
+  `.studio-home-main`.
 
 - **2026-09-05 — Rev 43: Compose answers in plain English.** The front end of Compose is now a
   model. Ask *"show me the applications that depend on SCADA, and what they support"* and a

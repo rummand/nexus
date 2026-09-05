@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageSquare, Play, Sparkles, X } from "lucide-react";
+import { MessageSquare, Play, Search, Sparkles, X } from "lucide-react";
 import { useCanvas, useCanvasStore } from "./store";
 import type { CanvasDocument } from "./document";
 import type { ComposeResult, ComposeStep } from "@/lib/compose/run";
@@ -49,6 +49,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
   const [engine, setEngine] = useState<"model" | "rules" | null>(null);
   const [status, setStatus] = useState("");
   const [rejected, setRejected] = useState<string[]>([]);
+  const [looked, setLooked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -84,6 +85,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
       setEngine(data.engine);
       setStatus(data.status ?? "");
       setRejected(data.rejected ?? []);
+      setLooked(data.looked ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "the build failed");
     } finally {
@@ -138,6 +140,12 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
 
       {error && <p className="compose-error">{error}</p>}
       {status && <p className="compose-status">{status}</p>}
+
+      {looked.length > 0 && (
+        <ul className="compose-looked" aria-label="What it checked before answering" data-looked>
+          {looked.map((l, i) => <li key={i}><Search size={11} /> {l}</li>)}
+        </ul>
+      )}
 
       {reply && (
         <p className="compose-reply" data-reply>

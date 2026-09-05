@@ -1757,3 +1757,40 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .compose-engine { border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 800; padding: 1px 7px; }
 .compose-engine.model { background: #e8f7ee; color: #17803d; }
 .compose-engine.rules { background: #f1f5f9; color: #64748b; }
+.compose-looked { display: grid; gap: 3px; list-style: none; margin: 0; padding: 0; }
+.compose-looked li { align-items: center; color: #6c7a91; display: flex; font-size: 11px; gap: 5px; line-height: 1.4; }
+.compose-looked svg { color: #a6b0c0; flex: 0 0 auto; }
+
+/* ---- estate health ------------------------------------------------------------------------- */
+/* A flex item in a column that already overflows: without this it is shrunk to a sliver,
+   paints clipped and stops being clickable. */
+.health-panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; flex: 0 0 auto; margin-bottom: 14px; overflow: hidden; }
+.health-head { align-items: center; background: transparent; border: 0; display: flex; gap: 12px; padding: 12px 14px; text-align: left; width: 100%; }
+.health-head:hover { background: #fbfdff; }
+.health-head svg { color: #9aa6b8; flex: 0 0 auto; }
+.health-score { align-items: center; border-radius: 11px; display: inline-flex; font-size: 18px; font-variant-numeric: tabular-nums; font-weight: 800; height: 44px; justify-content: center; width: 52px; }
+.health-score.good { background: #e8f7ee; color: #17803d; }
+.health-score.fair { background: #eef6ff; color: #1d5fa4; }
+.health-score.poor { background: #fff4e5; color: #b45309; }
+.health-score.bad { background: #fff5f5; color: #b42323; }
+.health-headline { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.health-headline strong { color: var(--ink); font-size: 13.5px; }
+.health-headline em { color: var(--muted); font-size: 11.5px; font-style: normal; }
+.health-measures { border-top: 1px solid var(--line); display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
+.health-measures li { border-bottom: 1px solid #f2f5f9; display: grid; gap: 3px; padding: 11px 14px; }
+.health-measures li:last-child { border-bottom: 0; }
+.health-measure-head { align-items: center; display: flex; gap: 10px; }
+.health-measure-head b { color: var(--ink); font-size: 12.5px; min-width: 106px; }
+.health-bar { background: #eef2f7; border-radius: 999px; flex: 1; height: 6px; max-width: 260px; overflow: hidden; }
+.health-bar i { border-radius: 999px; display: block; height: 100%; }
+.health-measures li.good .health-bar i { background: #17803d; }
+.health-measures li.fair .health-bar i { background: #1376d4; }
+.health-measures li.poor .health-bar i { background: #f59e0b; }
+.health-measures li.bad .health-bar i { background: #dc2626; }
+.health-measure-head em { color: #6c7a91; font-size: 11.5px; font-style: normal; font-variant-numeric: tabular-nums; font-weight: 800; }
+.health-goal { color: #9aa6b8; font-size: 11px; margin: 0 0 0 116px; }
+.health-detail { color: #46556d; font-size: 12.5px; line-height: 1.5; margin: 0 0 0 116px; }
+.health-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0 116px; }
+.health-actions span { color: #8a95a8; font-size: 11.5px; }
+.health-actions .ghost-button { height: 28px; min-height: 28px; text-decoration: none; width: auto; }
+.link-button { background: transparent; border: 0; color: var(--blue); font: inherit; font-size: inherit; padding: 0; text-decoration: underline; }

@@ -9,6 +9,8 @@ import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
 import { ProposalsPanel } from "./ProposalsPanel";
 import { EntityTable } from "./EntityTable";
+import { HealthPanel } from "./HealthPanel";
+import type { HealthReport } from "@/lib/health";
 import { EntityDrawer } from "./EntityDrawer";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, renameRelationKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
@@ -25,7 +27,7 @@ Customer API,consumed by,ERP Core
 CRM Cloud,supports,Revenue Management`;
 
 /** Workspace knowledge graph: inventory, emergent meta-model, import, lay out on a board. */
-export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null }) {
+export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null, health }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null; health: HealthReport }) {
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -33,13 +35,19 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
   const [editing, setEditing] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "table">("list");
   const [openId, setOpenId] = useState<string | null>(initialEntityId);
+  /** A health measure's offenders, pinned into the entity table so the number leads to the work. */
+  const [focus, setFocus] = useState<{ ids: string[]; name: string } | null>(null);
   const [draft, setDraft] = useState({ kind: "", name: "", description: "" });
   const [pending, start] = useTransition();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return snapshot.entities.filter((e) => (!kindFilter || e.kind === kindFilter) && (!q || `${e.kind} ${e.name} ${e.description}`.toLowerCase().includes(q)));
-  }, [snapshot, query, kindFilter]);
+    const pinned = focus ? new Set(focus.ids) : null;
+    return snapshot.entities.filter((e) =>
+      (!pinned || pinned.has(e.id)) &&
+      (!kindFilter || e.kind === kindFilter) &&
+      (!q || `${e.kind} ${e.name} ${e.description}`.toLowerCase().includes(q)));
+  }, [snapshot, query, kindFilter, focus]);
 
   const totalRelations = snapshot.relationKinds.reduce((a, k) => a + k.count, 0);
 
@@ -56,7 +64,20 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
         </div>
       </header>
 
-      <ProposalsPanel workspaceId={workspaceId} proposals={proposals} />
+      <HealthPanel
+        report={health}
+        slug={slug}
+        onShowEntities={(ids, name) => {
+          setFocus({ ids, name });
+          setView("table");
+          setKindFilter(null);
+          document.getElementById("entities")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
+      <div id="proposals">
+        <ProposalsPanel workspaceId={workspaceId} proposals={proposals} />
+      </div>
 
       <section className="studio-board-browser" aria-label="Meta-model">
         <div className="studio-board-browser-title">
@@ -82,11 +103,14 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
         )}
       </section>
 
-      <section className="studio-board-browser" aria-label="Entities">
+      <section className="studio-board-browser" aria-label="Entities" id="entities">
         <div className="studio-board-browser-title">
           <div>
-            <h2>{kindFilter ? `${kindFilter} entities` : "All entities"}</h2>
-            <p>{filtered.length} shown · place any entity on any board from that board&apos;s Graph inventory.</p>
+            <h2>{focus ? focus.name : kindFilter ? `${kindFilter} entities` : "All entities"}</h2>
+            <p>
+              {filtered.length} shown · place any entity on any board from that board&apos;s Graph inventory.
+              {focus && <> · <button type="button" className="link-button" onClick={() => setFocus(null)}>show everything again</button></>}
+            </p>
           </div>
           <div className="entity-view-tools">
             <div className="panel-tabs entity-view-tabs" role="tablist" aria-label="Entity view">

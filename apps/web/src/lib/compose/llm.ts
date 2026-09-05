@@ -1,5 +1,7 @@
 import type { Instruction, Vocabulary } from "./script";
 import { PLAN_SCHEMA, validateInstructions } from "./validate";
+import { INSPECT_SCHEMA, runInspection, validateInspection } from "./inspect";
+import type { ComposeContext } from "./apply";
 
 /**
  * The natural-language planner.
@@ -30,6 +32,8 @@ export interface PlanContext {
   /** A sample of what exists, so the planner uses real names rather than inventing them. */
   sampleNames: string[];
   onBoard: number;
+  /** The graph, so the planner can look before it answers. Read-only; see inspect.ts. */
+  graph: ComposeContext;
 }
 
 export interface Plan {
@@ -38,6 +42,8 @@ export interface Plan {
   reply: string;
   rejected: string[];
   engine: "model" | "rules";
+  /** What it looked at before answering, in order — so the reply can be checked. */
+  looked: string[];
 }
 
 export function modelConfigured(): boolean {
@@ -57,7 +63,12 @@ export function modelStatus(): string {
 const SYSTEM = `You turn a person's request into a board script for Nexus, an enterprise architecture platform.
 
 A board is a canvas of cards, one per graph entity, with connectors for the relations between them.
-You never see or change the graph itself — you emit steps, and Nexus runs them.
+You never change the graph — you look at it with inspect_graph, then emit steps that Nexus runs.
+
+Look before you answer. You have inspect_graph for counts, samples, distinct attribute values,
+relation types and neighbourhoods. Use it whenever the answer depends on what is actually there —
+which is almost always. Two or three looks is normal. Never state a number you have not read, and
+never claim something is missing without having counted it.
 
 The steps available to you:
 - clear — empty the board.
@@ -87,8 +98,9 @@ Rules:
 - Order matters: add before connect, connect before layout, layout before group.
 - Almost always finish with a layout step, and connect when relations would help.
 - Keep it short. Five or six steps is a board; twenty is a mess.
-- Your reply is one or two sentences, plain English, no markdown. Say what the board shows and
-  flag anything you assumed or could not answer.`;
+- Your reply is one or two sentences, plain English, no markdown. Say what the board shows, quote
+  the numbers you actually read, and flag anything you assumed or could not answer.
+- When you have looked enough, call build_board. That ends the turn.`;
 
 function userMessage(prompt: string, ctx: PlanContext): string {
   return [
@@ -108,17 +120,82 @@ function userMessage(prompt: string, ctx: PlanContext): string {
   ].filter((l) => l !== "").join("\n");
 }
 
-interface ToolUseBlock { type: string; name?: string; input?: unknown }
+interface ToolUseBlock { type: string; id?: string; name?: string; input?: unknown }
+interface ModelMessage { role: "user" | "assistant"; content: unknown }
+
+const MAX_LOOKS = 6;
 
 /**
- * Ask the model for a plan. Throws only on a configuration or transport problem — a model that
- * returns nonsense is handled by validation, not by an exception.
+ * Ask the model for a plan, letting it look at the graph first.
+ *
+ * A short tool loop: the planner may call inspect_graph a few times, each answer is fed back, and
+ * the turn ends when it calls build_board (or when the budget runs out, at which point it is asked
+ * to commit). Throws only on a configuration or transport problem — a planner that returns
+ * nonsense is handled by validation, not by an exception.
  */
 export async function planWithModel(prompt: string, ctx: PlanContext): Promise<Plan> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const model = process.env.NEXUS_MODEL;
   if (!apiKey || !model) throw new Error("no model configured");
 
+  const messages: ModelMessage[] = [{ role: "user", content: userMessage(prompt, ctx) }];
+  const looked: string[] = [];
+
+  for (let round = 0; round <= MAX_LOOKS; round++) {
+    const lastRound = round === MAX_LOOKS;
+    const body = await callModel(apiKey, model, {
+      system: SYSTEM,
+      messages,
+      tools: [
+        { name: "inspect_graph", description: "Look at the graph before answering. Read-only.", input_schema: INSPECT_SCHEMA },
+        { name: "build_board", description: "Build the board and answer the person. Ends the turn.", input_schema: PLAN_SCHEMA },
+      ],
+      // Out of looks: make it commit to an answer rather than trail off.
+      tool_choice: lastRound ? { type: "tool", name: "build_board" } : { type: "any" },
+    });
+
+    const calls = (body.content ?? []).filter((c) => c.type === "tool_use");
+    const build = calls.find((c) => c.name === "build_board");
+    if (build) {
+      const input = (build.input ?? {}) as { reply?: unknown; steps?: unknown };
+      const { instructions, rejected } = validateInstructions(input.steps, ctx.vocabulary);
+      return {
+        instructions,
+        reply: typeof input.reply === "string" ? input.reply.trim() : "",
+        rejected,
+        engine: "model",
+        looked,
+      };
+    }
+
+    const inspections = calls.filter((c) => c.name === "inspect_graph");
+    if (inspections.length === 0) {
+      // It said something without calling a tool; nudge it once by asking again.
+      messages.push({ role: "assistant", content: body.content ?? [] });
+      messages.push({ role: "user", content: "Call build_board with the steps and your reply." });
+      continue;
+    }
+
+    messages.push({ role: "assistant", content: body.content ?? [] });
+    messages.push({
+      role: "user",
+      content: inspections.map((call) => {
+        const inspection = validateInspection(call.input);
+        if (!inspection) {
+          return { type: "tool_result", tool_use_id: call.id, is_error: true, content: "that is not something you can look at" };
+        }
+        const result = runInspection(ctx.graph, inspection);
+        looked.push(result.label);
+        return { type: "tool_result", tool_use_id: call.id, content: result.text };
+      }),
+    });
+  }
+
+  return { instructions: [], reply: "", rejected: ["the planner never produced a plan"], engine: "model", looked };
+}
+
+/** One call to the Messages API. */
+async function callModel(apiKey: string, model: string, payload: Record<string, unknown>): Promise<{ content?: ToolUseBlock[] }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -130,31 +207,13 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 1600,
-        system: SYSTEM,
-        tools: [{ name: "build_board", description: "Build the board the person asked for.", input_schema: PLAN_SCHEMA }],
-        tool_choice: { type: "tool", name: "build_board" },
-        messages: [{ role: "user", content: userMessage(prompt, ctx) }],
-      }),
+      body: JSON.stringify({ model, max_tokens: 1600, ...payload }),
     });
-
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(`the model refused the request (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
-
-    const body = (await res.json()) as { content?: ToolUseBlock[] };
-    const call = body.content?.find((c) => c.type === "tool_use" && c.name === "build_board");
-    const input = (call?.input ?? {}) as { reply?: unknown; steps?: unknown };
-    const { instructions, rejected } = validateInstructions(input.steps, ctx.vocabulary);
-    return {
-      instructions,
-      reply: typeof input.reply === "string" ? input.reply.trim() : "",
-      rejected,
-      engine: "model",
-    };
+    return (await res.json()) as { content?: ToolUseBlock[] };
   } finally {
     clearTimeout(timer);
   }
