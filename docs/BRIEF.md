@@ -535,7 +535,7 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.1, 2026-09-04)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 33)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -662,13 +662,22 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
   with the number of open agent proposals.
 
 ### Quality gates
-- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest: camera
-  math, panel-aware fit, box/resize/connector geometry, store history and frame behaviour,
-  graph sync / hydrate / import / layout and proposal rules / merge, graph neighbourhood, version checkpoints / restore, query parsing and execution against an in-memory SQLite).
+- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
+  camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
+  frame behaviour and frame→board extraction, lenses (impact / attribute / relation / query),
+  document diff, SVG export and PNG sizing, link-to-existing, graph sync / hydrate / import /
+  layout, proposal rules incl. attribute normalisation, relation create/delete, graph
+  neighbourhood, version checkpoints / restore, query parsing and autocomplete — all against an
+  in-memory SQLite).
 - `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
-  command-bar search, autosave, reload, create board from a starter.
+  command-bar search, structured graph query, viewpoint tab and kind lens, impact lens, history
+  checkpoint and compare, entity table view, entity deep link, autosave, reload, graph import,
+  create board from a starter.
+- The shared-password gate (§5.12) is exercised separately: with NEXUS_ACCESS_PASSWORD set,
+  `/api/health` must stay open, protected paths must redirect, a wrong password must be
+  rejected and a correct one must land on the originally requested page.
 
 ### Known gaps (intentional for brief 1)
 - No per-user authentication or authorisation; everyone is the seeded demo user. A deployed
