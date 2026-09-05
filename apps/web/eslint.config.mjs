@@ -5,5 +5,6 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "next-env.d.ts", "drizzle/**"]),
+  // .next-e2e is the isolated e2e run's build directory (see e2e/run.mjs).
+  globalIgnores([".next/**", ".next-e2e/**", "out/**", "next-env.d.ts", "drizzle/**"]),
 ]);

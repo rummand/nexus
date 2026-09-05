@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "node scripts/reset-db.mjs",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e": "node e2e/run.mjs",
+    "e2e:attach": "BASE_URL=${BASE_URL:-http://localhost:3000} node e2e/smoke.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

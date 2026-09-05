@@ -4,6 +4,8 @@ node_modules/
 
 # next.js
 .next/
+.next-e2e/
+apps/web/e2e/failure.png
 out/
 next-env.d.ts
 

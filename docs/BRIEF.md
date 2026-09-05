@@ -829,7 +829,7 @@ server bundle into the browser.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 44)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 45)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1009,12 +1009,18 @@ server bundle into the browser.
   layout, proposal rules incl. attribute normalisation, relation create/delete, graph
   neighbourhood, version checkpoints / restore, query parsing and autocomplete — all against an
   in-memory SQLite).
-- `pnpm e2e` (Playwright, needs a running dev server): drives the real browser through
+- `pnpm e2e` (Playwright) starts **a server and a database of its own** — a temporary SQLite file,
+  a free port, migrations and seed on the first request, the routes warmed in a browser, then the
+  suite, then the file is deleted. Every run therefore begins from the same known workspace, which
+  is what lets the tests assert rather than guard. `BASE_URL=… pnpm e2e:attach` runs against a
+  server that is already up, for the fast local loop. It drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
   title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
   command-bar search, structured graph query, viewpoint tab and kind lens, impact lens, history
   checkpoint and compare, entity table view, entity deep link, autosave, reload, graph import,
-  create board from a starter.
+  create board from a starter, intake pipeline and review, the source catalogue and a grant,
+  registering and removing an unrecognised system, estate health and its drill-through, writing a
+  board with Compose. A failing assertion leaves `e2e/failure.png` and prints where it was.
 - The shared-password gate (§5.12) is exercised separately: with NEXUS_ACCESS_PASSWORD set,
   `/api/health` must stay open, protected paths must redirect, a wrong password must be
   rejected and a correct one must land on the originally requested page.
@@ -1035,7 +1041,7 @@ server bundle into the browser.
 pnpm install
 pnpm dev            # http://localhost:3000 → redirects to /w/acme-energy
 pnpm typecheck && pnpm lint && pnpm test
-pnpm e2e            # in a second terminal, against the running dev server
+pnpm e2e            # isolated: its own server, its own database, cleaned up afterwards
 pnpm build && pnpm start
 ```
 
@@ -1045,8 +1051,8 @@ database is empty. Delete the file to reset. Schema changes: edit
 `apps/web/src/db/schema.ts`, then `pnpm db:generate`.
 
 - `pnpm db:reset` deletes `apps/web/data/nexus.db` (stop the dev server first — it keeps the
-  old file open); the next request recreates and re-seeds it. Useful after e2e runs have
-  littered the demo boards with test objects.
+  old file open); the next request recreates and re-seeds it. The e2e suite no longer touches
+  this database, so resets are only needed after your own experiments.
 - The HTTP routes, server actions, query grammar and import format are documented in
   `docs/API.md`; keep it in step with `src/app/api` and `src/lib/actions.ts`.
 
@@ -1112,6 +1118,8 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | The planner may read the graph before it answers, through a second read-only tool with its own bounded vocabulary. | A planner that cannot look can only produce plausible sentences; one that can look produces checkable ones. Keeping inspection a separate, read-only tool means the thing it can *see* and the thing it can *do* are validated independently — and both are shown to the person. |
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
+| 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1123,6 +1131,21 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 45: the tests get a database of their own.** `pnpm e2e` now starts its own
+  server on a free port against a temporary SQLite file, seeds it, warms the routes in a browser,
+  runs the suite and deletes the database. Nothing it does can touch the demo workspace, and every
+  run starts from the same known seed — so five defensive guards became assertions, including the
+  meta-model's declare-a-type path, which had silently stopped being exercised once earlier runs
+  had declared every undeclared type in the shared database. A failing assertion now leaves a
+  screenshot and says where it was, which is how the last problem here was found at all.
+
+  Two things learned the hard way. Warming a dev server with `fetch` is not enough: that compiles
+  the server route, while the client bundle is only built when a browser asks — the warm-up drives
+  a real browser and waits for something each page only shows once it works. And the runner must
+  address its server as `localhost`, not `127.0.0.1`: the numeric form had its chunks and HMR
+  socket intercepted here, so the canvas never loaded at all, which looked for an hour exactly
+  like a slow test.
 
 - **2026-09-05 — Rev 44: the planner looks, and the estate has a score.** Two improvements to
   what was already there. Compose's planner gained `inspect_graph`, a read-only tool for counts,

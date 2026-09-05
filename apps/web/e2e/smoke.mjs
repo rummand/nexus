@@ -36,8 +36,10 @@ try {
 
   // canvas
   await page.goto(`${base}/b/brd_capabilities`, { waitUntil: "load" });
-  // the first render uses a 1×1 viewport and culls almost everything; wait for the fitted render
-  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 10, null, { timeout: 15000 });
+  // The first render uses a 1×1 viewport and culls almost everything; wait for the fitted render.
+  // Generous, because this is the first canvas of the run: on a cold dev server it is competing
+  // with the compiler, and a slow first paint is not what this test is about.
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 10, null, { timeout: 45000 });
   // the board fits itself to the viewport on first measurement; wait for that camera change
   await page.waitForFunction(() => document.querySelector(".zoom-card strong")?.textContent !== "100%", null, { timeout: 5000 }).catch(() => undefined);
   await page.waitForTimeout(200);
@@ -322,7 +324,8 @@ try {
   assert.equal(await page.locator("[data-measure] .health-goal").count(), 6, "every measure says what good looks like");
 
   const show = page.locator('[data-measure] button:has-text("Show the")').first();
-  if (await show.count()) {
+  assert.ok(await show.count(), "the seeded estate has something to fix");
+  {
     await show.click();
     await page.waitForTimeout(800);
     const shown = await page.locator("#entities p").first().innerText();
@@ -337,7 +340,11 @@ try {
   assert.ok((await page.locator(".meta-tree-label").count()) > 0, "meta-model lists node and relation types");
   // node types only — a relation type's detail pane has rules, not fields
   const undeclared = page.locator('.meta-tree-item[data-type-kind="node"]', { has: page.locator(".meta-dot.undeclared") }).first();
-  if (await undeclared.count()) {
+  // The seed always grows kinds from its boards without declaring them, so this is not optional:
+  // before the suite had a database of its own, earlier runs declared them all and the coverage
+  // silently disappeared.
+  assert.ok(await undeclared.count(), "the seed has kinds that grew from data and were never declared");
+  {
     await undeclared.locator(".meta-tree-label").click();
     await page.waitForSelector(".meta-detail-body");
     await page.click(".meta-callout button");
@@ -386,7 +393,7 @@ try {
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
 
-  // clean up the note this run created, so repeated runs do not silt up the demo board
+  // deleting works: once housekeeping for a shared database, now an assertion of its own
   await page.goto(`${base}/b/brd_capabilities`, { waitUntil: "load" });
   const leftover = page.locator(`[data-element-id="${noteId}"]`);
   const stillThere = await leftover.waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
@@ -439,14 +446,11 @@ try {
   await page.click('.scan-line button:has-text("Where it looked")');
   const channels = await page.locator("[data-channel]").count();
   assert.equal(channels, 5, "the scan reports every channel it read");
-  const discovered = await page.locator("[data-discovery]").count();
-  if (discovered > 0) {
-    // every proposal quotes the exact strings behind it before it asks for anything
-    assert.ok((await page.locator("[data-discovery] .catalog-evidence li b").count()) > 0, "a discovery quotes the signals behind it");
-    await page.locator('[data-discovery] button:has-text("Review what it may read")').first().click();
-  } else {
-    await page.locator('[data-provider="sap"]').click();
-  }
+  // The seeded graph names systems the catalogue knows, so the agent always has something to propose
+  assert.ok((await page.locator("[data-discovery]").count()) > 0, "the scan finds systems in the seeded graph");
+  // every proposal quotes the exact strings behind it before it asks for anything
+  assert.ok((await page.locator("[data-discovery] .catalog-evidence li b").count()) > 0, "a discovery quotes the signals behind it");
+  await page.locator('[data-discovery] button:has-text("Review what it may read")').first().click();
   await page.waitForSelector("[data-provider-panel]");
   await page.locator('.catalog-panel button[aria-label="Close"]').click();
   await page.waitForTimeout(300);
@@ -481,7 +485,7 @@ try {
       .catch(() => assert.fail("a registered source can be removed from the catalogue"));
   }
 
-  // leave the shared database as we found it
+  // removing a source takes it out of the list
   await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
   await page.waitForSelector(".intake-sources");
   await page.locator(`.intake-source:has-text("${sourceName}")`).click();
@@ -525,6 +529,16 @@ try {
 
   assert.deepEqual(problems, [], "no browser errors");
   console.log("smoke: all checks passed");
+} catch (error) {
+  // A failing assertion in a headless browser is a mystery without a picture. Leave one.
+  const shot = new URL("./failure.png", import.meta.url).pathname;
+  await page.screenshot({ path: shot, fullPage: false }).catch(() => undefined);
+  console.error(`smoke: failed at ${page.url()}`);
+  console.error(`smoke: ${await page.locator("[data-element-id]").count().catch(() => "?")} elements on screen`);
+  console.error(`smoke: screenshot written to ${shot}`);
+  if (problems.length) console.error(`smoke: browser reported ${problems.length}: ${problems.slice(0, 3).join(" | ")}`);
+  throw error;
 } finally {
+
   await browser.close();
 }
