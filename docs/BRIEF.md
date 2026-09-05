@@ -806,6 +806,21 @@ nodes connected to nothing, 54 with no owner. That is the honest state of most a
 repositories, and it is the argument for intake, the catalogue and the meta-model in one number
 that moves when the work is done.
 
+**And fixable.** A measure that only scolds gets read past, so each one shows what the agent can
+already close from evidence the graph holds. `src/lib/proposals-evidence.ts` reads intake's own
+record back out: the person who *raised an action about* a system is the best available candidate
+for owning it — far better than the fact they sat in the meeting — and a risk that says a system
+is "out of support" states its lifecycle. Each proposal cites the sentence behind it and lands in
+the same accept/dismiss flow as the resolution rules; a question raised about a system is not
+treated as a claim on it, and two people acting on the same thing produces silence rather than a
+guess. Where nothing but attendance is available the proposal is made at low confidence and says
+so: being present is not owning.
+
+A bulk accept applies everything high-confidence that needs no judgement — never the ones with a
+field for a human to fill in — after saying how many objects it touches and warning that merges
+cannot be undone. On the seed workspace one bulk accept moved the score from 40 ("thin") to 71
+("patchy").
+
 Scoring is weighted by population, so a measure over three nodes cannot swing the headline, and
 intake's own records — meetings, decisions, risks, the people who raised them — are excluded from
 the estate measures: a decision has no owner and no lifecycle, and that is not a fault.
@@ -842,7 +857,7 @@ server bundle into the browser.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 47)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 48)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1148,6 +1163,18 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 48: health that can be fixed, not just read.** Estate health now shows, per
+  measure, how much of the gap the agent can already close from evidence the graph holds, and a
+  bulk accept applies the confident ones. `src/lib/proposals-evidence.ts` adds two rules that read
+  intake's own record back out: ownership from whoever raised an action or decision *about* a
+  system (a question is not a claim on it; two claimants produce silence rather than a guess; bare
+  attendance is offered only at low confidence, saying that being present is not owning), and
+  lifecycle from a viewpoint that states one — "out of support" is an end of life. Every proposal
+  cites the sentence behind it and goes through the existing accept/dismiss flow. The bulk button
+  takes only what needs no judgement, and says how many objects it will touch before it does,
+  because a merge cannot be undone. One bulk accept on the seed workspace moved the score from 40
+  to 71. 11 unit tests over the rules.
 
 - **2026-09-05 — Rev 47: a model reads the sources, and has to show its working.** Intake's
   extraction is now done by a model where one is configured: the passages go to it and it returns

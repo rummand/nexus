@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, Columns3, GitMerge, ListPlus, SpellCheck, Sparkles, Tag, Trash2, Type, Unlink, X } from "lucide-react";
 import type { Proposal } from "@/lib/graph-types";
-import { acceptProposal, dismissProposal } from "@/lib/actions";
+import { acceptProposal, acceptProposals, dismissProposal } from "@/lib/actions";
 
 const ICONS: Record<Proposal["type"], React.ReactNode> = {
   merge: <GitMerge size={16} />,
@@ -32,6 +32,12 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+  /**
+   * Only the ones that need no judgement: high confidence, and no field for a human to fill in.
+   * A bulk button that also applies the guesses would be a way of losing trust quickly.
+   */
+  const bulk = proposals.filter((p) => p.confidence === "high" && p.action.kind !== "setKind" && p.action.kind !== "setRelationKind");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? proposals : proposals.slice(0, 6);
@@ -57,8 +63,37 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
               : `${proposals.length} suggestion${proposals.length === 1 ? "" : "s"} from the resolution rules${counts.high ? ` · ${counts.high} high confidence` : ""}. Accept to apply, dismiss to remember your decision.`}
           </p>
         </div>
-        <span className="proposal-legend">Rules today · LLM-backed agents plug into the same accept / dismiss flow</span>
+        <div className="proposal-header-actions">
+          {bulk.length > 1 && (
+            <button
+              type="button"
+              className="primary-home-button"
+              disabled={pending}
+              data-accept-all
+              onClick={() => {
+                // Bulk accept can merge dozens of entities at once. Say how many objects it
+                // touches before it touches them, the way the Compose rebuild does.
+                const touched = new Set(bulk.flatMap((p) => p.entityIds)).size;
+                const merges = bulk.filter((p) => p.action.kind === "merge").length;
+                const warning = merges
+                  ? `Accept ${bulk.length} proposals? ${merges} of them merge entities together, which cannot be undone. ${touched} objects are affected.`
+                  : `Accept ${bulk.length} proposals, affecting ${touched} objects?`;
+                if (!confirm(warning)) return;
+                setBusy("all");
+                start(async () => {
+                  const r = await acceptProposals(workspaceId, bulk);
+                  setBulkResult(`${r.applied} applied${r.failed.length ? `, ${r.failed.length} could not be: ${r.failed.slice(0, 2).join("; ")}` : ""}.`);
+                  setBusy(null);
+                });
+              }}
+            >
+              Accept the {bulk.length} confident ones
+            </button>
+          )}
+          <span className="proposal-legend">Rules today · LLM-backed agents plug into the same accept / dismiss flow</span>
+        </div>
       </div>
+      {bulkResult && <p className="proposal-bulk-result">{bulkResult}</p>}
       {proposals.length > 0 && (
         <div className="proposal-list">
           {visible.map((p) => {

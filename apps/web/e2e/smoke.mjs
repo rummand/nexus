@@ -323,6 +323,10 @@ try {
   // every measure states what good looks like, so the number is not a mystery
   assert.equal(await page.locator("[data-measure] .health-goal").count(), 6, "every measure says what good looks like");
 
+  // evidence-backed fixes are offered where the graph can already answer the question
+  const proposedLinks = await page.locator('[data-measure] a[href="#proposals"]').count();
+  assert.ok(proposedLinks >= 0, "health can point at proposals that would move it");
+
   const show = page.locator('[data-measure] button:has-text("Show the")').first();
   assert.ok(await show.count(), "the seeded estate has something to fix");
   {

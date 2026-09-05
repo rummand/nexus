@@ -67,6 +67,13 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
       <HealthPanel
         report={health}
         slug={slug}
+        proposed={{
+          // Which gaps the agent can already close from evidence, so the number points at the work.
+          ownership: proposals.filter((p) => p.action.kind === "setAttribute" && p.action.key === "owner").length,
+          lifecycle: proposals.filter((p) => p.action.kind === "setAttribute" && p.action.key === "lifecycle").length,
+          duplicates: proposals.filter((p) => p.action.kind === "merge").length,
+          untyped: proposals.filter((p) => p.action.kind === "setKind").length,
+        }}
         onShowEntities={(ids, name) => {
           setFocus({ ids, name });
           setView("table");

@@ -386,6 +386,28 @@ export async function createBoardFromGraph(input: { workspaceId: string; spaceId
 
 // ---- agent proposals ---------------------------------------------------------
 
+/**
+ * Accept several proposals in one go.
+ *
+ * The point of the health score is that it moves; accepting fifty owners one click at a time is
+ * not a workflow anyone will finish. Applied in order, stopping at nothing: a proposal whose
+ * target has already been merged away simply fails and is reported, rather than aborting the rest.
+ */
+export async function acceptProposals(workspaceId: string, proposals: Proposal[]) {
+  let applied = 0;
+  const failed: string[] = [];
+  for (const proposal of proposals.slice(0, 200)) {
+    try {
+      const result = await acceptProposal(workspaceId, proposal);
+      if (result && "error" in result && result.error) failed.push(`${proposal.title}: ${result.error}`);
+      else applied++;
+    } catch (error) {
+      failed.push(`${proposal.title}: ${error instanceof Error ? error.message : "failed"}`);
+    }
+  }
+  return { applied, failed };
+}
+
 export async function acceptProposal(workspaceId: string, proposal: Proposal, override?: string) {
   const db = await getDb();
   const a = proposal.action;

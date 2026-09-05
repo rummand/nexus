@@ -4,6 +4,7 @@ import * as s from "@/db/schema";
 import { parseDocument, serializeDocument } from "@/canvas/document";
 import type { Proposal } from "./graph-types";
 import { parseAttributes } from "./graph";
+import { evidenceProposals } from "./proposals-evidence";
 
 /**
  * Agent proposals — deterministic, explainable suggestions derived from the graph.
@@ -281,6 +282,11 @@ export async function computeProposals(db: Db, workspaceId: string): Promise<Pro
 
   // 6–8. attributes: the emergent attribute schema (BRIEF §5.8) needs the same hygiene as kinds
   out.push(...attributeProposals(entities, decided));
+
+  // Rules that read the graph's own evidence rather than its shape: who acted on what, and what
+  // people said about it. See proposals-evidence.ts.
+  const parsed = new Map(entities.map((e) => [e.id, parseAttributes(e.attributes)]));
+  out.push(...evidenceProposals({ entities, relations, decided, attributesOf: (id) => parsed.get(id) ?? {} }));
 
   const rank = { high: 0, medium: 1, low: 2 } as const;
   return out.sort((a, b) => rank[a.confidence] - rank[b.confidence] || a.title.localeCompare(b.title));

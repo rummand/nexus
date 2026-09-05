@@ -1798,3 +1798,6 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .intake-engine-line { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .intake-engine-line span { color: #b45309; font-size: 11.5px; }
 .intake-rejected { margin: -4px 0 0; }
+.proposal-header-actions { align-items: flex-end; display: flex; flex-direction: column; gap: 6px; }
+.proposal-header-actions .primary-home-button { height: 32px; min-height: 32px; white-space: nowrap; width: auto; }
+.proposal-bulk-result { background: #e8f7ee; border-radius: 9px; color: #17803d; font-size: 12.5px; margin: 0 0 10px; padding: 8px 11px; }

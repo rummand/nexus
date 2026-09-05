@@ -24,9 +24,11 @@ const DESTINATION: Record<Measure["id"], { href: (slug: string) => string; label
   lifecycle: { href: () => "#entities", label: "Open the entity table" },
 };
 
-export function HealthPanel({ report, slug, onShowEntities }: {
+export function HealthPanel({ report, slug, proposed, onShowEntities }: {
   report: HealthReport;
   slug: string;
+  /** How many of each measure the agent can already propose a fix for. */
+  proposed: Partial<Record<Measure["id"], number>>;
   /** Filter the entity table to the offenders behind one measure. */
   onShowEntities: (ids: string[], name: string) => void;
 }) {
@@ -62,6 +64,11 @@ export function HealthPanel({ report, slug, onShowEntities }: {
               {m.offenders > 0 && (
                 <div className="health-actions">
                   <span>{m.fix}</span>
+                  {(proposed[m.id] ?? 0) > 0 && (
+                    <a className="ghost-button" href="#proposals">
+                      {proposed[m.id]} already proposed from evidence
+                    </a>
+                  )}
                   {DESTINATION[m.id].href(slug).startsWith("#") ? (
                     <button type="button" className="ghost-button" onClick={() => onShowEntities(m.entityIds, m.name)}>
                       Show the {m.offenders}
