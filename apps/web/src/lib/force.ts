@@ -158,3 +158,42 @@ export function layoutBounds(nodes: ForceNode[]): { x: number; y: number; w: num
   }
   return { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
 }
+
+/**
+ * Push overlapping boxes apart, in place.
+ *
+ * The simulation treats nodes as points, which is right for the explorer's dots but wrong for the
+ * meta-model diagram, where each node is a box over a hundred units wide. Scaling the whole
+ * layout up would clear the overlaps but also blow the diagram out until the boxes were
+ * unreadably small, so instead each overlapping pair is separated locally, along whichever axis
+ * they overlap least — the shape the simulation found survives, only the crowding goes.
+ */
+export function separateBoxes(nodes: ForceNode[], width: number, height: number, iterations = 80): ForceNode[] {
+  if (nodes.length < 2) return nodes;
+  for (let it = 0; it < iterations; it++) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i]!;
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const overlapX = width - Math.abs(dx);
+        const overlapY = height - Math.abs(dy);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+        moved = true;
+        if (overlapX < overlapY) {
+          const push = ((dx >= 0 ? 1 : -1) * overlapX) / 2 + 0.01;
+          a.x -= push;
+          b.x += push;
+        } else {
+          const push = ((dy >= 0 ? 1 : -1) * overlapY) / 2 + 0.01;
+          a.y -= push;
+          b.y += push;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return nodes;
+}

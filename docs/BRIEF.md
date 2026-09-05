@@ -571,6 +571,28 @@ half (`node_types`, `node_type_fields`, `relation_types`, `relation_rules`, migr
   contains that the rules disallow are flagged as violations and counted in the header, with a
   one-click "allow this connection".
 
+**The diagram (v0.2).** The right pane has two tabs: *Details* (the selected type) and *Diagram*
+— the meta-model itself drawn on a canvas. One box per node type, one arc per relation type, so
+what you see is the abstraction: how the *types* connect, not which applications talk to which.
+`src/lib/metamodel-graph.ts` reduces the merged model to that type-level graph and labels every
+arc with where it came from — a declared **rule** (solid blue, drawn even with no data behind it),
+a connection **observed** in the data (dashed grey), or one that **breaks a rule** (red). It
+re-derives on every render, so declaring a type, adding a rule or renaming something redraws the
+diagram immediately: the model is watched as it evolves rather than inspected after the fact.
+
+- **Layout.** The explorer's seeded force layout (`src/lib/force.ts`), so the picture is stable
+  across reloads, with one spring per *pair* rather than per relation type — otherwise six
+  relation types between the same two types pull six times as hard and the pair with the most
+  arcs to draw gets the least room. `separateBoxes()` then pushes any overlapping pair apart
+  locally along its shallower axis, which clears the crowding without inflating the diagram until
+  the boxes are unreadable.
+- **Bundles.** Relation types joining the same pair fan out as arcs at fixed offsets, with labels
+  slid along their own arc so a bundle of six does not stack six captions in one place. A type
+  related to itself gets a loop, and loops stack upwards.
+- **Focus.** The tree and the diagram share one selection. Selecting a node type lights its arcs
+  and its neighbours; selecting a relation type lights every pair it joins; clicking a box or an
+  arc selects it, so the Details tab opens on the same thing.
+
 Rules and data types are advisory today — they describe and surface drift rather than reject
 writes. Enforcement (and agent proposals driven by these violations) is the natural next step.
 
@@ -680,6 +702,9 @@ writes. Enforcement (and agent proposals driven by these violations) is the natu
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
   restructure and constrain; declared-vs-observed drift and rule violations surfaced.
+- Diagram tab: the meta-model on a canvas — a box per node type, an arc per relation type,
+  coloured by rule / observed / violation, with bundled arcs, self-loops, pan-zoom, focus
+  highlighting and click-through to the detail pane. Redraws as the model changes.
 
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
@@ -840,6 +865,19 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 38: the meta-model on a canvas.** The builder's right pane gained a
+  *Diagram* tab beside *Details*: the meta-model drawn as a type-level graph — one box per node
+  type, one arc per relation type — so the abstraction is visible rather than only the instances.
+  Arcs are coloured by origin (declared rule / observed in the data / breaks a rule), relation
+  types joining the same pair fan out as separate labelled arcs, self-relations loop, and the
+  diagram shares its selection with the tree in both directions. Because it derives from the same
+  merged model on every render, declaring a type or adding a rule redraws it at once — adding
+  `Interface —provides→ Data Object` immediately draws the new rule and turns the pair it
+  disallows red. `src/lib/metamodel-graph.ts` (5 unit tests) holds the reduction to types;
+  `separateBoxes()` in `src/lib/force.ts` replaces the earlier whole-layout scaling, which cleared
+  overlaps only by shrinking the diagram. e2e covers the tab, non-overlapping boxes and
+  click-through.
 
 - **2026-09-05 — Rev 37: meta-model builder.** A new top-level view at `/w/[slug]/meta` giving
   the technical picture of the schema: a left-hand hierarchy of node and relation types with

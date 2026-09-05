@@ -1421,3 +1421,44 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-icon.danger:hover { background: #fff5f5; color: #c24141; }
 .meta-footer { display: flex; justify-content: flex-end; }
 .meta-footer .ghost-button.danger { color: #c24141; width: auto; }
+
+/* ---- meta-model diagram (the type-level abstraction) --------------------------------------- */
+.meta-view-tabs { margin-bottom: 14px; max-width: 260px; }
+.meta-view-tabs button { align-items: center; display: inline-flex; gap: 6px; justify-content: center; }
+.meta-diagram { border: 1px solid var(--line); border-radius: 13px; background: #fff; display: grid; grid-template-rows: auto 1fr; height: calc(100vh - 150px); min-height: 420px; overflow: hidden; }
+.meta-diagram-bar { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 12px; }
+.meta-diagram-legend { align-items: center; color: #7c8799; display: flex; font-size: 11px; font-weight: 700; gap: 6px; }
+.meta-diagram-legend i { border-radius: 2px; display: inline-block; height: 3px; margin-left: 6px; width: 16px; }
+.meta-diagram-legend i:first-child { margin-left: 0; }
+.meta-diagram-legend i.rule { background: #1376d4; }
+.meta-diagram-legend i.observed { background: #94a3b8; }
+.meta-diagram-legend i.violation { background: #dc2626; }
+.meta-diagram-counts { color: var(--muted); font-size: 11px; font-weight: 700; margin-left: auto; }
+.meta-diagram-bar .ghost-button { height: 28px; min-height: 28px; width: auto; }
+.meta-diagram-svg { cursor: grab; display: block; height: 100%; touch-action: none; width: 100%; }
+.meta-diagram-svg:active { cursor: grabbing; }
+
+.meta-edge line, .meta-edge path { fill: none; stroke-width: 1.6; }
+.meta-edge.rule line, .meta-edge.rule path { stroke: #1376d4; }
+.meta-edge.observed line, .meta-edge.observed path { stroke: #94a3b8; stroke-dasharray: 5 4; }
+.meta-edge.violation line, .meta-edge.violation path { stroke: #dc2626; stroke-width: 2; }
+.meta-edge.dimmed { opacity: 0.12; }
+.meta-edge { cursor: pointer; }
+.meta-edge-hit { stroke: transparent; stroke-width: 14; fill: none; }
+.meta-edge:hover line, .meta-edge:hover path:not(.meta-edge-hit) { stroke-width: 2.6; }
+.meta-arrow-head.rule { fill: #1376d4; }
+.meta-arrow-head.observed { fill: #94a3b8; }
+.meta-arrow-head.violation { fill: #dc2626; }
+.meta-edge-label { fill: #64748b; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: #fff; stroke-width: 3px; text-anchor: middle; }
+.meta-edge.violation .meta-edge-label { fill: #b91c1c; }
+
+.meta-type-box { cursor: pointer; }
+.meta-type-box rect:first-child { fill: #fff; stroke: #cbd5e1; stroke-width: 1.4; }
+.meta-type-box:hover rect:first-child { stroke: #1376d4; }
+.meta-type-box.selected rect:first-child { stroke: #1376d4; stroke-width: 2.4; }
+.meta-type-box.undeclared rect:first-child { stroke-dasharray: 5 3; }
+.meta-type-box.unused { opacity: 0.72; }
+.meta-type-box.dimmed { opacity: 0.3; }
+.meta-type-swatch { stroke: none !important; }
+.meta-type-name { fill: #1c2637; font-size: 12px; font-weight: 700; text-anchor: middle; }
+.meta-type-meta { fill: #8a95a8; font-size: 9.5px; font-weight: 700; text-anchor: middle; }

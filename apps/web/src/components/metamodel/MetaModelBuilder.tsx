@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { AlertTriangle, Boxes, ChevronDown, ChevronRight, Plus, Spline, Trash2, X } from "lucide-react";
+import { AlertTriangle, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, Spline, Trash2, X } from "lucide-react";
 import type { MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
   deleteField, deleteNodeType, deleteRelationType, deleteRule, updateField, updateNodeType, updateRelationType,
 } from "@/lib/metamodel-actions";
+import { MetaModelDiagram } from "./MetaModelDiagram";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -27,6 +28,7 @@ export function MetaModelBuilder({ model, workspaceId, slug }: { model: MetaMode
   const [openRels, setOpenRels] = useState(true);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
+  const [view, setView] = useState<"details" | "diagram">("details");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -139,12 +141,22 @@ export function MetaModelBuilder({ model, workspaceId, slug }: { model: MetaMode
           </div>
         </nav>
 
-        {/* ---- right: the selected type ---- */}
+        {/* ---- right: the selected type, or the whole model as a diagram ---- */}
         <section className="meta-detail" aria-label="Type details">
-          {error && <p className="form-error">{error}</p>}
-          {!current && <p className="muted">Select a type on the left.</p>}
+          <div className="panel-tabs meta-view-tabs" role="tablist" aria-label="Meta-model view">
+            <button type="button" role="tab" className={view === "details" ? "active" : ""} onClick={() => setView("details")}><Rows3 size={13} /> Details</button>
+            <button type="button" role="tab" className={view === "diagram" ? "active" : ""} onClick={() => setView("diagram")}><Network size={13} /> Diagram</button>
+          </div>
 
-          {current && selected?.kind === "node" && (
+          {error && <p className="form-error">{error}</p>}
+
+          {view === "diagram" && (
+            <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
+          )}
+
+          {view === "details" && !current && <p className="muted">Select a type on the left.</p>}
+
+          {view === "details" && current && selected?.kind === "node" && (
             <NodeTypeDetail
               type={current as MetaNodeType}
               allTypeNames={allTypeNames}
@@ -156,7 +168,7 @@ export function MetaModelBuilder({ model, workspaceId, slug }: { model: MetaMode
             />
           )}
 
-          {current && selected?.kind === "relation" && (
+          {view === "details" && current && selected?.kind === "relation" && (
             <RelationTypeDetail
               type={current as MetaRelationType}
               allTypeNames={allTypeNames}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialLayout, layout, layoutBounds, seededRandom, tick } from "./force";
+import { initialLayout, layout, layoutBounds, seededRandom, separateBoxes, tick } from "./force";
 
 describe("force layout", () => {
   it("is deterministic: the same graph lays out identically twice", () => {
@@ -46,5 +46,21 @@ describe("force layout", () => {
     expect(b.w).toBeGreaterThan(0);
     expect(b.h).toBeGreaterThan(0);
     expect(layoutBounds([])).toEqual({ x: -100, y: -100, w: 200, h: 200 });
+  });
+
+  it("separates overlapping boxes without blowing the layout up", () => {
+    const nodes = [
+      { id: "a", x: 0, y: 0, vx: 0, vy: 0 },
+      { id: "b", x: 10, y: 0, vx: 0, vy: 0 },
+      { id: "c", x: 0, y: 400, vx: 0, vy: 0 },
+    ];
+    separateBoxes(nodes, 120, 60);
+    const overlaps = (p: number, q: number) =>
+      Math.abs(nodes[p]!.x - nodes[q]!.x) < 120 && Math.abs(nodes[p]!.y - nodes[q]!.y) < 60;
+    expect(overlaps(0, 1)).toBe(false);
+    // a pair that already cleared is left where it was, so the layout keeps its extent
+    expect(nodes[2]!.x).toBe(0);
+    expect(nodes[2]!.y).toBe(400);
+    expect(separateBoxes([{ id: "solo", x: 3, y: 4, vx: 0, vy: 0 }], 120, 60)[0]!.x).toBe(3);
   });
 });

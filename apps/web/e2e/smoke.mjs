@@ -332,6 +332,31 @@ try {
       .catch(() => assert.fail("a declared field is added to the type"));
   }
 
+  // meta-model diagram: the type-level abstraction, one box per node type and one arc per
+  // relation type, laid out so nothing overlaps
+  await page.click('.meta-view-tabs button:has-text("Diagram")');
+  await page.waitForSelector("[data-meta-diagram]");
+  await page.waitForTimeout(600);
+  const typeBoxes = await page.locator("[data-type-box]").count();
+  assert.ok(typeBoxes > 0, "the diagram draws a box per type");
+  assert.ok((await page.locator(".meta-edge").count()) > 0, "the diagram draws the connections between types");
+  const overlaps = await page.$$eval("[data-type-box] rect:first-of-type", (els) => {
+    const r = els.map((e) => e.getBoundingClientRect());
+    let n = 0;
+    for (let i = 0; i < r.length; i++)
+      for (let j = i + 1; j < r.length; j++)
+        if (r[i].left < r[j].right && r[j].left < r[i].right && r[i].top < r[j].bottom && r[j].top < r[i].bottom) n++;
+    return n;
+  });
+  assert.equal(overlaps, 0, "type boxes do not overlap");
+  // clicking a type in the diagram selects it, so the Details tab opens on the same type
+  const firstBox = page.locator("[data-type-box]").first();
+  const boxName = (await firstBox.locator(".meta-type-name").textContent()) ?? "";
+  await firstBox.click();
+  await page.click('.meta-view-tabs button:has-text("Details")');
+  await page.waitForSelector(".meta-detail-body");
+  assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
+
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });
   await page.click(".studio-starters button >> nth=0");
