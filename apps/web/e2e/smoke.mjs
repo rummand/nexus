@@ -521,6 +521,16 @@ try {
   assert.match(composeSteps[1].echo, /kind:Application/, "the line is echoed as the query it became");
   assert.ok((await page.locator("[data-element-id]").count()) > 5, "the board was built from the script");
 
+  // the words that produced the board are kept with it
+  const boardUrl = page.url();
+  await page.waitForTimeout(1500); // let the autosave land
+  await page.goto(boardUrl, { waitUntil: "load" });
+  await page.waitForSelector(".canvas-viewport");
+  await page.click('button:has-text("Compose")');
+  await page.waitForSelector("[data-compose]");
+  assert.match(await page.locator(".compose-script").inputValue(), /Written by hand, without hands/,
+    "reopening a written board shows the script that produced it");
+
   // a line it cannot read says so instead of failing silently
   await page.fill(".compose-script", "make it look nice");
   await page.click('.compose-actions button:has-text("Build")');

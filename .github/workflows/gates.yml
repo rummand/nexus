@@ -1,0 +1,58 @@
+# The gates, on every push.
+#
+# Until now these ran only when somebody remembered to run them. The e2e suite carries its own
+# server and its own database (apps/web/e2e/run.mjs), so it needs nothing here but a browser —
+# which is the whole reason this workflow is possible at all.
+name: gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push supersedes an older one on the same branch; nobody reads a stale red.
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck · lint · unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+  e2e:
+    name: browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Only Chromium: the suite drives one browser, and the other two are minutes of download.
+      - run: pnpm --filter @nexus/web exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - name: Keep the picture of the failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: apps/web/e2e/failure.png
+          if-no-files-found: ignore
+          retention-days: 7

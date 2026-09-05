@@ -771,9 +771,11 @@ The verbs: `add`, `remove`, `expand` (N hops, optionally via a relation type, up
 downstream), `connect`, `group by`, `colour by`, `lay out` (grid, columns/rows by an attribute,
 circle, flow), `title`, `note`, `clear`.
 
-**The script is the board.** A build starts from an empty board by default, so the text and the
-picture cannot drift apart, and the same script over the same graph gives the same board down to
-the coordinates — `src/lib/compose/apply.ts` is pure, and that is tested. Because a rebuild
+**The script is the board — and it stays with it.** The script is part of the document
+(`CanvasDocument.script`), so reopening a written board shows the words that produced it rather
+than an empty box, and they can be edited and re-run. A build starts from an empty board by
+default, so the text and the picture cannot drift apart, and the same script over the same graph
+gives the same board down to the coordinates — `src/lib/compose/apply.ts` is pure, and that is tested. Because a rebuild
 discards what is there, it says how much it will replace and asks first; the board's own version
 history is the backstop. Unticking it adds to what is already on the board instead.
 
@@ -829,7 +831,7 @@ server bundle into the browser.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 45)
+## 6a. What exists today (v0.2, 2026-09-05 — rev 46)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1009,6 +1011,10 @@ server bundle into the browser.
   layout, proposal rules incl. attribute normalisation, relation create/delete, graph
   neighbourhood, version checkpoints / restore, query parsing and autocomplete — all against an
   in-memory SQLite).
+- **CI** (`.github/workflows/gates.yml`) runs typecheck, lint and the unit tests on one job and the
+  browser suite on another, for every push and pull request. A failing browser run uploads
+  `e2e/failure.png` as an artifact. This is only possible because the suite brings its own server
+  and database; before that there was nothing for a runner to point at.
 - `pnpm e2e` (Playwright) starts **a server and a database of its own** — a temporary SQLite file,
   a free port, migrations and seed on the first request, the routes warmed in a browser, then the
   suite, then the file is deleted. Every run therefore begins from the same known workspace, which
@@ -1131,6 +1137,15 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 46: a written board remembers its words, and the gates run themselves.**
+  The Compose script is now part of the board document, so reopening a written board shows the
+  script that produced it, ready to edit and re-run — the claim "the script is the board" is only
+  true if the script is still there when you come back. A planner-written board stores the script
+  the planner decided on, with the request kept as a comment line above it. And
+  `.github/workflows/gates.yml` runs typecheck, lint, unit tests and the browser suite on every
+  push and pull request, uploading the failure screenshot as an artifact — possible only because
+  the suite now carries its own server and database.
 
 - **2026-09-05 — Rev 45: the tests get a database of their own.** `pnpm e2e` now starts its own
   server on a free port against a temporary SQLite file, seeds it, warms the routes in a browser,

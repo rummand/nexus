@@ -58,6 +58,8 @@ export interface CanvasState {
   contextMenu: { x: number; y: number; targetId: string | null; world: Point } | null;
   /** Saved viewpoints (persisted with the document). */
   viewpoints: SavedViewpoint[];
+  /** The Compose script that produced this board, persisted with it. */
+  script: string;
   /** Presentation mode: chrome hidden, canvas only (Esc leaves). */
   presenting: boolean;
   /** Index of the frame currently shown as a "slide" while presenting (null = whole board). */
@@ -94,6 +96,8 @@ export interface CanvasState {
   setSaveState(s: SaveState): void;
   setConnectorPreset(p: ConnectorPreset): void;
   togglePanel(name: PanelName, value?: boolean): void;
+  /** Remember the script this board was written from. */
+  setScript(script: string): void;
   setDragging(v: boolean): void;
   toggleKind(kind: string): void;
   clearHiddenKinds(): void;
@@ -284,6 +288,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       proposals: [],
       proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
+      script: document.script ?? "",
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -315,6 +320,8 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
+      setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: "dirty" })),
+
       togglePanel: (name, value) => set((s) => {
         const open = value ?? !s.panels[name];
         // Compose and the Graph inventory are two answers to the same question — where do objects
@@ -539,7 +546,12 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
 
       toDocument: () => {
         const s = get();
-        return s.viewpoints.length ? { version: DOCUMENT_VERSION, elements: s.elements, viewpoints: s.viewpoints } : { version: DOCUMENT_VERSION, elements: s.elements };
+        return {
+          version: DOCUMENT_VERSION,
+          elements: s.elements,
+          ...(s.viewpoints.length ? { viewpoints: s.viewpoints } : {}),
+          ...(s.script.trim() ? { script: s.script } : {}),
+        };
       },
     };
   });

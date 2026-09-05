@@ -139,6 +139,10 @@ export async function composeBoard(
   }
   // A rebuild keeps the viewpoints saved on the board: those are the reader's, not the script's.
   if (mode === "rebuild" && current.viewpoints?.length) document = { ...document, viewpoints: current.viewpoints };
+  // And the board records what produced it, so reopening it shows the words rather than only the
+  // result. The rule compiler stores what was typed; a planner stores the script it decided on.
+  const written = used === "model" ? [`# ${input.trim().split("\n")[0] ?? ""}`, ...planned.map((p) => p.raw)].join("\n") : input;
+  if (written.trim()) document = { ...document, script: written.trim() };
 
   return {
     document,

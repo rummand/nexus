@@ -41,7 +41,12 @@ const VERBS: Array<[string, string]> = [
 export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement | null> }) {
   const store = useCanvasStore();
   const workspaceId = useCanvas((s) => s.workspaceId);
-  const [script, setScript] = useState("");
+  /**
+   * Seeded from the board: reopening a written board shows the words that produced it, not an
+   * empty box. Kept in the store as you type, so the autosave carries it with the document.
+   */
+  const saved = useCanvas((s) => s.script);
+  const [script, setScript] = useState(saved);
   const [mode, setMode] = useState<"rebuild" | "extend">("rebuild");
   const [steps, setSteps] = useState<ComposeStep[]>([]);
   const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
@@ -86,6 +91,11 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
       setStatus(data.status ?? "");
       setRejected(data.rejected ?? []);
       setLooked(data.looked ?? []);
+      // A planner writes a script of its own; show it, so what ran is what you can edit and re-run.
+      if (data.document.script && data.document.script !== script) {
+        setScript(data.document.script);
+        store.getState().setScript(data.document.script);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "the build failed");
     } finally {
@@ -111,7 +121,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
         className="compose-script"
         value={script}
         spellCheck={false}
-        onChange={(e) => setScript(e.target.value)}
+        onChange={(e) => { setScript(e.target.value); store.getState().setScript(e.target.value); }}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void build(); }
           e.stopPropagation(); // the canvas owns single-key shortcuts; this is a text field
@@ -120,10 +130,14 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
         placeholder={"Ask for a board in your own words — or write the script yourself:\n\n  add all applications\n  connect them\n  lay out as flow"}
       />
 
+      {saved.trim() !== "" && script.trim() === saved.trim() && (
+        <p className="compose-saved">This board was written. Edit the lines and build again, or leave it as it is.</p>
+      )}
+
       {script.trim() === "" && (
         <ul className="compose-examples">
           {EXAMPLES.map((e) => (
-            <li key={e}><button type="button" onClick={() => setScript(e)}>{e}</button></li>
+            <li key={e}><button type="button" onClick={() => { setScript(e); store.getState().setScript(e); }}>{e}</button></li>
           ))}
         </ul>
       )}

@@ -119,6 +119,12 @@ export interface CanvasDocument {
   version: typeof DOCUMENT_VERSION;
   elements: Record<ElementId, CanvasElement>;
   viewpoints?: SavedViewpoint[];
+  /**
+   * The Compose script that produced this board, if it was written rather than drawn (§5.17).
+   * It lives with the document because the claim "the script is the board" is only true if the
+   * script is still there when you come back — otherwise it is a one-shot toy.
+   */
+  script?: string;
 }
 
 export function emptyDocument(): CanvasDocument {
@@ -187,7 +193,13 @@ export function migrateDocument(doc: Partial<CanvasDocument> & { version?: numbe
     elements[id] = el as CanvasElement;
   }
   const viewpoints = Array.isArray(doc.viewpoints) ? doc.viewpoints.filter((v) => v && typeof v.id === "string" && typeof v.name === "string") : undefined;
-  return viewpoints && viewpoints.length ? { version: DOCUMENT_VERSION, elements, viewpoints } : { version: DOCUMENT_VERSION, elements };
+  const script = typeof doc.script === "string" && doc.script.trim() ? doc.script.slice(0, 8000) : undefined;
+  return {
+    version: DOCUMENT_VERSION,
+    elements,
+    ...(viewpoints && viewpoints.length ? { viewpoints } : {}),
+    ...(script ? { script } : {}),
+  };
 }
 
 export function serializeDocument(doc: CanvasDocument): string {
