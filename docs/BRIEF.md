@@ -541,6 +541,39 @@ whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explo
   dims non-matches and lists hits that focus on click. Pause / Fit / Relayout control the
   simulation.
 
+### 5.14 Meta-model builder (v0.2)
+
+The technical view of the graph's schema, at `/w/[slug]/meta` — a top-level menu item beside
+Knowledge graph and Graph explorer. Left: the hierarchy (node types and relation types, expanding
+to fields and observed connections). Right: the selected type.
+
+Until now the meta-model was *only* emergent — kinds and attribute keys derived from the rows, so
+there was nowhere to name a type before instances existed. Four tables now hold the *declared*
+half (`node_types`, `node_type_fields`, `relation_types`, `relation_rules`, migration 0004), and
+`src/lib/metamodel.ts` merges declared with observed. That merge is the point of the screen:
+
+| presence | meaning |
+|---|---|
+| **declared** | declared and present in the data — the healthy case |
+| **from data** | grew from the data, never declared — awaiting a decision |
+| **unused** | modelled, but nothing uses it yet |
+
+- **Restructuring.** Rename a node or relation type and every instance moves with it, or the
+  declaration would silently stop describing its own data. Renaming a field renames that
+  attribute on every instance of the type. Removing a declaration never deletes data — the type
+  simply becomes "from data" again.
+- **Building your own.** Create node and relation types that no instance uses yet, give a type a
+  parent (so `Application ⊂ IT Component` is expressible), declare fields with a data type
+  (text / number / date / boolean / enum), and constrain a relation type with rules
+  (`Application —depends on→ Application`).
+- **Drift.** Attribute keys found in the data but not declared are listed alongside declared ones
+  with a one-click "declare this field". Where a relation type has rules, from→to pairs the data
+  contains that the rules disallow are flagged as violations and counted in the header, with a
+  one-click "allow this connection".
+
+Rules and data types are advisory today — they describe and surface drift rather than reject
+writes. Enforcement (and agent proposals driven by these violations) is the natural next step.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -643,6 +676,10 @@ whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explo
 ### Drag from the inventory (v0.2)
 - Entities drag out of the board's Graph inventory and drop where you release them; the kind
   header drags the whole un-placed group. The "+" buttons still place into a centred grid.
+
+### Meta-model builder (v0.2)
+- `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
+  restructure and constrain; declared-vs-observed drift and rule violations surfaced.
 
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
@@ -803,6 +840,14 @@ only until the store moves to Postgres. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-05 — Rev 37: meta-model builder.** A new top-level view at `/w/[slug]/meta` giving
+  the technical picture of the schema: a left-hand hierarchy of node and relation types with
+  their fields and observed connections, and a detail pane to declare, rename, restructure and
+  constrain them. Adds the declared half of the meta-model (migration 0004) and merges it with
+  the emergent half, so drift — undeclared kinds and fields, and edges that break a declared
+  rule — is visible rather than hidden. Renames propagate to instances. 4 unit tests cover the
+  merge and violation detection; e2e declares a type and adds a field.
 
 - **2026-09-05 — Rev 36: drag entities onto the canvas.** The Graph inventory's rows (and a kind
   header, for the whole un-placed group) are now drag sources; dropping on the canvas creates the

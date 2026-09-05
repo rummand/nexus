@@ -308,6 +308,30 @@ try {
     await page.click("[data-explorer-path] button");
   }
 
+  // meta-model builder: the tree lists types, and an undeclared type can be declared
+  await page.goto(`${base}/w/acme-energy/meta`, { waitUntil: "load" });
+  await page.waitForSelector(".meta-tree");
+  assert.ok((await page.locator(".meta-tree-label").count()) > 0, "meta-model lists node and relation types");
+  // node types only — a relation type's detail pane has rules, not fields
+  const undeclared = page.locator('.meta-tree-item[data-type-kind="node"]', { has: page.locator(".meta-dot.undeclared") }).first();
+  if (await undeclared.count()) {
+    await undeclared.locator(".meta-tree-label").click();
+    await page.waitForSelector(".meta-detail-body");
+    await page.click(".meta-callout button");
+    await page.waitForTimeout(1500);
+    // innerText reflects the CSS uppercase transform, so compare case-insensitively
+    assert.match(await page.locator(".meta-detail-body header .meta-presence").innerText(), /^declared$/i, "declaring a type promotes it out of 'from data'");
+    // the declare above runs in a transition that disables the form while pending
+    await page.waitForSelector('.meta-add input[aria-label="New field key"]:not([disabled])', { timeout: 15000 });
+    const beforeFields = await page.locator(".meta-table tbody tr").count();
+    const fieldKey = `e2e_${Date.now().toString().slice(-5)}`;
+    await page.fill('.meta-add input[aria-label="New field key"]', fieldKey);
+    await page.locator('.meta-add button:has-text("Add field")').click();
+    // the server action revalidates the page, so poll rather than guessing a delay
+    await page.waitForFunction((n) => document.querySelectorAll(".meta-table tbody tr").length > n, beforeFields, { timeout: 15000 })
+      .catch(() => assert.fail("a declared field is added to the type"));
+  }
+
   // create a board from a space via a starter
   await page.goto(`${base}/w/acme-energy/spaces/space_sandbox`, { waitUntil: "load" });
   await page.click(".studio-starters button >> nth=0");

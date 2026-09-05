@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 
 /**
@@ -293,3 +293,87 @@ export type Board = typeof boards.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type Relation = typeof relations_.$inferSelect;
 export type BoardVersion = typeof boardVersions.$inferSelect;
+
+// ---- meta-model ------------------------------------------------------------------------------
+// The meta-model is *emergent*: kinds, relation types and attribute keys are derived from the
+// entities and relations themselves (see lib/metamodel.ts). These tables let a modeller also
+// *declare* it — name a type before any instance exists, describe it, fix its field list, and
+// constrain which types may connect. The view merges both, so drift between what was declared
+// and what the data actually contains is visible rather than hidden.
+
+/** A declared node (object) type. Matched to entities by `name` = entities.kind. */
+export const nodeTypes = sqliteTable(
+  "node_types",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    color: text("color").notNull().default(""),
+    /** Optional parent type, so the modeller can build a hierarchy (Application ⊂ IT Component). */
+    parentId: text("parent_id"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("node_types_workspace_idx").on(t.workspaceId), uniqueIndex("node_types_name_idx").on(t.workspaceId, t.name)],
+);
+
+/** A field declared on a node type — the schema half of the emergent attribute keys. */
+export const nodeTypeFields = sqliteTable(
+  "node_type_fields",
+  {
+    id: text("id").primaryKey(),
+    nodeTypeId: text("node_type_id")
+      .notNull()
+      .references(() => nodeTypes.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    /** text | number | date | boolean | enum — advisory today, enforced later. */
+    dataType: text("data_type").notNull().default("text"),
+    description: text("description").notNull().default(""),
+    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    /** Allowed values for `enum`, JSON-encoded array. */
+    options: text("options").notNull().default("[]"),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [index("node_type_fields_type_idx").on(t.nodeTypeId), uniqueIndex("node_type_fields_key_idx").on(t.nodeTypeId, t.key)],
+);
+
+/** A declared relation (reference) type. Matched to relations by `name` = relations.kind. */
+export const relationTypes = sqliteTable(
+  "relation_types",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("relation_types_workspace_idx").on(t.workspaceId), uniqueIndex("relation_types_name_idx").on(t.workspaceId, t.name)],
+);
+
+/** "Application —depends on→ Application": which node types a relation type may join. */
+export const relationRules = sqliteTable(
+  "relation_rules",
+  {
+    id: text("id").primaryKey(),
+    relationTypeId: text("relation_type_id")
+      .notNull()
+      .references(() => relationTypes.id, { onDelete: "cascade" }),
+    /** Node type *names*, so a rule can reference an emergent kind that was never declared. */
+    fromType: text("from_type").notNull(),
+    toType: text("to_type").notNull(),
+    /** one-to-one | one-to-many | many-to-many — advisory today. */
+    cardinality: text("cardinality").notNull().default("many-to-many"),
+  },
+  (t) => [index("relation_rules_type_idx").on(t.relationTypeId)],
+);
+
+export type NodeType = typeof nodeTypes.$inferSelect;
+export type NodeTypeField = typeof nodeTypeFields.$inferSelect;
+export type RelationType = typeof relationTypes.$inferSelect;
+export type RelationRule = typeof relationRules.$inferSelect;
