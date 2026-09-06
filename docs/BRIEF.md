@@ -1085,7 +1085,7 @@ it, and turning the overlay off anywhere else now moves the scrubber for free.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 57)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 58)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1452,6 +1452,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 58: the demo roadmap, backfilled.** The seed only runs on an empty database,
+  so the deployed instance — set up long before change sets existed — showed an empty Roadmap for
+  ever, which reads as a broken feature rather than an unused one. A narrow, idempotent backfill now
+  runs on boot: it touches only the demo workspace, by slug, and only when that workspace has no
+  change set at all, so seeded example plans can never turn up beside somebody's real planning or
+  in a real organisation's workspace. Five tests reproduce the older instance and check both halves
+  — that it gets its roadmap, and that repeated boots do not give it a second one.
 
 - **2026-09-06 — Rev 57: the time scrubber.** A timeline under every board — today, then each named
   state in date order. Click a stop, step with the arrows or press play, and the landscape becomes

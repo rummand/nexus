@@ -11,8 +11,30 @@ export const DEMO_WORKSPACE_SLUG = "acme-energy";
 
 export async function seedIfEmpty(db: Db) {
   const [row] = await db.select({ n: count() }).from(s.workspaces);
-  if ((row?.n ?? 0) > 0) return;
+  if ((row?.n ?? 0) > 0) {
+    await backfillDemoRoadmap(db);
+    return;
+  }
   await seed(db);
+}
+
+/**
+ * Give the demo workspace its roadmap, if it predates the feature.
+ *
+ * The seed only runs on an empty database, so an instance that was set up before change sets
+ * existed shows an empty Roadmap for ever — which reads as a broken feature rather than an empty
+ * one. This fills that gap once, on boot, and never again.
+ *
+ * Deliberately narrow. It touches only the demo workspace, by slug: seeded example plans belong in
+ * the demo and nowhere near a real organisation's model. And it does nothing at all if the
+ * workspace already has a change set, so somebody's own planning is never joined by fixtures.
+ */
+export async function backfillDemoRoadmap(db: Db) {
+  const demo = await db.query.workspaces.findFirst({ where: eq(s.workspaces.slug, DEMO_WORKSPACE_SLUG) });
+  if (!demo) return;
+  const [existing] = await db.select({ n: count() }).from(s.changeSets).where(eq(s.changeSets.workspaceId, demo.id));
+  if ((existing?.n ?? 0) > 0) return;
+  await seedRoadmap(db, demo.id);
 }
 
 export async function seed(db: Db) {
@@ -103,6 +125,8 @@ async function seedRoadmap(db: Db, workspaceId: string) {
   const now = new Date().toISOString();
   const sapPm = "ent_seed_sap_pm";
 
+  // onConflictDoNothing throughout: a half-finished earlier attempt should be completed, not
+  // turned into a crash on the next boot.
   await db.insert(s.changeSets).values([
     {
       id: "chg_seed_workorders",
@@ -127,7 +151,7 @@ async function seedRoadmap(db: Db, workspaceId: string) {
       createdAt: now,
       updatedAt: now,
     },
-  ]);
+  ]).onConflictDoNothing();
 
   const changes = [
     { id: "chn_seed_1", changeSetId: "chg_seed_workorders", op: "addEntity" as const, entityId: sapPm, relationId: null, payload: JSON.stringify({ kind: "Application", name: "SAP PM", description: "Plant maintenance module, already licensed.", attributes: { owner: "Asset Management", lifecycle: "planned" } }), note: "Already licensed; no new vendor." },
@@ -143,11 +167,11 @@ async function seedRoadmap(db: Db, workspaceId: string) {
       ? [{ id: "chn_seed_6", changeSetId: "chg_seed_streaming", op: "addRelation" as const, entityId: null, relationId: "rel_seed_3", payload: JSON.stringify({ fromEntityId: id("SCADA / EMS") ?? "", toEntityId: dataLake, kind: "telemetry" }), note: "Straight through, no hourly batch." }]
       : []),
   ];
-  await db.insert(s.changes).values(changes.map((c) => ({ ...c, createdAt: now })));
+  await db.insert(s.changes).values(changes.map((c) => ({ ...c, createdAt: now }))).onConflictDoNothing();
 
   // The streaming plan writes into the same data lake the work-order move re-points; doing it the
   // other way round would mean rewiring twice. That is a dependency, not a preference.
-  await db.insert(s.changeSetDependencies).values({ changeSetId: "chg_seed_streaming", dependsOnId: "chg_seed_workorders", createdAt: now });
+  await db.insert(s.changeSetDependencies).values({ changeSetId: "chg_seed_streaming", dependsOnId: "chg_seed_workorders", createdAt: now }).onConflictDoNothing();
 
   // Two states worth naming: the one after the work-order move, and the one people call "2028".
   await db.insert(s.plateaus).values([
@@ -171,10 +195,10 @@ async function seedRoadmap(db: Db, workspaceId: string) {
       createdAt: now,
       updatedAt: now,
     },
-  ]);
+  ]).onConflictDoNothing();
   await db.insert(s.plateauChangeSets).values([
     { plateauId: "plt_seed_workorders", changeSetId: "chg_seed_workorders", createdAt: now },
     { plateauId: "plt_seed_2028", changeSetId: "chg_seed_workorders", createdAt: now },
     { plateauId: "plt_seed_2028", changeSetId: "chg_seed_streaming", createdAt: now },
-  ]);
+  ]).onConflictDoNothing();
 }
