@@ -909,6 +909,54 @@ they did before. Grounding makes them better; it is not what makes them work.
 `GET /api/knowledge?q=…` exposes the same retrieval to anything that is not this UI. `ea-kb` does
 it from a terminal with no database and no server.
 
+### 5.21 Time: change sets, to-be and what a plan would break (v0.2)
+
+The graph was a snapshot. Architecture is a discipline about change, so a tool that can only
+describe today can describe half the job — it can tell you what you have and nothing about what you
+are doing to it.
+
+A **change set** is a named, dated set of intentions about the estate: introduce this, retire that,
+this attribute changes hands, connect these two. The decision that shapes everything else is that a
+change set is **an overlay, not a mutation**. It is never applied to the graph until somebody
+delivers it; until then it *projects* a to-be view. As-is therefore stays true — health, impact and
+provenance keep meaning what they said — and to-be is free to be speculative, contradictory and
+wrong, which is what planning actually is. Two rival plans can be compared without either of them
+having happened.
+
+`src/lib/change/project.ts` is a pure function over rows: graph + changes → the projected graph,
+plus which ids were added, retired and changed. Retired systems are kept in the projection, marked,
+because a view that simply dropped them would answer "what does the estate look like after this?"
+while hiding the more interesting question — what was attached to the thing you are about to
+remove. `settled()` is the version with them actually gone, which is what you measure. A plan that
+has gone stale — retiring something already deleted, editing a system that no longer exists — is
+reported change by change rather than silently skipped, and delivery refuses until it is fixed: a
+half-applied plan is the hardest kind of mess to unpick.
+
+**What it breaks.** `src/lib/change/impact.ts` answers the question a retirement decision actually
+turns on, and it distinguishes four ways of being attached, because they are four different
+problems: something that *depends on* the retiring system stops working; something *served by* it
+loses an input; something that *supplies* it has a feed with nowhere to go — the decommissioning
+job people routinely forget — and "connected" is the honest answer where the relation kind says
+nothing. Direction is read from the vocabulary, so the same verb gives different answers depending
+on which end is disappearing. It also names the systems that would be left attached to nothing at
+all, and the second ring one hop further out.
+
+**The roadmap** (`/w/:slug/roadmap`) puts the change sets on a timeline with as-is and to-be counts
+above them, each one expandable into what it does, what it breaks and what has gone stale.
+Delivering applies it to the graph — introductions become entities with `source: plan:<id>`,
+retirements set `lifecycle: retired` and sever the system's relations rather than deleting the node,
+because the graph is meant to outlive the things in it and a model that forgets a retired system
+cannot answer "what did we replace it with".
+
+**A board can be seen through a plan.** The Viewpoint panel gains a state picker: as-is, or as of
+any change set. Retiring cards are struck through and hatched, changed ones marked, and the panel
+says how many planned objects are not on this board and offers to place them. Placing one is an
+edit and says so — but the card it creates is marked `planned`, and the board→graph sync skips
+those. Drawing an intention cannot create the system: without that, dragging a planned card onto a
+board would quietly deliver part of a plan nobody approved on the next autosave. The mark clears
+itself when the change set is delivered and the entity exists, at which point the card becomes an
+ordinary one.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -938,7 +986,7 @@ it from a terminal with no database and no server.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 50)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 51)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1125,6 +1173,16 @@ it from a terminal with no database and no server.
 - Doctrine scoped per agent, every rule quoting the corpus verbatim, enforced by a test.
 - Grounding in Compose, Intake, estate health and the meta-model — a no-op when no corpus is built.
 
+### Time and change (v0.2)
+- Change sets: named, dated intentions (introduce / retire / change / connect / disconnect), held
+  as overlays and projected, never applied until delivered.
+- Impact analysis over the graph: depends-on / served-by / supplies / connected, systems left
+  orphaned, and the second ring.
+- `/w/:slug/roadmap`: a timeline, as-is vs to-be counts, what each plan breaks, stale changes
+  reported, and delivery.
+- A board seen as-is or as of a change set; planned cards are drawings of an intention and cannot
+  create the system.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
   camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
@@ -1249,6 +1307,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-06 | A change set is an overlay projected over the graph, never a mutation of it. | As-is has to stay true or health, impact and provenance stop meaning anything; to-be has to be free to be wrong, because planning is. Keeping the two apart is also what lets two rival plans be compared without either having happened. |
+| 2026-09-06 | Delivering a retirement sets `lifecycle: retired` and severs its relations rather than deleting the node. | The graph outlives the things in it. A system retired last year is the answer to "what did we replace it with", and a model that forgets it cannot answer that. Deleting an entity stays a separate, deliberate act. |
+| 2026-09-06 | A card placed from a change set is marked `planned` and skipped by the board→graph sync. | Otherwise drawing an intention on a board would create the system on the next autosave — delivering part of a plan nobody approved, through a gesture that looks like arranging a picture. |
+| 2026-09-06 | Delivery refuses a change set with stale changes rather than applying what still fits. | A partially applied plan is the hardest state to reason about afterwards, and the person is the only one who can decide whether a change that no longer fits should be dropped or repointed. |
 | 2026-09-06 | The EA knowledge base is a separate package, not a folder in the web app. | The product owner asked for a module that stands alone and teaches the agents. A package with its own CLI and no import of Nexus can be shown to be standalone rather than merely described that way — and the constraint is what forced retrieval to work without a database, a server or a model key. |
 | 2026-09-06 | Lexical retrieval (BM25) rather than embeddings. | The module must work with no model API key: a knowledge base that silently returns nothing without one is not a knowledge base. Lexical retrieval is also explainable — every hit names the words that matched — which matters when the point of a citation is that a human can check it. |
 | 2026-09-06 | The corpus is committed, and only openly-licensed sources may enter it. | Shipping the text is what makes the module work offline and lets a human read exactly what the agents are grounded in. That is redistribution, so the licence gate is not optional; the canon that cannot be shipped is listed openly as referenced-only rather than quietly omitted. |
@@ -1267,6 +1329,22 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 51: the model in time.** The graph could only describe today. It now carries
+  *change sets*: named, dated sets of intentions — introduce, retire, change, connect — held as
+  overlays and projected rather than applied, so as-is stays true while a plan is free to be wrong.
+  `src/lib/change` is pure over rows: projection, settling, and an impact analysis that separates
+  the four ways of being attached to something that is going (depends on it, is served by it,
+  feeds it, merely connected), names what would be left orphaned, and reads direction from the
+  relation vocabulary rather than assuming every arrow is a dependency. A plan that has gone stale
+  is reported change by change, and delivery refuses until it is fixed. The new **Roadmap** page
+  puts change sets on a timeline with as-is and to-be counts and what each one breaks; delivering
+  applies it, retiring by setting `lifecycle: retired` and severing relations rather than deleting
+  the node. A board can now be viewed as-is or as of a change set, with retiring cards struck
+  through and planned ones placeable — and a placed card is marked `planned` so the sync skips it,
+  because drawing an intention must never create the system. Two seeded plans against the demo
+  estate, 17 unit tests over the pure functions, two over the invariant, and e2e coverage of the
+  whole path.
 
 - **2026-09-06 — Rev 50: an EA knowledge base the agents are taught from.** A new standalone
   package, `packages/ea-knowledge`, with its own CLI and no import of Nexus: a curated corpus of

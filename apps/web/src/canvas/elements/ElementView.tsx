@@ -43,11 +43,29 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
     return h === undefined || h === 0 ? null : `${h} hop${h === 1 ? "" : "s"}`;
   });
   const proposalCount = useCanvas((s) => (typeof el.meta?.entityId === "string" ? s.proposalsByEntity[el.meta.entityId]?.length ?? 0 : 0));
+  /**
+   * What a change set does to this card, when the board is being viewed through one (§5.21).
+   * A tint, never an edit: leaving the overlay leaves the document exactly as it was.
+   */
+  const changeState = useCanvas((s) => {
+    const overlay = s.changeOverlay;
+    const entityId = typeof el.meta?.entityId === "string" ? el.meta.entityId : null;
+    if (!overlay || !entityId) return null;
+    if (overlay.retired.has(entityId)) return "retired" as const;
+    if (overlay.changed.has(entityId)) return "changed" as const;
+    if (overlay.added.some((a) => a.id === entityId)) return "added" as const;
+    return null;
+  });
   const linkCandidate = useCanvas((s) => (selected ? findLinkCandidate(el.title, typeof el.meta?.entityId === "string" ? el.meta.entityId : undefined, el.kind, s.graphEntities) : null));
   const linkTo = (target: { id: string; kind: string; attributes?: Record<string, string> }) => patch({ kind: target.kind || el.kind, color: target.kind ? cardColorForKind(target.kind) : el.color, attributes: { ...(target.attributes ?? {}), ...(el.attributes ?? {}) }, meta: { ...(el.meta ?? {}), entityId: target.id } });
-  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : ""].filter(Boolean).join(" ");
+  // A planned card looks planned whether or not the overlay is on: it is not in the graph, and a
+  // card that looks ordinary while being invisible to every count would be a small lie.
+  const planned = Boolean(el.meta?.planned);
+  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : "", changeState ? `change-${changeState}` : "", planned ? "planned" : ""].filter(Boolean).join(" ");
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>
+      {planned && !changeState && <span className="fact-change-badge planned" title="Planned — not in the graph until its change set is delivered">planned</span>}
+      {changeState && <span className={`fact-change-badge ${changeState}`} title={`This change set would ${changeState === "retired" ? "retire" : changeState === "added" ? "introduce" : "change"} this`}>{changeState}</span>}
       {lensBadge && <span className="fact-lens-badge" style={lensColor ? { background: lensColor } : undefined}>{lensBadge}</span>}
       {proposalCount > 0 && <span className="fact-proposal-badge" data-proposal-badge title={`${proposalCount} agent proposal${proposalCount === 1 ? "" : "s"} — select the card to review`}>✦ {proposalCount}</span>}
       <span className="fact-kind">

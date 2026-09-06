@@ -2,6 +2,23 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 export { useStore } from "zustand";
 import { computeLens, NO_LENS, type Lens, type LensResult } from "./lens";
 import type { Proposal } from "@/lib/graph-types";
+
+/**
+ * A change set, resolved to the entity ids on this board that it touches.
+ *
+ * Held by entity id rather than element id because a plan is about the estate, not about a
+ * drawing: the same change set tints every board the system appears on.
+ */
+export interface ChangeOverlay {
+  id: string;
+  name: string;
+  targetDate: string;
+  retired: Set<string>;
+  changed: Set<string>;
+  /** Introduced by the plan; those not already on the board are the interesting ones. */
+  added: Array<{ id: string; name: string; kind: string; description: string }>;
+  impact: string;
+}
 import type { VocabEntity } from "./link";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
@@ -76,6 +93,13 @@ export interface CanvasState {
   /** Open agent proposals for this workspace (fetched after every save) and a per-entity index. */
   proposals: Proposal[];
   proposalsByEntity: Record<string, Proposal[]>;
+  /**
+   * The change set this board is being viewed through, if any (§5.21).
+   *
+   * A *view*, never an edit: the overlay only tints cards the plan touches. The document stays
+   * the as-is board, so leaving the overlay leaves nothing behind.
+   */
+  changeOverlay: ChangeOverlay | null;
   /** Active lens (client-side optic, saved with viewpoints) and its derived result. */
   lens: Lens;
   lensResult: LensResult | null;
@@ -101,6 +125,7 @@ export interface CanvasState {
   setPendingConnector(p: CanvasState["pendingConnector"]): void;
   setSaveState(s: SaveState): void;
   setBoardRevision(n: number): void;
+  setChangeOverlay(overlay: ChangeOverlay | null): void;
   setConnectorPreset(p: ConnectorPreset): void;
   togglePanel(name: PanelName, value?: boolean): void;
   /** Remember the script this board was written from. */
@@ -291,6 +316,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       contextMenu: null,
       lens: NO_LENS,
       lensResult: null,
+      changeOverlay: null,
       presenting: false,
       presentIndex: null,
       graphKinds: [],
@@ -330,6 +356,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setBoardRevision: (boardRevision) => set({ boardRevision }),
+      setChangeOverlay: (changeOverlay) => set({ changeOverlay }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
       setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: "dirty" })),
 

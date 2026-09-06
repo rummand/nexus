@@ -512,3 +512,61 @@ export type NodeType = typeof nodeTypes.$inferSelect;
 export type NodeTypeField = typeof nodeTypeFields.$inferSelect;
 export type RelationType = typeof relationTypes.$inferSelect;
 export type RelationRule = typeof relationRules.$inferSelect;
+
+// ---- change sets: the model in time ----------------------------------------
+// The graph is the estate as it is. A *change set* is a named, dated set of intentions about it —
+// what will be introduced, what will be retired, what will change hands — and it is deliberately
+// **not** applied to the graph. It projects a to-be view instead (src/lib/change/project.ts).
+//
+// That separation is the whole design. As-is stays true, so health, impact and provenance keep
+// meaning what they said; to-be is free to be speculative, contradictory and wrong, which is what
+// planning actually is. A change set only touches the graph when somebody delivers it.
+
+export const changeSets = sqliteTable(
+  "change_sets",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default(""),
+    description: text("description").notNull().default(""),
+    /** draft: still being written. planned: agreed. delivered: applied to the graph. abandoned: kept, not happening. */
+    status: text("status", { enum: ["draft", "planned", "delivered", "abandoned"] }).notNull().default("draft"),
+    /** When it is meant to land: an ISO date (YYYY-MM-DD), or "" for undated. */
+    targetDate: text("target_date").notNull().default(""),
+    /** Set when the change set was applied to the graph; the graph moved at this moment. */
+    deliveredAt: text("delivered_at"),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("change_sets_workspace_idx").on(t.workspaceId, t.targetDate)],
+);
+
+export const changes = sqliteTable(
+  "changes",
+  {
+    id: text("id").primaryKey(),
+    changeSetId: text("change_set_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    op: text("op", { enum: ["addEntity", "retireEntity", "setAttribute", "addRelation", "removeRelation"] }).notNull(),
+    /**
+     * The entity this change is about. For `addEntity` the id is minted when the change is
+     * written, before the entity exists — the same trick the canvas uses, and what lets a new
+     * relation in the same change set point at a system that has not been built yet.
+     */
+    entityId: text("entity_id"),
+    relationId: text("relation_id"),
+    /** Operands: the new entity's fields, the attribute key/value, the relation's ends. */
+    payload: text("payload").notNull().default("{}"),
+    /** Why. A change nobody can explain is one nobody can review. */
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("changes_set_idx").on(t.changeSetId), index("changes_entity_idx").on(t.entityId)],
+);
+
+export type ChangeSetRow = typeof changeSets.$inferSelect;
+export type ChangeRow = typeof changes.$inferSelect;

@@ -28,6 +28,12 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
 
   const patch = (p: Partial<CanvasElement>) => single && store.getState().updateElements({ [single.id]: p }, { history: true });
   const entityId = single?.type === "card" && isEntityId(single.meta?.entityId) ? single.meta.entityId : null;
+  /**
+   * A card placed from a change set has an entity id but no entity: it is a drawing of an
+   * intention (§5.21). Asking the graph about it would 404, and inviting a merge or a rename of
+   * something that does not exist would be worse than the 404.
+   */
+  const planned = single?.type === "card" ? Boolean(single.meta?.planned) : false;
 
   return (
     <section
@@ -55,6 +61,11 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
         <>
           <h2>{elementName(single)}</h2>
           <p>{elementTypeLabel(single)}{isBoxElement(single) ? ` · ${connectionsOf(single.id)} connections` : ""}{single.locked ? " · locked" : ""}</p>
+          {planned && (
+            <p className="inspector-planned" data-planned>
+              Planned, not in the graph. This card comes from a change set; it becomes a real object when that change set is delivered.
+            </p>
+          )}
           <div className="detail-grid">
             {single.type === "card" && (
               <>
@@ -91,8 +102,8 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
               </div>
             )}
           </div>
-          {entityId && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
-          {entityId && <ProposalsBlock key={`p-${entityId}`} entityId={entityId} />}
+          {entityId && !planned && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
+          {entityId && !planned && <ProposalsBlock key={`p-${entityId}`} entityId={entityId} />}
           <div className="inspector-actions">
             <button type="button" onClick={() => store.getState().focusElement(single.id)}>Focus</button>
             <button type="button" onClick={() => store.getState().duplicateSelection()}>Duplicate</button>

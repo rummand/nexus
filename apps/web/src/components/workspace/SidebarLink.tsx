@@ -8,10 +8,14 @@ export function SidebarLink({ href, icon, children, exact = false, trailing, cla
   const pathname = usePathname();
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
   return (
+    /*
+      Explicit keys on these three: the React compiler builds them as an array once the sidebar is
+      large enough, and React then warns about a list with no keys. Same fix as the nav itself.
+    */
     <Link href={href} className={[active ? "active" : "", className ?? ""].join(" ").trim()}>
-      {icon}
-      <span>{children}</span>
-      {trailing !== undefined && <span className="nav-count">{trailing}</span>}
+      <span key="icon" className="nav-icon">{icon}</span>
+      <span key="label">{children}</span>
+      {trailing !== undefined && <span key="count" className="nav-count">{trailing}</span>}
     </Link>
   );
 }

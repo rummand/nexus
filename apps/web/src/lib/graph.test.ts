@@ -3,6 +3,7 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/client";
 import { buildBoardFromGraph, entityDetail, graphSnapshot, hydrateDocument, importGraph, parseImportText, syncBoardToGraph } from "./graph";
@@ -20,6 +21,43 @@ beforeAll(async () => {
 });
 
 const cardEl = (id: string, entityId: string, title: string, kind = "Application"): CardElement => ({ id, type: "card", x: 0, y: 0, w: 236, h: 124, kind, color: "#000", title, description: "", z: 1, meta: { entityId } });
+
+describe("planned cards", () => {
+  const planned = (id: string, entityId: string, title: string): CardElement => ({
+    ...cardEl(id, entityId, title), meta: { entityId, planned: "chg_1" },
+  });
+  // A workspace of its own: the suites below assert over every entity in "ws", and a planned card
+  // that leaked into those counts would be a confusing way to find this bug.
+  beforeAll(async () => {
+    await db.insert(s.workspaces).values({ id: "ws_plan", slug: "ws-plan", name: "Plan" });
+    await db.insert(s.spaces).values({ id: "sp_plan", workspaceId: "ws_plan", name: "Space" });
+    await db.insert(s.boards).values({ id: "b_plan", workspaceId: "ws_plan", spaceId: "sp_plan", name: "Plan board" });
+  });
+
+  it("never reaches the graph, however many times the board is saved", async () => {
+    const doc: CanvasDocument = { version: 2, elements: { p1: planned("p1", "ent_planned_1", "SAP PM") } };
+    await syncBoardToGraph(db, { id: "b_plan", workspaceId: "ws_plan" }, doc);
+    await syncBoardToGraph(db, { id: "b_plan", workspaceId: "ws_plan" }, doc);
+    const rows = await db.select().from(s.entities).where(eq(s.entities.id, "ent_planned_1"));
+    expect(rows, "drawing an intention must not create the system").toHaveLength(0);
+    const index = await db.select().from(s.boardEntities).where(eq(s.boardEntities.entityId, "ent_planned_1"));
+    expect(index).toHaveLength(0);
+  });
+
+  it("becomes an ordinary card once the change set is delivered", async () => {
+    const doc: CanvasDocument = { version: 2, elements: { p2: planned("p2", "ent_planned_2", "SAP PM") } };
+    // delivery creates the entity …
+    await db.insert(s.entities).values({ id: "ent_planned_2", workspaceId: "ws_plan", kind: "Application", name: "SAP PM", description: "", attributes: "{}", source: "plan:chg_1" });
+    const hydrated = await hydrateDocument(db, doc);
+    const card = hydrated.elements.p2 as CardElement;
+    expect(card.meta?.planned, "the mark clears itself").toBeUndefined();
+    expect(card.meta?.entityId).toBe("ent_planned_2");
+    // … and from then on it syncs like any other card
+    await syncBoardToGraph(db, { id: "b_plan", workspaceId: "ws_plan" }, hydrated);
+    const index = await db.select().from(s.boardEntities).where(eq(s.boardEntities.entityId, "ent_planned_2"));
+    expect(index).toHaveLength(1);
+  });
+});
 
 describe("board ↔ graph sync", () => {
   it("creates entities and relations from a board and indexes board usage", async () => {

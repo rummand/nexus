@@ -541,6 +541,46 @@ try {
   await page.waitForTimeout(1500);
   assert.match(await page.locator("[data-step] em").first().innerText(), /do not understand/i, "an unreadable line explains itself");
 
+  // ---- the roadmap: change sets, impact, and a board seen as-is or to-be --------------------
+  await page.goto(`${base}/w/acme-energy/roadmap`, { waitUntil: "load" });
+  await page.waitForSelector(".roadmap");
+  const states = await page.locator("[data-states]").innerText();
+  assert.match(states, /AS-IS/i, "the roadmap states what the estate is today");
+  assert.ok((await page.locator("[data-change-set]").count()) >= 2, "the seeded change sets are listed");
+  // the point of the screen: a plan held against the graph says what it breaks
+  const impact = await page.locator("[data-impact]").first().innerText();
+  assert.match(impact, /Retiring Maximo/, "the impact of a retirement is computed from the graph");
+  assert.match(impact, /attached/, "it names how much is attached");
+
+  // adding a change updates the projection
+  const beforeChanges = await page.locator("[data-change-set] [data-change]").count();
+  await page.selectOption("[data-add-change] select:first-of-type", "setAttribute");
+  const objectSelect = page.locator("[data-add-change] select").nth(1);
+  await objectSelect.selectOption({ index: 1 });
+  await page.fill('[data-add-change] input[aria-label="Attribute value"]', "Grid Operations");
+  await page.click('[data-add-change] button:has-text("Add")');
+  await page.waitForTimeout(1200);
+  assert.equal(await page.locator("[data-change-set] [data-change]").count(), beforeChanges + 1, "the change is recorded");
+
+  // a board seen through the change set: the retired system is marked, planned ones can be placed
+  await page.goto(`${base}/b/brd_integrations`, { waitUntil: "load" });
+  await page.waitForSelector("[data-element-id]");
+  await page.click('button:has-text("Viewpoint")');
+  await page.waitForSelector("[data-state-picker]");
+  const changeOption = await page.$$eval("[data-state-picker] option", (els) => els.map((e) => e.value).find(Boolean));
+  await page.selectOption("[data-state-picker] select", changeOption);
+  await page.waitForSelector(".fact-card.change-retired", { timeout: 20000 });
+  assert.ok((await page.locator(".fact-card.change-retired").count()) >= 1, "the retiring system is struck through on the board");
+  await page.click('[data-state-picker] button:has-text("Place them")');
+  await page.waitForSelector(".fact-card.planned", { timeout: 20000 });
+  // …and a planned card is a drawing of an intention: it must not create the system
+  await page.waitForTimeout(2000); // let the autosave land
+  const graph = await (await fetch(`${base}/api/graph/query`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: "ws_acme", q: "SAP PM" }),
+  })).json();
+  assert.equal(graph.entities.length, 0, "placing a planned object must not create it in the graph");
+
   // ---- the EA knowledge base: search the corpus and read the doctrine ----------------------
   await page.goto(`${base}/w/acme-energy/knowledge`, { waitUntil: "load" });
   await page.waitForSelector(".knowledge");

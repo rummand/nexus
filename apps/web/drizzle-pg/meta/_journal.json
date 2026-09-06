@@ -15,6 +15,13 @@
       "when": 1788644430432,
       "tag": "0001_safe_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788669142250,
+      "tag": "0002_productive_morlocks",
+      "breakpoints": true
     }
   ]
 }

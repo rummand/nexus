@@ -45,10 +45,19 @@ function sameAttributes(a: Record<string, string>, b: Record<string, string>) {
 
 type Elements = CanvasDocument["elements"];
 
+/**
+ * Cards that are the canvas face of a graph entity.
+ *
+ * A card marked `planned` is deliberately excluded (§5.21). Placing a system a change set intends
+ * to introduce puts a picture of an intention on the board; if the sync treated it like any other
+ * card it would create the entity on the next autosave, quietly delivering part of a plan nobody
+ * approved. It becomes a real card the moment the change set is delivered and the entity exists —
+ * `hydrateDocument` clears the mark then.
+ */
 function entityCards(elements: Elements): Array<CardElement & { entityId: string }> {
   const out: Array<CardElement & { entityId: string }> = [];
   for (const el of Object.values(elements)) {
-    if (el.type === "card" && isEntityId(el.meta?.entityId)) out.push(Object.assign(el, { entityId: el.meta.entityId }));
+    if (el.type === "card" && isEntityId(el.meta?.entityId) && !el.meta?.planned) out.push(Object.assign(el, { entityId: el.meta.entityId }));
   }
   return out;
 }
@@ -98,10 +107,21 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
   }
 }
 
+/** Cards placed from a change set: pictures of an intention, not yet backed by an entity (§5.21). */
+function plannedCards(elements: Elements): Array<CardElement & { entityId: string }> {
+  const out: Array<CardElement & { entityId: string }> = [];
+  for (const el of Object.values(elements)) {
+    if (el.type === "card" && el.meta?.planned && isEntityId(el.meta?.entityId)) out.push(Object.assign(el, { entityId: el.meta.entityId }));
+  }
+  return out;
+}
+
 /** Refresh entity-backed cards and relation connectors from the graph. */
 export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<CanvasDocument> {
-  const cards = entityCards(doc.elements);
-  if (cards.length === 0) return doc;
+  const doc2 = await promotePlanned(db, doc);
+  const cards = entityCards(doc2.elements);
+  if (cards.length === 0) return doc2;
+  doc = doc2;
   const rows = await db.select().from(s.entities).where(inArray(s.entities.id, cards.map((c) => c.entityId)));
   const byId = new Map(rows.map((e) => [e.id, e]));
   const elements: Elements = { ...doc.elements };
@@ -125,6 +145,31 @@ export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<Canv
       const r = relById.get(el.meta.relationId);
       if (r && r.kind !== el.label) elements[el.id] = { ...el, label: r.kind };
     }
+  }
+  return { ...doc, elements };
+}
+
+/**
+ * A planned card becomes a real one when its change set is delivered.
+ *
+ * The mark is cleared here rather than by the delivery, because a change set does not know which
+ * boards drew it — and this is the moment the board is being read anyway. From then on the card
+ * behaves like any other: it syncs, it hydrates, it is the entity's face.
+ */
+async function promotePlanned(db: Db, doc: CanvasDocument): Promise<CanvasDocument> {
+  const planned = plannedCards(doc.elements);
+  if (!planned.length) return doc;
+  const rows = await db.select({ id: s.entities.id }).from(s.entities).where(inArray(s.entities.id, planned.map((c) => c.entityId)));
+  const real = new Set(rows.map((r) => r.id));
+  if (!real.size) return doc;
+  const elements: Elements = { ...doc.elements };
+  for (const c of planned) {
+    if (!real.has(c.entityId)) continue;
+    const { planned: _drop, ...meta } = c.meta ?? {};
+    void _drop;
+    const { entityId: _drop2, ...rest } = c;
+    void _drop2;
+    elements[c.id] = { ...rest, meta } as CanvasElement;
   }
   return { ...doc, elements };
 }

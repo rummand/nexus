@@ -20,6 +20,8 @@ The client autosaves with a debounce and flushes on tab hide / unload (`useAutos
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
+| GET | `/api/change-sets?workspaceId=…` | — | `{ changeSets: [{ id, name, status, targetDate }] }` — enough to fill the board's state picker. |
+| GET | `/api/change-sets/:id/overlay` | — | A change set resolved against the graph: `{ name, targetDate, retired[], changed[], added[], problems, impact }`. Entity ids and a sentence, not a graph: the board already holds the cards. |
 | GET | `/api/knowledge` | — | The corpus: `{ builtAt, documents, registered, passages, characters, licenses, lessons }`. |
 | GET | `/api/knowledge?q=…&limit=n` | — | Lexical search over the EA corpus: `{ query, empty, tookMs, unknownTerms, passages[] }`, each passage carrying its label, source link and licence. Works with no model API key. |
 | GET | `/api/boards/:boardId/versions` | — | `{ versions: VersionSummary[] }` newest first. |

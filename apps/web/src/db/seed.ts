@@ -1,4 +1,4 @@
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type { Db } from "./client";
 import * as s from "./schema";
 import { serializeDocument, type CanvasDocument } from "@/canvas/document";
@@ -67,4 +67,81 @@ export async function seed(db: Db) {
   await db.insert(s.boardFavorites).values([{ userId: DEMO_USER_ID, boardId: "brd_capabilities" }]);
   // index the seeded boards into the knowledge graph
   for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId }, b.document);
+
+  await seedRoadmap(db, workspaceId);
+}
+
+/**
+ * Two plans against the seeded estate.
+ *
+ * The demo is not much of a demo without them: the roadmap's whole argument is that a change set
+ * held against a real graph can tell you what it breaks, and that only shows with a plan that
+ * touches something. Entity ids are looked up by name because the seed mints them randomly.
+ */
+async function seedRoadmap(db: Db, workspaceId: string) {
+  const rows = await db.select({ id: s.entities.id, name: s.entities.name }).from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
+  const wires = await db.select({ from: s.relations_.fromEntityId, to: s.relations_.toEntityId }).from(s.relations_).where(eq(s.relations_.workspaceId, workspaceId));
+  const degree = new Map<string, number>();
+  for (const w of wires) {
+    degree.set(w.from, (degree.get(w.from) ?? 0) + 1);
+    degree.set(w.to, (degree.get(w.to) ?? 0) + 1);
+  }
+  /**
+   * The same system appears on more than one seeded board, so a name matches several entities —
+   * which is exactly the duplication the resolution proposals exist to find. Take the one that is
+   * actually wired into the landscape: a plan against the unconnected copy would look harmless.
+   */
+  const id = (name: string) =>
+    rows.filter((r) => r.name === name).sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))[0]?.id;
+  const maximo = id("Maximo");
+  const historian = id("Historian");
+  const assetRegister = id("Asset Register");
+  const dataLake = id("Data Lake");
+  if (!maximo || !historian) return;
+
+  const at = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const now = new Date().toISOString();
+  const sapPm = "ent_seed_sap_pm";
+
+  await db.insert(s.changeSets).values([
+    {
+      id: "chg_seed_workorders",
+      workspaceId,
+      name: "Move work orders to SAP PM",
+      description:
+        "Maximo is out of support at the end of the year. Work-order management moves to SAP PM, which we already run for finance; asset master data keeps flowing from the Asset Register.",
+      status: "planned",
+      targetDate: at(120),
+      createdById: DEMO_USER_ID,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "chg_seed_streaming",
+      workspaceId,
+      name: "Retire the Historian, stream telemetry",
+      description: "Candidate, not agreed. Replace the hourly batch out of the Historian with telemetry streamed straight to the data lake.",
+      status: "draft",
+      targetDate: at(300),
+      createdById: DEMO_USER_ID,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]);
+
+  const changes = [
+    { id: "chn_seed_1", changeSetId: "chg_seed_workorders", op: "addEntity" as const, entityId: sapPm, relationId: null, payload: JSON.stringify({ kind: "Application", name: "SAP PM", description: "Plant maintenance module, already licensed.", attributes: { owner: "Asset Management", lifecycle: "planned" } }), note: "Already licensed; no new vendor." },
+    { id: "chn_seed_2", changeSetId: "chg_seed_workorders", op: "retireEntity" as const, entityId: maximo, relationId: null, payload: "{}", note: "Out of support from December." },
+    ...(assetRegister
+      ? [{ id: "chn_seed_3", changeSetId: "chg_seed_workorders", op: "addRelation" as const, entityId: null, relationId: "rel_seed_1", payload: JSON.stringify({ fromEntityId: assetRegister, toEntityId: sapPm, kind: "master data" }), note: "The same feed Maximo had." }]
+      : []),
+    ...(dataLake
+      ? [{ id: "chn_seed_4", changeSetId: "chg_seed_workorders", op: "addRelation" as const, entityId: null, relationId: "rel_seed_2", payload: JSON.stringify({ fromEntityId: sapPm, toEntityId: dataLake, kind: "work orders" }), note: "Work orders still land in the lake." }]
+      : []),
+    { id: "chn_seed_5", changeSetId: "chg_seed_streaming", op: "retireEntity" as const, entityId: historian, relationId: null, payload: "{}", note: "Only exists to buffer for the batch." },
+    ...(dataLake
+      ? [{ id: "chn_seed_6", changeSetId: "chg_seed_streaming", op: "addRelation" as const, entityId: null, relationId: "rel_seed_3", payload: JSON.stringify({ fromEntityId: id("SCADA / EMS") ?? "", toEntityId: dataLake, kind: "telemetry" }), note: "Straight through, no hourly batch." }]
+      : []),
+  ];
+  await db.insert(s.changes).values(changes.map((c) => ({ ...c, createdAt: now })));
 }

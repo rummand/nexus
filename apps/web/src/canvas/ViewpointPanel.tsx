@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import type { QueryResponse } from "@/lib/graph-types";
-import { cardColorForKind } from "./document";
+import { cardColorForKind, isBoxElement } from "./document";
 import { attributeKeysOnBoard, NO_LENS, relationKindsOnBoard } from "./lens";
 import { useCanvas, useCanvasStore } from "./store";
 import { useGraphActions } from "./hooks/useGraphActions";
@@ -63,6 +63,63 @@ export function ViewpointPanel() {
   const setDirection = (d: "both" | "out" | "in") => { setDirectionState(d); if (lens.type === "impact") store.getState().setLens({ ...lens, direction: d }); };
   const [status, setStatus] = useState<string | null>(null);
 
+  /**
+   * Which state of the model this board is showing (§5.21).
+   *
+   * As-is is the document as saved; a change set tints the cards it touches. Nothing here edits
+   * the board — except "Place them", which says so, because putting a planned system on a board
+   * really is an edit and pretending otherwise would be worse than asking.
+   */
+  const overlay = useCanvas((s2) => s2.changeOverlay);
+  const [changeSets, setChangeSets] = useState<Array<{ id: string; name: string; status: string; targetDate: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/change-sets?workspaceId=${encodeURIComponent(workspaceId)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ changeSets: Array<{ id: string; name: string; status: string; targetDate: string }> }>) : null))
+      .then((res) => { if (!cancelled && res) setChangeSets(res.changeSets); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+
+  const showState = async (changeSetId: string) => {
+    const s2 = store.getState();
+    if (!changeSetId) { s2.setChangeOverlay(null); setStatus("Showing the estate as it is"); return; }
+    const res = await fetch(`/api/change-sets/${changeSetId}/overlay`).catch(() => null);
+    if (!res?.ok) { setStatus("Could not load that change set"); return; }
+    const data = (await res.json()) as { id: string; name: string; targetDate: string; retired: string[]; changed: string[]; added: Array<{ id: string; name: string; kind: string; description: string }>; impact: string };
+    s2.setChangeOverlay({ id: data.id, name: data.name, targetDate: data.targetDate, retired: new Set(data.retired), changed: new Set(data.changed), added: data.added, impact: data.impact });
+    setStatus(`Showing “${data.name}”`);
+  };
+
+  const onBoardEntityIds = useMemo(
+    () => new Set(Object.values(elements).map((el) => (el.type === "card" && typeof el.meta?.entityId === "string" ? el.meta.entityId : "")).filter(Boolean)),
+    [elements],
+  );
+  const missing = overlay ? overlay.added.filter((a) => !onBoardEntityIds.has(a.id)) : [];
+  const placePlanned = () => {
+    if (!missing.length) return;
+    const s2 = store.getState();
+    // Below what is already there, not in the middle of it: a planned card dropped on top of the
+    // current landscape reads as an edit to the landscape.
+    const boxes = Object.values(s2.elements).filter(isBoxElement);
+    const bottom = boxes.length ? Math.max(...boxes.map((b) => b.y + b.h)) : 0;
+    const left = boxes.length ? Math.min(...boxes.map((b) => b.x)) : 0;
+    const w = 236, h = 124, gap = 24;
+    const perRow = Math.max(1, Math.min(4, missing.length));
+    s2.addElements(
+      missing.map((e, i) => ({
+        id: nanoid(10), type: "card" as const,
+        x: left + (i % perRow) * (w + gap), y: bottom + 90 + Math.floor(i / perRow) * (h + gap),
+        w, h, kind: e.kind, color: cardColorForKind(e.kind), title: e.name, description: e.description, z: 0,
+        // `planned` keeps the graph out of it: the sync skips these cards, so drawing an
+        // intention cannot create the system. The mark clears itself when the plan is delivered.
+        meta: { entityId: e.id, planned: overlay?.id ?? true },
+      })),
+      { select: true },
+    );
+    setStatus(`Placed ${missing.length} planned object${missing.length === 1 ? "" : "s"} — not in the graph until the change set is delivered`);
+  };
+
   const stats = useMemo(() => {
     const cards = Object.values(elements).filter((e) => e.type === "card");
     const linked = cards.filter((c) => isEntityId(c.meta?.entityId)).length;
@@ -89,6 +146,33 @@ export function ViewpointPanel() {
         <strong>{stats.cards} cards · {stats.connectors} connectors</strong>
         <small>{stats.linked} linked to the graph · {stats.relLinked} connectors are relations</small>
       </div>
+
+      {changeSets.length > 0 && (
+        <div className="viewpoint-group viewpoint-state" data-state-picker>
+          <span>State of the model</span>
+          <select
+            value={overlay?.id ?? ""}
+            aria-label="Which state of the model to show"
+            onChange={(e) => void showState(e.target.value)}
+          >
+            <option value="">As-is — the estate as it is</option>
+            {changeSets.map((c) => (
+              <option key={c.id} value={c.id}>As of “{c.name}”{c.targetDate ? ` · ${c.targetDate}` : ""}</option>
+            ))}
+          </select>
+          {overlay && (
+            <>
+              {overlay.impact && <p className="viewpoint-state-detail">{overlay.impact}</p>}
+              {missing.length > 0 && (
+                <div className="viewpoint-state-missing">
+                  <span>{missing.length} planned object{missing.length === 1 ? "" : "s"} not on this board</span>
+                  <button type="button" onClick={placePlanned}>Place them</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <div className="viewpoint-group">
         <span>Expand selection</span>
