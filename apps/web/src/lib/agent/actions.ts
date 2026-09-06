@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
-import { agentUnavailable, modelConfigured, proposeWithModel } from "./propose";
+import { proposeWithModel } from "./propose";
+import { choose, configured, whyNoModel } from "@/lib/models/resolve";
 import { agentGraph, clearRun, saveRun } from "./store";
 
 /**
@@ -24,8 +25,12 @@ export interface AgentRunResult {
 }
 
 export async function askTheAgent(workspaceId: string): Promise<AgentRunResult | { error: string }> {
-  if (!modelConfigured()) return { error: agentUnavailable() };
   const db = await getDb();
+  const choice = await choose(db, workspaceId, "graph agent");
+  if (!choice) {
+    const rows = await db.select().from(s.modelProviders).where(eq(s.modelProviders.workspaceId, workspaceId));
+    return { error: whyNoModel(await configured(db, workspaceId), rows, "graph agent") };
+  }
   const workspace = await db.query.workspaces.findFirst({ where: eq(s.workspaces.id, workspaceId) });
   if (!workspace) return { error: "That workspace is gone." };
 
@@ -37,7 +42,7 @@ export async function askTheAgent(workspaceId: string): Promise<AgentRunResult |
 
   let run;
   try {
-    run = await proposeWithModel(graph, decided);
+    run = await proposeWithModel(graph, choice, decided);
   } catch (error) {
     // Configuration and transport trouble is the person's to see, not something to swallow into
     // "no proposals" — which would read as "your graph is fine".

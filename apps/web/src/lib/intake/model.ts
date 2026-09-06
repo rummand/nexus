@@ -1,4 +1,5 @@
-import { callModel, modelConfigured } from "../compose/llm";
+import { callModel } from "@/lib/models/call";
+import type { ModelChoice } from "@/lib/models/types";
 import type { Passage } from "./types";
 import type { Vocabulary } from "./extract";
 import { EXTRACTION_SCHEMA, validateExtraction, type ModelExtraction } from "./validate-extraction";
@@ -16,8 +17,6 @@ import { agentGrounding } from "@/lib/knowledge";
  * document that is right there to compare against, which is a stronger guarantee than anything
  * available on the board-scripting side.
  */
-
-export { modelConfigured };
 
 const MAX_PASSAGES = 220;
 
@@ -61,10 +60,7 @@ function sourceMessage(passages: Passage[], vocab: Vocabulary, name: string): st
 }
 
 /** Read a source with the model. Throws only on configuration or transport trouble. */
-export async function extractWithModel(name: string, passages: Passage[], vocab: Vocabulary): Promise<ModelExtraction> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.NEXUS_MODEL;
-  if (!apiKey || !model) throw new Error("no model configured");
+export async function extractWithModel(name: string, passages: Passage[], vocab: Vocabulary, choice: ModelChoice): Promise<ModelExtraction> {
   if (passages.length === 0) return { candidates: [], relations: [], viewpoints: [], rejected: [] };
 
   /**
@@ -74,7 +70,7 @@ export async function extractWithModel(name: string, passages: Passage[], vocab:
    */
   const grounding = agentGrounding("intake", `${name} ${vocab.kinds.join(" ")}`, 3);
 
-  const body = await callModel(apiKey, model, {
+  const body = await callModel(choice, {
     max_tokens: 8000,
     system: grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM,
     tools: [{ name: "record_extraction", description: "Record what the source says.", input_schema: EXTRACTION_SCHEMA }],

@@ -353,6 +353,58 @@ export const sourceRuns = pgTable(
 export type Source = typeof sources.$inferSelect;
 export type SourceRun = typeof sourceRuns.$inferSelect;
 
+// ---- model providers -------------------------------------------------------
+// Where the thinking happens, as rows rather than environment variables: an organisation can point
+// Nexus at Anthropic, at OpenAI, at its own gateway or at a model on its own hardware, per job,
+// without a redeploy. The key is encrypted when NEXUS_SECRET_KEY is set and stored as it is when it
+// is not — with `key_encrypted` recording which, because telling somebody their keys are protected
+// when they are not is worse than not protecting them.
+
+export const modelProviders = pgTable(
+  "model_providers",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** How to talk to it: anthropic | openai. Not who sells it — everything else speaks one of these. */
+    dialect: text("dialect", { enum: ["anthropic", "openai"] }).notNull().default("anthropic"),
+    baseUrl: text("base_url").notNull().default(""),
+    model: text("model").notNull().default(""),
+    apiKey: text("api_key").notNull().default(""),
+    keyEncrypted: boolean("key_encrypted").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true),
+    /** What a probe last found: unknown | ok | unauthorised | unreachable. */
+    status: text("status").notNull().default("unknown"),
+    statusDetail: text("status_detail").notNull().default(""),
+    checkedAt: text("checked_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("model_providers_workspace_idx").on(t.workspaceId)],
+);
+
+/** Which provider does which job. A task with no row falls back to the first enabled provider. */
+export const modelTasks = pgTable(
+  "model_tasks",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** compose | intake | graph agent | board agent — see src/lib/models/types.ts */
+    task: text("task").notNull(),
+    providerId: text("provider_id").references(() => modelProviders.id, { onDelete: "cascade" }),
+    /** Overrides the provider's own model, for using one endpoint at two sizes. */
+    model: text("model").notNull().default(""),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.task] })],
+);
+
+export type ModelProviderRow = typeof modelProviders.$inferSelect;
+export type ModelTaskRow = typeof modelTasks.$inferSelect;
+
 // ---- the landing zone ------------------------------------------------------
 // Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a
 // governance review. Nothing they say is true until somebody approves it, so the whole staged

@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getWorkspaceBySlug } from "@/lib/data";
 import { fleetOf } from "@/lib/agent/fleet";
-import { agentUnavailable, modelConfigured } from "@/lib/agent/propose";
+import { choose, configured, whyNoModel } from "@/lib/models/resolve";
+import { eq } from "drizzle-orm";
+import * as sc from "@/db/schema";
 import { lastRun } from "@/lib/agent/store";
 import { AgentFleet } from "@/components/agents/AgentFleet";
 
@@ -18,13 +20,18 @@ export default async function AgentsPage({ params }: { params: Promise<{ slug: s
   const workspace = await getWorkspaceBySlug(slug);
   if (!workspace) notFound();
   const db = await getDb();
-  const [fleet, graphRun] = await Promise.all([fleetOf(db, workspace.id), lastRun(db, workspace.id)]);
+  const [fleet, graphRun, choice, providers] = await Promise.all([
+    fleetOf(db, workspace.id),
+    lastRun(db, workspace.id),
+    choose(db, workspace.id, "board agent"),
+    db.select().from(sc.modelProviders).where(eq(sc.modelProviders.workspaceId, workspace.id)),
+  ]);
 
   return (
     <AgentFleet
       slug={slug}
       fleet={fleet}
-      model={{ ready: modelConfigured(), hint: agentUnavailable() }}
+      model={{ ready: Boolean(choice), hint: choice ? "" : whyNoModel(await configured(db, workspace.id), providers, "board agent") }}
       graphAgent={{ lastAskedAt: graphRun?.at ?? null, grounded: graphRun?.grounded ?? [] }}
     />
   );

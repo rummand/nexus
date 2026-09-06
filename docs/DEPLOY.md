@@ -14,11 +14,18 @@ must live on a **persistent volume**; without one every redeploy starts from the
    - `DATABASE_URL` = `file:/data/nexus.db` (already the image default; set it explicitly so it
      is visible)
    - `PORT` is injected by Railway; the image honours it.
-   - `ANTHROPIC_API_KEY` and `NEXUS_MODEL` — optional, and required together. With both set,
-     Compose (§5.17) answers requests written in plain English; with either missing it falls back
-     to the rule compiler and says so in the panel. `NEXUS_MODEL` takes a model id from the
-     provider's own list. There is deliberately no default: a board built by a model the operator
-     did not choose is not a good surprise.
+   - `ANTHROPIC_API_KEY` and `NEXUS_MODEL` — optional, and required together. They are the
+     *fallback* model: since rev 65 a provider is normally added in the running app under
+     **Settings → Models** (§5.31), which also allows OpenAI-compatible and self-hosted endpoints
+     and a different model per job. With one of these pairs in place, Compose (§5.17) answers
+     requests written in plain English; with neither it falls back to the rule compiler and says
+     so in the panel. `NEXUS_MODEL` takes a model id from the provider's own list. There is
+     deliberately no default: a board built by a model the operator did not choose is not a good
+     surprise.
+   - `NEXUS_SECRET_KEY` — set this to a long random value if anybody will enter an API key under
+     Settings → Models. It encrypts those keys (AES-256-GCM) at rest. Without it the keys are
+     stored as they are and the settings page says so; changing it afterwards makes the stored
+     keys unreadable and they must be entered again.
    - `NEXUS_MODEL_BASE_URL` — optional, for an enterprise gateway or proxy in front of the
      Messages API. It is a distinct name on purpose, so the application never inherits an
      `ANTHROPIC_BASE_URL` that belongs to some other tool on the host.

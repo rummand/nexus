@@ -377,6 +377,18 @@ try {
     await page.waitForTimeout(1000);
   });
 
+  // ---- settings -------------------------------------------------------------
+  /*
+   * A provider with no key, because that is the one this capture can show honestly: a local
+   * endpoint needs no secret, so the picture is the real screen rather than a mocked one.
+   */
+  await shot("models", async () => {
+    await goto(`${w}/settings/models`, "[data-preset=ollama]");
+    await page.click("[data-preset=ollama]");
+    await page.waitForSelector("[data-provider]", { timeout: 30_000 });
+    await page.waitForTimeout(900);
+  });
+
   // ---- knowledge ----------------------------------------------------------
   await shot("knowledge", () => goto(`${w}/knowledge?q=how+do+you+rationalise+an+application+portfolio`, ".knowledge-passage"), { settle: 900 });
   await shot("knowledge-doctrine", () => goto(`${w}/knowledge?tab=lessons`, ".knowledge-lesson"), { settle: 900 });

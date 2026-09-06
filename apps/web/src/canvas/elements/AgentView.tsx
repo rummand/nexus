@@ -39,9 +39,11 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
     setError(null);
     patch({ thinking: true });
     start(async () => {
+      const state = store.getState();
       const result = await wakeBoardAgent({
+        workspaceId: state.workspaceId,
         purpose: el.purpose,
-        scope: scopeOf(el, store.getState().elements),
+        scope: scopeOf(el, state.elements),
       });
       if ("error" in result) {
         patch({ thinking: false });

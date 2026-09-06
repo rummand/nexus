@@ -3,6 +3,8 @@ import { PLAN_SCHEMA, validateInstructions } from "./validate";
 import { INSPECT_SCHEMA, runInspection, validateInspection } from "./inspect";
 import type { ComposeContext } from "./apply";
 import { agentGrounding, groundedIn } from "@/lib/knowledge";
+import { callModel } from "@/lib/models/call";
+import type { ModelChoice } from "@/lib/models/types";
 
 /**
  * The natural-language planner.
@@ -17,16 +19,10 @@ import { agentGrounding, groundedIn } from "@/lib/knowledge";
  * read entities and arrange a document. There is no verb for deleting data, changing a grant or
  * calling anything.
  *
- * Configuration is deliberate rather than defaulted: both ANTHROPIC_API_KEY and NEXUS_MODEL must
- * be set. Without them the rule compiler in script.ts runs instead, and the UI says which ran.
+ * Which model answers is resolved per workspace and per task (§5.31): a provider row, or the
+ * environment when none is configured. Without either, the rule compiler in script.ts runs instead
+ * and the UI says which ran.
  */
-
-/**
- * Deliberately its own variable rather than the vendor's conventional one: an agent sandbox often
- * has ANTHROPIC_BASE_URL set for its own tooling, and the application must never inherit that.
- */
-const endpoint = () => `${(process.env.NEXUS_MODEL_BASE_URL ?? "https://api.anthropic.com").replace(/\/+$/, "")}/v1/messages`;
-const TIMEOUT_MS = 25_000;
 
 export interface PlanContext {
   vocabulary: Vocabulary;
@@ -49,6 +45,7 @@ export interface Plan {
   grounded: string[];
 }
 
+/** True when the environment alone can answer. Callers with a workspace should resolve instead. */
 export function modelConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY && process.env.NEXUS_MODEL);
 }
@@ -142,7 +139,6 @@ function userMessage(prompt: string, ctx: PlanContext): string {
   ].filter((l) => l !== "").join("\n");
 }
 
-interface ToolUseBlock { type: string; id?: string; name?: string; input?: unknown }
 interface ModelMessage { role: "user" | "assistant"; content: unknown }
 
 const MAX_LOOKS = 6;
@@ -155,10 +151,7 @@ const MAX_LOOKS = 6;
  * to commit). Throws only on a configuration or transport problem — a planner that returns
  * nonsense is handled by validation, not by an exception.
  */
-export async function planWithModel(prompt: string, ctx: PlanContext): Promise<Plan> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.NEXUS_MODEL;
-  if (!apiKey || !model) throw new Error("no model configured");
+export async function planWithModel(prompt: string, ctx: PlanContext, choice: ModelChoice): Promise<Plan> {
 
   const messages: ModelMessage[] = [{ role: "user", content: userMessage(prompt, ctx) }];
   const looked: string[] = [];
@@ -166,7 +159,7 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
 
   for (let round = 0; round <= MAX_LOOKS; round++) {
     const lastRound = round === MAX_LOOKS;
-    const body = await callModel(apiKey, model, {
+    const body = await callModel(choice, {
       system: systemFor(prompt),
       messages,
       tools: [
@@ -216,29 +209,4 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
   }
 
   return { instructions: [], reply: "", rejected: ["the planner never produced a plan"], engine: "model", looked, grounded };
-}
-
-/** One call to the Messages API. Shared with the intake extractor. */
-export async function callModel(apiKey: string, model: string, payload: Record<string, unknown>): Promise<{ content?: ToolUseBlock[] }> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(endpoint(), {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({ model, max_tokens: 1600, ...payload }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(`the model refused the request (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
-    }
-    return (await res.json()) as { content?: ToolUseBlock[] };
-  } finally {
-    clearTimeout(timer);
-  }
 }

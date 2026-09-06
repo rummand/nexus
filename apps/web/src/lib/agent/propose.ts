@@ -1,4 +1,5 @@
-import { callModel, modelConfigured, modelMissing } from "../compose/llm";
+import { callModel } from "@/lib/models/call";
+import type { ModelChoice } from "@/lib/models/types";
 import { agentGrounding, groundedIn } from "../knowledge";
 import { PROPOSE_SCHEMA } from "./schema";
 import { validateProposals, type AgentGraph, type AgentReview } from "./validate";
@@ -18,14 +19,6 @@ import { validateProposals, type AgentGraph, type AgentReview } from "./validate
  * suggestion lands in the same review queue as the rules' — labelled, quoted, and one click from
  * being dismissed for ever.
  */
-
-export { modelConfigured };
-
-/** Why the agent cannot be asked, in words somebody can act on. */
-export function agentUnavailable(): string {
-  const missing = modelMissing();
-  return missing ? `No model is configured, so no agent can be woken. Set ${missing} to turn them on; everything else in Nexus works without one.` : "";
-}
 
 /** How much of the graph goes in the prompt. Beyond this it is sampled and the person is told. */
 const MAX_ENTITIES = 400;
@@ -109,10 +102,7 @@ export function sample(graph: AgentGraph): { graph: AgentGraph; sampled: boolean
  * Throws only on a configuration or transport problem — a model that answers nonsense is handled
  * by the validator, not by an exception, and its nonsense is reported rather than hidden.
  */
-export async function proposeWithModel(full: AgentGraph, decided: Set<string> = new Set()): Promise<AgentRun> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.NEXUS_MODEL;
-  if (!apiKey || !model) throw new Error("no model configured");
+export async function proposeWithModel(full: AgentGraph, choice: ModelChoice, decided: Set<string> = new Set()): Promise<AgentRun> {
   if (full.entities.length === 0) {
     return { proposals: [], rejected: [], note: "There is nothing in the graph yet.", grounded: [], sampled: false };
   }
@@ -126,7 +116,7 @@ export async function proposeWithModel(full: AgentGraph, decided: Set<string> = 
   const task = `review the model: ${[...new Set(graph.entities.map((e) => e.kind))].join(" ")}`;
   const grounding = agentGrounding("modelling", task, 4);
 
-  const body = await callModel(apiKey, model, {
+  const body = await callModel(choice, {
     max_tokens: 8000,
     system: grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM,
     tools: [{ name: "propose_changes", description: "Propose corrections to the model.", input_schema: PROPOSE_SCHEMA }],

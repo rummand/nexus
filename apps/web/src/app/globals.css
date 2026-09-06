@@ -774,6 +774,54 @@ a { color: inherit; text-decoration: none; }
 .fact-card .fact-desc { background: transparent; border: 0; outline: 0; overflow: hidden; padding: 0; resize: none; width: 100%; }
 .fact-card input::placeholder, .fact-card textarea::placeholder { color: #a5afc0; }
 
+/* ---- models -------------------------------------------------------------- */
+.model-env { align-items: center; background: #f6f9fd; border: 1px solid #e6ecf5; border-radius: 10px; color: #56637a; display: flex; flex-wrap: wrap; font-size: 12.5px; gap: 6px; margin: 0; padding: 9px 12px; }
+.model-env code, .agent-fleet-warning code { background: #eef2f8; border-radius: 4px; font-size: 11.5px; padding: 1px 5px; }
+/* One measure for the whole screen: a card whose "Try it" is half a metre from its fields reads as two unrelated things. */
+.model-page > * { max-width: 1040px; }
+.model-list { display: grid; gap: 9px; }
+.model-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; display: flex; gap: 16px; justify-content: space-between; padding: 13px 15px; }
+.model-card.off { opacity: 0.6; }
+.model-card-main { display: grid; gap: 9px; min-width: 0; }
+.model-card-main > header { align-items: center; display: flex; gap: 8px; }
+.model-card-main > header svg { color: #8592a8; flex: 0 0 auto; }
+.model-name { background: transparent; border: 0; border-bottom: 1px dashed transparent; color: var(--ink); font-size: 13.5px; font-weight: 800; outline: 0; padding: 1px 0; }
+.model-name:hover, .model-name:focus { border-bottom-color: #c3d3e8; }
+.model-status { align-items: center; border-radius: 999px; display: inline-flex; font-size: 10px; font-style: normal; font-weight: 800; gap: 3px; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
+.model-status.ok { background: #e7f5e8; color: #2f7d32; }
+.model-status.bad { background: #fee2e2; color: #b91c1c; }
+.model-status.unknown { background: #f1f5f9; color: #8a94a6; }
+.model-fields { display: grid; gap: 8px; grid-template-columns: 180px 1fr 200px; }
+.model-fields label { display: grid; gap: 3px; }
+.model-fields span { color: #8b96a9; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.model-fields input, .model-fields select { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; font-size: 12.5px; min-height: 30px; outline: 0; padding: 0 8px; width: 100%; }
+.model-fields input:focus, .model-fields select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.model-detail { font-size: 11.5px; margin: 0; }
+.model-detail.ok { color: #2f7d32; }
+.model-detail.bad { color: #b91c1c; }
+.model-detail.unknown { color: #8b96a9; }
+.model-key { align-items: center; color: #77839a; display: flex; flex-wrap: wrap; font-size: 12px; gap: 6px; }
+.model-key svg { color: #a5b0c2; }
+.model-key button { background: transparent; border: 0; color: var(--blue); cursor: pointer; font-size: 12px; font-weight: 700; padding: 0; }
+.model-key-edit { display: flex; gap: 6px; }
+.model-key-edit input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; flex: 1; font-family: var(--mono); font-size: 12px; min-height: 32px; outline: 0; padding: 0 9px; }
+.model-card-actions { align-items: flex-end; display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px; }
+.model-enable { align-items: center; color: #8b96a9; display: flex; font-size: 11.5px; gap: 5px; }
+
+.model-add h2, .model-tasks h2 { align-items: center; display: flex; font-size: 15px; gap: 6px; margin: 0 0 4px; }
+.model-tasks > p { color: #77839a; font-size: 12.5px; line-height: 1.55; margin: 0 0 12px; max-width: 68ch; }
+.model-presets { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); margin: 10px 0; }
+.model-presets button { background: #fff; border: 1px solid var(--line); border-radius: 11px; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; text-align: left; }
+.model-presets button:hover { border-color: #b9d5f2; box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05); }
+.model-presets strong { font-size: 13px; }
+.model-presets span { color: #77839a; font-size: 11.5px; line-height: 1.45; }
+.model-presets em { color: #2f7d32; font-size: 10.5px; font-style: normal; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.model-hint { color: #8b96a9; font-size: 12px; line-height: 1.55; margin: 0; max-width: 72ch; }
+.model-task { align-items: center; border-top: 1px solid #f1f5f9; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 230px 190px; max-width: 800px; padding: 7px 0; }
+.model-task:first-of-type { border-top: 0; }
+.model-task b { color: #3b465c; font-size: 12.5px; font-weight: 600; }
+.model-task select, .model-task input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; font-size: 12.5px; min-height: 30px; outline: 0; padding: 0 8px; }
+
 /* ---- the landing zone ---------------------------------------------------
    Data on its way in. Everything here is a claim, so the palette stays cool and provisional:
    nothing is coloured as if it were already true. */

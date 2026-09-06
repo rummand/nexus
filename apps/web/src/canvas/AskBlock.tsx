@@ -40,7 +40,8 @@ export function AskBlock({ ids, label }: { ids: ElementId[]; label: string }) {
     setAnswer(null);
     setQuestion(q);
     start(async () => {
-      const result = await askAboutSelection({ question: q, scope: scopeFromElements(ids, store.getState().elements) });
+      const state = store.getState();
+      const result = await askAboutSelection({ workspaceId: state.workspaceId, question: q, scope: scopeFromElements(ids, state.elements) });
       if ("error" in result) setError(result.error);
       else setAnswer(result);
     });

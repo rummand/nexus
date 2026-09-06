@@ -4,7 +4,8 @@ import * as s from "@/db/schema";
 import { parseAttributes } from "../graph";
 import { emptyDocument, type CanvasDocument } from "@/canvas/document";
 import { parseScript, type Instruction, type ParsedLine, type Vocabulary } from "./script";
-import { modelConfigured, modelStatus, planWithModel } from "./llm";
+import { planWithModel } from "./llm";
+import { choose, configured, whyNoModel } from "@/lib/models/resolve";
 import { applyInstruction, type ComposeContext, type StepResult } from "./apply";
 
 /**
@@ -108,15 +109,20 @@ export async function composeBoard(
   let looked: string[] = [];
   let grounded: string[] = [];
 
-  const wantsModel = engine === "model" || (engine === "auto" && modelConfigured());
-  if (wantsModel) {
+  /*
+   * Which model, if any, answers this workspace's Compose (§5.31). Resolved rather than read from
+   * the environment, so an organisation can send this job to one provider and intake to another.
+   */
+  const choice = await choose(db, workspaceId, "compose");
+  const wantsModel = choice !== null && (engine === "model" || engine === "auto");
+  if (wantsModel && choice) {
     try {
       const plan = await planWithModel(input, {
         vocabulary,
         sampleNames: ctx.entities.slice(0, 60).map((e) => e.name),
         onBoard: Object.keys(current.elements).length,
         graph: ctx,
-      });
+      }, choice);
       used = "model";
       reply = plan.reply;
       rejected = plan.rejected;
@@ -157,7 +163,7 @@ export async function composeBoard(
     rejected,
     looked,
     grounded,
-    status: modelStatus(),
+    status: choice ? "" : whyNoModel(await configured(db, workspaceId), await db.select().from(s.modelProviders).where(eq(s.modelProviders.workspaceId, workspaceId)), "compose"),
     script: planned.map((p) => p.raw).join("\n"),
   };
 }

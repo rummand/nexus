@@ -1299,6 +1299,49 @@ holds what the batch put there. Everything it declines to touch is counted and n
 rollback that quietly leaves half the estate changed is worse than one that admits it cannot finish.
 
 
+### 5.31 Where the thinking happens (v0.2)
+
+Until now a model was two environment variables: one provider, chosen at deploy time, for
+everything. That is wrong in three directions at once. An organisation that wants Claude for the
+careful work and a model of its own for the frequent work cannot have it. A sovereign deployment
+cannot point Nexus at its own gateway without a redeploy. And nobody inside the product can tell
+what it is talking to. **Settings → Models** (`/w/:slug/settings/models`) replaces all of that.
+
+**Two dialects, not a list of vendors** (`lib/models/types.ts`, `translate.ts`). There are two
+request shapes that matter — Anthropic's Messages API and OpenAI's chat completions — and
+everything else in the world speaks the second: Ollama, vLLM, llama.cpp, Azure, a national cloud's
+gateway, a LiteLLM proxy. Modelling the *dialect* rather than the vendor is what makes a model an
+organisation hosts itself a first-class option rather than a special case. The translation is small
+and one-way-testable: the system prompt moves into the messages, a tool becomes a function, a
+tool call comes back as `tool_use`. The one thing that must survive it is **"answer with exactly
+this tool"** — `tool_choice` — because a closed schema is the whole safety mechanism behind
+Compose, intake and every agent (§5.17, §5.26, §5.27). A small model that fences its JSON in a code
+block is salvaged; one that answers with prose yields an empty input rather than an exception.
+
+**One call point** (`call.ts`). Every model call in the product now goes through `callModel`, so a
+new dialect, a timeout, a retry or an audit trail is one file rather than five. `probe` is the same
+path with a one-token question, which is what **Try it** runs: a reachable host and a key of the
+right shape answer a question nobody asked.
+
+**Which model does which job** (`resolve.ts`). The four jobs — Compose, intake, the graph agent,
+board agents — are genuinely different work with different costs and different appetites for
+judgement, so each can name a provider and override its model id. One endpoint at two sizes is
+therefore a setting rather than a second provider. The order of preference is deliberate: the
+provider set for this task, then the first enabled provider, then the environment — which stays
+supported, because an instance that has run on `ANTHROPIC_API_KEY` for months must not lose its
+model because a settings page appeared. When there is no usable model, `whyNoModel` distinguishes
+the three situations that all look like "it does not work": nothing configured, a provider with no
+model id, and a key that can no longer be read.
+
+**Keys** (`secret.ts`). AES-256-GCM under `NEXUS_SECRET_KEY`. If that variable is not set the key
+is stored as it is and the page says so, at the top, in plain words — deriving a key from something
+already in the same database and storing it beside the ciphertext is theatre, and being told the
+truth is what lets an administrator decide what to do about it. A key goes in and never comes out:
+no action returns one, and the page shows only that one exists. A key that can no longer be opened
+makes the provider unusable rather than falling through to another one, because quietly using
+something the administrator did not choose is worse than stopping.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1331,7 +1374,7 @@ rollback that quietly leaves half the estate changed is worse than one that admi
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 64)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 65)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1580,6 +1623,19 @@ rollback that quietly leaves half the estate changed is worse than one that admi
 - Approve writes it and records what it wrote; roll back undoes exactly that and says what it
   would not touch.
 
+### Model providers (v0.2)
+- `/w/:slug/settings/models`: add a provider from a preset (Anthropic, OpenAI, Azure OpenAI,
+  Ollama, vLLM or llama.cpp, an OpenAI-compatible gateway), correct the base URL and model id,
+  add a key if it needs one, and press **Try it** for a real call.
+- Two dialects — Anthropic Messages and OpenAI chat completions — so a model your organisation
+  hosts needs no special case and no key.
+- Each of the four jobs (Compose, intake, the graph agent, board agents) can name its own provider
+  and its own model id; unset means "whichever is first".
+- Keys encrypted with AES-256-GCM under `NEXUS_SECRET_KEY`, or stored plainly with the page saying
+  so; a key never leaves the server.
+- The environment (`ANTHROPIC_API_KEY` + `NEXUS_MODEL`) remains the fallback, so nothing that
+  worked yesterday stops working.
+
 ### Documentation (v0.2)
 - Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
@@ -1768,6 +1824,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | What a source has stopped claiming is raised, never deleted. | A system missing from this month's export has been decommissioned, moved out of scope, or the export was filtered. Three very different facts, and only a person knows which. |
 | 2026-09-06 | Rollback reverts only what it wrote, and reports what it would not. | An object somebody has since built on, or a field somebody has since corrected, is now theirs. A rollback that overwrites those is a second unwanted import; one that silently skips them leaves the estate in a state nobody can describe. |
 
+| 2026-09-06 | A provider is described by the dialect it speaks, not by the vendor that sells it. | There are two request shapes that matter and everything else speaks one of them. Modelling the vendor would have made every sovereign endpoint a special case and every new gateway a code change; modelling the dialect makes Ollama, vLLM, Azure and a national cloud all the same row. |
+| 2026-09-06 | The one thing the translation must preserve is "answer with exactly this tool". | Every model call in Nexus is a proposal in a closed language that a typed validator then decides on. `tool_choice` is what makes that closed. A dialect adapter that dropped it would leave the same code paths accepting free prose, which is the failure nobody would notice until it mattered. |
+| 2026-09-06 | Each job can point at its own model. | Reading a fifty-page transcript and answering a question about two cards are different work with different costs. An organisation that has to choose one model for both will choose the cheap one and get a worse graph agent, or the careful one and stop using board agents. |
+| 2026-09-06 | Without NEXUS_SECRET_KEY the key is stored as it is, and the page says so. | The alternative is deriving a key from something already in the same database and storing it beside the ciphertext, which protects nobody and reads as protection. An administrator who is told the truth can fix it in a minute; one who is reassured cannot. |
+| 2026-09-06 | A key that cannot be decrypted stops the provider rather than falling through to the next one. | The fallback chain exists for a provider nobody has configured, not for one somebody configured and whose secret has rotated. Silently using a different model — possibly a hosted one, for an organisation that chose a local one — is a worse outcome than an error message naming the key to re-enter. |
+| 2026-09-06 | The environment variables stay supported as the last fallback. | They are how every existing deployment is configured, including the one running the tests. A settings page that quietly took a working instance's model away would be a regression dressed as a feature. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1776,9 +1839,28 @@ migrations. Steps in `docs/DEPLOY.md`.
   property of the connection rather than the grant?
 - Should optics be user-authored (query + layout), agent-suggested, or both?
 - Real-time collaboration: how early is it needed relative to ingestion and agents?
-- Sovereign deployment: which model providers must be supported locally?
+- Sovereign deployment: the endpoint side is settled (§5.31 — anything speaking either dialect,
+  no key required). Open: does a sovereign deployment also need the EA knowledge corpus embedded
+  locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 65: where the thinking happens.** A model was two environment variables, which
+  meant one provider chosen at deploy time for everything, no way to run a model on your own
+  hardware without a redeploy, and no way to tell from inside the product what it was talking to.
+  **Settings → Models** replaces that. A provider is described by the *dialect* it speaks — Anthropic
+  Messages or OpenAI chat completions — which makes Ollama, vLLM, llama.cpp, Azure, a LiteLLM
+  gateway and a national cloud the same kind of row rather than six special cases, and makes a
+  model that needs no key and never leaves your network an ordinary choice. Presets fill in the
+  base URLs; **Try it** makes a real call, because a reachable host and a well-shaped key answer a
+  question nobody asked. Each of the four jobs — Compose, intake, the graph agent, board agents —
+  can name its own provider and its own model id, so one endpoint can be used at two sizes. Keys
+  are encrypted with AES-256-GCM under `NEXUS_SECRET_KEY`; when that is not set they are stored as
+  they are and the page says so at the top, because the alternative is encryption theatre. A key
+  that can no longer be read stops its provider instead of quietly falling through to another one.
+  Every model call in the product now goes through a single function, and the environment variables
+  remain the last fallback so no running instance loses its model. 20 new unit tests over the
+  translation, the key handling and the order of preference, and a documentation page.
 
 - **2026-09-06 — Rev 64: the landing zone.** Real portfolio data arrives as a ServiceNow export, a
   spreadsheet somebody has maintained since 2019, a SharePoint list and a Word document — four files

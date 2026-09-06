@@ -838,6 +838,44 @@ try {
   assert.ok((await page.locator(".knowledge-references li").count()) > 0,
     "the works we may not redistribute are listed as such");
 
+  // ---- where the thinking happens ----------------------------------------------------------
+  // The one screen that decides what the rest of the product talks to. The check that matters is
+  // that a key entered here cannot be read back out of the page that shows it.
+  await page.goto(`${base}/w/acme-energy/settings/models`, { waitUntil: "load" });
+  await page.waitForSelector("[data-preset=ollama]");
+  await page.click("[data-preset=ollama]");
+  await page.waitForSelector("[data-provider]", { timeout: 20000 });
+  const provider = page.locator("[data-provider]").first();
+  const providerId = await provider.getAttribute("data-provider");
+  assert.equal(await provider.locator('input[aria-label="Provider name"]').inputValue(), "Ollama",
+    "a preset fills the card in");
+  assert.match(await provider.innerText(), /No key/, "a model on your own hardware needs none");
+
+  const secret = `sk-smoke-${Date.now()}`;
+  await provider.locator('button:has-text("Add a key")').click();
+  await provider.locator('input[aria-label="API key"]').fill(secret);
+  await provider.locator('button:has-text("Save")').click();
+  await page.waitForSelector(`[data-provider="${providerId}"]:has-text("A key is stored")`, { timeout: 20000 });
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("[data-provider]");
+  assert.ok(!(await page.content()).includes(secret), "an API key never comes back to the browser");
+
+  // Nothing is listening on the preset's port, so this is the honest unreachable path.
+  await page.click(`[data-check="${providerId}"]`);
+  await page.waitForSelector(`[data-provider="${providerId}"] .model-status.bad`, { timeout: 30000 });
+
+  await page.selectOption('[data-task="board agent"] select', providerId);
+  await page.waitForTimeout(1200);
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector('[data-task="board agent"]');
+  assert.equal(await page.locator('[data-task="board agent"] select').inputValue(), providerId,
+    "a job remembers which provider it was given");
+
+  // Leave the workspace as it was found: an enabled provider pointing at a dead port would make
+  // every later model call in a development database fail for a reason nobody would guess.
+  await page.click(`[data-provider="${providerId}"] button[title="Remove this provider"]`);
+  await page.waitForFunction(() => document.querySelectorAll("[data-provider]").length === 0, null, { timeout: 20000 });
+
   // ---- the documentation -------------------------------------------------------------------
   await page.goto(`${base}/w/acme-energy/docs`, { waitUntil: "load" });
   await page.waitForSelector(".doc-index-grid");

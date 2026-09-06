@@ -3,7 +3,7 @@ import { parseLine, parseScript, toQuery, type Vocabulary } from "./script";
 import { applyInstruction, matchEntities, runScript, type ComposeContext } from "./apply";
 import { validateInstructions } from "./validate";
 import { describeInstruction } from "./run";
-import { modelConfigured, modelStatus, planWithModel } from "./llm";
+import { modelConfigured, modelStatus } from "./llm";
 import { runInspection, validateInspection } from "./inspect";
 import { emptyDocument, type CanvasDocument, type CardElement } from "@/canvas/document";
 
@@ -252,10 +252,11 @@ describe("choosing a planner", () => {
     expect(modelStatus()).toBe("");
   });
 
-  it("refuses to plan without configuration rather than calling anything", async () => {
-    process.env = { ...env, ANTHROPIC_API_KEY: "", NEXUS_MODEL: "" };
-    await expect(planWithModel("anything", { vocabulary: vocab, sampleNames: [], onBoard: 0, graph: ctx })).rejects.toThrow(/no model configured/);
-  });
+  /*
+   * Which model answers is now resolved per workspace and per task (§5.31); `planWithModel` is
+   * handed the answer rather than reading the environment. The order of preference is tested in
+   * src/lib/models/models.test.ts, where it belongs.
+   */
 });
 
 describe("what the planner may look at", () => {

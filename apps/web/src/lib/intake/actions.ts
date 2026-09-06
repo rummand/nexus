@@ -8,7 +8,8 @@ import * as s from "@/db/schema";
 import { commitExtraction, INTAKE_RECORD_KINDS, type CommitSelection } from "./commit";
 import { providerById } from "../catalog/providers";
 import { runPipeline } from "./pipeline";
-import { extractWithModel, modelConfigured } from "./model";
+import { extractWithModel } from "./model";
+import { choose } from "@/lib/models/resolve";
 import { parsePassages } from "./transcript";
 import { detectSourceKind } from "./transcript";
 import type { Extraction } from "./types";
@@ -89,9 +90,10 @@ export async function runSource(sourceId: string) {
   // A model reads the source when one is configured; the rules read it when not. Either way the
   // result is validated against the passages and reviewed by a human before it reaches the graph.
   let read: Awaited<ReturnType<typeof extractWithModel>> | undefined;
-  if (modelConfigured()) {
+  const choice = await choose(db, source.workspaceId, "intake");
+  if (choice) {
     try {
-      read = await extractWithModel(source.name, parsePassages(source.text), vocab);
+      read = await extractWithModel(source.name, parsePassages(source.text), vocab, choice);
     } catch {
       read = undefined; // a planner that is down is not a reason to read nothing
     }
