@@ -71,3 +71,51 @@ export const MODELS: DocPage = {
     { kind: "try", href: "/w/:slug/settings/models", label: "Open model settings" },
   ],
 };
+
+export const CONNECTIONS: DocPage = {
+  slug: "connections",
+  title: "Letting something else ask",
+  summary: "Nexus speaks MCP: another team's assistant can ask your model what depends on what — and suggest corrections a person still accepts.",
+  keywords: ["mcp", "model context protocol", "api", "integration", "key", "token", "connect", "claude code", "assistant", "outside", "read-only", "propose", "endpoint", "bearer"],
+  blocks: [
+    { kind: "prose", text: "The model of your estate is the thing other people's agents most want to read. “What depends on Maximo?” “What is out of support next year?” “What does this organisation call an interface?” Nexus answers those over **MCP** — the protocol assistants and coding agents already speak — so somebody's tool can ask your architecture model directly instead of guessing." },
+    { kind: "shot", src: "connections", alt: "The Connections settings page with a key issued, showing the once-only key panel, the key list and the MCP client configuration block", caption: "Issue a key, point a client at the endpoint. The key is shown once, because only a hash of it is stored." },
+
+    { kind: "heading", text: "What it can and cannot do", id: "boundary" },
+    {
+      kind: "table",
+      columns: ["Scope", "What it can do"],
+      rows: [
+        ["Read the model", "Search it, describe any object with its relations and provenance, follow what depends on what, read the vocabulary and the health score."],
+        ["Read, and may propose", "All of that, and it may leave a suggestion in the review queue — where a person accepts or dismisses it exactly as they would one of your own agents'."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "There is no third scope", text: "No tool here changes the model. Not for a trusted client, not with a special flag. An outside suggestion goes through the same validator your own agent's goes through — it must quote the object it names, and an unquotable claim is discarded — and then it waits for a person. That is the whole boundary, and it is what makes handing out a key a small decision rather than a large one." },
+
+    { kind: "heading", text: "Pointing a client at it", id: "connect" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Issue a key, and copy it.", note: "It is shown once. Nexus stores only a hash, so nothing — including that page — can print it back." },
+        { do: "Add the endpoint to your client's MCP configuration.", note: "The page shows the exact block, with your instance's own address filled in." },
+        { do: "Ask it to call list_kinds first.", note: "An agent that has read your vocabulary suggests things in your words rather than in its own." },
+      ],
+    },
+    {
+      kind: "list",
+      items: [
+        "**search_model** — the workspace's own query language: `kind:Application missing:owner`, `related:Maximo`, or plain words.",
+        "**describe_object** — one object, its attributes, every relation with direction, the boards it is on, and where the record came from.",
+        "**what_depends_on** — everything within N relations, with how far away each thing is.",
+        "**list_kinds** — the vocabulary: kinds, attributes and relation types, with counts.",
+        "**estate_health** — the score and each measure behind it.",
+        "**propose_change** — with a propose key: one suggestion, quoted, into the review queue.",
+      ],
+    },
+
+    { kind: "heading", text: "Keeping track", id: "keys" },
+    { kind: "prose", text: "Each key shows when it was last used, which is what tells you months later whether it is still in anything's configuration. **Revoke** stops it being answered immediately; a revoked key can then be forgotten entirely." },
+    { kind: "note", tone: "tip", text: "A key that may propose appears in **Agents** as an agent of its own, with a scope, a budget and an acceptance rate. What arrives from outside is measured exactly like what your own agents say — including whether anybody keeps it." },
+    { kind: "try", href: "/w/:slug/settings/connections", label: "Open connections" },
+  ],
+};

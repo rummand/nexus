@@ -1392,6 +1392,49 @@ budget its parent lacks) but nothing calls it yet — it is the rule §4.4 of th
 needs before an agent may propose an agent, and it is cheaper to have in place first.
 
 
+### 5.33 Nexus as an MCP server (v0.2)
+
+The estate model is the thing other people's agents most want to read — "what depends on Maximo",
+"what is out of support next year", "what does this organisation call an interface" — and answering
+that is cheap for us and expensive for them. So Nexus speaks **MCP**: one endpoint, `POST /api/mcp`,
+JSON-RPC, six tools, a key per client.
+
+**Reading is generous.** `search_model` takes the workspace's own query language (§5.9);
+`describe_object` gives an object with its attributes, every relation with direction, the boards it
+is drawn on and where the record came from; `what_depends_on` walks the graph outwards with the
+distance to each thing; `list_kinds` hands over the vocabulary, which is what stops an outside agent
+suggesting things in its words rather than the organisation's; `estate_health` gives the score and
+the measures behind it. Where a name is ambiguous the answer says so and lists the candidates with
+their ids rather than picking one.
+
+**Writing does not exist.** There is no tool that changes the model — not for a trusted client, not
+behind a flag; the test suite asserts the tool list to keep it that way. The most a caller can do is
+`propose_change`, which goes through the same validator our own agent goes through (§5.26): the
+closed list of five changes, ids checked against the graph, and every claim quoting the object it
+names or being discarded. What survives waits in the review queue for a person.
+
+**An outside caller is an agent like any other.** A key with the `propose` scope gets a described
+agent (§5.32) — an owner, a scope, verbs without `merge`, a budget of ten waiting suggestions — so
+what arrives from outside appears in the fleet, is attributed by name in the review queue, and has
+an acceptance rate somebody can read. Without that, "an outside system suggested this" would be the
+one kind of proposal nobody could hold to account.
+
+**Keys** (`lib/mcp/tokens.ts`). Minted here, hashed with SHA-256, shown once and never recoverable —
+the mirror of §5.31, where the key belongs to somebody else and we must never be able to print it.
+Two scopes and deliberately no third. A revoked key is treated as no key at all rather than as a
+different error. Last-used is recorded because "is this still in anything's configuration" is the
+question a person asks a year later. The endpoint sits outside the shared-password gate (§5.12) by
+name: it carries its own bearer authentication, which is stricter, and a machine cannot follow a
+redirect to a login form.
+
+**Written by hand** (`lib/mcp/server.ts`, ~120 lines). The simple half of MCP's Streamable HTTP
+transport — a POST that answers with one JSON object — is all a server of plain request/response
+tools needs: no stream, no session, nothing to expire. A notification is answered with 202 and no
+body, which is the detail hand-written servers most often get wrong. A tool's own failure comes back
+as content marked `isError` rather than as a JSON-RPC error, because the thing on the other end is a
+model that can read a sentence and try again.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1424,7 +1467,7 @@ needs before an agent may propose an agent, and it is cheaper to have in place f
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 66)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 67)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1697,6 +1740,15 @@ needs before an agent may propose an agent, and it is cheaper to have in place f
 - **Ask the agent** on the Knowledge graph page runs the workspace's own *Model reviewer*, which is
   an ordinary described agent.
 
+### Connections — Nexus as an MCP server (v0.2)
+- `POST /api/mcp`: JSON-RPC over HTTP, six tools — search the model, describe an object, follow what
+  depends on what, read the vocabulary, read estate health, and propose a change.
+- `/w/:slug/settings/connections`: issue a key (shown once, stored as a hash), see when each was
+  last used, revoke it, and copy the client configuration block with this instance's own address.
+- Two scopes: read, or read and propose. Nothing writes: an outside suggestion is validated exactly
+  as our own agent's is and waits in the review queue.
+- A propose key speaks as a described agent, so what it says is attributed, budgeted and measured.
+
 ### Documentation (v0.2)
 - Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
@@ -1901,6 +1953,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | A decision copies the agent's name off the proposal before the proposal is deleted. | It is the only moment both facts exist together. Without it the fleet could never say how often people keep what a given agent says, which is the one number that measures an agent being useful rather than talking. |
 | 2026-09-06 | Capability monotonicity is built before anything can create an agent. | An agent proposing an agent is safe only if it cannot hand on a verb or a budget it does not have. Writing and testing that rule while nothing depends on it is much cheaper than retrofitting it to the feature that needs it. |
 
+| 2026-09-06 | Nexus is an MCP server before it is an MCP client. | Reading the model is what other people's agents want and what only we can offer; calling out to ServiceNow is work anybody could do. Being the thing that answers is also the position that keeps the boundary ours. |
+| 2026-09-06 | No tool on the MCP surface changes the model, and a test asserts it. | The claim "letting an assistant read our architecture is a small decision" is only true while it stays true. Writing it as an assertion means the day somebody adds a convenient write tool, the suite says no. |
+| 2026-09-06 | An outside caller gets a described agent of its own. | Otherwise the fleet page quietly under-reports who is working here, and a suggestion from outside would be the one kind nobody could measure or switch off. It is created without `merge`: an outside caller has not seen the boards or the argument that put both objects there. |
+| 2026-09-06 | The MCP endpoint sits outside the shared-password gate. | It carries bearer authentication, which is stricter than the shared password, and a machine cannot follow a redirect to a login form. The gate is for browsers. |
+| 2026-09-06 | The transport is written by hand rather than taken from an SDK. | A POST that answers with one JSON object is the whole of what request/response tools need, it has to run inside a Next route on either dialect, and a dependency here would sit exactly on the boundary this feature exists to defend. |
+| 2026-09-06 | A tool's failure is content marked isError, not a JSON-RPC error. | The thing on the other end is a model. A sentence it can read gets it to try something else; a protocol error gets rendered as "request failed" and stops the conversation. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1914,6 +1973,23 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 67: Nexus speaks MCP.** The model of an organisation's estate is the thing other
+  people's agents most want to read, so Nexus now answers them directly. One endpoint, JSON-RPC over
+  HTTP, six tools: search the model in the workspace's own query language, describe an object with
+  its relations and provenance, follow what depends on what, read the vocabulary, read the health
+  score — and, with a key that allows it, leave a suggestion. **Nothing writes.** There is no tool
+  that changes the model, and the test suite asserts the tool list so it stays that way; a
+  suggestion from outside goes through the same validator our own agent's does, quoting the object
+  it names or being discarded, and then waits for a person. A key that may propose speaks as a
+  described agent (rev 66) with an owner, a budget and an acceptance rate, so what arrives from
+  outside is measured exactly like what arrives from inside and appears in the review queue under
+  its own name. Keys are minted here, hashed, shown once and never recoverable — the mirror of the
+  provider keys in rev 65, where the secret is somebody else's. **Settings → Connections** issues
+  them, shows when each was last used, and prints the client configuration block with this
+  instance's own address. 17 new unit tests over the protocol and the boundary, an e2e that issues a
+  key, proves the page cannot print it back, talks JSON-RPC to the endpoint and checks a revoked key
+  stops being answered, and a documentation page.
 
 - **2026-09-06 — Rev 66: an agent you can read.** Agents in Nexus were hand-written modules: the one
   that reviews the graph read the whole workspace, could propose anything, and answered to nobody. An

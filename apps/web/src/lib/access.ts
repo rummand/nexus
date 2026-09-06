@@ -33,6 +33,12 @@ export function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/login" ||
     pathname === "/api/health" || // the platform health check must never be redirected
+    /*
+     * The MCP endpoint carries its own key (§5.33) and is called by machines, which cannot follow
+     * a redirect to a login form. The shared password is a gate for browsers; this one is bearer
+     * authentication, and it is stricter — no key, no answer, whatever the password is set to.
+     */
+    pathname === "/api/mcp" ||
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico"
   );

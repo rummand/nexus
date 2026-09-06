@@ -58,6 +58,24 @@ billing                                  free text over name, description, attri
 
 Clauses combine with AND. `?` at the start is ignored so questions can be typed naturally.
 
+## MCP (`POST /api/mcp`)
+
+Nexus is a Model Context Protocol server (§5.33). JSON-RPC 2.0 over one POST; a key in
+`Authorization: Bearer nxs_…` decides which workspace is being asked and what the caller may do.
+`GET` on the same URL describes the server rather than opening a stream.
+
+| Method | Answer |
+|---|---|
+| `initialize` | Protocol version (the client's, if we know it), `tools` capability, server info, and instructions naming the workspace |
+| `tools/list` | The tools this key may call — a read key does not see `propose_change` |
+| `tools/call` | `search_model`, `describe_object`, `what_depends_on`, `list_kinds`, `estate_health`, `propose_change` |
+| `ping` | `{}` |
+| `notifications/*` | 202 with no body |
+
+No tool changes the model. `propose_change` is validated exactly as the graph agent's proposals are
+— the closed list of five changes, ids checked, every claim quoting the object it names — and what
+survives waits in the review queue under the name of the key that sent it.
+
 ## Server actions (`apps/web/src/lib/actions.ts`)
 
 Mutations from the home shell and the Knowledge graph page are Next.js server actions rather
@@ -72,6 +90,7 @@ than routes; they revalidate the affected pages.
 | Proposals | `acceptProposal` (applies the proposal's action, with an optional override value), `dismissProposal` (remembered per proposal key) |
 | Models | `addProvider`, `updateProvider` (a new key resets the last check), `removeProvider`, `assignTask` (which provider and model id does which job), `checkProvider` (a real one-token call), `modelSettings` (everything the settings page needs; no key is ever returned) |
 | Landing zone | `createBatch` (FormData with many files; reads, folds and stages them, writing nothing), `remapBatch` (change a column's meaning, the trust order, or whether people are included), `decideRows` (accept / hold / reject), `approveBatch` (the one call that writes, recording what it wrote), `rollbackBatch` (reverts only that, and reports what it would not touch), `createBatchBoard`, `deleteBatch` |
+| Connections (MCP) | `issueKey` (returns the key once — nothing else ever can), `revokeKey`, `forgetKey`, `connectionSettings` |
 | Described agents | `createAgent` (always saved as a draft), `updateAgent`, `setAgentStatus` (draft / active / paused / retired), `removeAgent`, `runAgent` (refused before it costs anything when paused, retired or over budget; a draft runs as a dry run), `scopeSize` (how much a scope query would read) |
 | Agent | `askTheAgent` (a model reads the graph and proposes corrections into the review queue; returns what survived checking and what was thrown away), `forgetAgentRun` |
 | Board agents | `wakeBoardAgent` (an agent on a board reads its scope and returns remarks, each quoting the object it is about), `askAboutSelection` (prose plus checked citations for a set of selected objects), `recordRemarkOutcome` (kept / dismissed, so the fleet can measure) |

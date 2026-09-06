@@ -493,6 +493,41 @@ export const agentRuns = sqliteTable(
 export type AgentDefinitionRow = typeof agentDefinitions.$inferSelect;
 export type AgentRunRow = typeof agentRuns.$inferSelect;
 
+
+/**
+ * Keys that let something outside Nexus read the model.
+ *
+ * Nexus speaks MCP (§5.33): another organisation's coding agent, or a person's assistant, can ask
+ * this workspace what depends on Maximo and what is out of support next year — and, if the key
+ * allows it, *suggest* a correction that lands in the same review queue as everything else. The
+ * key is stored as a SHA-256 hash and shown once, because a key we can print back is a key that
+ * leaks; the prefix is kept so a person can tell two of them apart.
+ */
+export const mcpTokens = sqliteTable(
+  "mcp_tokens",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** What it is for: "Claude Code on my laptop", "the platform team's assistant". */
+    name: text("name").notNull(),
+    /** The first characters of the key, so two of them are distinguishable in a list. */
+    prefix: text("prefix").notNull().default(""),
+    hash: text("hash").notNull(),
+    /** read — only the reading tools; propose — may also put suggestions in the review queue. */
+    scope: text("scope", { enum: ["read", "propose"] }).notNull().default("read"),
+    /** The described agent (§5.32) outside proposals are attributed to, so they can be measured. */
+    agentId: text("agent_id").references(() => agentDefinitions.id, { onDelete: "set null" }),
+    lastUsedAt: text("last_used_at"),
+    revokedAt: text("revoked_at"),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("mcp_tokens_workspace_idx").on(t.workspaceId)],
+);
+
+export type McpTokenRow = typeof mcpTokens.$inferSelect;
+
 // ---- the landing zone ------------------------------------------------------
 // Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a
 // governance review. Nothing they say is true until somebody approves it, so the whole staged

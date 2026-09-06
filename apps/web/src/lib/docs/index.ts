@@ -3,7 +3,7 @@ import { BOARDS_AND_GRAPH, BOARD_AGENTS, CANVAS, COMPOSE, SEARCH, TIMELINE, VIEW
 import { AGENT, DESCRIBED, EXPLORER, FLEET, GRAPH, HEALTH, META_MODEL } from "./pages/model";
 import { CATALOGUE, INTAKE, KNOWLEDGE, LANDING } from "./pages/data";
 import { PLATEAUS, ROADMAP } from "./pages/time";
-import { MODELS } from "./pages/settings";
+import { CONNECTIONS, MODELS } from "./pages/settings";
 import { CONCEPTS, FAQ, SHORTCUTS } from "./pages/reference";
 import { pageText, type DocPage, type DocSection } from "./types";
 
@@ -19,7 +19,7 @@ export const SECTIONS: DocSection[] = [
   { title: "The model", pages: [GRAPH, EXPLORER, META_MODEL, HEALTH] },
   // The three agent surfaces read as one subject, so they are one section rather than scattered
   // through the sections of the product they happen to touch.
-  { title: "Agents", pages: [BOARD_AGENTS, AGENT, DESCRIBED, FLEET, MODELS] },
+  { title: "Agents", pages: [BOARD_AGENTS, AGENT, DESCRIBED, FLEET, MODELS, CONNECTIONS] },
   { title: "Bringing data in", pages: [LANDING, INTAKE, CATALOGUE, KNOWLEDGE] },
   { title: "Planning ahead", pages: [ROADMAP, PLATEAUS] },
   { title: "Reference", pages: [SHORTCUTS, CONCEPTS, FAQ] },

@@ -397,6 +397,19 @@ try {
    * A provider with no key, because that is the one this capture can show honestly: a local
    * endpoint needs no secret, so the picture is the real screen rather than a mocked one.
    */
+  /*
+   * A key issued into a throwaway capture database, so the "shown once" panel — the most important
+   * thing on this screen — is the real one rather than a mock. The key dies with the database.
+   */
+  await shot("connections", async () => {
+    await goto(`${w}/settings/connections`, "[data-key-name]");
+    await page.fill("[data-key-name]", "Claude Code on my laptop");
+    await page.selectOption(".mcp-new-row select", "propose");
+    await page.click("[data-issue-key]");
+    await page.waitForSelector("[data-issued-key]", { timeout: 30_000 });
+    await page.waitForTimeout(600);
+  });
+
   await shot("models", async () => {
     await goto(`${w}/settings/models`, "[data-preset=ollama]");
     await page.click("[data-preset=ollama]");

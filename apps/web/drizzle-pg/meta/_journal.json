@@ -71,6 +71,13 @@
       "when": 1788729976851,
       "tag": "0009_spotty_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788731148784,
+      "tag": "0010_serious_morlun",
+      "breakpoints": true
     }
   ]
 }

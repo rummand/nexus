@@ -916,6 +916,54 @@ try {
   await page.click(`[data-provider="${providerId}"] button[title="Remove this provider"]`);
   await page.waitForFunction(() => document.querySelectorAll("[data-provider]").length === 0, null, { timeout: 20000 });
 
+  // ---- Nexus as an MCP server ----------------------------------------------------------------
+  // The whole boundary in one pass: a key nothing can print back, real answers over JSON-RPC, and
+  // a suggestion that reaches the review queue without changing anything.
+  await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
+  await page.waitForSelector("[data-key-name]", { timeout: 30000 });
+  await page.fill("[data-key-name]", "Smoke client");
+  await page.selectOption(".mcp-new-row select", "propose");
+  await page.click("[data-issue-key]");
+  await page.waitForSelector("[data-issued-key] code", { timeout: 30000 });
+  const key = (await page.locator("[data-issued-key] code").innerText()).trim();
+  assert.ok(key.startsWith("nxs_"), "a key is issued");
+
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("[data-keys]");
+  assert.ok(!(await page.content()).includes(key), "a key is shown once and never again");
+
+  const rpc = async (body, token = key) => {
+    const res = await fetch(`${base}/api/mcp`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, body: res.status === 202 ? null : await res.json() };
+  };
+
+  assert.equal((await rpc({ jsonrpc: "2.0", id: 1, method: "tools/list" }, "")).status, 401, "no key, no answer");
+  const tools = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  const toolNames = tools.body.result.tools.map((t) => t.name);
+  assert.deepEqual(toolNames, ["search_model", "describe_object", "what_depends_on", "list_kinds", "estate_health", "propose_change"],
+    "the tools are what the documentation says they are");
+
+  const searched = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "search_model", arguments: { query: "kind:Application" } } });
+  assert.match(searched.body.result.content[0].text, /Application/, "it answers a question about the model");
+
+  const proposed = await rpc({
+    jsonrpc: "2.0", id: 4, method: "tools/call",
+    params: { name: "propose_change", arguments: { change: "setKind", entityId: "nope", to: "Application", why: "no", readFrom: "nope", quote: "nothing" } },
+  });
+  assert.match(proposed.body.result.content[0].text, /Nothing was recorded/, "an unquotable claim from outside is discarded");
+  assert.equal((await rpc({ jsonrpc: "2.0", method: "notifications/initialized" })).status, 202, "a notification is answered with nothing");
+
+  await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
+  await page.waitForSelector("[data-keys]");
+  // The dialog handler registered earlier in this run accepts the confirm.
+  await page.click("[data-revoke]");
+  await page.waitForTimeout(1200);
+  assert.equal((await rpc({ jsonrpc: "2.0", id: 5, method: "tools/list" })).status, 401, "a revoked key stops being answered");
+
   // ---- the documentation -------------------------------------------------------------------
   await page.goto(`${base}/w/acme-energy/docs`, { waitUntil: "load" });
   await page.waitForSelector(".doc-index-grid");

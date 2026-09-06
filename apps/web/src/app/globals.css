@@ -775,6 +775,30 @@ a { color: inherit; text-decoration: none; }
 .fact-card input::placeholder, .fact-card textarea::placeholder { color: #a5afc0; }
 
 
+
+/* ---- connections (MCP) ---------------------------------------------------- */
+.mcp-issued { align-items: center; background: #f0fdf4; border: 1px solid #bbe7c2; border-radius: 12px; display: grid; gap: 6px 12px; grid-template-columns: 1fr auto; margin: 0 0 18px; max-width: 900px; padding: 13px 16px; }
+.mcp-issued b { align-items: center; color: #2f7d32; display: flex; font-size: 12.5px; gap: 6px; }
+.mcp-issued code { background: #fff; border: 1px solid #cfe8d3; border-radius: 8px; font-family: var(--mono); font-size: 12.5px; grid-column: 1; overflow-x: auto; padding: 7px 10px; }
+.mcp-issued button { grid-column: 2; grid-row: 2; }
+.mcp-issued small { color: #4a7c50; font-size: 11.5px; grid-column: 1 / -1; }
+.mcp-new, .mcp-keys, .mcp-connect { margin: 0 0 22px; max-width: 900px; }
+.mcp-new h2, .mcp-keys h2, .mcp-connect h2 { align-items: center; display: flex; font-size: 15px; gap: 7px; margin: 0 0 9px; }
+.mcp-new-row { display: grid; gap: 8px; grid-template-columns: 1fr 200px auto; }
+.mcp-new-row input, .mcp-new-row select { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; font-size: 13px; min-height: 34px; outline: 0; padding: 0 10px; }
+.mcp-new-row input:focus, .mcp-new-row select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.mcp-new .model-hint { margin-top: 8px; }
+.mcp-keys ul { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.mcp-keys li { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 10px; display: flex; gap: 10px; justify-content: space-between; padding: 9px 13px; }
+.mcp-keys li.revoked { opacity: 0.55; }
+.mcp-keys li > div { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; }
+.mcp-keys strong { font-size: 13px; }
+.mcp-keys code { color: #7c8598; font-family: var(--mono); font-size: 11.5px; }
+.mcp-keys span { color: #a5b0c2; font-size: 11.5px; }
+.mcp-connect p { color: #56637a; font-size: 12.5px; line-height: 1.6; margin: 0 0 9px; }
+.mcp-connect code { background: #eef2f8; border-radius: 4px; font-family: var(--mono); font-size: 11.5px; padding: 1px 5px; }
+.mcp-connect pre { background: #0f172a; border-radius: 12px; color: #e2e8f0; font-family: var(--mono); font-size: 12px; line-height: 1.55; margin: 0 0 10px; overflow-x: auto; padding: 13px 16px; }
+
 /* ---- described agents ----------------------------------------------------- */
 .defined-agents { margin: 0 0 26px; }
 .defined-agents-head { align-items: center; display: flex; gap: 12px; justify-content: space-between; margin: 0 0 4px; }

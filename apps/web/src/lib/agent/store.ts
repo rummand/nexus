@@ -42,9 +42,15 @@ export async function agentGraph(db: Db, workspaceId: string): Promise<AgentGrap
  * replacing the run; with a fleet, wiping the workspace's proposals because a second agent ran
  * would throw away the first agent's unreviewed work.
  */
-export async function saveRun(db: Db, workspaceId: string, run: AgentRun, from: { agentId?: string | null; runId?: string | null } = {}): Promise<number> {
+export async function saveRun(
+  db: Db,
+  workspaceId: string,
+  run: AgentRun,
+  /** `keep` appends instead of replacing: an MCP caller sends one proposal at a time (§5.33). */
+  from: { agentId?: string | null; runId?: string | null; keep?: boolean } = {},
+): Promise<number> {
   const agentId = from.agentId ?? null;
-  await db.delete(s.agentProposals).where(
+  if (!from.keep) await db.delete(s.agentProposals).where(
     agentId
       ? and(eq(s.agentProposals.workspaceId, workspaceId), eq(s.agentProposals.agentId, agentId))
       : and(eq(s.agentProposals.workspaceId, workspaceId), isNull(s.agentProposals.agentId)),
