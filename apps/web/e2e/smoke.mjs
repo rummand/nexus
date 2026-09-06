@@ -584,6 +584,29 @@ try {
   await page.waitForTimeout(1200);
   assert.equal(await page.locator("[data-change-set] [data-change]").count(), beforeChanges + 1, "the change is recorded");
 
+  // plateaus: named states, and the difference between two of them
+  await page.goto(`${base}/w/acme-energy/roadmap/plateaus`, { waitUntil: "load" });
+  await page.waitForSelector("[data-plateau-strip]");
+  assert.ok((await page.locator("[data-plateau-strip] li").count()) >= 3, "as-is plus the seeded plateaus");
+  const firstDiff = await page.locator("[data-diff]").innerText();
+  assert.match(firstDiff, /ARRIVES|Arrives/, "the diff names what arrives");
+  assert.match(firstDiff, /SAP PM/, "…and it is computed from the change sets, not asserted");
+  assert.match(firstDiff, /ESTATE HEALTH|Estate health/i, "a plateau can be measured, not just drawn");
+
+  // comparing two future states with each other, not just with today
+  await page.click('[data-plateau="plt_seed_2028"]');
+  await page.waitForTimeout(800);
+  await page.selectOption(".plateau-diff-head select", "plt_seed_workorders");
+  await page.waitForTimeout(1200);
+  const between = await page.locator("[data-diff]").innerText();
+  assert.match(between, /Historian/, "the difference between two plateaus is the change sets between them");
+
+  // a state that includes a plan but not what it waits for cannot exist, and says so
+  await page.click('[data-plateau-detail] .plateau-members li:has-text("Move work orders") button');
+  await page.waitForTimeout(1200);
+  assert.match(await page.locator(".roadmap-message").innerText(), /waits for this/,
+    "a blocker cannot be removed while something in the plateau still needs it");
+
   // a board seen through the change set: the retired system is marked, planned ones can be placed
   await page.goto(`${base}/b/brd_integrations`, { waitUntil: "load" });
   await page.waitForSelector("[data-element-id]");

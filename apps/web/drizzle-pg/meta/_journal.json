@@ -29,6 +29,13 @@
       "when": 1788670825094,
       "tag": "0003_tricky_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788686521906,
+      "tag": "0004_hesitant_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

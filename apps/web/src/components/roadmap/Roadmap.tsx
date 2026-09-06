@@ -8,6 +8,7 @@ import {
 import { addChange, addDependency, createChangeSet, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
 import type { Nature } from "@/lib/change/impact";
+import { RoadmapTabs } from "./RoadmapTabs";
 
 /**
  * The roadmap.
@@ -101,6 +102,8 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
           </button>
         </div>
       </header>
+
+      <RoadmapTabs slug={slug} active="changes" />
 
       <div className="roadmap-states" data-states>
         <div className="roadmap-state">

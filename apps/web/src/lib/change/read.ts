@@ -3,6 +3,7 @@ import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import type { Change, ChangeSet } from "./types";
 import type { Dependency } from "./order";
+import type { Plateau } from "./plateau";
 
 /**
  * Reading change sets back out.
@@ -69,6 +70,27 @@ export async function listDependencies(db: Db, workspaceId: string): Promise<Dep
     .innerJoin(s.changeSets, eq(s.changeSetDependencies.changeSetId, s.changeSets.id))
     .where(eq(s.changeSets.workspaceId, workspaceId));
   return rows;
+}
+
+/** Plateaus with their membership. */
+export async function listPlateaus(db: Db, workspaceId: string): Promise<Plateau[]> {
+  const rows = await db
+    .select()
+    .from(s.plateaus)
+    .where(eq(s.plateaus.workspaceId, workspaceId))
+    .orderBy(asc(s.plateaus.targetDate), asc(s.plateaus.createdAt));
+  if (!rows.length) return [];
+  const members = await db
+    .select({ plateauId: s.plateauChangeSets.plateauId, changeSetId: s.plateauChangeSets.changeSetId })
+    .from(s.plateauChangeSets)
+    .where(inArray(s.plateauChangeSets.plateauId, rows.map((p) => p.id)));
+  const byPlateau = new Map<string, string[]>();
+  for (const m of members) {
+    const list = byPlateau.get(m.plateauId) ?? [];
+    list.push(m.changeSetId);
+    byPlateau.set(m.plateauId, list);
+  }
+  return rows.map((p) => ({ ...p, changeSetIds: byPlateau.get(p.id) ?? [] }));
 }
 
 /** The graph rows a projection needs. */

@@ -9,7 +9,7 @@ import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { project } from "./project";
-import { blocking, wouldCycle } from "./order";
+import { allBlockers, blocking, wouldCycle } from "./order";
 import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload } from "./types";
 
 const now = () => new Date().toISOString();
@@ -35,6 +35,7 @@ async function touch(workspaceId: string, changeSetId?: string) {
   const slug = await slugOf(workspaceId);
   if (slug) {
     revalidatePath(`/w/${slug}/roadmap`);
+    revalidatePath(`/w/${slug}/roadmap/plateaus`);
     revalidatePath(`/w/${slug}/graph`);
   }
 }
@@ -178,6 +179,103 @@ export async function removeDependency(changeSetId: string, dependsOnId: string)
     .delete(s.changeSetDependencies)
     .where(and(eq(s.changeSetDependencies.changeSetId, changeSetId), eq(s.changeSetDependencies.dependsOnId, dependsOnId)));
   if (set) await touch(set.workspaceId, set.id);
+  return { ok: true };
+}
+
+// ---- plateaus ---------------------------------------------------------------
+
+export async function createPlateau(input: { workspaceId: string; name: string; description?: string; targetDate?: string }) {
+  const db = await getDb();
+  const user = await currentUser();
+  const id = `plt_${nanoid(10)}`;
+  await db.insert(s.plateaus).values({
+    id,
+    workspaceId: input.workspaceId,
+    name: input.name.trim() || "Untitled state",
+    description: input.description?.trim() ?? "",
+    targetDate: normaliseDate(input.targetDate),
+    createdById: user.id,
+    createdAt: now(),
+    updatedAt: now(),
+  });
+  await touch(input.workspaceId);
+  return { id };
+}
+
+export async function updatePlateau(plateauId: string, patch: { name?: string; description?: string; targetDate?: string }): Promise<ChangeResult> {
+  const db = await getDb();
+  const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
+  if (!plateau) return { error: "That state is gone." };
+  await db
+    .update(s.plateaus)
+    .set({
+      ...(patch.name !== undefined ? { name: patch.name.trim() || "Untitled state" } : {}),
+      ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
+      ...(patch.targetDate !== undefined ? { targetDate: normaliseDate(patch.targetDate) } : {}),
+      updatedAt: now(),
+    })
+    .where(eq(s.plateaus.id, plateauId));
+  await touch(plateau.workspaceId);
+  return { ok: true };
+}
+
+export async function deletePlateau(plateauId: string): Promise<ChangeResult> {
+  const db = await getDb();
+  const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
+  if (!plateau) return { ok: true };
+  await db.delete(s.plateaus).where(eq(s.plateaus.id, plateauId));
+  await touch(plateau.workspaceId);
+  return { ok: true };
+}
+
+/**
+ * Put a change set into a plateau, and everything it waits for with it.
+ *
+ * A state that includes a plan but not its blockers is not a state that can exist, so the blockers
+ * come too — and the result says how many were pulled in, because doing it silently would be a
+ * decision made on somebody's behalf without telling them.
+ */
+export async function includeInPlateau(plateauId: string, changeSetId: string): Promise<{ ok: true; alsoIncluded: number } | { error: string }> {
+  const db = await getDb();
+  const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
+  if (!plateau) return { error: "That state is gone." };
+  const deps = await listDependencies(db, plateau.workspaceId);
+  const sets = await listChangeSets(db, plateau.workspaceId);
+  const known = new Set(sets.map((set) => set.id));
+  if (!known.has(changeSetId)) return { error: "That change set is gone." };
+
+  const existing = new Set(
+    (await db.select({ id: s.plateauChangeSets.changeSetId }).from(s.plateauChangeSets).where(eq(s.plateauChangeSets.plateauId, plateauId))).map((r) => r.id),
+  );
+  const wanted = [changeSetId, ...allBlockers(changeSetId, deps).filter((id) => known.has(id))].filter((id) => !existing.has(id));
+  if (!wanted.length) return { ok: true, alsoIncluded: 0 };
+  await db.insert(s.plateauChangeSets).values(wanted.map((id) => ({ plateauId, changeSetId: id, createdAt: now() }))).onConflictDoNothing();
+  await touch(plateau.workspaceId);
+  return { ok: true, alsoIncluded: wanted.length - 1 };
+}
+
+/**
+ * Take a change set out — unless something else in the plateau is waiting for it.
+ *
+ * Refusing here rather than repairing on read keeps the stored state coherent, and names the plan
+ * that is depending on it so the person knows what else they would have to remove.
+ */
+export async function excludeFromPlateau(plateauId: string, changeSetId: string): Promise<ChangeResult> {
+  const db = await getDb();
+  const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
+  if (!plateau) return { ok: true };
+  const deps = await listDependencies(db, plateau.workspaceId);
+  const sets = await listChangeSets(db, plateau.workspaceId);
+  const byId = new Map(sets.map((set) => [set.id, set]));
+  const members = (await db.select({ id: s.plateauChangeSets.changeSetId }).from(s.plateauChangeSets).where(eq(s.plateauChangeSets.plateauId, plateauId))).map((r) => r.id);
+
+  const needy = members.filter((id) => id !== changeSetId && allBlockers(id, deps).includes(changeSetId));
+  if (needy.length) {
+    const names = needy.map((id) => byId.get(id)?.name ?? id);
+    return { error: `${names.map((n) => `“${n}”`).join(", ")} ${needy.length === 1 ? "waits" : "wait"} for this. Remove ${needy.length === 1 ? "it" : "them"} first.` };
+  }
+  await db.delete(s.plateauChangeSets).where(and(eq(s.plateauChangeSets.plateauId, plateauId), eq(s.plateauChangeSets.changeSetId, changeSetId)));
+  await touch(plateau.workspaceId);
   return { ok: true };
 }
 

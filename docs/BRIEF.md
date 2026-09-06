@@ -971,6 +971,35 @@ board would quietly deliver part of a plan nobody approved on the next autosave.
 itself when the change set is delivered and the entity exists, at which point the card becomes an
 ordinary one.
 
+### 5.22 Plateaus: states you can name, and the difference between two of them (v0.2)
+
+A list of change sets is a list of intentions. What people actually talk about is a *state*:
+"target architecture 2028", "after the platform migration". TOGAF calls it a plateau, and until it
+is an object in the tool it lives in a slide — where it immediately starts drifting from the model
+it claims to describe.
+
+A plateau here stores a name, a date and a **membership**: which change sets have landed by then.
+Never a copy of the estate. Its content is derived — the graph plus those change sets, projected in
+delivery order — so it cannot drift, and it moves the moment the model does. Membership is explicit
+rather than "everything dated before this", because two plateaus can share a date, a plan can be
+deliberately excluded from one branch of a roadmap, and a membership you can see is one you can
+argue with. Including a plan pulls in what it waits for and says how many it took; removing one is
+refused while something else in the plateau still needs it, naming what.
+
+**The valuable operation is subtraction.** Looking at one state is mildly useful; "what changes
+between today and 2028" is the question a roadmap is actually asked, and nobody answers it by
+reading two pictures side by side. `diffStates` compares any two states — as-is against a plateau,
+or two future plateaus against each other — and reports what arrives, what goes, what is renamed or
+retyped, which attributes move (with both values) and how many connections are made and severed.
+It diffs by entity id, not by name: renaming a system is a change *to* it, and a diff that said
+otherwise would report every rationalisation as churn.
+
+**And a plateau can be measured.** Estate health runs over the projected state exactly as it runs
+over today, so a roadmap can claim a number rather than a shape: 64 today, 65 after the work-order
+move. A board can also be viewed at a plateau, through the same picker that shows a single change
+set — one code path for "show me the board at a state", whether that state is one plan or a
+milestone made of several.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1000,7 +1029,7 @@ ordinary one.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 52)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 53)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1198,6 +1227,9 @@ ordinary one.
   create the system.
 - Dependencies between change sets: cycle-free, delivery blocked until blockers land, projection in
   the context of what a plan waits for, delivery-order numbering and schedule contradictions named.
+- Plateaus: named, dated states defined by which change sets have landed; derived, never stored;
+  compared as a diff (arrives / goes / changes, with both values); measured with estate health; and
+  viewable on a board through the same state picker.
 
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
@@ -1323,6 +1355,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-06 | A plateau stores a name, a date and a membership — never a copy of the estate. | A stored copy is a slide: it starts drifting from the model the moment either changes. Deriving the state means a plateau is always exactly as true as the graph it describes. |
+| 2026-09-06 | Plateau membership is explicit, not "every change set dated before it". | Two plateaus can share a date, a plan can be deliberately excluded from one branch of a roadmap, and a membership somebody can see is one they can argue with. Blockers are pulled in with their dependents, because a state that includes a plan but not what it waits for cannot exist. |
+| 2026-09-06 | The plateau diff compares by entity id, never by name. | Renaming a system is a change to it, not a death and a birth. A name-based diff would report every rationalisation as churn and bury the real movement. |
 | 2026-09-06 | A change set is projected in the context of its blockers, not against today's graph. | Otherwise a plan that connects to a system the previous plan introduces reports a problem where there is only an order — and a roadmap that cries stale at correct sequencing teaches people to ignore it. |
 | 2026-09-06 | An abandoned blocker does not satisfy a dependency. | A plan waiting on something that is not going to happen is stranded. Letting it through quietly would hide exactly the decision somebody needs to make about it. |
 | 2026-09-06 | Dependency cycles are refused when the edge is written, not when delivery is attempted. | Two plans that each wait for the other is not a roadmap anybody can deliver, and the honest moment to say so is while somebody is drawing it. It also lets every reader assume the graph is acyclic. |
@@ -1348,6 +1383,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 53: plateaus.** The states people actually talk about — "target architecture
+  2028" — are now objects rather than slides. A plateau stores a name, a date and which change sets
+  have landed by then; its content is derived from the graph and those plans, so it cannot drift.
+  Membership is explicit and coherent: including a plan pulls in what it waits for, and removing one
+  is refused while something in the plateau still needs it. The point of the screen is subtraction —
+  any two states can be compared, today against a plateau or two future plateaus against each other,
+  reporting what arrives, what goes, what is renamed, which attributes move and how many connections
+  are made or severed, diffed by entity id so a rename reads as a change rather than a death and a
+  birth. Estate health runs over a projected state exactly as over today, so the roadmap can claim
+  a number. A board can be viewed at a plateau through the same picker as a single change set.
+  Two seeded plateaus, 10 unit tests, and e2e over the diff, the comparison between two plateaus and
+  the coherence refusal.
 
 - **2026-09-06 — Rev 52: plans that wait for other plans.** A change set can now depend on another,
   which turns a list of intentions into a sequence. Delivery is refused while a blocker is

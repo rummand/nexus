@@ -22,6 +22,8 @@ The client autosaves with a debounce and flushes on tab hide / unload (`useAutos
 |---|---|---|---|
 | GET | `/api/change-sets?workspaceId=…` | — | `{ changeSets: [{ id, name, status, targetDate }] }` — enough to fill the board's state picker. |
 | GET | `/api/change-sets/:id/overlay` | — | A change set resolved against the graph: `{ name, targetDate, retired[], changed[], added[], problems, impact }`. Entity ids and a sentence, not a graph: the board already holds the cards. |
+| GET | `/api/plateaus?workspaceId=…` | — | `{ plateaus: [{ id, name, targetDate }] }`. |
+| GET | `/api/plateaus/:id/overlay` | — | A named state resolved against the graph, in the same shape as a change set's overlay, so the canvas has one path for "show me the board at a state". |
 | GET | `/api/knowledge` | — | The corpus: `{ builtAt, documents, registered, passages, characters, licenses, lessons }`. |
 | GET | `/api/knowledge?q=…&limit=n` | — | Lexical search over the EA corpus: `{ query, empty, tookMs, unknownTerms, passages[] }`, each passage carrying its label, source link and licence. Works with no model API key. |
 | GET | `/api/boards/:boardId/versions` | — | `{ versions: VersionSummary[] }` newest first. |

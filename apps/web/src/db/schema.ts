@@ -598,3 +598,56 @@ export const changeSetDependencies = sqliteTable(
 );
 
 export type ChangeSetDependencyRow = typeof changeSetDependencies.$inferSelect;
+
+/**
+ * A plateau: a named, dated state of the estate.
+ *
+ * The word is TOGAF's and the idea is the one thing a list of change sets does not give you — a
+ * state somebody can name, point at and argue with. "Target Architecture 2028" is a thing people
+ * talk about in meetings; until it is an object in the tool it lives in a slide.
+ *
+ * A plateau is *derived*, not stored: its content is the graph plus the change sets it includes,
+ * projected. Nothing about the estate is duplicated here, so a plateau cannot drift from the model
+ * it describes — which is exactly what happens to the slide.
+ */
+export const plateaus = sqliteTable(
+  "plateaus",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default(""),
+    description: text("description").notNull().default(""),
+    /** When this state is meant to hold. ISO date, or "" for a state with no date yet. */
+    targetDate: text("target_date").notNull().default(""),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("plateaus_workspace_idx").on(t.workspaceId, t.targetDate)],
+);
+
+/**
+ * Which change sets are complete at a plateau.
+ *
+ * Explicit rather than "everything dated before it": two plateaus can share a date, a plan can be
+ * deliberately excluded from one branch of the roadmap, and a membership you can see is a
+ * membership you can argue with. Blockers are pulled in with their dependents, because a state
+ * that includes a plan but not what it waits for is not a state that can exist.
+ */
+export const plateauChangeSets = sqliteTable(
+  "plateau_change_sets",
+  {
+    plateauId: text("plateau_id")
+      .notNull()
+      .references(() => plateaus.id, { onDelete: "cascade" }),
+    changeSetId: text("change_set_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [primaryKey({ columns: [t.plateauId, t.changeSetId] }), index("plateau_change_sets_set_idx").on(t.changeSetId)],
+);
+
+export type PlateauRow = typeof plateaus.$inferSelect;

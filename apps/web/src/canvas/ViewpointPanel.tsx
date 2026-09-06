@@ -72,22 +72,29 @@ export function ViewpointPanel() {
    */
   const overlay = useCanvas((s2) => s2.changeOverlay);
   const [changeSets, setChangeSets] = useState<Array<{ id: string; name: string; status: string; targetDate: string }>>([]);
+  const [plateaus, setPlateaus] = useState<Array<{ id: string; name: string; targetDate: string }>>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/change-sets?workspaceId=${encodeURIComponent(workspaceId)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ changeSets: Array<{ id: string; name: string; status: string; targetDate: string }> }>) : null))
-      .then((res) => { if (!cancelled && res) setChangeSets(res.changeSets); })
-      .catch(() => undefined);
+    void Promise.all([
+      fetch(`/api/change-sets?workspaceId=${encodeURIComponent(workspaceId)}`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ changeSets: Array<{ id: string; name: string; status: string; targetDate: string }> }>) : null))
+        .then((res) => { if (!cancelled && res) setChangeSets(res.changeSets); }),
+      fetch(`/api/plateaus?workspaceId=${encodeURIComponent(workspaceId)}`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ plateaus: Array<{ id: string; name: string; targetDate: string }> }>) : null))
+        .then((res) => { if (!cancelled && res) setPlateaus(res.plateaus); }),
+    ]).catch(() => undefined);
     return () => { cancelled = true; };
   }, [workspaceId]);
 
-  const showState = async (changeSetId: string) => {
+  /** `value` is "" for as-is, "chg:<id>" for one plan, or "plt:<id>" for a named state. */
+  const showState = async (value: string) => {
     const s2 = store.getState();
-    if (!changeSetId) { s2.setChangeOverlay(null); setStatus("Showing the estate as it is"); return; }
-    const res = await fetch(`/api/change-sets/${changeSetId}/overlay`).catch(() => null);
+    if (!value) { s2.setChangeOverlay(null); setStatus("Showing the estate as it is"); return; }
+    const [kind, id] = value.split(":");
+    const res = await fetch(kind === "plt" ? `/api/plateaus/${id}/overlay` : `/api/change-sets/${id}/overlay`).catch(() => null);
     if (!res?.ok) { setStatus("Could not load that change set"); return; }
     const data = (await res.json()) as { id: string; name: string; targetDate: string; retired: string[]; changed: string[]; added: Array<{ id: string; name: string; kind: string; description: string }>; impact: string };
-    s2.setChangeOverlay({ id: data.id, name: data.name, targetDate: data.targetDate, retired: new Set(data.retired), changed: new Set(data.changed), added: data.added, impact: data.impact });
+    s2.setChangeOverlay({ id: value, name: data.name, targetDate: data.targetDate, retired: new Set(data.retired), changed: new Set(data.changed), added: data.added, impact: data.impact });
     setStatus(`Showing “${data.name}”`);
   };
 
@@ -147,7 +154,7 @@ export function ViewpointPanel() {
         <small>{stats.linked} linked to the graph · {stats.relLinked} connectors are relations</small>
       </div>
 
-      {changeSets.length > 0 && (
+      {(changeSets.length > 0 || plateaus.length > 0) && (
         <div className="viewpoint-group viewpoint-state" data-state-picker>
           <span>State of the model</span>
           <select
@@ -156,9 +163,20 @@ export function ViewpointPanel() {
             onChange={(e) => void showState(e.target.value)}
           >
             <option value="">As-is — the estate as it is</option>
-            {changeSets.map((c) => (
-              <option key={c.id} value={c.id}>As of “{c.name}”{c.targetDate ? ` · ${c.targetDate}` : ""}</option>
-            ))}
+            {plateaus.length > 0 && (
+              <optgroup label="Named states">
+                {plateaus.map((p) => (
+                  <option key={p.id} value={`plt:${p.id}`}>At “{p.name}”{p.targetDate ? ` · ${p.targetDate}` : ""}</option>
+                ))}
+              </optgroup>
+            )}
+            {changeSets.length > 0 && (
+              <optgroup label="One change set">
+                {changeSets.map((c) => (
+                  <option key={c.id} value={`chg:${c.id}`}>As of “{c.name}”{c.targetDate ? ` · ${c.targetDate}` : ""}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           {overlay && (
             <>

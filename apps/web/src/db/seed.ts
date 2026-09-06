@@ -148,4 +148,33 @@ async function seedRoadmap(db: Db, workspaceId: string) {
   // The streaming plan writes into the same data lake the work-order move re-points; doing it the
   // other way round would mean rewiring twice. That is a dependency, not a preference.
   await db.insert(s.changeSetDependencies).values({ changeSetId: "chg_seed_streaming", dependsOnId: "chg_seed_workorders", createdAt: now });
+
+  // Two states worth naming: the one after the work-order move, and the one people call "2028".
+  await db.insert(s.plateaus).values([
+    {
+      id: "plt_seed_workorders",
+      workspaceId,
+      name: "Work orders on SAP PM",
+      description: "Maximo is gone and work-order management runs on SAP PM. The Historian is still in the middle of the telemetry path.",
+      targetDate: at(150),
+      createdById: DEMO_USER_ID,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "plt_seed_2028",
+      workspaceId,
+      name: "Target architecture 2028",
+      description: "Both moves have landed: work orders on SAP PM, telemetry streamed straight to the lake with no intermediate store.",
+      targetDate: at(330),
+      createdById: DEMO_USER_ID,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]);
+  await db.insert(s.plateauChangeSets).values([
+    { plateauId: "plt_seed_workorders", changeSetId: "chg_seed_workorders", createdAt: now },
+    { plateauId: "plt_seed_2028", changeSetId: "chg_seed_workorders", createdAt: now },
+    { plateauId: "plt_seed_2028", changeSetId: "chg_seed_streaming", createdAt: now },
+  ]);
 }
