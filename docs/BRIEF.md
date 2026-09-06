@@ -1471,6 +1471,36 @@ own reviewer asks, and it has every verb; on **one agent's page** that agent ask
 ceiling applies. A narrow agent can only ever propose a narrower one.
 
 
+### 5.35 The other direction: asking somebody else's server (v0.2)
+
+The cheapest connector is the one nobody has to write. An organisation's CMDB, wiki or ticket
+tracker increasingly speaks MCP already, and a system that does needs no bespoke integration —
+which is the honest answer to the catalogue's unbuilt half (§5.16).
+
+**A server is a row** (`mcp_servers`): a name, a URL, a key sealed the same way a model provider's
+is (§5.31). *Ask what it can do* shakes hands and stores the tools it reports, so the page can offer
+them without asking again. The handshake is not politeness: several servers refuse `tools/list`
+before `initialize`, and a client that skips it sees an empty toolbox and blames the server.
+
+**A form from a schema we have never seen.** The tools a remote server offers are described by JSON
+Schema, and Nexus builds a form from the top-level string, number and boolean fields — the ones a
+person can reasonably be asked for. Anything deeper is left to whoever knows that system, rather
+than generating a form for a shape nobody has looked at.
+
+**What comes back is text, not truth.** The answer is shown, and only becomes an **intake source**
+(§5.15) when somebody presses the second button — where it is read for claims, every claim checked
+against the words it came from, and reviewed before any of it reaches the graph. There is
+deliberately no path from a tool's answer to the model that skips that. A one-click "sync" would be
+shorter and would quietly make somebody else's system an author of this organisation's architecture.
+The source is named for where it came from, because provenance is the point of keeping it.
+
+Failure is reported in words somebody can act on: a 401 is "that server refused the key", an HTML
+error page from a proxy is "that address answered with 502 and something that is not JSON-RPC — it
+is probably not an MCP endpoint", and an unreachable host says to check whether it is reachable
+*from the server Nexus runs on* rather than from the reader's laptop. Both JSON and a single SSE
+frame are accepted, because the transport allows either and real servers use both.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1503,7 +1533,7 @@ ceiling applies. A narrow agent can only ever propose a narrower one.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 68)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 69)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1794,6 +1824,14 @@ ceiling applies. A narrow agent can only ever propose a narrower one.
 - Suggestions with no reason from this model, duplicate names and empty scopes are refused and
   listed rather than silently dropped.
 
+### Asking other MCP servers (v0.2)
+- Add a server under **Settings → Connections**: a name, its MCP URL and a key if it needs one.
+- **Ask what it can do** handshakes and lists its tools; pick one, fill in the arguments it asks
+  for, and read the answer as text.
+- **Keep this as a source** puts it into intake, where it is read for claims and reviewed like any
+  document. Nothing a remote server says reaches the graph without that.
+- "Any MCP server" is now an available connector in the catalogue.
+
 ### Documentation (v0.2)
 - Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
@@ -2009,6 +2047,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | The asking agent's own verbs and budget are the ceiling for what it suggests. | Capability monotonicity is the difference between delegation and privilege escalation. Putting it in `checkDefinition` rather than in a prompt means it holds whatever the model answers, and it is why the button is worth having on a narrow agent's page at all. |
 | 2026-09-06 | A suggested agent must name what it read in this model. | "You should have an agent for interfaces" is true of every workspace and useful to none. Requiring the count or the observation makes the suggestion arguable, which is the only thing that makes it worth reading. |
 
+| 2026-09-06 | What a remote MCP server returns becomes an intake source, never a change to the model. | It is text from a system nobody in this workspace controls. Intake already knows how to read text for claims, check each claim against its own words and put the survivors in front of a person; skipping that would make a remote system an author of the architecture, which is exactly the thing the product refuses everywhere else. |
+| 2026-09-06 | Calling a tool and keeping its answer are two buttons. | Evidence somebody has looked at is worth more than evidence that arrived. It also means a tool that returns something useless costs nothing but a glance. |
+| 2026-09-06 | The argument form is built only from top-level scalar fields. | Generating a form for an arbitrary JSON Schema we have never seen produces something worse than a text box. The simple fields cover most tools, and anything deeper belongs to whoever knows that system. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2022,6 +2064,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 69: Nexus asks back.** The other direction of MCP, and the last piece of the
+  agent framework. A system of yours that speaks MCP — a CMDB, a wiki, a ticket tracker — can now be
+  added under **Settings → Connections**; *Ask what it can do* shakes hands and lists its tools;
+  Nexus builds a form from the fields a person can reasonably fill in, calls the tool, and shows what
+  came back. Then it stops. Keeping the answer is a second button, and what it keeps is an **intake
+  source** — read for claims, every claim quoted and checked against the words it came from, and
+  reviewed by a person before any of it touches the model. There is no path from a remote server to
+  the graph that skips that, because a one-click sync would quietly make somebody else's system an
+  author of this organisation's architecture. Failures say which failure they are, in words: a
+  refused key, an address that answered with HTML and is probably not an MCP endpoint, a host that
+  is not reachable *from the server Nexus runs on*. Both JSON and a single SSE frame are read,
+  because real servers use both. "Any MCP server" is now an available connector in the catalogue.
+  5 new unit tests over the client against a stubbed transport, and an e2e that points this instance
+  at **its own endpoint**, calls estate_health through the full outbound path and checks the answer
+  lands as a source.
 
 - **2026-09-06 — Rev 68: agents that suggest agents.** The last piece of the framework, and the one
   that needed the most care. **Ask what is missing** hands a model the shape of the estate and the

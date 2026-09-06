@@ -530,6 +530,43 @@ export const mcpTokens = pgTable(
 
 export type McpTokenRow = typeof mcpTokens.$inferSelect;
 
+
+/**
+ * MCP servers Nexus may ask.
+ *
+ * The other direction of §5.33: an organisation already has systems that speak MCP — a CMDB, a
+ * wiki, a ticket tracker, a vendor's own server — and what those systems know is exactly what the
+ * model is missing. Rather than a bespoke connector per source, Nexus calls the tool and puts the
+ * answer through the intake pipeline (§5.15), where it is read for claims, quoted, reviewed and
+ * committed by a person. Nothing an outside server says reaches the graph directly.
+ */
+export const mcpServers = pgTable(
+  "mcp_servers",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    /** Sealed the same way a model provider's key is (lib/models/secret.ts). */
+    apiKey: text("api_key").notNull().default(""),
+    keyEncrypted: boolean("key_encrypted").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true),
+    /** unknown | ok | unauthorised | unreachable — what a real handshake last found. */
+    status: text("status").notNull().default("unknown"),
+    statusDetail: text("status_detail").notNull().default(""),
+    /** JSON: the tools it last reported, so the page can show them without asking again. */
+    tools: text("tools").notNull().default("[]"),
+    checkedAt: text("checked_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("mcp_servers_workspace_idx").on(t.workspaceId)],
+);
+
+export type McpServerRow = typeof mcpServers.$inferSelect;
+
 // ---- the landing zone ------------------------------------------------------
 // Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a
 // governance review. Nothing they say is true until somebody approves it, so the whole staged

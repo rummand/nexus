@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
@@ -9,6 +9,11 @@ import type { Db } from "@/db/client";
 import { CODES, handle, handleBody, LATEST } from "./server";
 import { authenticate, bearer, createToken, hashToken, mintToken, revokeToken } from "./tokens";
 import { toolsFor, type ToolContext } from "./tools";
+import { callTool, listTools } from "./client";
+import { coerce, simpleFields } from "./protocol";
+
+/** Restored after the outbound tests, which stub it. */
+const realFetch = globalThis.fetch;
 
 /**
  * Nexus as something other people's agents can call.
@@ -204,5 +209,88 @@ describe("keys", () => {
     expect(bearer(new Headers({ authorization: "bearer nxs_abc" }))).toBe("nxs_abc");
     expect(bearer(new Headers({ "x-api-key": "nxs_abc" }))).toBe("nxs_abc");
     expect(await authenticate(db, "hunter2")).toBeNull();
+  });
+});
+
+describe("asking somebody else's server", () => {
+  const fetches: Array<{ url: string; body: Record<string, unknown>; headers: Record<string, string> }> = [];
+  const reply = (queue: Array<{ status?: number; body: string; type?: string }>) => {
+    let i = 0;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      fetches.push({
+        url: String(url),
+        body: JSON.parse(String(init.body)) as Record<string, unknown>,
+        headers: init.headers as Record<string, string>,
+      });
+      const next = queue[Math.min(i++, queue.length - 1)]!;
+      return new Response(next.body, { status: next.status ?? 200, headers: { "content-type": next.type ?? "application/json" } });
+    }) as typeof fetch;
+  };
+  const rpcOk = (result: unknown) => ({ body: JSON.stringify({ jsonrpc: "2.0", id: 1, result }) });
+
+  beforeEach(() => { fetches.length = 0; });
+  afterEach(() => { globalThis.fetch = realFetch; });
+
+  it("shakes hands before asking what a server can do", async () => {
+    reply([rpcOk({ serverInfo: { name: "cmdb" } }), rpcOk({ tools: [{ name: "search_ci", description: "Find a CI.", inputSchema: { type: "object" } }] })]);
+    const result = await listTools({ url: "https://cmdb.example/mcp", apiKey: "k" });
+    expect(result.ok && result.tools[0]?.name).toBe("search_ci");
+    // Several servers refuse tools/list before initialize, so the handshake is not optional.
+    expect(fetches.map((f) => f.body.method)).toEqual(["initialize", "tools/list"]);
+    expect(fetches[0]!.headers.authorization).toBe("Bearer k");
+  });
+
+  it("reads an answer sent as a single SSE frame, which the transport allows", async () => {
+    reply([
+      { body: `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: 1, result: { serverInfo: {} } })}\n\n`, type: "text/event-stream" },
+      { body: `data: ${JSON.stringify({ jsonrpc: "2.0", id: 2, result: { tools: [{ name: "one" }] } })}\n\n`, type: "text/event-stream" },
+    ]);
+    const result = await listTools({ url: "https://x/mcp", apiKey: "" });
+    expect(result.ok && result.tools.map((t) => t.name)).toEqual(["one"]);
+  });
+
+  it("says what went wrong in words somebody can act on", async () => {
+    reply([{ status: 401, body: "no" }]);
+    const denied = await listTools({ url: "https://x/mcp", apiKey: "bad" });
+    expect(denied.ok).toBe(false);
+    expect(!denied.ok && denied.status).toBe("unauthorised");
+
+    reply([{ status: 200, body: "<html>proxy error</html>", type: "text/html" }]);
+    const rubbish = await listTools({ url: "https://x/mcp", apiKey: "" });
+    expect(!rubbish.ok && rubbish.error).toMatch(/probably not an MCP endpoint/);
+  });
+
+  it("flattens a tool's answer to text, and reports a tool that failed", async () => {
+    reply([rpcOk({ serverInfo: {} }), rpcOk({ content: [{ type: "text", text: "42 CIs" }, { type: "image" }] })]);
+    const answer = await callTool({ url: "https://x/mcp", apiKey: "" }, "search_ci", { q: "maximo" });
+    expect(answer.ok).toBe(true);
+    expect(answer.text).toMatch(/42 CIs/);
+    expect(answer.text).toMatch(/cannot be read as text/);
+    expect(fetches[1]!.body.params).toEqual({ name: "search_ci", arguments: { q: "maximo" } });
+
+    reply([rpcOk({ serverInfo: {} }), rpcOk({ content: [{ type: "text", text: "no such table" }], isError: true })]);
+    const failed = await callTool({ url: "https://x/mcp", apiKey: "" }, "search_ci", {});
+    expect(failed.ok).toBe(false);
+    expect(failed.error).toMatch(/no such table/);
+  });
+
+  it("builds a form only from fields a person can fill in, and types what they typed", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "What to look for" },
+        limit: { type: "number" },
+        deep: { type: "boolean" },
+        filters: { type: "object" },
+      },
+      required: ["query"],
+    };
+    const fields = simpleFields(schema);
+    expect(fields.map((f) => f.key)).toEqual(["query", "limit", "deep"]);
+    expect(fields[0]!.required).toBe(true);
+    expect(coerce(fields, { query: "maximo", limit: "10", deep: "true", filters: "{}" }))
+      .toEqual({ query: "maximo", limit: 10, deep: true });
+    // An empty box is not an argument.
+    expect(coerce(fields, { query: "  " })).toEqual({});
   });
 });

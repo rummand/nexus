@@ -116,6 +116,18 @@ export const CONNECTIONS: DocPage = {
     { kind: "heading", text: "Keeping track", id: "keys" },
     { kind: "prose", text: "Each key shows when it was last used, which is what tells you months later whether it is still in anything's configuration. **Revoke** stops it being answered immediately; a revoked key can then be forgotten entirely." },
     { kind: "note", tone: "tip", text: "A key that may propose appears in **Agents** as an agent of its own, with a scope, a budget and an acceptance rate. What arrives from outside is measured exactly like what your own agents say — including whether anybody keeps it." },
+    { kind: "heading", text: "The other direction", id: "outbound" },
+    { kind: "prose", text: "Nexus can also **ask your systems**. If a CMDB, wiki or ticket tracker speaks MCP — increasingly they do — add it under *Servers Nexus can ask*, press **Ask what it can do**, and it lists the tools that server offers. Pick one, fill in what it needs, and read the answer." },
+    { kind: "note", tone: "why", title: "Why the answer is not imported", text: "What a remote system returns is text, not truth. It becomes an **intake source** — read for claims, every claim quoted and checked against the words it came from, and reviewed by a person before any of it reaches the model. A one-click “sync” would be shorter and would quietly make somebody else's system an author of your architecture." },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Add the server: a name, its MCP URL, and a key if it wants one." },
+        { do: "Press Ask what it can do.", note: "Nexus shakes hands and lists its tools. If it cannot be reached, the message says which of the likely reasons it is." },
+        { do: "Pick a tool, fill in its arguments, and ask." },
+        { do: "Read what came back, then keep it as a source.", note: "Two steps on purpose: evidence somebody has looked at is worth more than evidence that arrived." },
+      ],
+    },
     { kind: "try", href: "/w/:slug/settings/connections", label: "Open connections" },
   ],
 };

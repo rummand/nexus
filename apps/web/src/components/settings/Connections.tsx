@@ -6,6 +6,8 @@ import Link from "next/link";
 import { AlertTriangle, Copy, KeyRound, Plug, Plus, Trash2 } from "lucide-react";
 import { forgetKey, issueKey, revokeKey } from "@/lib/mcp/actions";
 import { SCOPE_NOTE, SCOPES, type Scope, type TokenSummary } from "@/lib/mcp/tokens";
+import type { ServerSummary } from "@/lib/mcp/server-actions";
+import { OutboundServers } from "./OutboundServers";
 
 /**
  * Letting something outside Nexus ask.
@@ -29,11 +31,12 @@ const when = (iso: string | null) => {
   return days <= 0 ? "used today" : days === 1 ? "used yesterday" : `used ${days} days ago`;
 };
 
-export function Connections({ slug, workspaceId, workspaceName, tokens, origin }: {
+export function Connections({ slug, workspaceId, workspaceName, tokens, servers, origin }: {
   slug: string;
   workspaceId: string;
   workspaceName: string;
   tokens: TokenSummary[];
+  servers: ServerSummary[];
   origin: string;
 }) {
   const router = useRouter();
@@ -72,9 +75,10 @@ export function Connections({ slug, workspaceId, workspaceName, tokens, origin }
           <span>Letting something outside ask</span>
           <h1>Connections</h1>
           <p className="roadmap-lede">
-            Nexus speaks MCP, so another team&apos;s assistant — or your own coding agent — can ask {workspaceName} what
-            depends on what, what is out of support, and what this organisation calls things. It cannot change
-            anything: the most it can do is leave a suggestion in the review queue for a person to accept.
+            Nexus speaks MCP in both directions. Another team&apos;s assistant — or your own coding agent — can ask
+            {" "}{workspaceName} what depends on what and what this organisation calls things, and cannot change any
+            of it. And Nexus can ask <em>your</em> systems that speak MCP, with what they answer going through
+            intake before it reaches the model.
           </p>
         </div>
       </header>
@@ -150,6 +154,8 @@ export function Connections({ slug, workspaceId, workspaceName, tokens, origin }
           </ul>
         )}
       </section>
+
+      <OutboundServers slug={slug} workspaceId={workspaceId} servers={servers} />
 
       <section className="mcp-connect" aria-label="How to connect">
         <h2><Plug size={14} /> Pointing something at it</h2>

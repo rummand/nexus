@@ -963,6 +963,34 @@ try {
   assert.match(proposed.body.result.content[0].text, /Nothing was recorded/, "an unquotable claim from outside is discarded");
   assert.equal((await rpc({ jsonrpc: "2.0", method: "notifications/initialized" })).status, 202, "a notification is answered with nothing");
 
+  // ---- the other direction: Nexus asking an MCP server -----------------------------------------
+  // There is a real one to hand — this instance — so the outbound client is exercised against a
+  // server that answers rather than a mock, and the loop closes at an intake source.
+  await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
+  await page.waitForSelector("[data-server-name]", { timeout: 30000 });
+  await page.fill("[data-server-name]", "This workspace, over MCP");
+  await page.fill("[data-server-url]", `${base}/api/mcp`);
+  await page.fill('input[aria-label="Server key"]', key);
+  await page.click("[data-add-server]");
+  await page.waitForSelector("[data-servers]", { timeout: 30000 });
+  await page.click("[data-check-server]");
+  await page.waitForSelector("[data-tool]", { timeout: 60000 });
+  const remoteTools = await page.locator("[data-tool] b").allInnerTexts();
+  assert.ok(remoteTools.includes("estate_health"), "it lists the tools the remote server reported");
+
+  await page.click('[data-tool="estate_health"]');
+  await page.waitForSelector("[data-run-tool]", { timeout: 20000 });
+  await page.click("[data-run-tool]");
+  await page.waitForSelector("[data-answer]", { timeout: 60000 });
+  assert.match(await page.locator("[data-answer] pre").innerText(), /\d+\/100/, "the answer comes back as text");
+  await page.click("[data-keep-source]");
+  await page.waitForSelector(".mcp-out-kept", { timeout: 30000 });
+
+  await page.goto(`${base}/w/acme-energy/intake`, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
+  assert.match(await page.locator("body").innerText(), /over MCP/,
+    "what a remote server said arrives as an intake source, not as a change to the model");
+
   await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
   await page.waitForSelector("[data-keys]");
   // The dialog handler registered earlier in this run accepts the confirm.

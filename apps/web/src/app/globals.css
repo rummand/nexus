@@ -799,6 +799,35 @@ a { color: inherit; text-decoration: none; }
 .mcp-connect code { background: #eef2f8; border-radius: 4px; font-family: var(--mono); font-size: 11.5px; padding: 1px 5px; }
 .mcp-connect pre { background: #0f172a; border-radius: 12px; color: #e2e8f0; font-family: var(--mono); font-size: 12px; line-height: 1.55; margin: 0 0 10px; overflow-x: auto; padding: 13px 16px; }
 
+.mcp-out { margin: 0 0 22px; max-width: 900px; }
+.mcp-out h2 { align-items: center; display: flex; font-size: 15px; gap: 7px; margin: 0 0 6px; }
+.mcp-out > p { color: #56637a; font-size: 12.5px; line-height: 1.6; margin: 0 0 12px; }
+.mcp-out > p a { color: var(--blue); font-weight: 700; }
+.mcp-out-add { display: grid; gap: 8px; grid-template-columns: 1fr 1.4fr 1fr auto; margin: 0 0 12px; }
+.mcp-out-add input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; font-size: 12.5px; min-height: 34px; outline: 0; padding: 0 10px; }
+.mcp-out-add input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.mcp-out-list { display: grid; gap: 9px; list-style: none; margin: 0; padding: 0; }
+.mcp-out-list li { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.mcp-out-list header { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; }
+.mcp-out-list strong { font-size: 13px; }
+.mcp-out-list code { color: #7c8598; font-family: var(--mono); font-size: 11.5px; }
+.mcp-out-list header .ghost-button { align-items: center; display: inline-flex; gap: 5px; margin-left: auto; }
+.mcp-out-list header .ghost-button + .ghost-button { margin-left: 0; }
+.mcp-out-tools { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-top: 10px; }
+.mcp-out-tools button { background: #f8fafd; border: 1px solid transparent; border-radius: 9px; cursor: pointer; display: grid; gap: 2px; padding: 8px 10px; text-align: left; }
+.mcp-out-tools button:hover { border-color: #b9d5f2; }
+.mcp-out-tools button.on { background: #eef5ff; border-color: var(--blue); }
+.mcp-out-tools b { font-family: var(--mono); font-size: 11.5px; }
+.mcp-out-tools span { color: #77839a; font-size: 11px; line-height: 1.4; overflow: hidden; }
+.mcp-out-call { align-items: end; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mcp-out-call label { display: grid; gap: 3px; }
+.mcp-out-call span { color: #8b96a9; font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.mcp-out-call input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; font-size: 12.5px; min-height: 32px; outline: 0; padding: 0 9px; }
+.mcp-out-answer { margin-top: 10px; }
+.mcp-out-answer pre { background: #f6f8fb; border: 1px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; margin: 0 0 8px; max-height: 320px; overflow: auto; padding: 11px 13px; white-space: pre-wrap; }
+.mcp-out-kept { align-items: center; color: #2f7d32; display: flex; font-size: 12.5px; gap: 6px; margin: 0; }
+.mcp-out-kept a { color: var(--blue); font-weight: 700; }
+
 /* ---- described agents ----------------------------------------------------- */
 .defined-agents { margin: 0 0 26px; }
 .defined-agents-head { align-items: center; display: flex; gap: 12px; justify-content: space-between; margin: 0 0 4px; }

@@ -78,6 +78,13 @@
       "when": 1788731148784,
       "tag": "0010_serious_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788732800634,
+      "tag": "0011_faithful_maggott",
+      "breakpoints": true
     }
   ]
 }

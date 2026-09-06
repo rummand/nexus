@@ -133,6 +133,21 @@ export const PROVIDERS: Provider[] = [
 
   // ---- enterprise systems ------------------------------------------------------------------
   {
+    id: "mcp",
+    name: "Any MCP server",
+    vendor: "Model Context Protocol",
+    category: "systems",
+    status: "available",
+    mode: "api",
+    summary: "A system that already speaks MCP — a CMDB, a wiki, a ticket tracker, a vendor's own server.",
+    rationale: "The cheapest connector is the one nobody has to write. A system that speaks MCP can be asked directly, and what it answers goes through intake like any other document: read for claims, quoted, and reviewed by a person before anything reaches the model.",
+    auth: "A URL, and a key if that server wants one. Set up under Settings → Connections.",
+    produces: "document",
+    signals: [],
+    fingerprints: [],
+    scopes: [],
+  },
+  {
     id: "sap",
     name: "SAP",
     vendor: "SAP SE",

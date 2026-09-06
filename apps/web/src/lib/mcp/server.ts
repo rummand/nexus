@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSIONS, LATEST, SERVER_INFO } from "./protocol";
 import { toolByName, toolsFor, type ToolContext } from "./tools";
 
 /**
@@ -13,11 +14,7 @@ import { toolByName, toolsFor, type ToolContext } from "./tools";
  * and a dependency here would sit exactly on the boundary this feature exists to defend.
  */
 
-/** The revisions we answer to. A client asking for something else is given our latest. */
-export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
-export const LATEST = PROTOCOL_VERSIONS[0];
-
-export const SERVER_INFO = { name: "nexus", title: "Nexus — enterprise architecture", version: "0.2.0" };
+export { LATEST, PROTOCOL_VERSIONS, SERVER_INFO } from "./protocol";
 
 export interface JsonRpcRequest {
   jsonrpc?: string;
