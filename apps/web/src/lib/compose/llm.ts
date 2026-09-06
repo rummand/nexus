@@ -53,14 +53,19 @@ export function modelConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY && process.env.NEXUS_MODEL);
 }
 
-/** Why the model is not being used, in words a person can act on. */
-export function modelStatus(): string {
-  if (process.env.ANTHROPIC_API_KEY && process.env.NEXUS_MODEL) return "";
+/** What is missing, named, or "" when a model is configured. Each surface words its own sentence. */
+export function modelMissing(): string {
   const missing = [
     !process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY" : "",
     !process.env.NEXUS_MODEL ? "NEXUS_MODEL" : "",
   ].filter(Boolean);
-  return `Set ${missing.join(" and ")} to answer in plain English. Until then the rule compiler reads your lines.`;
+  return missing.join(" and ");
+}
+
+/** Why the model is not being used, for Compose, where a rule compiler carries on without it. */
+export function modelStatus(): string {
+  const missing = modelMissing();
+  return missing ? `Set ${missing} to answer in plain English. Until then the rule compiler reads your lines.` : "";
 }
 
 const SYSTEM = `You turn a person's request into a board script for Nexus, an enterprise architecture platform.

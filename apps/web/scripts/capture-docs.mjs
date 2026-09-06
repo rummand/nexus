@@ -323,6 +323,36 @@ try {
     await page.waitForTimeout(2000);
   });
 
+  // ---- agents ---------------------------------------------------------------
+  // Placing an agent and selecting objects need no model, so both of these are the real product.
+  // The answering half cannot be photographed honestly without a key, and is described instead.
+  await shot("ask-selection", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1800);
+    const cards = page.locator(".fact-card");
+    await cards.nth(0).click();
+    await page.keyboard.down("Shift");
+    await cards.nth(1).click();
+    await page.keyboard.up("Shift");
+    await page.waitForSelector("[data-ask-block]", { timeout: 30_000 });
+    await page.waitForTimeout(700);
+  });
+
+  await shot("agent-fleet", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1500);
+    await page.click('[aria-label="Agent — put one where the work is"]');
+    const box = await page.locator(".canvas-viewport").boundingBox();
+    await page.mouse.click(box.x + 420, box.y + 700);
+    await page.waitForSelector("[data-agent]", { timeout: 30_000 });
+    const placed = page.locator("[data-agent].selected");
+    await placed.locator('input[aria-label="Agent name"]').fill("Succession watch");
+    await placed.locator('textarea[aria-label="What this agent is for"]').fill("Tell me where this landscape has no stated successor.");
+    await page.waitForTimeout(2500); // let the autosave land, so the fleet can see it
+    await goto(`${w}/agents`, "[data-fleet-totals]");
+    await page.waitForTimeout(1000);
+  });
+
   // ---- knowledge ----------------------------------------------------------
   await shot("knowledge", () => goto(`${w}/knowledge?q=how+do+you+rationalise+an+application+portfolio`, ".knowledge-passage"), { settle: 900 });
   await shot("knowledge-doctrine", () => goto(`${w}/knowledge?tab=lessons`, ".knowledge-lesson"), { settle: 900 });

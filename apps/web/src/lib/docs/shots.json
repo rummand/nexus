@@ -1,4 +1,12 @@
 {
+  "agent-fleet": {
+    "width": 1400,
+    "height": 1000
+  },
+  "ask-selection": {
+    "width": 1720,
+    "height": 1000
+  },
   "board": {
     "width": 1720,
     "height": 1000

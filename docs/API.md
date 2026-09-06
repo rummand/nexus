@@ -71,6 +71,7 @@ than routes; they revalidate the affected pages.
 | Graph | `importGraphText` (CSV / JSON, see below), `renameKind`, `renameRelationKind`, `updateEntity`, `setEntityAttributeAction` (empty value removes), `deleteEntity`, `mergeEntitiesAction` |
 | Proposals | `acceptProposal` (applies the proposal's action, with an optional override value), `dismissProposal` (remembered per proposal key) |
 | Agent | `askTheAgent` (a model reads the graph and proposes corrections into the review queue; returns what survived checking and what was thrown away), `forgetAgentRun` |
+| Board agents | `wakeBoardAgent` (an agent on a board reads its scope and returns remarks, each quoting the object it is about), `askAboutSelection` (prose plus checked citations for a set of selected objects), `recordRemarkOutcome` (kept / dismissed, so the fleet can measure) |
 | Change sets | `createChangeSet`, `updateChangeSet`, `deleteChangeSet`, `addChange`, `removeChange`, `addDependency` / `removeDependency` (cycles refused), `deliverChangeSet` (refused while a blocker is outstanding or a change has gone stale), `createRoadmapBoard` (draws the chosen plans on a new board and redirects to it) |
 | Plateaus | `createPlateau`, `updatePlateau`, `deletePlateau`, `includeInPlateau` (pulls in what the plan waits for), `excludeFromPlateau` (refused while something still needs it) |
 

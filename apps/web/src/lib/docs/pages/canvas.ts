@@ -270,7 +270,19 @@ export const BOARD_AGENTS: DocPage = {
       ],
     },
     { kind: "note", tone: "tip", text: "An agent is an ordinary object: drag it, duplicate it, lock it, delete it, and it appears in the board's version history like everything else. Its remarks travel with the board, so a colleague opening it later sees what was said." },
-    { kind: "note", tone: "warning", title: "It needs a model", text: "Waking an agent needs `ANTHROPIC_API_KEY` and `NEXUS_MODEL` configured. Without them the agent says so on the board rather than failing quietly — and every other part of Nexus carries on working." },
+    { kind: "heading", text: "Asking without placing anything", id: "ask" },
+    { kind: "prose", text: "You do not always want an agent standing there. Select any objects on a board — one, or a dozen — and the Selection panel offers **Ask about these**. The selection is the scope, which is the fastest way there is of saying “these ones”, and nothing is set up, saved or left behind." },
+    { kind: "shot", src: "ask-selection", alt: "Two cards selected, with an Ask about these box and three suggested questions in the Selection panel", caption: "Two cards selected. The selection is the scope — ask in the box, or take one of the three it offers." },
+    {
+      kind: "list",
+      items: [
+        "The answer is prose from a model and is presented as such. What makes it usable is the list under it: each object it read, with the words it read on that object.",
+        "Click a citation to fly to the object it names.",
+        "A citation that cannot be found on the object it names is dropped, and the drop is counted where you can see it.",
+        "An answer with nothing left to cite is still shown — marked as an opinion rather than a reading, so you can weigh it.",
+      ],
+    },
+    { kind: "note", tone: "warning", title: "It needs a model", text: "Waking an agent, or asking about a selection, needs `ANTHROPIC_API_KEY` and `NEXUS_MODEL` configured. Without them Nexus says so where you asked rather than failing quietly — and every other part of it carries on working." },
     { kind: "try", href: "/w/:slug", label: "Open a board and place one" },
   ],
 };

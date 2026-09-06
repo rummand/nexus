@@ -1,6 +1,6 @@
 import { FIRST_BOARD, START } from "./pages/getting-started";
 import { BOARDS_AND_GRAPH, BOARD_AGENTS, CANVAS, COMPOSE, SEARCH, TIMELINE, VIEWPOINTS } from "./pages/canvas";
-import { AGENT, EXPLORER, GRAPH, HEALTH, META_MODEL } from "./pages/model";
+import { AGENT, EXPLORER, FLEET, GRAPH, HEALTH, META_MODEL } from "./pages/model";
 import { CATALOGUE, INTAKE, KNOWLEDGE } from "./pages/data";
 import { PLATEAUS, ROADMAP } from "./pages/time";
 import { CONCEPTS, FAQ, SHORTCUTS } from "./pages/reference";
@@ -14,8 +14,11 @@ import { pageText, type DocPage, type DocSection } from "./types";
  */
 export const SECTIONS: DocSection[] = [
   { title: "Getting started", pages: [START, FIRST_BOARD] },
-  { title: "Working on the canvas", pages: [CANVAS, BOARDS_AND_GRAPH, VIEWPOINTS, TIMELINE, BOARD_AGENTS, COMPOSE, SEARCH] },
-  { title: "The model", pages: [GRAPH, EXPLORER, META_MODEL, HEALTH, AGENT] },
+  { title: "Working on the canvas", pages: [CANVAS, BOARDS_AND_GRAPH, VIEWPOINTS, TIMELINE, COMPOSE, SEARCH] },
+  { title: "The model", pages: [GRAPH, EXPLORER, META_MODEL, HEALTH] },
+  // The three agent surfaces read as one subject, so they are one section rather than scattered
+  // through the sections of the product they happen to touch.
+  { title: "Agents", pages: [BOARD_AGENTS, AGENT, FLEET] },
   { title: "Bringing data in", pages: [INTAKE, CATALOGUE, KNOWLEDGE] },
   { title: "Planning ahead", pages: [ROADMAP, PLATEAUS] },
   { title: "Reference", pages: [SHORTCUTS, CONCEPTS, FAQ] },

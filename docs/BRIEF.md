@@ -1003,7 +1003,7 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty-two pages written for the person doing the architecture rather than the person
+a menu item: twenty-three pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then getting data in, then time.
 
@@ -1178,6 +1178,43 @@ Everything about scope and speech is pure over the document, so what an agent ma
 tested without a browser or a model key.
 
 
+### 5.28 Ambient agents, and the fleet (v0.2)
+
+Two more places, and one place to see them all.
+
+**Ask about a selection.** The other two agents need somewhere to live: a page, or a spot on the
+board. This one needs nothing. Select any objects and the Selection panel offers *Ask about these* —
+the selection *is* the scope, which is the fastest way there is of saying "these ones", and nothing
+is set up, saved or left behind. It answers in prose plus citations: each object it read, with the
+words it read on it, clickable to fly to the thing named. A citation that cannot be found on the
+object it names is dropped and the drop is counted; an answer with nothing left to cite is still
+shown, marked as an opinion rather than a reading. The prose is the model's and is presented as the
+model's — what makes it usable is the checkable list underneath it.
+
+**The fleet** (`/w/:slug/agents`). Agents are scattered on purpose, and scattering is only humane if
+there is one page that answers how many there are, what each is watching, and whether anybody is
+listening to them.
+
+The number it leads with is deliberately not runs, tokens or remarks made. It is **kept**: how often
+a person turned what an agent said into a note of their own. Every other metric an agent could
+report measures it talking; this one measures it being useful, and it is the one that gets worse
+when an agent starts padding. The page says what the number means in words — "too early to say",
+"people keep most of what it says", "almost everything it says is waved away; change its purpose or
+delete it" — rather than in a colour nobody can read out loud.
+
+Remarks live in the board document, so answering one removes it. The record of *how it was answered*
+therefore cannot live there: `agent_remark_outcomes` keeps a row per answer, with the agent's name
+copied in, so deleting an agent does not erase how it did — which is exactly the moment somebody is
+about to write the same agent again.
+
+While building this the remark popover moved to a portal: inside the card it lived in the canvas's
+transformed world, underneath the selection toolbar that appears over whatever you have just
+clicked, so the remark you wanted to read was covered by the buttons for the thing it was about.
+
+The three agent surfaces are also now one section of the documentation rather than scattered through
+the sections of the product they happen to touch — they read as one subject, because they are one.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1210,7 +1247,7 @@ tested without a browser or a model key.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 61)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 62)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1438,8 +1475,17 @@ tested without a browser or a model key.
 - **Keep as a note** makes it yours; **Dismiss** removes it; the agent changes nothing by speaking.
 - The closed schema has no verb that alters anything, so an agent can sit on a board unattended.
 
+### Ambient agents and the fleet (v0.2)
+- **Ask about these**: select anything on a board and ask about it in the Selection panel. No
+  placement, no page, no query — the selection is the scope.
+- Answers arrive as prose plus checked citations you can click to fly to; unfindable citations are
+  dropped and counted, and an uncited answer is marked as an opinion.
+- `/w/:slug/agents`: every agent in the workspace, what it watches, what is waiting, and how often
+  people kept what it said — with the verdict in words.
+- Deleting an agent does not erase its record.
+
 ### Documentation (v0.2)
-- Twenty-two in-app pages under **Documentation**, from a first board through to plateaus, with a
+- Twenty-three in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
 - Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
 - Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
@@ -1607,6 +1653,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | An agent is drawn in exports rather than skipped. | An element you can see on screen and cannot find in the picture you exported is a small betrayal, even when the element is scaffolding. Its remarks are not drawn — those belong to the objects they are about, and anybody who wants one in the picture keeps it as a note first. |
 
 
+| 2026-09-06 | The fleet leads with how often people kept what an agent said. | Every other number an agent can report — objects read, runs, tokens, remarks made — measures it talking. Whether a person kept what it said measures it being useful, and it is the one that gets worse when an agent starts padding. An agent nobody keeps is not quiet and cheap; it is noise with a running cost, and the product should say so. |
+| 2026-09-06 | The record of how a remark was answered outlives the remark and the agent. | Remarks live in the document and vanish when answered, so the outcome has to be stored elsewhere or the fleet could never say anything. The agent's name is copied into the row because the moment that record is most useful is when somebody is about to write the same agent again. |
+| 2026-09-06 | Asking about a selection needs no agent, no placement and no query. | Selection already means "these ones". Making somebody set an agent up before they can ask one question would put the tax before the value, and the point of ambient agents is that the help is there in the middle of the work rather than a page away. |
+| 2026-09-06 | An uncited answer is shown, marked, rather than hidden. | "I cannot tell from what is here" is a good answer and a much better one than a plausible guess. Hiding it would push the model towards inventing a citation; marking it leaves the reader in charge of how much weight to give it. |
+
+
 
 ## 8. Open questions for the product owner
 
@@ -1619,6 +1671,20 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 62: ambient agents, and the fleet.** Two more places for an agent to be useful,
+  and one place to see them all. **Ask about these** puts an agent in the Selection panel: select any
+  objects on a board and ask, with no placement, no page and no query — the selection is the scope.
+  It answers in prose plus citations, each one checked against the object it names, clickable to fly
+  to that object; unfindable citations are dropped and counted, and an answer with nothing left to
+  cite is shown but marked as an opinion rather than a reading. **`/w/:slug/agents`** is the fleet:
+  every agent in the workspace, what it watches, what is still waiting, and the number that actually
+  matters — how often a person kept what it said, with the verdict in words rather than a colour.
+  Answering a remark now leaves a trace that outlives both the remark and the agent, so deleting an
+  agent does not erase how it did. The remark popover moved into a portal after the selection toolbar
+  was found covering the remark you had just clicked to read. 14 new tests, two new documentation
+  pages' worth of content with the three agent surfaces gathered into one section, and e2e over the
+  ask panel and the fleet.
 
 - **2026-09-06 — Rev 61: agents live on the board.** Rev 60 put a model behind a button on a page,
   which is a useful thing and a small idea: an agent you have to go somewhere to consult is a feature

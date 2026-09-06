@@ -269,6 +269,33 @@ export const agentProposals = pgTable(
   (t) => [uniqueIndex("agent_proposals_key_idx").on(t.workspaceId, t.key)],
 );
 
+/**
+ * What happened to what an agent said.
+ *
+ * Remarks themselves live in the board document (§5.27) — they are annotations on a drawing. What
+ * does not belong there is the record of how a person answered them, because that record has to
+ * outlive both the remark and the agent: the useful question is "is this agent worth having", and
+ * an agent whose remarks are dismissed nine times in ten should say so rather than keep talking.
+ * The agent's name is copied in so a deleted agent still has a history.
+ */
+export const agentRemarkOutcomes = pgTable(
+  "agent_remark_outcomes",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    boardId: text("board_id").references(() => boards.id, { onDelete: "cascade" }),
+    /** The agent element's id on its board. */
+    agentElementId: text("agent_element_id").notNull(),
+    agentName: text("agent_name").notNull().default(""),
+    /** kept — turned into a note by a person; dismissed — waved away. */
+    outcome: text("outcome", { enum: ["kept", "dismissed"] }).notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("agent_outcomes_workspace_idx").on(t.workspaceId, t.agentElementId)],
+);
+
 // ---- intake ----------------------------------------------------------------
 // Unconsolidated data arrives as a *source*: an uploaded transcript, a pasted document, a
 // connector sync. A source is kept whole and raw, because an extraction is only arguable if the
@@ -466,6 +493,7 @@ export type Entity = typeof entities.$inferSelect;
 export type Relation = typeof relations_.$inferSelect;
 export type BoardVersion = typeof boardVersions.$inferSelect;
 export type AgentProposalRow = typeof agentProposals.$inferSelect;
+export type AgentRemarkOutcomeRow = typeof agentRemarkOutcomes.$inferSelect;
 
 // ---- meta-model ------------------------------------------------------------------------------
 // The meta-model is *emergent*: kinds, relation types and attribute keys are derived from the

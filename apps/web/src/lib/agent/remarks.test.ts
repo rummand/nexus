@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentElement, CanvasElement } from "@/canvas/document";
-import { digestOf, remarksByElement, scopeOf, validateRemarks, wordsOf } from "./remarks";
+import { digestOf, remarksByElement, scopeFromElements, scopeOf, validateAnswer, validateRemarks, wordsOf } from "./remarks";
 
 /**
  * What an agent standing on a board may see, and may say.
@@ -149,5 +149,58 @@ describe("finding the remarks about a thing", () => {
     const index = remarksByElement(doc([one, two]));
     expect(index.get("c1")?.map((r) => r.remark.id)).toEqual(["r1", "r2"]);
     expect(index.get("c2")?.[0]?.agent.name).toBe("Second");
+  });
+});
+
+describe("asking about a selection", () => {
+  const maximo = card("c1", "Maximo", "Work-order management. Out of support at the end of the year.");
+  const scada = card("c2", "SCADA", "Supervisory control for the grid.");
+  const lake = card("c3", "Data lake", "Curated views.");
+  const elements = doc([maximo, scada, lake, link("l1", "c1", "c3", "feeds")]);
+
+  it("takes the selection as the scope — no placement, no query", () => {
+    const scope = scopeFromElements(["c1", "c3"], elements);
+    expect(scope.items.map((i) => i.id)).toEqual(["c1", "c3"]);
+    expect(scope.links).toEqual([{ from: "Maximo", to: "Data lake", label: "feeds" }]);
+    expect(scope.frame).toBeNull();
+  });
+
+  it("ignores an id that is not on the board rather than failing", () => {
+    expect(scopeFromElements(["c1", "nope"], elements).items.map((i) => i.id)).toEqual(["c1"]);
+  });
+
+  it("keeps the prose and the citations it can check", () => {
+    const scope = scopeFromElements(["c1", "c2"], elements);
+    const answer = validateAnswer({
+      answer: "Maximo is the only thing here with a stated end date.",
+      cites: [{ about: "c1", quote: "Out of support at the end of the year" }],
+    }, scope);
+    expect(answer.answer).toMatch(/only thing here/);
+    expect(answer.cites).toEqual([{ about: "c1", label: "Maximo", quote: "Out of support at the end of the year" }]);
+    expect(answer.rejected).toEqual([]);
+  });
+
+  it("drops a citation the object does not support, and keeps the answer visibly uncited", () => {
+    const scope = scopeFromElements(["c1"], elements);
+    const answer = validateAnswer({
+      answer: "It runs in Frankfurt.",
+      cites: [{ about: "c1", quote: "hosted in Frankfurt" }, { about: "c9", quote: "anything" }],
+    }, scope);
+    expect(answer.answer).toBe("It runs in Frankfurt.");
+    expect(answer.cites).toEqual([]);
+    expect(answer.rejected).toHaveLength(2);
+  });
+
+  it("lets an agent say it cannot tell", () => {
+    const scope = scopeFromElements(["c2"], elements);
+    const answer = validateAnswer({ answer: "The board does not say who owns this.", cites: [] }, scope);
+    expect(answer.answer).toMatch(/does not say/);
+    expect(answer.cites).toEqual([]);
+    expect(answer.rejected).toEqual([]);
+  });
+
+  it("survives rubbish", () => {
+    expect(validateAnswer(null, scopeFromElements(["c1"], elements)).rejected).toEqual(["the agent said nothing usable"]);
+    expect(validateAnswer({ cites: "no" }, scopeFromElements(["c1"], elements)).cites).toEqual([]);
   });
 });

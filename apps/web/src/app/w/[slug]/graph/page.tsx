@@ -5,7 +5,7 @@ import { graphSnapshot } from "@/lib/graph";
 import { computeProposals } from "@/lib/proposals";
 import { healthReport } from "@/lib/health";
 import { measureAuthority } from "@/lib/knowledge";
-import { modelConfigured, modelStatus } from "@/lib/agent/propose";
+import { agentUnavailable, modelConfigured } from "@/lib/agent/propose";
 import { lastRun } from "@/lib/agent/store";
 import * as sc from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -32,6 +32,6 @@ export default async function GraphPage({ params, searchParams }: { params: Prom
    * Whether the agent can be asked is a server fact — the key never reaches the browser — so it is
    * resolved here and passed as a boolean and a sentence.
    */
-  const agent = { ready: modelConfigured(), hint: modelStatus(), lastAskedAt: run?.at ?? null, grounded: run?.grounded ?? [] };
+  const agent = { ready: modelConfigured(), hint: agentUnavailable(), lastAskedAt: run?.at ?? null, grounded: run?.grounded ?? [] };
   return <GraphBrowser workspaceId={workspace.id} slug={slug} snapshot={snapshot} spaces={spaces} proposals={proposals} initialEntityId={entity ?? null} health={health} authority={measureAuthority()} agent={agent} />;
 }

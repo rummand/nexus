@@ -107,15 +107,31 @@ export function scopeOf(agent: AgentElement, elements: Record<ElementId, CanvasE
     chosen = all;
   }
 
+  return { ...gather(chosen.filter((el) => el.id !== agent.id), all), frame };
+}
+
+/**
+ * The same reading, for an arbitrary set of objects.
+ *
+ * Used when somebody selects things and asks about them: the selection *is* the scope, which is the
+ * quickest possible way to point an agent at something — no placement, no query, no page.
+ */
+export function scopeFromElements(ids: ElementId[], elements: Record<ElementId, CanvasElement>): BoardScope {
+  const all = Object.values(elements);
+  const chosen = ids.map((id) => elements[id]).filter((el): el is CanvasElement => Boolean(el));
+  return { ...gather(chosen, all), frame: null };
+}
+
+function gather(chosen: CanvasElement[], all: CanvasElement[]): Omit<BoardScope, "frame"> {
   const items = chosen
-    .filter((el) => READABLE.has(el.type) && el.id !== agent.id)
+    .filter((el) => READABLE.has(el.type))
     .map((el) => ({ id: el.id, label: labelOf(el), kind: kindOf(el), text: wordsOf(el) }))
     .filter((item) => item.text.length > 0)
     .slice(0, MAX_ITEMS);
 
   const inScope = new Set(items.map((i) => i.id));
   const byId = new Map(all.map((el) => [el.id, el]));
-  const links: BoardScope["links"] = [];
+  const links: Omit<BoardScope, "frame">["links"] = [];
   for (const el of all) {
     if (el.type !== "connector") continue;
     if (!("elementId" in el.from) || !("elementId" in el.to)) continue;
@@ -126,7 +142,7 @@ export function scopeOf(agent: AgentElement, elements: Record<ElementId, CanvasE
       label: el.label || "—",
     });
   }
-  return { items, links, frame };
+  return { items, links };
 }
 
 function contains(outer: BoxElement, inner: BoxElement): boolean {
@@ -223,4 +239,64 @@ export function remarksByElement(elements: Record<ElementId, CanvasElement>): Ma
     }
   }
   return out;
+}
+
+
+// ---- asking about a selection ---------------------------------------------------------------
+
+export interface Answer {
+  /** The agent's prose. A model wrote it, and the UI says so. */
+  answer: string;
+  /** The objects it read, with the words it read — the part a person can check. */
+  cites: Array<{ about: ElementId; label: string; quote: string }>;
+  rejected: string[];
+}
+
+/** The shape an answer must take. Prose, plus citations that are checked. */
+export const ANSWER_SCHEMA = {
+  type: "object",
+  properties: {
+    answer: { type: "string", description: "Two or three sentences to the architect. Plain English, no markdown. Say plainly when what you can see does not answer the question." },
+    cites: {
+      type: "array",
+      description: "The objects your answer rests on, with the words you read on each.",
+      items: {
+        type: "object",
+        properties: {
+          about: { type: "string", description: "The id of the object." },
+          quote: { type: "string", description: "The words on it, copied exactly." },
+        },
+        required: ["about", "quote"],
+      },
+    },
+  },
+  required: ["answer"],
+} as const;
+
+/**
+ * Check an answer.
+ *
+ * The prose is the model's and is labelled as the model's; what makes it usable is the citation
+ * list beside it, and a citation that cannot be found is dropped rather than shown. An answer with
+ * nothing left to cite is still shown — "I cannot tell from what is here" is a good answer — but it
+ * arrives visibly uncited, which is the reader's cue to weigh it accordingly.
+ */
+export function validateAnswer(raw: unknown, scope: BoardScope): Answer {
+  const rejected: string[] = [];
+  if (!raw || typeof raw !== "object") return { answer: "", cites: [], rejected: ["the agent said nothing usable"] };
+  const body = raw as { answer?: unknown; cites?: unknown };
+  const byId = new Map(scope.items.map((i) => [i.id, i]));
+  const cites: Answer["cites"] = [];
+  if (Array.isArray(body.cites)) {
+    for (const item of body.cites.slice(0, 12)) {
+      if (!item || typeof item !== "object") continue;
+      const c = item as Record<string, unknown>;
+      const about = byId.get(str(c.about, 60));
+      const quote = str(c.quote, 300);
+      if (!about) { rejected.push("cited something that is not in the selection"); continue; }
+      if (!quotesFrom(about.text, quote)) { rejected.push(`“${about.label}”: quoted words it does not say`); continue; }
+      cites.push({ about: about.id, label: about.label, quote });
+    }
+  }
+  return { answer: str(body.answer, 1200), cites, rejected };
 }

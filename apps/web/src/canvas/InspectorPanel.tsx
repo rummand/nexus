@@ -6,6 +6,7 @@ import type { EntityDetail } from "@/lib/graph-types";
 import { isEntityId } from "@/lib/graph-types";
 import { mergeEntitiesAction } from "@/lib/actions";
 import { ProposalsBlock } from "./ProposalsBlock";
+import { AskBlock } from "./AskBlock";
 import { Filter } from "lucide-react";
 import { attributeIsRisk, elementName, elementTypeLabel, isBoxElement, type CanvasElement, type CardElement, type ElementId } from "./document";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
@@ -104,6 +105,7 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
           </div>
           {entityId && !planned && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
           {entityId && !planned && <ProposalsBlock key={`p-${entityId}`} entityId={entityId} />}
+          {isBoxElement(single) && single.type !== "agent" && <AskBlock key={`a-${single.id}`} ids={[single.id]} label="this" />}
           <div className="inspector-actions">
             <button type="button" onClick={() => store.getState().focusElement(single.id)}>Focus</button>
             <button type="button" onClick={() => store.getState().duplicateSelection()}>Duplicate</button>
@@ -125,6 +127,7 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
               </div>
             ) : null;
           })()}
+          <AskBlock key={`a-${selection.join(",")}`} ids={selection} label={`these ${items.length}`} />
           <div className="inspector-actions">
             <button type="button" onClick={() => store.getState().zoomToSelection()}>Focus</button>
             <button type="button" onClick={() => store.getState().duplicateSelection()}>Duplicate</button>

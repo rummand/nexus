@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Boxes, Clock3, Database, GitBranch, Home, Inbox, LifeBuoy, Plus, Star, Users, Waypoints } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Database, GitBranch, Home, Inbox, LifeBuoy, Plus, Star, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -39,6 +39,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={20} />}>Meta-model</SidebarLink>
         <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={20} />}>Intake</SidebarLink>
         <SidebarLink key="roadmap" href={`${base}/roadmap`} icon={<GitBranch size={20} />}>Roadmap</SidebarLink>
+        <SidebarLink key="agents" href={`${base}/agents`} icon={<Bot size={20} />}>Agents</SidebarLink>
         <SidebarLink key="knowledge" href={`${base}/knowledge`} icon={<BookOpen size={20} />}>EA knowledge</SidebarLink>
         <SidebarLink key="docs" href={`${base}/docs`} icon={<LifeBuoy size={20} />}>Documentation</SidebarLink>
       </nav>

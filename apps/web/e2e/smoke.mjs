@@ -682,11 +682,40 @@ try {
   await placed.locator(".board-agent-scope button", { hasText: "its frame" }).click();
   assert.equal(await placed.locator(".board-agent-scope button.on").innerText(), "its frame",
     "an agent is scoped by where you put it, not by a query somebody has to write");
+  await placed.locator('input[aria-label="Agent name"]').fill("Succession watch");
   await placed.locator("[data-wake-agent]").click();
   await page.waitForSelector("[data-agent] .board-agent-said", { timeout: 30000 });
   const said = await placed.locator(".board-agent-said").innerText();
   assert.ok(/ANTHROPIC_API_KEY|NEXUS_MODEL|No model|nothing in this agent/i.test(said),
     `an agent that cannot run says why on the board — got "${said}"`);
+
+  // ask about a selection: the agent that needs no placing. Selecting is scope.
+  await page.keyboard.press("Escape");
+  await page.click('[aria-label="Select"]');
+  const someCards = page.locator(".fact-card");
+  await someCards.nth(0).click();
+  await page.keyboard.down("Shift");
+  await someCards.nth(1).click();
+  await page.keyboard.up("Shift");
+  await page.waitForSelector("[data-ask-block]", { timeout: 20000 });
+  assert.match(await page.locator("[data-ask-block] > header").innerText(), /Ask about these 2/i,
+    "the selection is the scope, and the panel says so");
+  await page.fill("[data-ask-input]", "What is missing here?");
+  await page.click("[data-ask-block] form button");
+  await page.waitForSelector(".ask-error", { timeout: 30000 });
+  assert.match(await page.locator(".ask-error").innerText(), /ANTHROPIC_API_KEY|NEXUS_MODEL|No model/i,
+    "asking without a model says what is missing rather than failing silently");
+
+  // the fleet: one place that knows every agent in the workspace
+  await page.waitForTimeout(2500); // let the board autosave, so the fleet can see the agent
+  await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
+  await page.waitForSelector("[data-fleet-totals]");
+  assert.ok((await page.locator("[data-agent-row]").count()) >= 1, "an agent placed on a board appears in the fleet");
+  const fleetText = await page.locator("[data-fleet]").innerText();
+  assert.match(fleetText, /Succession watch/, "the fleet names the agent");
+  assert.match(fleetText, /Application landscape/, "…and the board it stands on");
+  assert.match(await page.locator("[data-fleet-totals]").innerText(), /Nobody has answered it yet/i,
+    "an agent nobody has answered is not given a score it has not earned");
 
   // ---- the timeline: a canvas capability, and the roadmap as one thing you can say with it ----
   // On any board, an attribute that reads as a date can become the axis. This is checked on an

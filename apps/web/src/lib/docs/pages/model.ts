@@ -171,3 +171,32 @@ export const AGENT: DocPage = {
     { kind: "try", href: "/w/:slug/graph", label: "Open the knowledge graph" },
   ],
 };
+
+export const FLEET: DocPage = {
+  slug: "agent-fleet",
+  title: "The agents you have",
+  summary: "Every agent in the workspace, what each is watching, and whether anybody is listening to it.",
+  keywords: ["fleet", "agents", "acceptance", "kept", "dismissed", "governance", "control", "audit", "manage"],
+  blocks: [
+    { kind: "prose", text: "Agents in Nexus are scattered on purpose: one beside a frame, one on a board, one asked from a selection, one reading the graph. Scattering is only humane if there is one place that answers how many there are, what each is watching, and whether anybody is listening to them. That is the **Agents** page." },
+    { kind: "shot", src: "agent-fleet", alt: "The Agents page listing an agent with what it watches, remarks waiting, kept and dismissed counts, and a percentage", caption: "One row per agent, with the number that matters on the right." },
+    { kind: "heading", text: "The number it leads with", id: "acceptance" },
+    { kind: "prose", text: "Not runs. Not tokens. Not remarks made. **Kept** — how often a person turned what an agent said into a note of their own. It is the only measure that says whether the thing is helping somebody think, which is the whole reason to have it." },
+    {
+      kind: "table",
+      columns: ["What it says", "What to do"],
+      rows: [
+        ["Nobody has answered it yet", "Wake it, and answer what it says. The number is meaningless until you do."],
+        ["Too early to say", "Fewer than four answers. Keep going."],
+        ["People keep most of what it says", "It is earning its place. Consider one like it elsewhere."],
+        ["Mixed", "Rewrite what you asked it for. The purpose is usually the problem, not the model."],
+        ["Almost everything it says is waved away", "Change its purpose or delete it. An agent nobody keeps is not quiet and cheap — it is noise with a running cost."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why measure the human, not the machine", text: "Every other metric an agent could report — how many things it looked at, how fast, how confidently — is a measure of the agent talking. Whether a person kept what it said is the only one that measures it being useful, and it is the one that gets worse when an agent starts padding." },
+    { kind: "heading", text: "Deleted agents", id: "gone" },
+    { kind: "prose", text: "Removing an agent from a board does not erase how it did. Its record stays at the bottom of the page, under the name it had — which is worth reading before somebody writes the same agent again." },
+    { kind: "note", tone: "tip", text: "The graph agent is listed separately, because it reads the model rather than a board and its suggestions go to the review queue on the Knowledge graph page." },
+    { kind: "try", href: "/w/:slug/agents", label: "See your agents" },
+  ],
+};

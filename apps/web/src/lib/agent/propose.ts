@@ -1,4 +1,4 @@
-import { callModel, modelConfigured, modelStatus } from "../compose/llm";
+import { callModel, modelConfigured, modelMissing } from "../compose/llm";
 import { agentGrounding, groundedIn } from "../knowledge";
 import { PROPOSE_SCHEMA } from "./schema";
 import { validateProposals, type AgentGraph, type AgentReview } from "./validate";
@@ -19,7 +19,13 @@ import { validateProposals, type AgentGraph, type AgentReview } from "./validate
  * being dismissed for ever.
  */
 
-export { modelConfigured, modelStatus };
+export { modelConfigured };
+
+/** Why the agent cannot be asked, in words somebody can act on. */
+export function agentUnavailable(): string {
+  const missing = modelMissing();
+  return missing ? `No model is configured, so no agent can be woken. Set ${missing} to turn them on; everything else in Nexus works without one.` : "";
+}
 
 /** How much of the graph goes in the prompt. Beyond this it is sampled and the person is told. */
 const MAX_ENTITIES = 400;

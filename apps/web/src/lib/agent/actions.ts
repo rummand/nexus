@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
-import { modelConfigured, modelStatus, proposeWithModel } from "./propose";
+import { agentUnavailable, modelConfigured, proposeWithModel } from "./propose";
 import { agentGraph, clearRun, saveRun } from "./store";
 
 /**
@@ -24,7 +24,7 @@ export interface AgentRunResult {
 }
 
 export async function askTheAgent(workspaceId: string): Promise<AgentRunResult | { error: string }> {
-  if (!modelConfigured()) return { error: modelStatus() || "No model is configured." };
+  if (!modelConfigured()) return { error: agentUnavailable() };
   const db = await getDb();
   const workspace = await db.query.workspaces.findFirst({ where: eq(s.workspaces.id, workspaceId) });
   if (!workspace) return { error: "That workspace is gone." };

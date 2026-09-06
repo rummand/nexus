@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { nanoid } from "nanoid";
 import { Bot, Frame as FrameIcon, Globe, Link2, Play, Trash2 } from "lucide-react";
 import type { AgentElement } from "../document";
 import { useCanvas, useCanvasStore } from "../store";
 import { LiveField } from "./LiveField";
 import { scopeOf } from "@/lib/agent/remarks";
-import { wakeBoardAgent } from "@/lib/agent/board-actions";
+import { recordRemarkOutcome, wakeBoardAgent } from "@/lib/agent/board-actions";
 
 /**
  * An agent, drawn on the board.
@@ -115,8 +116,15 @@ export function RemarkBadge({ id }: { id: string }) {
     for (const el of Object.values(s.elements)) if (el.type === "agent") for (const r of el.remarks ?? []) if (r.about === id) n++;
     return n;
   });
-  const [open, setOpen] = useState(false);
-  if (count === 0) return null;
+  /**
+   * Open state carries the place to draw the bubble, measured at the moment of the click.
+   *
+   * Drawn at the top of the page rather than inside the object: inside the card it lived in the
+   * canvas's transformed world, underneath the selection toolbar that appears over whatever you
+   * have just clicked — so the remark you wanted to read was covered by the buttons for the thing
+   * it was about. A portal puts it above everything, in screen coordinates, where a popover belongs.
+   */
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
 
   const found = () => {
     const out: Array<{ agentId: string; agentName: string; id: string; text: string; quote: string }> = [];
@@ -127,11 +135,43 @@ export function RemarkBadge({ id }: { id: string }) {
     return out;
   };
 
-  const dismiss = (agentId: string, remarkId: string) => {
-    const agent = store.getState().elements[agentId];
+  /**
+   * Answering a remark removes it from the board and leaves a trace behind, so the fleet can say
+   * later whether this agent was worth having (§5.28).
+   */
+  const answer = (agentId: string, remarkId: string, outcome: "kept" | "dismissed") => {
+    const s = store.getState();
+    const agent = s.elements[agentId];
     if (!agent || agent.type !== "agent") return;
-    store.getState().updateElements({ [agentId]: { remarks: (agent.remarks ?? []).filter((r) => r.id !== remarkId) } as never });
+    s.updateElements({ [agentId]: { remarks: (agent.remarks ?? []).filter((r) => r.id !== remarkId) } as never });
+    void recordRemarkOutcome({
+      workspaceId: s.workspaceId,
+      boardId: s.boardId,
+      agentElementId: agentId,
+      agentName: agent.name || "Unnamed agent",
+      outcome,
+    }).catch(() => undefined);
   };
+
+  /**
+   * The bubble is drawn at the top of the page rather than inside the object.
+   *
+   * Inside the card it lived in the canvas's transformed world, underneath the selection toolbar
+   * that appears over whatever you have just clicked — so the remark you wanted to read was
+   * covered by the buttons for the thing it was about. A portal puts it above everything and lets
+   * it be positioned in screen coordinates, where a popover belongs.
+   */
+  const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (at) { setAt(null); return; }
+    const box = e.currentTarget.getBoundingClientRect();
+    setAt({
+      x: Math.min(box.right + 10, window.innerWidth - 316),
+      y: Math.min(box.top, window.innerHeight - 240),
+    });
+  };
+
+  if (count === 0) return null;
 
   const keep = (text: string, remark: { agentId: string; id: string }) => {
     const about = store.getState().elements[id];
@@ -147,8 +187,8 @@ export function RemarkBadge({ id }: { id: string }) {
       color: "#fde68a",
       z: about.z + 1,
     }], { history: true });
-    dismiss(remark.agentId, remark.id);
-    setOpen(false);
+    answer(remark.agentId, remark.id, "kept");
+    setAt(null);
   };
 
   return (
@@ -159,12 +199,12 @@ export function RemarkBadge({ id }: { id: string }) {
         data-remark-badge
         title={`${count} remark${count === 1 ? "" : "s"} from an agent`}
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={toggle}
       >
         <Bot size={11} /> {count}
       </button>
-      {open && (
-        <div className="remark-bubble" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      {at && createPortal(
+        <div className="remark-bubble" style={{ left: at.x, top: at.y }} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           {found().map((r) => (
             <article key={r.id}>
               <header><Bot size={12} /> {r.agentName}</header>
@@ -172,11 +212,12 @@ export function RemarkBadge({ id }: { id: string }) {
               <blockquote>“{r.quote}”</blockquote>
               <div>
                 <button type="button" onClick={() => keep(r.text, r)}>Keep as a note</button>
-                <button type="button" className="ghost" onClick={() => dismiss(r.agentId, r.id)}>Dismiss</button>
+                <button type="button" className="ghost" onClick={() => answer(r.agentId, r.id, "dismissed")}>Dismiss</button>
               </div>
             </article>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
