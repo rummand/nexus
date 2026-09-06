@@ -26,8 +26,9 @@ const when = (iso: string | null) => {
   return days <= 0 ? "read today" : days === 1 ? "read yesterday" : `read ${days} days ago`;
 };
 
-export function AgentFleet({ slug, fleet, model, graphAgent, defined, runs }: {
+export function AgentFleet({ slug, workspaceId, fleet, model, graphAgent, defined, runs }: {
   slug: string;
+  workspaceId: string;
   fleet: Fleet;
   model: { ready: boolean; hint: string };
   graphAgent: { lastAskedAt: string | null; grounded: string[] };
@@ -55,7 +56,7 @@ export function AgentFleet({ slug, fleet, model, graphAgent, defined, runs }: {
         <p className="agent-fleet-warning" data-no-model>{model.hint || "No model is configured, so no agent here can be woken."}</p>
       )}
 
-      <DefinedAgents slug={slug} agents={defined} runs={runs} />
+      <DefinedAgents slug={slug} workspaceId={workspaceId} agents={defined} runs={runs} />
 
       <div className="agent-fleet-note">
         <Bot size={14} />

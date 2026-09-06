@@ -819,6 +819,16 @@ a { color: inherit; text-decoration: none; }
 .agent-activity span { color: #6c7a91; }
 .agent-activity time { color: #a5b0c2; font-size: 11px; margin-left: auto; }
 
+.proposed-agents { margin: 0 0 16px; }
+.proposed-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
+.proposed-head .ghost-button { align-items: center; display: inline-flex; gap: 6px; }
+.proposed-head small { color: #8b96a9; font-size: 11.5px; line-height: 1.5; max-width: 62ch; }
+.proposed-list { margin-bottom: 12px; }
+.agent-fleet-row.proposed { background: #fdfaf3; border-color: #ecdcbb; }
+.agent-fleet-face.proposed { background: #fff3d6; color: #b45309; }
+.proposed-actions { display: grid; gap: 6px; }
+.proposed-actions button { align-items: center; display: inline-flex; gap: 5px; justify-content: center; }
+
 /* ---- one agent ------------------------------------------------------------ */
 .agent-back { align-items: center; color: #8b96a9; display: inline-flex; gap: 4px; text-decoration: none; }
 .agent-back:hover { color: var(--blue); }

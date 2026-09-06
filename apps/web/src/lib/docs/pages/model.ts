@@ -197,6 +197,17 @@ export const FLEET: DocPage = {
     { kind: "heading", text: "Deleted agents", id: "gone" },
     { kind: "prose", text: "Removing an agent from a board does not erase how it did. Its record stays at the bottom of the page, under the name it had — which is worth reading before somebody writes the same agent again." },
     { kind: "note", tone: "tip", text: "Described agents are listed above the board ones, because they are the ones that can be governed: an owner, a scope, verbs and a budget. Their suggestions go to the review queue on the Knowledge graph page, under the name of the agent that made them." },
+    { kind: "heading", text: "Agents that suggest agents", id: "suggested" },
+    { kind: "prose", text: "**Ask what is missing** puts the question to an agent: it reads the model and the fleet, and suggests an agent nobody has written — with the reason it saw. What comes back is a *proposal*, in the same sense as everything else here. It is stored as **proposed**, which cannot run at all, not even a dry run, until you approve it. Approving makes it an ordinary draft, so its first opinions are still read before it is given a voice." },
+    { kind: "note", tone: "why", title: "It cannot hand on what it does not have", text: "No agent may create an agent that can do something it cannot do itself, or spend more than it has. An agent that may only fill in attributes cannot propose one that merges objects — the suggestion is refused, in the open, with that sentence. Without that rule, “agents building agents” is privilege escalation with a friendly name, and every other safeguard here is decoration." },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Press Ask what is missing — on the Agents page, or on one agent's own page.", note: "On the Agents page the workspace's reviewer asks. On an agent's page, that agent asks, and its own verbs and budget are the ceiling." },
+        { do: "Read the reason. A suggestion that does not name what it read in your model is refused before you see it." },
+        { do: "Approve, or say no.", note: "Approving makes it a draft. Saying no deletes it; nothing was created in the meantime." },
+      ],
+    },
     { kind: "try", href: "/w/:slug/agents", label: "See your agents" },
   ],
 };

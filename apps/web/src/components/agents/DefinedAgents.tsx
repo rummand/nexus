@@ -4,6 +4,7 @@ import { acceptance, verdict } from "@/lib/agent/fleet";
 import { describeScope, type AgentStatus } from "@/lib/agent/definition";
 import type { DefinitionSummary } from "@/lib/agent/definitions";
 import type { RunSummary } from "@/lib/agent/fleet-types";
+import { ProposedAgents } from "./ProposedAgents";
 
 /**
  * The agents somebody has written down.
@@ -14,7 +15,7 @@ import type { RunSummary } from "@/lib/agent/fleet-types";
  * running against our model" is the first question anybody asks about a fleet.
  */
 
-const STATUS_CLASS: Record<AgentStatus, string> = { draft: "unknown", active: "ok", paused: "warn", retired: "off" };
+const STATUS_CLASS: Record<AgentStatus, string> = { proposed: "warn", draft: "unknown", active: "ok", paused: "warn", retired: "off" };
 
 const when = (iso: string | null) => {
   if (!iso) return "never run";
@@ -22,7 +23,16 @@ const when = (iso: string | null) => {
   return days <= 0 ? "ran today" : days === 1 ? "ran yesterday" : `ran ${days} days ago`;
 };
 
-export function DefinedAgents({ slug, agents, runs }: { slug: string; agents: DefinitionSummary[]; runs: RunSummary[] }) {
+export function DefinedAgents({ slug, workspaceId, agents, runs }: {
+  slug: string;
+  workspaceId: string;
+  agents: DefinitionSummary[];
+  runs: RunSummary[];
+}) {
+  // An agent nobody has approved is not part of the fleet yet, and listing it as though it were
+  // would overstate what is running here.
+  const written = agents.filter((a) => a.status !== "proposed");
+  const proposed = agents.filter((a) => a.status === "proposed");
   return (
     <section className="defined-agents" aria-label="Described agents">
       <header className="defined-agents-head">
@@ -34,7 +44,9 @@ export function DefinedAgents({ slug, agents, runs }: { slug: string; agents: De
         spend. It starts as a draft — it runs, and you read what it would have said before it is allowed to say it.
       </p>
 
-      {agents.length === 0 ? (
+      <ProposedAgents slug={slug} workspaceId={workspaceId} proposed={proposed} />
+
+      {written.length === 0 ? (
         <div className="roadmap-empty">
           <p>
             None yet. The <strong>Model reviewer</strong> appears here the first time somebody asks the agent to
@@ -44,7 +56,7 @@ export function DefinedAgents({ slug, agents, runs }: { slug: string; agents: De
         </div>
       ) : (
         <ol className="agent-fleet" data-defined>
-          {agents.map((a) => {
+          {written.map((a) => {
             const rate = acceptance({ kept: a.accepted, dismissed: a.dismissed });
             const answered = a.accepted + a.dismissed;
             return (

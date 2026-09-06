@@ -1435,6 +1435,42 @@ as content marked `isError` rather than as a JSON-RPC error, because the thing o
 model that can read a sentence and try again.
 
 
+### 5.34 Agents that suggest agents (v0.2)
+
+The request was "let agents build new agents, with a human in the loop". The pattern that answers it
+is the one the product already uses everywhere else: **a proposed agent is just another proposal.**
+It is emitted in a closed language, checked by a typed validator, queued, and signed by a person
+before it can do anything at all.
+
+**Ask what is missing** (`lib/agent/suggest.ts`) hands a model the shape of the estate — kinds and
+counts, what is untyped, what is unconnected, which attributes are missing and how often — plus
+every agent already watching it, plus the asking agent's own verbs and budget. What comes back is a
+list of agent definitions with, for each, the thing in *this* model that says it is needed.
+
+Three rules make it safe, and none of them is a prompt:
+
+1. **Capability monotonicity.** No agent may create an agent that can do something it cannot do
+   itself, or spend more than it has. It is enforced by `checkDefinition` — the same function a
+   person's form goes through — with the parent's verbs and budget filled in, and the refusal is
+   shown in the parent's own words: *"Its parent cannot say two objects are one, so it may not grant
+   that."*
+2. **A proposed agent is not an agent.** It is stored with the status `proposed`, which the runner
+   refuses outright: not a run, not even a dry run, until a person approves it. Approving makes it
+   an ordinary **draft**, so its first opinions are still read before it is given a voice (§5.32).
+3. **It must say what it read.** A suggestion with no reason grounded in this workspace's model is
+   dropped, because "you should have an agent for interfaces" is a thing anybody could say about
+   anybody. The reason is stored with the purpose, because by the time somebody reads the definition
+   the run that produced it is one of many.
+
+Duplicates by name are refused, a suggestion whose scope matches nothing is refused by the ordinary
+scope rule, and everything refused is listed rather than swallowed — an agent quietly dropping half
+its own answer is how a fleet stops being believed.
+
+The button is in two places, and the difference is the point: on the **Agents** page the workspace's
+own reviewer asks, and it has every verb; on **one agent's page** that agent asks, and its own
+ceiling applies. A narrow agent can only ever propose a narrower one.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1467,7 +1503,7 @@ model that can read a sentence and try again.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 67)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 68)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1749,6 +1785,15 @@ model that can read a sentence and try again.
   as our own agent's is and waits in the review queue.
 - A propose key speaks as a described agent, so what it says is attributed, budgeted and measured.
 
+### Agents that suggest agents (v0.2)
+- **Ask what is missing** — on the Agents page (the workspace's reviewer asks) or on one agent's
+  page (that agent asks, and its own verbs and budget are the ceiling).
+- A suggestion arrives as a **proposed** agent: it cannot run, not even a dry run, until somebody
+  approves it — at which point it becomes an ordinary draft.
+- No agent may grant a verb or a budget it does not have itself; the refusal is shown in words.
+- Suggestions with no reason from this model, duplicate names and empty scopes are refused and
+  listed rather than silently dropped.
+
 ### Documentation (v0.2)
 - Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
@@ -1960,6 +2005,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | The transport is written by hand rather than taken from an SDK. | A POST that answers with one JSON object is the whole of what request/response tools need, it has to run inside a Next route on either dialect, and a dependency here would sit exactly on the boundary this feature exists to defend. |
 | 2026-09-06 | A tool's failure is content marked isError, not a JSON-RPC error. | The thing on the other end is a model. A sentence it can read gets it to try something else; a protocol error gets rendered as "request failed" and stops the conversation. |
 
+| 2026-09-06 | An agent proposing an agent is a proposal, not a creation. | The product already knows how to handle a model's opinion: closed language, typed validator, queue, a person's signature. Reusing that here means "agents building agents" needs no new trust model — and the `proposed` status makes the human step structural rather than a habit. |
+| 2026-09-06 | The asking agent's own verbs and budget are the ceiling for what it suggests. | Capability monotonicity is the difference between delegation and privilege escalation. Putting it in `checkDefinition` rather than in a prompt means it holds whatever the model answers, and it is why the button is worth having on a narrow agent's page at all. |
+| 2026-09-06 | A suggested agent must name what it read in this model. | "You should have an agent for interfaces" is true of every workspace and useful to none. Requiring the count or the observation makes the suggestion arguable, which is the only thing that makes it worth reading. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1973,6 +2022,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 68: agents that suggest agents.** The last piece of the framework, and the one
+  that needed the most care. **Ask what is missing** hands a model the shape of the estate and the
+  fleet already watching it, and it comes back with agents nobody has written — each with the thing
+  in *this* model that says it is needed. What arrives is a proposal in exactly the sense everything
+  else here is: it is stored as **proposed**, which cannot run at all — not a run, not even a dry
+  run — until a person approves it, and approving only makes it a draft, so its first opinions are
+  still read before it is given a voice. **No agent may grant a verb or a budget it does not have
+  itself**: an agent that may only fill in attributes cannot propose one that merges objects, and
+  the refusal is shown in the parent's own words rather than hidden. That rule lives in the same
+  function a person's form goes through, so it holds whatever the model answers. The button sits on
+  the Agents page, where the workspace's reviewer asks, and on each agent's own page, where that
+  agent asks under its own ceiling — a narrow agent can only ever propose a narrower one.
+  Suggestions with no reason, duplicate names or empty scopes are refused and listed rather than
+  quietly dropped. 9 new unit tests written as the rules, e2e over the honest no-model path, and a
+  new section in the documentation.
 
 - **2026-09-06 — Rev 67: Nexus speaks MCP.** The model of an organisation's estate is the thing other
   people's agents most want to read, so Nexus now answers them directly. One endpoint, JSON-RPC over

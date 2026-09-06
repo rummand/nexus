@@ -873,6 +873,12 @@ try {
 
   await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
   await page.waitForSelector("[data-defined]", { timeout: 30000 });
+  // Agents proposing agents needs a model; what does not is the refusal, which is the safeguard.
+  assert.ok(await page.locator("[data-suggest-agents]").isVisible(), "an agent can be asked what agent is missing");
+  await page.click("[data-suggest-agents]");
+  await page.waitForSelector("[data-suggest-message]", { timeout: 30000 });
+  assert.match(await page.locator("[data-suggest-message]").innerText(), /No model is configured|only half a model|has no model id/,
+    "with no model it says why rather than pretending");
   const listed = await page.locator("[data-defined-agent]").first().innerText();
   assert.match(listed, /Smoke reviewer/, "the fleet lists described agents");
   assert.match(listed, /setAttribute/, "and what each one may propose");

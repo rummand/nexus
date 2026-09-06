@@ -122,6 +122,7 @@ export async function runDefinition(db: Db, workspaceId: string, agentId: string
     return { runId, outcome: "refused", dryRun: agent.status === "draft", proposed: 0, rejected: [why], grounded: [], note: why, objectsRead: 0, sampled: false };
   };
 
+  if (agent.status === "proposed") return refuse("Nobody has approved this agent yet. An agent suggested it; a person decides whether it exists.");
   if (agent.status === "paused") return refuse("This agent is paused, so it did not run.");
   if (agent.status === "retired") return refuse("This agent is retired. Bring it back to draft to run it again.");
   if (!agent.verbs.length) return refuse("This agent has nothing it is allowed to propose.");

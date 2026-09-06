@@ -34,6 +34,7 @@ export default async function AgentsPage({ params }: { params: Promise<{ slug: s
   return (
     <AgentFleet
       slug={slug}
+      workspaceId={workspace.id}
       fleet={fleet}
       model={{ ready: Boolean(choice), hint: choice ? "" : whyNoModel(await configured(db, workspace.id), providers, "board agent") }}
       graphAgent={{ lastAskedAt: graphRun?.at ?? null, grounded: graphRun?.grounded ?? [] }}

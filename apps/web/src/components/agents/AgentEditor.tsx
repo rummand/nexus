@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Bot, Check, Play, Save, Trash2 } from "lucide-react";
-import { createAgent, removeAgent, runAgent, scopeSize, setAgentStatus, updateAgent } from "@/lib/agent/definition-actions";
+import { AlertTriangle, ArrowLeft, Bot, Check, Play, Save, Sparkles, Trash2 } from "lucide-react";
+import { createAgent, removeAgent, runAgent, scopeSize, setAgentStatus, suggestAgents, updateAgent } from "@/lib/agent/definition-actions";
 import {
   CONSEQUENTIAL,
   GROUNDINGS,
@@ -32,7 +32,7 @@ import type { RunSummary } from "@/lib/agent/fleet-types";
  * read its first opinions before you give it a voice, exactly as you would with a new colleague.
  */
 
-const STATUS_CLASS: Record<AgentStatus, string> = { draft: "unknown", active: "ok", paused: "warn", retired: "off" };
+const STATUS_CLASS: Record<AgentStatus, string> = { proposed: "warn", draft: "unknown", active: "ok", paused: "warn", retired: "off" };
 
 export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }: {
   slug: string;
@@ -96,6 +96,29 @@ export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }
     start(async () => {
       const result = await setAgentStatus(agent.id, status);
       if ("error" in result) setMessage(result.error);
+      router.refresh();
+    });
+  };
+
+  /**
+   * Asking this agent what agent is missing. Its own verbs and budget are the ceiling for anything
+   * it suggests, so a narrow agent can only ever propose a narrower one.
+   */
+  const suggest = () => {
+    if (!agent) return;
+    setMessage(null);
+    setWarnings([]);
+    start(async () => {
+      const result = await suggestAgents(workspaceId, agent.id);
+      if ("error" in result) setMessage(result.error);
+      else {
+        setMessage(
+          result.suggested === 0
+            ? result.note || "It could not see an agent worth adding within what it may do itself."
+            : `${result.suggested} suggested, waiting for approval on the Agents page.`,
+        );
+        setWarnings(result.rejected);
+      }
       router.refresh();
     });
   };
@@ -239,7 +262,12 @@ export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }
               <button type="button" className="ghost-button" disabled={pending} onClick={run} data-agent-run>
                 <Play size={13} /> {agent.status === "draft" ? "Dry run" : "Run now"}
               </button>
-              {STATUSES.filter((st) => st !== agent.status).map((st) => (
+              {agent.status !== "proposed" && (
+                <button type="button" className="ghost-button" disabled={pending} onClick={suggest} data-agent-suggest title="What agent is this workspace missing? It may not suggest one that can do more than it can.">
+                  <Sparkles size={13} /> Ask what is missing
+                </button>
+              )}
+              {STATUSES.filter((st) => st !== agent.status && st !== "proposed").map((st) => (
                 <button key={st} type="button" className="ghost-button" disabled={pending} data-set-status={st} onClick={() => changeStatus(st)}>
                   {st === "active" ? <><Check size={13} /> Give it a voice</> : st === "draft" ? "Back to draft" : st === "paused" ? "Pause" : "Retire"}
                 </button>

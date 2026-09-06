@@ -36,10 +36,16 @@ export const VERB_LABEL: Record<Verb, string> = {
  */
 export const CONSEQUENTIAL: ReadonlySet<Verb> = new Set(["merge"]);
 
-export const STATUSES = ["draft", "active", "paused", "retired"] as const;
+/**
+ * `proposed` is what an agent another agent wrote starts as: it cannot run, not even a dry run,
+ * until a person approves it — at which point it becomes a draft like any other and its first
+ * opinions are read before it is given a voice.
+ */
+export const STATUSES = ["proposed", "draft", "active", "paused", "retired"] as const;
 export type AgentStatus = (typeof STATUSES)[number];
 
 export const STATUS_NOTE: Record<AgentStatus, string> = {
+  proposed: "An agent suggested this one. It cannot run until somebody approves it.",
   draft: "Runs as a dry run: you see what it would have proposed, and nothing reaches the review queue.",
   active: "Runs for real. What it proposes goes to the review queue on the Knowledge graph page.",
   paused: "Will not run. Its history is kept.",

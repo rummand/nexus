@@ -7,6 +7,7 @@ import {
   isGrounding,
   parseBudget,
   parseVerbs,
+  STATUSES,
   VERBS,
   type Grounding,
   type AgentDefinition,
@@ -33,6 +34,8 @@ export interface DefinitionSummary extends AgentDefinition {
   dismissed: number;
   /** Still waiting in the review queue. */
   open: number;
+  /** The agent that suggested this one, when an agent did. */
+  parentName: string;
 }
 
 export function toDefinition(row: s.AgentDefinitionRow, ownerTeamName = ""): AgentDefinition {
@@ -50,7 +53,7 @@ export function toDefinition(row: s.AgentDefinitionRow, ownerTeamName = ""): Age
     model: row.model,
     trigger: "manual",
     budget: parseBudget(row.budget),
-    status: (["draft", "active", "paused", "retired"].includes(row.status) ? row.status : "draft") as AgentStatus,
+    status: ((STATUSES as readonly string[]).includes(row.status) ? row.status : "draft") as AgentStatus,
     parentId: row.parentId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -78,6 +81,7 @@ export async function listDefinitions(db: Db, workspaceId: string): Promise<Defi
     db.select().from(s.agentDecisions).where(eq(s.agentDecisions.workspaceId, workspaceId)),
     db.select().from(s.agentProposals).where(eq(s.agentProposals.workspaceId, workspaceId)),
   ]);
+  const byId = new Map(rows.map((r) => [r.id, r.name]));
   return rows.map((row) => {
     const mine = runs.filter((r) => r.agentId === row.id);
     const decided = decisions.filter((d) => d.agentId === row.id);
@@ -90,6 +94,7 @@ export async function listDefinitions(db: Db, workspaceId: string): Promise<Defi
       accepted: decided.filter((d) => d.decision === "accepted").length,
       dismissed: decided.filter((d) => d.decision === "dismissed").length,
       open: open.filter((p) => p.agentId === row.id).length,
+      parentName: byId.get(row.parentId ?? "") ?? "",
     };
   });
 }
