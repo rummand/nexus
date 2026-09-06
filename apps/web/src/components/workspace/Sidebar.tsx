@@ -30,23 +30,23 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         builds this list as an array, and React then warns that its items have no key.
       */}
       <nav className="studio-home-nav" aria-label="Studio navigation">
-        <SidebarLink key="home" href={base} exact icon={<Home size={20} />}>Home</SidebarLink>
-        <SidebarLink key="recent" href={`${base}/recent`} icon={<Clock3 size={20} />}>Recent</SidebarLink>
-        <SidebarLink key="favorites" href={`${base}/favorites`} icon={<Star size={20} />} trailing={favorites.length}>Starred</SidebarLink>
-        <SidebarLink key="teams" href={`${base}/teams`} icon={<Users size={20} />} trailing={teams.length}>Teams</SidebarLink>
-        <SidebarLink key="graph" href={`${base}/graph`} icon={<Database size={20} />}>Knowledge graph</SidebarLink>
-        <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={20} />}>Graph explorer</SidebarLink>
-        <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={20} />}>Meta-model</SidebarLink>
-        <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={20} />}>Intake</SidebarLink>
-        <SidebarLink key="roadmap" href={`${base}/roadmap`} icon={<GitBranch size={20} />}>Roadmap</SidebarLink>
-        <SidebarLink key="agents" href={`${base}/agents`} icon={<Bot size={20} />}>Agents</SidebarLink>
-        <SidebarLink key="knowledge" href={`${base}/knowledge`} icon={<BookOpen size={20} />}>EA knowledge</SidebarLink>
-        <SidebarLink key="docs" href={`${base}/docs`} icon={<LifeBuoy size={20} />}>Documentation</SidebarLink>
+        <SidebarLink key="home" href={base} exact icon={<Home size={17} />}>Home</SidebarLink>
+        <SidebarLink key="recent" href={`${base}/recent`} icon={<Clock3 size={17} />}>Recent</SidebarLink>
+        <SidebarLink key="favorites" href={`${base}/favorites`} icon={<Star size={17} />} trailing={favorites.length}>Starred</SidebarLink>
+        <SidebarLink key="teams" href={`${base}/teams`} icon={<Users size={17} />} trailing={teams.length}>Teams</SidebarLink>
+        <SidebarLink key="graph" href={`${base}/graph`} icon={<Database size={17} />}>Knowledge graph</SidebarLink>
+        <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={17} />}>Graph explorer</SidebarLink>
+        <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={17} />}>Meta-model</SidebarLink>
+        <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={17} />}>Intake</SidebarLink>
+        <SidebarLink key="roadmap" href={`${base}/roadmap`} icon={<GitBranch size={17} />}>Roadmap</SidebarLink>
+        <SidebarLink key="agents" href={`${base}/agents`} icon={<Bot size={17} />}>Agents</SidebarLink>
+        <SidebarLink key="knowledge" href={`${base}/knowledge`} icon={<BookOpen size={17} />}>EA knowledge</SidebarLink>
+        <SidebarLink key="docs" href={`${base}/docs`} icon={<LifeBuoy size={17} />}>Documentation</SidebarLink>
       </nav>
 
       <div className="studio-spaces-header">
         <span>Spaces</span>
-        <NewSpaceDialog workspaceId={workspace.id} teams={teams} trigger={<button type="button" aria-label="Create space"><Plus size={18} /></button>} />
+        <NewSpaceDialog workspaceId={workspace.id} teams={teams} trigger={<button type="button" aria-label="Create space"><Plus size={15} /></button>} />
       </div>
       <div className="studio-space-list">
         {spaces.map((sp) => (
@@ -56,7 +56,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
 
       <div className="studio-spaces-header">
         <span>Teams</span>
-        <NewTeamDialog workspaceId={workspace.id} trigger={<button type="button" aria-label="Create team"><Plus size={18} /></button>} />
+        <NewTeamDialog workspaceId={workspace.id} trigger={<button type="button" aria-label="Create team"><Plus size={15} /></button>} />
       </div>
       <div className="studio-space-list">
         {teams.map((t) => (

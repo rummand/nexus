@@ -1215,6 +1215,33 @@ The three agent surfaces are also now one section of the documentation rather th
 the sections of the product they happen to touch — they read as one subject, because they are one.
 
 
+### 5.29 The type scale, tightened (v0.2)
+
+A craft pass over the shell, keeping the LeanFlow language and changing its weight.
+
+The app had no stated base font size, so everything drawn with `font: inherit` — the navigation,
+every button, every input — was rendering at the browser's 16px. The sidebar in particular read as a
+consumer app rather than a tool somebody spends a day in: 16px semibold links, 12px of padding each,
+8px between them, 20px icons, in a 320px column.
+
+`body` now states 14px/1.5, and the shell is tuned around it: a 268px sidebar; navigation at 13px
+with 6px padding and 1px gaps, muted icons that take the accent colour only when active, and a
+pill for the count; a page title at 23px instead of 30px; a lede capped at 68 characters; and the
+documentation's own scale brought into line with the rest so the two stop disagreeing.
+
+Two things the pass caught, which are the reason to do these by looking rather than by rule:
+
+- The line above a page title is an eyebrow on most pages and a whole sentence on the Knowledge
+  graph. Uppercasing it — the obvious thing for an eyebrow — shouted a paragraph. It is small and
+  quiet instead, and not uppercased anywhere.
+- The "no model is configured" sentence was borrowing a class meant for a two-word legend:
+  uppercase, right-aligned and 280px wide, so an honest explanation became four lines of shouting
+  in the corner. Prose gets prose styling.
+
+Every committed documentation screenshot was re-captured, because a type-scale change makes all of
+them wrong at once — which is exactly the rot the capture script exists to prevent.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1247,7 +1274,7 @@ the sections of the product they happen to touch — they read as one subject, b
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 62)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 63)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1659,6 +1686,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | An uncited answer is shown, marked, rather than hidden. | "I cannot tell from what is here" is a good answer and a much better one than a plausible guess. Hiding it would push the model towards inventing a citation; marking it leaves the reader in charge of how much weight to give it. |
 
 
+| 2026-09-06 | The app states a 14px base rather than inheriting the browser's 16px. | Everything drawn with `font: inherit` — navigation, buttons, inputs — was sized by a default nobody had chosen, which is why the shell read as roomier than the work it holds. Stating the base is what makes the rest of the scale a decision instead of a drift. |
+| 2026-09-06 | The line above a page title is never uppercased. | It is an eyebrow on most pages and a whole sentence on the Knowledge graph, and there is no way for CSS to tell the difference. Small and quiet works for both; shouting works for one and ruins the other. |
+
+
 
 ## 8. Open questions for the product owner
 
@@ -1671,6 +1702,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 63: tightening the ship.** A craft pass over the shell, keeping the visual
+  language and changing its weight. The app had never stated a base font size, so everything drawn
+  with `font: inherit` rendered at the browser's 16px — which is why the navigation read as a
+  consumer app rather than a tool somebody spends a day in. `body` now states 14px/1.5, and the shell
+  is tuned around it: a narrower sidebar, navigation at 13px with tight gaps and muted icons that
+  take the accent colour only when active, a 23px page title, ledes capped at 68 characters, and the
+  documentation's scale brought into line with the rest. Two things only looking would have caught:
+  the line above a page title is an eyebrow on most pages and a sentence on one, so it is no longer
+  uppercased anywhere; and the "no model is configured" explanation had been borrowing a class meant
+  for a two-word legend, turning an honest sentence into four lines of shouting in a corner. Every
+  committed documentation screenshot was re-captured, because a type-scale change makes all of them
+  wrong at once.
 
 - **2026-09-06 — Rev 62: ambient agents, and the fleet.** Two more places for an agent to be useful,
   and one place to see them all. **Ask about these** puts an agent in the Selection panel: select any

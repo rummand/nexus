@@ -12,9 +12,9 @@ import { acceptance, verdict, type Fleet, type FleetAgent } from "@/lib/agent/fl
  */
 
 const SCOPE: Record<FleetAgent["scope"], { label: string; icon: React.ReactNode }> = {
-  board: { label: "the whole board", icon: <Globe size={12} /> },
-  frame: { label: "the frame it sits in", icon: <FrameIcon size={12} /> },
-  connected: { label: "what it is joined to", icon: <Link2 size={12} /> },
+  board: { label: "the whole board", icon: <Globe size={11} /> },
+  frame: { label: "the frame it sits in", icon: <FrameIcon size={11} /> },
+  connected: { label: "what it is joined to", icon: <Link2 size={11} /> },
 };
 
 const when = (iso: string | null) => {
@@ -62,7 +62,7 @@ export function AgentFleet({ slug, fleet, model, graphAgent }: {
         </div>
         <div className="roadmap-state to-be">
           <small>Kept, of what people answered</small>
-          <b>{overall === null ? "—" : `${overall}%`}</b>
+          <b className={overall === null ? "quiet" : ""}>{overall === null ? "—" : `${overall}%`}</b>
           <span>{verdict(overall, answered)}</span>
         </div>
       </div>

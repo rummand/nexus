@@ -1,6 +1,6 @@
 {
   "agent-fleet": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "ask-selection": {
@@ -56,23 +56,23 @@
     "height": 888
   },
   "explorer": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "graph": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "graph-entities": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "graph-health": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "graph-proposals": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "home": {
@@ -80,55 +80,55 @@
     "height": 1000
   },
   "intake-catalogue": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "intake-new": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "intake-review": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "intake-run": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "intake-viewpoints": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "knowledge": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "knowledge-doctrine": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "knowledge-sources": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "meta": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "meta-diagram": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "plateaus": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "plateaus-compare": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "roadmap": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   },
   "roadmap-board": {
@@ -136,7 +136,7 @@
     "height": 1000
   },
   "roadmap-dependencies": {
-    "width": 1400,
+    "width": 1452,
     "height": 1000
   }
 }

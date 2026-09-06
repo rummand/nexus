@@ -679,8 +679,8 @@ try {
   await page.waitForSelector("[data-agent]", { timeout: 20000 });
   const placed = page.locator("[data-agent]").last();
   await placed.locator('textarea[aria-label="What this agent is for"]').fill("Where does this landscape contradict itself?");
-  await placed.locator(".board-agent-scope button", { hasText: "its frame" }).click();
-  assert.equal(await placed.locator(".board-agent-scope button.on").innerText(), "its frame",
+  await placed.locator(".board-agent-scope button", { hasText: "frame" }).click();
+  assert.equal(await placed.locator(".board-agent-scope button.on").innerText(), "frame",
     "an agent is scoped by where you put it, not by a query somebody has to write");
   await placed.locator('input[aria-label="Agent name"]').fill("Succession watch");
   await placed.locator("[data-wake-agent]").click();

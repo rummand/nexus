@@ -23,9 +23,9 @@ import { recordRemarkOutcome, wakeBoardAgent } from "@/lib/agent/board-actions";
  */
 
 const SCOPES: Array<{ value: AgentElement["scope"]; label: string; icon: React.ReactNode; hint: string }> = [
-  { value: "board", label: "the board", icon: <Globe size={12} />, hint: "Everything drawn here." },
-  { value: "frame", label: "its frame", icon: <FrameIcon size={12} />, hint: "Whatever frame you drop it into." },
-  { value: "connected", label: "what it joins", icon: <Link2 size={12} />, hint: "Only the objects you connect it to." },
+  { value: "board", label: "board", icon: <Globe size={11} />, hint: "Watches everything drawn here." },
+  { value: "frame", label: "frame", icon: <FrameIcon size={11} />, hint: "Watches whatever frame you drop it into." },
+  { value: "connected", label: "joined", icon: <Link2 size={11} />, hint: "Watches only the objects you connect it to." },
 ];
 
 export function AgentView({ el, selected, fresh }: { el: AgentElement; selected: boolean; fresh: boolean }) {
