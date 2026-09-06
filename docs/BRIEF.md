@@ -1166,6 +1166,9 @@ tested without a key — including the answers a model gets wrong, which is the 
 - ~~Search across boards and the graph~~ done: home search over boards + objects, board command bar with structured graph queries (§5.10). Next: natural-language translation by the agent layer.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
+- **The agent framework** — agents as objects in the graph, a run log, a fleet view, model providers
+  as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
+  proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
 ## 6a. What exists today (v0.2, 2026-09-06 — rev 60)
 
