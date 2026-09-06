@@ -2186,3 +2186,54 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
   .doc-nav-column { border-bottom: 1px solid var(--line); border-right: 0; max-height: none; position: static; }
   .doc-article { padding: 24px 20px 60px; }
 }
+
+/* ---- the time scrubber (§5.24) ------------------------------------------- */
+
+.time-scrubber {
+  align-items: center; backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line); border-radius: 14px; bottom: 18px; box-shadow: var(--shadow);
+  display: flex; gap: 8px; left: 50%; max-width: min(920px, calc(100vw - 700px)); padding: 8px 12px;
+  position: absolute; transform: translateX(-50%); z-index: 60;
+}
+.time-scrubber button { align-items: center; background: transparent; border: 0; color: #46556d; display: flex; font: inherit; }
+.time-scrubber-play, .time-scrubber-step { border: 1px solid var(--line-strong) !important; border-radius: 8px; height: 26px; justify-content: center; width: 26px; }
+.time-scrubber-play { background: var(--blue) !important; border-color: var(--blue) !important; color: #fff !important; }
+.time-scrubber-step:disabled { color: #c3ccd9; }
+.time-scrubber-step:not(:disabled):hover { border-color: #b8d7ff !important; color: var(--blue); }
+
+.time-scrubber-track { align-items: flex-start; display: flex; flex: 1 1 auto; gap: 0; list-style: none; margin: 0; min-width: 0; padding: 0 4px; position: relative; }
+/* the line the stops sit on */
+.time-scrubber-track::before { background: var(--line); content: ""; height: 2px; left: 12px; position: absolute; right: 12px; top: 5px; }
+.time-scrubber-track li { flex: 1 1 0; min-width: 0; position: relative; }
+.time-scrubber-track li button { align-items: center; display: flex; flex-direction: column; gap: 2px; padding: 0 4px; width: 100%; }
+.time-scrubber-track i { background: #fff; border: 2px solid var(--line-strong); border-radius: 999px; height: 12px; position: relative; transition: background 140ms ease, border-color 140ms ease, transform 140ms ease; width: 12px; z-index: 1; }
+.time-scrubber-track span { color: #7a8698; font-size: 11px; font-weight: 700; max-width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.time-scrubber-track small { color: #a5afc0; font-size: 9.5px; }
+.time-scrubber-track li.past i { background: #b8d7ff; border-color: #b8d7ff; }
+.time-scrubber-track li.past span { color: #8a94a6; }
+.time-scrubber-track li.active i { background: var(--blue); border-color: var(--blue); transform: scale(1.35); }
+.time-scrubber-track li.active span { color: var(--ink); }
+.time-scrubber-track li button:hover i { border-color: var(--blue); }
+
+.time-scrubber-readout { align-items: center; border-left: 1px solid var(--line); color: #65738a; display: flex; flex: 0 0 auto; font-size: 11.5px; gap: 6px; max-width: 260px; padding-left: 10px; }
+.time-scrubber-readout svg { color: #9aa6b8; }
+.time-scrubber-readout span { align-items: center; display: flex; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.time-scrubber-readout b { border-radius: 999px; font-size: 10.5px; padding: 1px 6px; }
+.time-scrubber-readout b.added { background: #e7f5e8; color: #2f7d32; }
+.time-scrubber-readout b.retired { background: #fdecec; color: #a33a3a; }
+.time-scrubber-readout b.changed { background: #eef6ff; color: #1d5fa4; }
+
+/*
+ * The movement itself. Scrubbing swaps a class on cards that are retiring, arriving or changing,
+ * so a short transition is the whole animation — the board morphs rather than redrawing, which is
+ * what makes it legible at a glance.
+ */
+.fact-card { transition: opacity 260ms ease, border-color 260ms ease, filter 260ms ease; }
+.fact-card.change-retired { filter: saturate(0.4); opacity: 0.72; }
+.fact-card.change-added { animation: card-arrives 420ms ease both; }
+.fact-change-badge { animation: badge-in 260ms ease both; }
+@keyframes card-arrives { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes badge-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .fact-card, .fact-card.change-added, .fact-change-badge { animation: none; transition: none; }
+}

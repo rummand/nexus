@@ -638,6 +638,23 @@ try {
   })).json();
   assert.equal(graph.entities.length, 0, "placing a planned object must not create it in the graph");
 
+  // the time scrubber: drag the same board through the roadmap
+  await page.goto(`${base}/b/brd_integrations`, { waitUntil: "load" });
+  await page.waitForSelector("[data-element-id]");
+  await page.waitForSelector("[data-scrubber]", { timeout: 30000 });
+  const stops = page.locator("[data-scrubber] .time-scrubber-track button");
+  assert.ok((await stops.count()) >= 3, "today, then the named states");
+  await stops.last().click();
+  await page.waitForSelector(".fact-card.change-retired", { timeout: 20000 });
+  const far = await page.locator(".fact-card.change-retired").count();
+  assert.ok(far >= 2, "at the end of the roadmap both retirements have happened");
+  assert.match(await page.locator(".time-scrubber-readout").innerText(), /Target architecture/,
+    "the readout names the state being shown");
+  // and back to today, which must leave the board exactly as it was
+  await stops.first().click();
+  await page.waitForTimeout(1200);
+  assert.equal(await page.locator(".fact-card.change-retired").count(), 0, "returning to today clears the overlay");
+
   // ---- the EA knowledge base: search the corpus and read the doctrine ----------------------
   await page.goto(`${base}/w/acme-energy/knowledge`, { waitUntil: "load" });
   await page.waitForSelector(".knowledge");

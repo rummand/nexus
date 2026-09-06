@@ -21,6 +21,7 @@ import { LensLegend } from "./LensLegend";
 import { useProposals } from "./hooks/useProposals";
 import { MapCard } from "./MapCard";
 import { ZoomCard } from "./ZoomCard";
+import { TimeScrubber } from "./TimeScrubber";
 import { HelpPanel } from "./HelpPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { ComposePanel } from "./ComposePanel";
@@ -155,6 +156,7 @@ export function Canvas() {
       {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
       {!presenting && panels.compose && <ComposePanel rootRef={rootRef} />}
       {!presenting && <ZoomCard />}
+      {!presenting && <TimeScrubber />}
       <LensLegend />
       <KindSuggestions />
       {presenting ? (

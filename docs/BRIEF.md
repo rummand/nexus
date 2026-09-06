@@ -1034,6 +1034,28 @@ roadmap. The docs are server-rendered with no interactivity beyond the contents 
 documentation that needs JavaScript to be read fails the person who needed it most, whose screen is
 already misbehaving.
 
+### 5.24 The time scrubber (v0.2)
+
+Change sets say what will happen and plateaus name the states they produce, but both are read as
+text. Under every board there is now a timeline — today, then each named state in date order —
+and dragging along it moves the board through the roadmap: systems fade as they retire, planned
+ones arrive, the counts change as you pass. Press play and it walks the whole roadmap once.
+
+This is not decoration. An architecture audience does not read a diff table; it watches the
+picture move and remembers which box went grey, and that is the difference between a roadmap
+somebody agrees with in the room and one they take away to read later.
+
+Every stop is fetched once and kept, so scrubbing is the browser's animation rather than the
+network's. The stops are the workspace's plateaus where it has them — those are the states people
+named, and a timeline of everything at once is a timeline nobody reads — falling back to change
+sets before anybody has named a state, so the control is useful from the first plan.
+
+The scrubber holds no position of its own: where it sits is derived from the overlay the board is
+showing. An index kept alongside raced the fetch — clicking a stop set the index, the effect that
+returns the scrubber to today saw an overlay that had not arrived, and put it back to zero while
+the board went on into the future. One source of truth removed the race rather than timing around
+it, and turning the overlay off anywhere else now moves the scrubber for free.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1063,7 +1085,7 @@ already misbehaving.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 56)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 57)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1259,6 +1281,8 @@ already misbehaving.
   reported, and delivery.
 - A board seen as-is or as of a change set; planned cards are drawings of an intention and cannot
   create the system.
+- A time scrubber under every board: step or play through the roadmap and watch the landscape
+  become its own future.
 - Dependencies between change sets: cycle-free, delivery blocked until blockers land, projection in
   the context of what a plan waits for, delivery-order numbering and schedule contradictions named.
 - Plateaus: named, dated states defined by which change sets have landed; derived, never stored;
@@ -1399,6 +1423,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
 | 2026-09-06 | Documentation is authored as typed data, not Markdown. | A page here is not only prose — it has procedures, screenshots with captions, and links that resolve to the reader's own workspace. Typed blocks give all of that with no parser to get subtly wrong, and let a test fail when a screenshot or a route disappears. |
 | 2026-09-06 | Screenshots are captured from the running product by a script and committed. | Hand-taken screenshots rot silently and nobody notices until a reader does. A script that brings its own server and database can be re-run after any UI change, and committing the output means the diff shows when a screen changed. |
+| 2026-09-06 | The time scrubber derives its position from the overlay rather than keeping an index. | The index it kept raced the fetch and reset itself to today while the board showed the future. Deriving state that already exists elsewhere removes the race instead of timing around it. |
 | 2026-09-06 | A plateau stores a name, a date and a membership — never a copy of the estate. | A stored copy is a slide: it starts drifting from the model the moment either changes. Deriving the state means a plateau is always exactly as true as the graph it describes. |
 | 2026-09-06 | Plateau membership is explicit, not "every change set dated before it". | Two plateaus can share a date, a plan can be deliberately excluded from one branch of a roadmap, and a membership somebody can see is one they can argue with. Blockers are pulled in with their dependents, because a state that includes a plan but not what it waits for cannot exist. |
 | 2026-09-06 | The plateau diff compares by entity id, never by name. | Renaming a system is a change to it, not a death and a birth. A name-based diff would report every rationalisation as churn and bury the real movement. |
@@ -1427,6 +1452,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 57: the time scrubber.** A timeline under every board — today, then each named
+  state in date order. Click a stop, step with the arrows or press play, and the landscape becomes
+  its own future: retiring systems fade and strike through, planned ones arrive, the counts move as
+  you pass. It uses the workspace's plateaus where there are any and falls back to change sets
+  before anybody has named a state. Every stop is fetched once and cached, so the movement is the
+  browser's rather than the network's. Its position is derived from the overlay rather than tracked
+  beside it, after an index of its own raced the fetch and snapped back to today while the board
+  went on into the future.
 
 - **2026-09-06 — Rev 56: a route in the wrong directory.** The two plateau API routes had been
   written to the repository root rather than into `apps/web`, so Next never registered them: the

@@ -289,6 +289,16 @@ try {
     await page.waitForTimeout(900);
   });
 
+  await shot("board-scrubber", async () => {
+    await goto("/b/brd_integrations", "[data-element-id]");
+    await page.waitForSelector("[data-scrubber]", { timeout: 60_000 });
+    await page.waitForTimeout(1800);
+    const stops = page.locator("[data-scrubber] .time-scrubber-track button");
+    await stops.nth((await stops.count()) - 1).click();
+    await page.waitForSelector(".fact-card.change-retired", { timeout: 30_000 });
+    await page.waitForTimeout(1200);
+  });
+
   // ---- knowledge ----------------------------------------------------------
   await shot("knowledge", () => goto(`${w}/knowledge?q=how+do+you+rationalise+an+application+portfolio`, ".knowledge-passage"), { settle: 900 });
   await shot("knowledge-doctrine", () => goto(`${w}/knowledge?tab=lessons`, ".knowledge-lesson"), { settle: 900 });

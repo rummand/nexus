@@ -56,6 +56,11 @@ export const ROADMAP: DocPage = {
     { kind: "heading", text: "Seeing a board in the future", id: "overlay" },
     { kind: "prose", text: "On any board, open the Graph panel, switch to Viewpoint, and use **State of the model**. Pick a change set or a plateau and the board shows what that plan does to it: retiring systems struck through, changed ones marked, and a count of planned objects not yet drawn — with a button to place them." },
     { kind: "shot", src: "board-to-be", alt: "A board viewed as of a change set, with a retiring system struck through", caption: "The same board, seen as of a plan. Nothing on it has changed — this is a tint, not an edit." },
+    { kind: "heading", text: "Scrubbing through the roadmap", id: "scrubber" },
+    { kind: "prose", text: "Under the canvas there is a timeline: today, then every named state in date order. Click a stop, step with the arrows, or press play and watch the board become its own future — systems fading as they retire, planned ones arriving, the counts changing as you go. Every state is fetched once and kept, so it moves as fast as you can drag." },
+    { kind: "shot", src: "board-scrubber", alt: "A board with the time scrubber at the bottom, moved to a future state, showing two retired systems", caption: "The same landscape at the far end of the roadmap. An audience does not read a diff table; it watches which box goes grey." },
+    { kind: "note", tone: "tip", text: "The scrubber uses your plateaus when you have them, because those are the states people named. Before anyone has named one it falls back to the change sets, so it is useful from the first plan." },
+
     { kind: "note", tone: "warning", title: "Planned cards are drawings, not systems", text: "A card you place from a plan is marked planned and stays outside the graph: drawing an intention must never create the system. It becomes an ordinary card the moment the change set is delivered." },
     { kind: "try", href: "/w/:slug/roadmap", label: "Open the roadmap" },
   ],
