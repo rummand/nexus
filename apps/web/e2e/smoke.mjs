@@ -8,7 +8,12 @@
  * the Sandbox space, so run it against a development database only.
  */
 import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+
+/** Fixtures resolve from this file, not from wherever the runner was started. */
+const fixture = (name) => path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", name);
 
 const base = process.env.BASE_URL ?? "http://localhost:3000";
 const TEXT = `Smoke ${Date.now()}`;
@@ -667,6 +672,55 @@ try {
     assert.match(await page.locator("[data-agent-unavailable]").innerText(), /ANTHROPIC_API_KEY|NEXUS_MODEL|No model/,
       "with no model configured the panel names what is missing instead of failing");
   }
+
+  // ---- the landing zone: files in, reviewed, approved, and put back --------------------------
+  // The whole point of the feature is that the last step really undoes the one before it, so this
+  // walks the round trip and checks the graph is the size it started at.
+  await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+  await page.waitForSelector("[data-health]");
+  const countEntities = async () => {
+    const r = await fetch(`${base}/api/graph/query`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: "ws_acme", q: "kind:Application" }),
+    });
+    return (await r.json()).total;
+  };
+  const before = await countEntities();
+
+  await page.goto(`${base}/w/acme-energy/apm`, { waitUntil: "load" });
+  await page.waitForSelector("[data-apm-upload]");
+  await page.setInputFiles("[data-apm-files]", [
+    fixture("servicenow-business-applications.csv"),
+    fixture("sharepoint-app-list.csv"),
+    fixture("application-audit-2019.xlsx"),
+    fixture("architecture-review-q3.docx"),
+  ]);
+  await page.click("[data-apm-upload] button[type=submit]");
+  await page.waitForURL(/\/apm\/bat_/, { timeout: 60000 });
+  await page.waitForSelector("[data-apm-counts]", { timeout: 30000 });
+  const batchUrl = page.url();
+  const counts = await page.locator("[data-apm-counts]").innerText();
+  assert.match(counts, /objects staged/, "the batch is staged");
+  assert.ok((await page.locator("[data-apm-row]").count()) > 0, "there are rows to review");
+  // an Excel serial became a date, and a person column was kept out
+  const files = await page.locator(".apm-files").innerText();
+  assert.match(files, /application-audit-2019\.xlsx/, "the spreadsheet was read");
+  assert.match(files, /architecture-review-q3\.docx/, "…and the Word document came along as prose");
+  assert.equal(await page.locator(".apm-personal-toggle input").isChecked(), false,
+    "the columns that name people are excluded until somebody says otherwise");
+
+  await page.click("[data-approve-batch]"); // a dialog handler is already installed above
+  await page.waitForSelector("[data-apm-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-apm-result]").innerText(), /created/, "approving says what it wrote");
+  const after = await countEntities();
+  assert.ok(after > before, `approving created objects (${before} → ${after})`);
+
+  await page.goto(batchUrl, { waitUntil: "load" });
+  await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
+  await page.click("[data-rollback-batch]");
+  await page.waitForSelector("[data-apm-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-apm-result]").innerText(), /deleted/, "the rollback says what it undid");
+  assert.equal(await countEntities(), before, "rolling back puts the graph back exactly as it was");
 
   // ---- an agent on the board -----------------------------------------------------------------
   // Placing one and scoping it works with or without a model; waking it needs one, and with none

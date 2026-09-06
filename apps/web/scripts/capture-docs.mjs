@@ -323,6 +323,30 @@ try {
     await page.waitForTimeout(2000);
   });
 
+  // ---- the landing zone -------------------------------------------------------
+  // Real files, read by the real pipeline: the fixtures the e2e suite uses.
+  const fixtures = path.resolve("e2e/fixtures");
+  await shot("apm-review", async () => {
+    await goto(`${w}/apm`, "[data-apm-upload]");
+    await page.setInputFiles("[data-apm-files]", [
+      path.join(fixtures, "servicenow-business-applications.csv"),
+      path.join(fixtures, "sharepoint-app-list.csv"),
+      path.join(fixtures, "application-audit-2019.xlsx"),
+      path.join(fixtures, "architecture-review-q3.docx"),
+    ]);
+    await page.click("[data-apm-upload] button[type=submit]");
+    await page.waitForURL(/\/apm\/bat_/, { timeout: 120_000 });
+    await page.waitForSelector("[data-apm-counts]", { timeout: 60_000 });
+    await page.waitForTimeout(900);
+  });
+
+  await shot("apm-board", async () => {
+    await page.click("[data-draw-batch]");
+    await page.waitForURL(/\/b\/brd_/, { timeout: 120_000 });
+    await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 60_000 });
+    await page.waitForTimeout(1500);
+  });
+
   // ---- agents ---------------------------------------------------------------
   // Placing an agent and selecting objects need no model, so both of these are the real product.
   // The answering half cannot be photographed honestly without a key, and is described instead.

@@ -1,0 +1,6 @@
+sys_id,Name,Class,Short description,Business owner,Install status,Depends on,End of support,sys_created_on
+BA0012,Maximo,Application,"Work orders, permits and parts for field maintenance",Jane Olsen,Installed,"Asset Register; Data Lake",31/12/2026,2018-04-02
+BA0013,SCADA / EMS,Application,"Supervisory control for the transmission grid",Erik Berg,Installed,Historian,30/06/2031,2016-01-11
+BA0014,Settlement Engine,Application,"Imbalance settlement, runs nightly",Mia Holm,Installed,"Data Lake",30/09/2028,2019-07-30
+BA0015,PI Historian,Application,"Process historian. Stores tag data from SCADA.",Erik Berg,Installed,,31/12/2029,2015-03-03
+BA0016,Field Mobility,Application,"Tablet app for field crews",Jane Olsen,In development,Maximo,,2024-02-02

@@ -99,3 +99,59 @@ export const KNOWLEDGE: DocPage = {
     { kind: "try", href: "/w/:slug/knowledge", label: "Search the knowledge base" },
   ],
 };
+
+export const LANDING: DocPage = {
+  slug: "landing-zone",
+  title: "The landing zone",
+  summary: "Upload the exports you actually have, work on them where you can see them, and take only what you agree with — reversibly.",
+  keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match"],
+  blocks: [
+    { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. The landing zone takes the files you have, folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change — before anything does." },
+    { kind: "shot", src: "apm-review", alt: "A staged batch of four files with each column's meaning shown and editable, and the objects listed below", caption: "Four files, one review. Every column's meaning is proposed with a reason and can be changed; nothing is in the model yet." },
+    { kind: "heading", text: "What it can read", id: "formats" },
+    {
+      kind: "table",
+      columns: ["Format", "Notes"],
+      rows: [
+        ["CSV, TSV", "Quoted fields, commas and newlines inside them, CRLF, UTF-16 and byte-order marks — the things a decade-old export actually contains."],
+        ["JSON", "A list of records, including ServiceNow's `{ result: [...] }` wrapper. A reference field's readable half is taken."],
+        ["Excel (.xlsx)", "The first worksheet, with shared and inline strings. It says which sheet it read when there are several."],
+        ["Word (.docx)", "Kept as prose rather than columns — a document is read for claims by intake, not squeezed into a table."],
+        ["Markdown, plain text", "The same: prose."],
+      ],
+    },
+    { kind: "heading", text: "One object, several files", id: "folding" },
+    { kind: "prose", text: "The same application in a ServiceNow export and a SharePoint list is one thing arriving twice, and discovering that here rather than in the model is the point. Rows are folded on the source's own key where there is one and on the name otherwise — and two rows that both carry keys are never folded, however alike their names, because that is what a key is for." },
+    { kind: "note", tone: "why", title: "Provenance per field, not per record", text: "ServiceNow says the owner is Asset Management; the spreadsheet says Grid Ops. Both are kept, against the file and column they came from, and the winner is decided by the order the files are in. Storing only the winner is how an estate model becomes an argument nobody can settle — the losing value is exactly what you need when somebody asks where a number came from." },
+    { kind: "heading", text: "What it will not decide for you", id: "questions" },
+    {
+      kind: "table",
+      columns: ["It finds", "It does"],
+      rows: [
+        ["A row with no name", "Holds it. There is nothing to call the object."],
+        ["The same key on two rows of one file", "Holds both. A source's own identifier cannot mean two things."],
+        ["A name close to one you have", "Asks. “PI-Historian (prod)” may or may not be “PI Historian”, and guessing wrong is the merge nobody can undo."],
+        ["Two files that disagree", "Takes the more trusted one and shows you the other."],
+        ["A column that names people", "Leaves it out until you tick the box. An old spreadsheet carries people."],
+        ["A connection to something nobody has", "Flags it. That relation would go nowhere."],
+        ["Something the export used to list and no longer does", "Tells you. Retired, out of scope, or a filtered export — only you know, and nothing is deleted for you."],
+      ],
+    },
+    { kind: "heading", text: "Seeing it before taking it", id: "board" },
+    { kind: "prose", text: "**Draw it on a board** lays the whole batch out by what would happen to each object: new, changed, unchanged, held, rejected. Four hundred rows in a list is a thing you scroll past; the same four hundred on a canvas is a thing whose shape you can see. Every card is marked planned, so drawing it creates nothing." },
+    { kind: "shot", src: "apm-board", alt: "The staged batch drawn on a board in lanes for new, changed and held, with hatched planned cards", caption: "The batch as a board. Hatched cards are claims — walk around it, annotate it, put an agent beside it." },
+    { kind: "heading", text: "Approving, and putting it back", id: "approve" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Work through **Needs you**. Accept, hold or reject each row; a held row is never written.", note: "You can accept the 300 clean rows and keep arguing about the 40 — approving takes whatever is accepted at that moment." },
+        { do: "Approve. New objects are created, matched ones updated, and relations drawn between things that exist." },
+        { do: "Every object it creates records the batch it came from, so “where did this come from” is a query rather than somebody's memory." },
+        { do: "**Roll it back** if it was wrong." },
+      ],
+    },
+    { kind: "note", tone: "why", title: "What an honest rollback will not do", text: "It reverts what it wrote and only what it wrote. An object it created is deleted only if nobody has connected anything to it or drawn it on a board since; a field is restored only if it still holds the value the batch put there. Everything it declines to touch is counted and named, because a rollback that quietly leaves half the estate changed is worse than one that admits it cannot finish." },
+    { kind: "note", tone: "tip", text: "Re-importing next month's export is an update, not a copy, wherever a source key column was mapped: the key is stored on the object the first time and matched on afterwards, even if the system has been renamed since." },
+    { kind: "try", href: "/w/:slug/apm", label: "Open the landing zone" },
+  ],
+};

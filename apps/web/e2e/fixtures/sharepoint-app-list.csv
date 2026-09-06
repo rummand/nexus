@@ -1,0 +1,5 @@
+Application name,Lifecycle,Criticality,Business capability,Owner
+Maximo,phase out,high,Asset Management,Grid Operations
+SCADA / EMS,active,high,Grid Operations,Grid Operations
+Historian,active,medium,Grid Operations,Data Platform
+Shadow IT tracker,active,low,,Someone in Finance

@@ -1003,7 +1003,7 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty-three pages written for the person doing the architecture rather than the person
+a menu item: twenty-four pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then getting data in, then time.
 
@@ -1242,6 +1242,63 @@ Every committed documentation screenshot was re-captured, because a type-scale c
 them wrong at once — which is exactly the rot the capture script exists to prevent.
 
 
+### 5.30 The landing zone (v0.2)
+
+Real portfolio data does not arrive as a clean CSV. It arrives as a ServiceNow export, a spreadsheet
+somebody has maintained since 2019, a SharePoint list and a Word document from a governance review —
+four files that disagree with each other and with the model. Nexus now takes all four, works on them
+where a person can see them, and takes only what that person agrees with.
+
+**Reading what people actually have** (`lib/apm/read.ts`). CSV and TSV with quoted fields, embedded
+commas and newlines, CRLF, byte-order marks and UTF-16 — the things a decade-old Windows export
+really contains. JSON including ServiceNow's `{ result: [...] }` wrapper, taking the readable half
+of a reference field. Excel and Word, both of which are zip archives of XML: eighty lines of ZIP
+(`unzip.ts`) reads the central directory and inflates what it needs, which seemed a better trade
+than a dependency for two well-specified containers. A document arrives as prose rather than being
+squeezed into columns, because a governance review is read for claims (§5.15), not tabulated.
+
+**Proposing what the columns mean** (`map.ts`). Rules rather than a model — it must work with no
+key, give the same answer twice, and an export header's vocabulary is small enough that rules are
+simply better. Every column gets a role and a sentence saying why, and a person can change any of
+it. Two judgements are worth naming:
+
+- A relation column is one whose values *name things*. "Hosting" reads like a relation and holds
+  "on premise"; "Depends on" holds the names of other systems. Given the names this batch and the
+  graph know, that is decidable — so the mapping runs twice, once to find each file's name column
+  and once knowing every name in the batch.
+- Dates are read from ISO, Excel serials, spelled months and slash formats — and a slash column is
+  judged as a whole: one value with a day above twelve settles the order for the column. A genuinely
+  ambiguous column is left alone and flagged rather than guessed, because a roadmap a month out is
+  worse than a blank.
+
+**Provenance per field** (`stage.ts`). The same application in two files is one record; the trust
+order is the order of the files, and the losing value is kept beside the winner rather than dropped.
+Rows fold on the source's own key where there is one and on the name otherwise — and two rows that
+both carry keys are never folded however alike their names, because that is what a key is for.
+Columns that name people are held apart and excluded until somebody ticks a box.
+
+**Matching, graded and visible** (`match.ts`). A source key is a fact; a name plus a kind is strong;
+a name alone is worth looking at; a near name is a question and never an answer. Where the graph has
+one name twice and nothing tells them apart, it refuses to pick and offers both.
+
+**The review** (`review.ts`) turns all of that into blockers, questions and notes, defaults each row
+to accept or hold from its worst issue, and lets a person override any of it. It counts the
+unchanged rows separately, because a re-import is mostly unchanged and a review that opens on four
+hundred unremarkable rows is a review that gets rubber-stamped. It also raises what the source has
+*stopped* claiming — never as a deletion, because a system missing from this month's export has been
+retired, moved out of scope, or filtered, and only a person knows which.
+
+**Drawing it** (`board.ts`). The batch as an ordinary board, laid out by what would happen to each
+object, every card marked `planned` so drawing it creates nothing (§5.21).
+
+**Approving and putting it back** (`actions.ts`). Exactly one function writes and one undoes. The
+write records what it did as it went — every object created, every field overwritten and the value
+that was there before — and the rollback reverts only that: an object it created is deleted only if
+nothing has been connected to it or drawn from it since, and a field is restored only if it still
+holds what the batch put there. Everything it declines to touch is counted and named, because a
+rollback that quietly leaves half the estate changed is worse than one that admits it cannot finish.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1274,7 +1331,7 @@ them wrong at once — which is exactly the rot the capture script exists to pre
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 63)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 64)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1511,8 +1568,20 @@ them wrong at once — which is exactly the rot the capture script exists to pre
   people kept what it said — with the verdict in words.
 - Deleting an agent does not erase its record.
 
+### The landing zone (v0.2)
+- `/w/:slug/apm`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
+  and work on them before anything is written.
+- One object per thing across all the files, with per-field provenance and both values kept where
+  the sources disagree.
+- Graded matching against the model, blockers and questions per row, accept / hold / reject.
+- Person-shaped columns excluded by default; what the source has stopped claiming raised, never
+  deleted; connections that would go nowhere flagged.
+- **Draw it on a board** — the batch laid out by outcome, as planned cards.
+- Approve writes it and records what it wrote; roll back undoes exactly that and says what it
+  would not touch.
+
 ### Documentation (v0.2)
-- Twenty-three in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
+- Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
 - Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
 - Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
@@ -1690,6 +1759,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | The line above a page title is never uppercased. | It is an eyebrow on most pages and a whole sentence on the Knowledge graph, and there is no way for CSS to tell the difference. Small and quiet works for both; shouting works for one and ruins the other. |
 
 
+| 2026-09-06 | Eighty lines of ZIP rather than a dependency for .xlsx and .docx. | Both are zip archives of XML and we need two files out of each. A reader that walks the central directory can be read in one sitting and does exactly what we need; a spreadsheet library is a large surface for a small job, and the formats have not changed in fifteen years. |
+| 2026-09-06 | Provenance is kept per field, and the losing value with it. | "Who says the owner is Grid Ops" is the question an estate model exists to answer. Storing only the winner turns a disagreement between two systems into an unattributable fact, which is how a model stops being believed. |
+| 2026-09-06 | A relation column is one whose values name things, not one whose header sounds like it. | "Hosting" and "Depends on" both read as relations; only one of them points at objects. Once the batch's names are known the difference is decidable, so the mapping runs twice rather than guessing from the header. |
+| 2026-09-06 | An ambiguous date column is flagged, not guessed. | 03/04/2027 is March or April depending on where the export came from, and a plan a month out is worse than a blank. The column is judged as a whole first; only a column that genuinely cannot be told is left to a person. |
+| 2026-09-06 | Rows that both carry a source key are never folded, however alike their names. | A key is the source's statement that these are different things. Merging two of them is the one action here nobody can undo, so name similarity is not allowed to override it. |
+| 2026-09-06 | Columns that name people are excluded until somebody includes them. | An old spreadsheet carries people. Nothing about a person should enter the model because nobody looked, and the cost of the default being wrong is one checkbox. |
+| 2026-09-06 | What a source has stopped claiming is raised, never deleted. | A system missing from this month's export has been decommissioned, moved out of scope, or the export was filtered. Three very different facts, and only a person knows which. |
+| 2026-09-06 | Rollback reverts only what it wrote, and reports what it would not. | An object somebody has since built on, or a field somebody has since corrected, is now theirs. A rollback that overwrites those is a second unwanted import; one that silently skips them leaves the estate in a state nobody can describe. |
 
 ## 8. Open questions for the product owner
 
@@ -1702,6 +1779,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 64: the landing zone.** Real portfolio data arrives as a ServiceNow export, a
+  spreadsheet somebody has maintained since 2019, a SharePoint list and a Word document — four files
+  that disagree with each other and with the model. All four now go into one batch, are read (quoted
+  CSV, UTF-16, ServiceNow's JSON wrapper, .xlsx and .docx, both opened by eighty lines of ZIP rather
+  than a dependency), folded into one object per thing with provenance kept per *field*, matched
+  against the model in grades from "the source's own key" down to "near name, which is a question",
+  and checked into blockers, questions and notes. Columns that name people are held out until
+  somebody ticks a box. What the export has stopped claiming is raised and never deleted. A relation
+  column is decided by whether its values name things, not by whether its header sounds like one, and
+  an ambiguous date column is flagged rather than guessed. **Draw it on a board** lays the batch out
+  by outcome as planned cards you can walk around. Approving writes it and records exactly what it
+  wrote; rolling back reverts only that, refuses to touch anything somebody has since built on, and
+  names what it left alone. 48 new unit tests and an e2e that takes four real files in, approves
+  them, and checks the graph is exactly the size it started at after the rollback.
 
 - **2026-09-06 — Rev 63: tightening the ship.** A craft pass over the shell, keeping the visual
   language and changing its weight. The app had never stated a base font size, so everything drawn

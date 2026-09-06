@@ -351,6 +351,42 @@ export const sourceRuns = sqliteTable(
 export type Source = typeof sources.$inferSelect;
 export type SourceRun = typeof sourceRuns.$inferSelect;
 
+// ---- the landing zone ------------------------------------------------------
+// Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a
+// governance review. Nothing they say is true until somebody approves it, so the whole staged
+// review lives here as JSON — the shapes belong to src/lib/apm and pinning them into columns would
+// freeze a pipeline meant to keep learning what a bad export looks like.
+
+export const importBatches = sqliteTable(
+  "import_batches",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** staged → approved → rolled back. A batch is never deleted; the record of it is the audit. */
+    status: text("status", { enum: ["staged", "approved", "rolled back"] }).notNull().default("staged"),
+    /** The files as read: name, format, the proposed mapping, and their rows. */
+    files: text("files").notNull().default("[]"),
+    /** The staged records and every decision taken about them, as JSON. */
+    review: text("review").notNull().default("{}"),
+    /**
+     * What approving it actually wrote, and the values it wrote over — the only thing that makes
+     * an honest rollback possible. Empty until it is approved.
+     */
+    written: text("written").notNull().default("{}"),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    approvedById: text("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+    approvedAt: text("approved_at"),
+  },
+  (t) => [index("import_batches_workspace_idx").on(t.workspaceId, t.createdAt)],
+);
+
+export type ImportBatch = typeof importBatches.$inferSelect;
+
 // ---- source catalogue ------------------------------------------------------
 // A connection is the *decision* about a source system, not a live session: an agent proposed it
 // (or a human picked it from the catalogue), and a human granted, declined or revoked it. The
