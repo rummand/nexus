@@ -2,6 +2,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import type { Change, ChangeSet } from "./types";
+import type { Dependency } from "./order";
 
 /**
  * Reading change sets back out.
@@ -58,6 +59,16 @@ export async function getChangeSet(db: Db, changeSetId: string): Promise<ChangeS
   if (!set) return null;
   const rows = await db.select().from(s.changes).where(eq(s.changes.changeSetId, changeSetId)).orderBy(asc(s.changes.createdAt));
   return { ...set, changes: rows.map(toChange) };
+}
+
+/** Every dependency edge in a workspace. Small enough that filtering client-side is fine. */
+export async function listDependencies(db: Db, workspaceId: string): Promise<Dependency[]> {
+  const rows = await db
+    .select({ changeSetId: s.changeSetDependencies.changeSetId, dependsOnId: s.changeSetDependencies.dependsOnId })
+    .from(s.changeSetDependencies)
+    .innerJoin(s.changeSets, eq(s.changeSetDependencies.changeSetId, s.changeSets.id))
+    .where(eq(s.changeSets.workspaceId, workspaceId));
+  return rows;
 }
 
 /** The graph rows a projection needs. */

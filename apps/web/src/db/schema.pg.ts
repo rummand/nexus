@@ -572,3 +572,31 @@ export const changes = pgTable(
 
 export type ChangeSetRow = typeof changeSets.$inferSelect;
 export type ChangeRow = typeof changes.$inferSelect;
+
+/**
+ * "This cannot happen until that lands."
+ *
+ * A dependency is a real thing in a roadmap, not a comment: the streaming plan is only coherent
+ * after the platform plan delivers the thing it streams into. Modelling it lets three things be
+ * true — delivery is refused while a blocker is outstanding, a plan is projected in the context of
+ * what it waits for (so a sequenced plan stops reading as stale), and a dependent scheduled before
+ * its blocker can be told it is scheduled backwards.
+ *
+ * `changeSetId` is the dependent; `dependsOnId` is the blocker. Cycles are refused when the edge
+ * is written, so every read can assume the graph is acyclic.
+ */
+export const changeSetDependencies = pgTable(
+  "change_set_dependencies",
+  {
+    changeSetId: text("change_set_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    dependsOnId: text("depends_on_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [primaryKey({ columns: [t.changeSetId, t.dependsOnId] }), index("change_set_deps_blocker_idx").on(t.dependsOnId)],
+);
+
+export type ChangeSetDependencyRow = typeof changeSetDependencies.$inferSelect;

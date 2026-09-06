@@ -552,6 +552,28 @@ try {
   assert.match(impact, /Retiring Maximo/, "the impact of a retirement is computed from the graph");
   assert.match(impact, /attached/, "it names how much is attached");
 
+  // sequencing: the dependent plan says what it waits for, and cannot be delivered before it
+  const dependent = page.locator('[data-change-set="chg_seed_streaming"]');
+  await dependent.locator(".roadmap-card-head").click();
+  await page.waitForSelector("[data-depends]");
+  assert.match(await page.locator("[data-depends]").first().innerText(), /Move work orders to SAP PM/,
+    "the plan says what it is waiting for");
+  assert.equal(await dependent.locator("[data-deliver]").isDisabled(), true,
+    "a plan cannot be delivered before the plan it waits for");
+  // its impact is computed in the context of its blocker, so it is not reported as stale
+  assert.equal(await dependent.locator(".roadmap-problems").count(), 0,
+    "a sequenced plan is not stale, it is sequenced");
+
+  // a dependency that would make a loop is refused when it is drawn
+  const blocker = page.locator('[data-change-set="chg_seed_workorders"]');
+  await blocker.locator(".roadmap-card-head").click();
+  await page.waitForSelector("[data-depends]");
+  await blocker.locator('[data-depends] select').selectOption({ label: "Retire the Historian, stream telemetry" });
+  await blocker.locator('[data-depends] button:has-text("Add")').click();
+  await page.waitForSelector(".roadmap-message", { timeout: 20000 });
+  assert.match(await page.locator(".roadmap-message").innerText(), /already waits for this one/,
+    "a circular dependency is refused when it is drawn, not when it is delivered");
+
   // adding a change updates the projection
   const beforeChanges = await page.locator("[data-change-set] [data-change]").count();
   await page.selectOption("[data-add-change] select:first-of-type", "setAttribute");

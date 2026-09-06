@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getWorkspaceBySlug } from "@/lib/data";
-import { graphRows, listChangeSets } from "@/lib/change/read";
-import { project, projectAll, settled } from "@/lib/change/project";
+import { graphRows, listChangeSets, listDependencies } from "@/lib/change/read";
+import { contextOf, project, projectAll, settled } from "@/lib/change/project";
+import { blocking, blockersOf, deliveryOrder, scheduleWarnings } from "@/lib/change/order";
 import { impactOf } from "@/lib/change/impact";
 import { summarise } from "@/lib/change/types";
 import { Roadmap, type ChangeSetView, type EntityOption } from "@/components/roadmap/Roadmap";
@@ -19,7 +20,14 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
   const workspace = await getWorkspaceBySlug(slug);
   if (!workspace) notFound();
   const db = await getDb();
-  const [{ entities, relations }, sets] = await Promise.all([graphRows(db, workspace.id), listChangeSets(db, workspace.id)]);
+  const [{ entities, relations }, sets, deps] = await Promise.all([
+    graphRows(db, workspace.id),
+    listChangeSets(db, workspace.id),
+    listDependencies(db, workspace.id),
+  ]);
+  const byIdSet = new Map(sets.map((set) => [set.id, set]));
+  const order = deliveryOrder(sets, deps);
+  const warnings = new Map(scheduleWarnings(sets, deps).map((w) => [w.id, w.message]));
 
   const byId = new Map(entities.map((e) => [e.id, { name: e.name }]));
   const views: ChangeSetView[] = sets.map((set) => {
@@ -31,9 +39,17 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
         names.set(change.entityId, { name: String((change.payload as { name?: string }).name ?? "New object") });
       }
     }
-    const projection = project(entities, relations, set.changes);
+    /**
+     * Projected against the estate it will actually meet: its blockers, delivered, in order.
+     * Without this a sequenced plan reads as broken — connecting to a system the previous plan
+     * introduces looks like connecting to nothing.
+     */
+    const blockerIds = new Set(blockersOf(set.id, deps).flatMap((id) => [id, ...blockersOf(id, deps)]));
+    const blockerChanges = order.filter((id) => blockerIds.has(id)).flatMap((id) => byIdSet.get(id)?.changes ?? []);
+    const context = blockerChanges.length ? contextOf(entities, relations, blockerChanges) : { entities, relations };
+    const projection = project(context.entities, context.relations, set.changes);
     const retirements = [...projection.retired];
-    const impact = retirements.length ? impactOf(entities, relations, retirements) : null;
+    const impact = retirements.length ? impactOf(context.entities, context.relations, retirements) : null;
     return {
       id: set.id,
       name: set.name,
@@ -43,6 +59,13 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
       deliveredAt: set.deliveredAt,
       summary: summarise(projection),
       problems: projection.problems,
+      dependsOn: blockersOf(set.id, deps).map((id) => ({
+        id,
+        name: byIdSet.get(id)?.name ?? "(deleted)",
+        status: byIdSet.get(id)?.status ?? "draft",
+      })),
+      blockedBy: blocking(set.id, sets, deps).map((b) => ({ id: b.id, name: b.name, reason: b.reason })),
+      scheduleWarning: warnings.get(set.id) ?? null,
       changes: set.changes.map((change) => ({
         id: change.id,
         op: change.op,
@@ -66,7 +89,7 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
 
   // The estate after everything that is planned but not yet delivered — the to-be worth quoting.
   const pending = sets.filter((set) => set.status === "draft" || set.status === "planned");
-  const future = settled(projectAll(entities, relations, pending));
+  const future = settled(projectAll(entities, relations, pending, deps));
 
   const options: EntityOption[] = entities
     .map((e) => ({ id: e.id, name: e.name, kind: e.kind }))
@@ -78,6 +101,7 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
       slug={slug}
       sets={views}
       entities={options}
+      order={order}
       asIs={{ entities: entities.length, relations: relations.length }}
       toBe={{ entities: future.entities.length, relations: future.relations.length }}
     />

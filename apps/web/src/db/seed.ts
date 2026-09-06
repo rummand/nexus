@@ -144,4 +144,8 @@ async function seedRoadmap(db: Db, workspaceId: string) {
       : []),
   ];
   await db.insert(s.changes).values(changes.map((c) => ({ ...c, createdAt: now })));
+
+  // The streaming plan writes into the same data lake the work-order move re-points; doing it the
+  // other way round would mean rewiring twice. That is a dependency, not a preference.
+  await db.insert(s.changeSetDependencies).values({ changeSetId: "chg_seed_streaming", dependsOnId: "chg_seed_workorders", createdAt: now });
 }

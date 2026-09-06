@@ -7,8 +7,9 @@ import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
-import { getChangeSet, graphRows } from "./read";
+import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { project } from "./project";
+import { blocking, wouldCycle } from "./order";
 import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload } from "./types";
 
 const now = () => new Date().toISOString();
@@ -143,6 +144,44 @@ export async function removeChange(changeId: string): Promise<ChangeResult> {
 }
 
 /**
+ * Make one change set wait for another.
+ *
+ * Refused if it would make a loop: two plans that each wait for the other is not a roadmap anybody
+ * can deliver, and the honest moment to say so is when the second edge is drawn rather than when
+ * somebody tries to deliver either of them.
+ */
+export async function addDependency(changeSetId: string, dependsOnId: string): Promise<ChangeResult> {
+  if (changeSetId === dependsOnId) return { error: "A change set cannot wait for itself." };
+  const db = await getDb();
+  const [set, blocker] = await Promise.all([
+    db.query.changeSets.findFirst({ where: eq(s.changeSets.id, changeSetId) }),
+    db.query.changeSets.findFirst({ where: eq(s.changeSets.id, dependsOnId) }),
+  ]);
+  if (!set || !blocker) return { error: "One of those change sets is gone." };
+  if (set.workspaceId !== blocker.workspaceId) return { error: "Those change sets are in different workspaces." };
+  if (set.status === "delivered") return { error: "This has been delivered; it is not waiting for anything." };
+
+  const deps = await listDependencies(db, set.workspaceId);
+  if (deps.some((d) => d.changeSetId === changeSetId && d.dependsOnId === dependsOnId)) return { ok: true };
+  if (wouldCycle(deps, changeSetId, dependsOnId)) {
+    return { error: `“${blocker.name}” already waits for this one, directly or through another plan.` };
+  }
+  await db.insert(s.changeSetDependencies).values({ changeSetId, dependsOnId, createdAt: now() }).onConflictDoNothing();
+  await touch(set.workspaceId, set.id);
+  return { ok: true };
+}
+
+export async function removeDependency(changeSetId: string, dependsOnId: string): Promise<ChangeResult> {
+  const db = await getDb();
+  const set = await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, changeSetId) });
+  await db
+    .delete(s.changeSetDependencies)
+    .where(and(eq(s.changeSetDependencies.changeSetId, changeSetId), eq(s.changeSetDependencies.dependsOnId, dependsOnId)));
+  if (set) await touch(set.workspaceId, set.id);
+  return { ok: true };
+}
+
+/**
  * Apply a change set to the graph. This is the one operation here that moves the estate.
  *
  * Retirement sets `lifecycle: retired` and severs the system's relations rather than deleting the
@@ -155,6 +194,20 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
   const set = await getChangeSet(db, changeSetId);
   if (!set) return { error: "That change set is gone." };
   if (set.status === "delivered") return { error: "This was already delivered." };
+
+  // Nothing is delivered out of order. A plan whose blocker has not landed is not merely early —
+  // its changes are written against an estate that does not exist yet.
+  const [all, deps] = await Promise.all([listChangeSets(db, set.workspaceId), listDependencies(db, set.workspaceId)]);
+  const waiting = blocking(set.id, all, deps);
+  if (waiting.length) {
+    const first = waiting[0]!;
+    return {
+      error:
+        waiting.length === 1
+          ? `This waits for “${first.name}”, which is ${first.reason === "abandoned" ? "abandoned — decide what happens to this plan first" : "not delivered yet"}.`
+          : `This waits for ${waiting.length} other change sets, starting with “${first.name}”.`,
+    };
+  }
 
   const { entities, relations } = await graphRows(db, set.workspaceId);
   const projection = project(entities, relations, set.changes);

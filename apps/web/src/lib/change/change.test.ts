@@ -87,8 +87,8 @@ describe("projecting a change set", () => {
 
   it("projects several change sets in date order", () => {
     const p = projectAll(ESTATE, WIRES, [
-      { targetDate: "2027-01-01", changes: [change("c2", "setAttribute", { entityId: "c", payload: { key: "owner", value: "Second" } })] },
-      { targetDate: "2026-06-01", changes: [change("c1", "setAttribute", { entityId: "c", payload: { key: "owner", value: "First" } })] },
+      { id: "s2", targetDate: "2027-01-01", changes: [change("c2", "setAttribute", { entityId: "c", payload: { key: "owner", value: "Second" } })] },
+      { id: "s1", targetDate: "2026-06-01", changes: [change("c1", "setAttribute", { entityId: "c", payload: { key: "owner", value: "First" } })] },
     ]);
     // the later plan wins, because it happens later
     expect(parseAttributes(p.entities.find((e) => e.id === "c")!.attributes).owner).toBe("Second");

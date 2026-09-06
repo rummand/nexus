@@ -948,6 +948,20 @@ retirements set `lifecycle: retired` and sever the system's relations rather tha
 because the graph is meant to outlive the things in it and a model that forgets a retired system
 cannot answer "what did we replace it with".
 
+**Sequencing.** A roadmap is not a list of independent intentions, so a change set can wait for
+another: "retire the Historian and stream telemetry" is only coherent once the plan that re-points
+the data lake has landed. Three things follow from modelling that rather than leaving it in
+somebody's head. Delivery is refused while a blocker is outstanding — transitively, and an
+abandoned blocker counts as outstanding, because a plan waiting on something that is not going to
+happen is stranded and that is a decision somebody has to make. A plan is projected *in the context
+of what it waits for* — its blockers applied first — so a change that connects to a system the
+previous plan introduces reads as sequenced rather than as stale, which is what it looked like
+before. And a plan dated earlier than something it waits for is told so: a date is a hope, but a
+roadmap should point at the contradiction rather than draw it neatly. Cycles are refused when the
+edge is drawn, so every reader can assume the graph is acyclic, and the to-be projection applies
+plans in delivery order — blockers before dependents, date within that — because applying them by
+date alone would be wrong the moment one waits for another.
+
 **A board can be seen through a plan.** The Viewpoint panel gains a state picker: as-is, or as of
 any change set. Retiring cards are struck through and hatched, changed ones marked, and the panel
 says how many planned objects are not on this board and offers to place them. Placing one is an
@@ -986,7 +1000,7 @@ ordinary one.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 51)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 52)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1182,6 +1196,8 @@ ordinary one.
   reported, and delivery.
 - A board seen as-is or as of a change set; planned cards are drawings of an intention and cannot
   create the system.
+- Dependencies between change sets: cycle-free, delivery blocked until blockers land, projection in
+  the context of what a plan waits for, delivery-order numbering and schedule contradictions named.
 
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
@@ -1307,6 +1323,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-06 | A change set is projected in the context of its blockers, not against today's graph. | Otherwise a plan that connects to a system the previous plan introduces reports a problem where there is only an order — and a roadmap that cries stale at correct sequencing teaches people to ignore it. |
+| 2026-09-06 | An abandoned blocker does not satisfy a dependency. | A plan waiting on something that is not going to happen is stranded. Letting it through quietly would hide exactly the decision somebody needs to make about it. |
+| 2026-09-06 | Dependency cycles are refused when the edge is written, not when delivery is attempted. | Two plans that each wait for the other is not a roadmap anybody can deliver, and the honest moment to say so is while somebody is drawing it. It also lets every reader assume the graph is acyclic. |
 | 2026-09-06 | A change set is an overlay projected over the graph, never a mutation of it. | As-is has to stay true or health, impact and provenance stop meaning anything; to-be has to be free to be wrong, because planning is. Keeping the two apart is also what lets two rival plans be compared without either having happened. |
 | 2026-09-06 | Delivering a retirement sets `lifecycle: retired` and severs its relations rather than deleting the node. | The graph outlives the things in it. A system retired last year is the answer to "what did we replace it with", and a model that forgets it cannot answer that. Deleting an entity stays a separate, deliberate act. |
 | 2026-09-06 | A card placed from a change set is marked `planned` and skipped by the board→graph sync. | Otherwise drawing an intention on a board would create the system on the next autosave — delivering part of a plan nobody approved, through a gesture that looks like arranging a picture. |
@@ -1329,6 +1348,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 52: plans that wait for other plans.** A change set can now depend on another,
+  which turns a list of intentions into a sequence. Delivery is refused while a blocker is
+  outstanding — transitively, and an abandoned blocker counts, because a plan waiting on something
+  that will not happen is stranded rather than free. Each plan is projected *in the context of what
+  it waits for*, which fixes a real wrongness in rev 51: a change connecting to a system the
+  previous plan introduces was reported as stale when it was only sequenced. Cycles are refused as
+  the edge is drawn, the to-be projection applies plans in delivery order rather than by date, the
+  roadmap numbers them in that order, and a plan dated before something it waits for is told so.
+  14 new unit tests over the ordering, and e2e over the waiting badge, the blocked delivery and the
+  refused cycle.
 
 - **2026-09-06 — Rev 51: the model in time.** The graph could only describe today. It now carries
   *change sets*: named, dated sets of intentions — introduce, retire, change, connect — held as

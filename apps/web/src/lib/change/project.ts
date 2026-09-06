@@ -1,6 +1,7 @@
 import type * as s from "@/db/schema";
 import { parseAttributes } from "@/lib/graph";
 import type { AddEntityPayload, AddRelationPayload, Change, Projection, SetAttributePayload } from "./types";
+import { deliveryOrder, type Dependency } from "./order";
 
 /**
  * Applying a change set to a graph — in memory, never to the database.
@@ -150,8 +151,31 @@ export function settled(projection: Projection): { entities: s.Entity[]; relatio
   };
 }
 
-/** Project several change sets in target-date order — the estate after everything currently planned. */
-export function projectAll(entities: s.Entity[], relations: s.Relation[], sets: Array<{ targetDate: string; changes: Change[] }>): Projection {
-  const ordered = [...sets].sort((a, b) => (a.targetDate || "9999").localeCompare(b.targetDate || "9999"));
+/**
+ * Project several change sets — the estate after everything currently planned.
+ *
+ * In delivery order, which is blockers before dependents and target date within that. Applying
+ * them by date alone would be wrong the moment one plan waits for another: a change set that
+ * connects to something its blocker introduces has to be applied after it, whatever the dates say.
+ */
+export function projectAll(
+  entities: s.Entity[],
+  relations: s.Relation[],
+  sets: Array<{ id: string; targetDate: string; changes: Change[] }>,
+  deps: Dependency[] = [],
+): Projection {
+  const byId = new Map(sets.map((set) => [set.id, set]));
+  const ordered = deliveryOrder(sets, deps).map((id) => byId.get(id)).filter((set): set is (typeof sets)[number] => Boolean(set));
   return project(entities, relations, ordered.flatMap((set) => set.changes));
+}
+
+/**
+ * The estate a change set will actually meet when its turn comes.
+ *
+ * Its blockers, delivered, in order. Without this a sequenced plan reads as broken: connecting to
+ * a system the *previous* plan introduces looks like connecting to something that is not in the
+ * graph, and the roadmap would report a problem where there is only an order.
+ */
+export function contextOf(entities: s.Entity[], relations: s.Relation[], blockerChanges: Change[]): { entities: s.Entity[]; relations: s.Relation[] } {
+  return settled(project(entities, relations, blockerChanges));
 }

@@ -2003,3 +2003,21 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .fact-card.planned { background: repeating-linear-gradient(135deg, rgba(47, 125, 50, 0.05) 0 10px, transparent 10px 20px), #fff; border-style: dashed; }
 .fact-change-badge.planned { background: #eef7ee; color: #2f7d32; }
 .inspector-planned { background: #f3faf4; border: 1px dashed #a8d3ae; border-radius: 10px; color: #3f6b45; font-size: 11.5px; line-height: 1.55; margin: 0; padding: 9px 11px; }
+.roadmap-order { background: #eef2f7; border-radius: 999px; color: #6c7a91; flex: 0 0 auto; font-size: 10.5px; font-weight: 800; height: 19px; line-height: 19px; min-width: 19px; text-align: center; }
+.roadmap-item.delivered .roadmap-order { background: #e7f5e8; color: #2f7d32; }
+.roadmap-status.blocked { align-items: center; background: #fff4e5; color: #8a5a17; display: inline-flex; gap: 4px; }
+.roadmap-schedule-warning { align-items: center; background: #fff7ed; border: 1px solid #f2d5b4; border-radius: 10px; color: #8a5a17; display: flex; font-size: 12.5px; gap: 7px; margin: 0; padding: 9px 12px; }
+
+.roadmap-depends { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 7px; padding: 10px 12px; }
+.roadmap-depends > b { align-items: center; color: #5b6879; display: flex; font-size: 11.5px; gap: 6px; letter-spacing: 0.03em; text-transform: uppercase; }
+.roadmap-depends > b svg { color: #9aa6b8; }
+.roadmap-depends-none { color: #9aa6b8; font-size: 12.5px; }
+.roadmap-depends ul { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.roadmap-depends li { align-items: center; background: #fff; border: 1px solid var(--line); border-left: 3px solid #cbd5e1; border-radius: 8px; display: flex; gap: 9px; padding: 6px 9px; }
+.roadmap-depends li.outstanding { border-left-color: #e0a458; }
+.roadmap-depends li.satisfied { border-left-color: #6fbf73; }
+.roadmap-depends li span { color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.roadmap-depends li small { color: #8a94a6; font-size: 11.5px; }
+.roadmap-depends li button { margin-left: auto; padding: 2px 6px; }
+.roadmap-depends-add { display: flex; gap: 7px; }
+.roadmap-depends-add select { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); flex: 1 1 auto; font: inherit; font-size: 12.5px; min-height: 30px; max-width: 280px; padding: 0 9px; }

@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import {
   AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, GitBranch, Link2,
-  Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
+  Lock, Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
 } from "lucide-react";
-import { addChange, createChangeSet, deleteChangeSet, deliverChangeSet, removeChange, updateChangeSet } from "@/lib/change/actions";
+import { addChange, addDependency, createChangeSet, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
 import type { Nature } from "@/lib/change/impact";
 
@@ -33,6 +33,12 @@ export interface ChangeSetView {
   deliveredAt: string | null;
   summary: ChangeSummary;
   problems: Array<{ changeId: string; message: string }>;
+  /** What this waits for, in the words of the roadmap. */
+  dependsOn: Array<{ id: string; name: string; status: ChangeSetStatus }>;
+  /** Of those, the ones still in the way — transitively, and including abandoned ones. */
+  blockedBy: Array<{ id: string; name: string; reason: "not delivered" | "abandoned" }>;
+  /** Dated before something it waits for. A contradiction worth pointing at, not an error. */
+  scheduleWarning: string | null;
   changes: Array<{ id: string; op: ChangeOp; note: string; entityId: string | null; subject: string; detail: string }>;
   impact: {
     summary: string;
@@ -58,11 +64,13 @@ const NATURE_LABEL: Record<Nature, string> = {
   connected: "is connected to it",
 };
 
-export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
+export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }: {
   workspaceId: string;
   slug: string;
   sets: ChangeSetView[];
   entities: EntityOption[];
+  /** Delivery order — blockers before dependents — used to number the plans. */
+  order: string[];
   asIs: { entities: number; relations: number };
   toBe: { entities: number; relations: number };
 }) {
@@ -73,6 +81,8 @@ export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
 
   const delta = { entities: toBe.entities - asIs.entities, relations: toBe.relations - asIs.relations };
   const planned = sets.filter((s) => s.status === "draft" || s.status === "planned");
+  const position = new Map(order.map((id, i) => [id, i + 1]));
+  const blockedCount = sets.filter((s) => s.status !== "delivered" && s.blockedBy.length > 0).length;
 
   return (
     <section className="studio-home-main roadmap" aria-label="Roadmap">
@@ -100,7 +110,10 @@ export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
         </div>
         <div className="roadmap-arrow" aria-hidden>
           <GitBranch size={18} />
-          <em>{planned.length} change set{planned.length === 1 ? "" : "s"} planned</em>
+          <em>
+            {planned.length} change set{planned.length === 1 ? "" : "s"} planned
+            {blockedCount > 0 && <><br />{blockedCount} waiting on another</>}
+          </em>
         </div>
         <div className="roadmap-state to-be">
           <small>To-be, if everything planned lands</small>
@@ -154,14 +167,33 @@ export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
             <article className="roadmap-card">
               <button type="button" className="roadmap-card-head" onClick={() => setOpenId(openId === set.id ? null : set.id)} aria-expanded={openId === set.id}>
                 {openId === set.id ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                <span className="roadmap-order" title="Delivery order: blockers before dependents">{position.get(set.id) ?? "—"}</span>
                 <strong>{set.name}</strong>
                 <i className={`roadmap-status ${set.status}`}>{STATUS_LABEL[set.status]}</i>
+                {set.status !== "delivered" && set.blockedBy.length > 0 && (
+                  <i className="roadmap-status blocked" title={set.blockedBy.map((b) => b.name).join(", ")}><Lock size={10} /> waiting</i>
+                )}
                 <SummaryChips summary={set.summary} />
               </button>
 
               {openId === set.id && (
                 <div className="roadmap-card-body">
                   {set.description && <p className="roadmap-description">{set.description}</p>}
+
+                  {set.scheduleWarning && (
+                    <p className="roadmap-schedule-warning"><CalendarDays size={13} /> {set.scheduleWarning}</p>
+                  )}
+
+                  <Dependencies
+                    set={set}
+                    all={sets}
+                    pending={pending}
+                    onAdd={(dependsOnId) => start(async () => {
+                      const r = await addDependency(set.id, dependsOnId);
+                      if ("error" in r) setMessage(r.error);
+                    })}
+                    onRemove={(dependsOnId) => start(async () => { await removeDependency(set.id, dependsOnId); })}
+                  />
 
                   {set.problems.length > 0 && (
                     <div className="roadmap-problems">
@@ -241,7 +273,8 @@ export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
                         <button
                           type="button"
                           className="primary-home-button"
-                          disabled={pending || set.changes.length === 0}
+                          disabled={pending || set.changes.length === 0 || set.blockedBy.length > 0}
+                          title={set.blockedBy.length ? `Waiting for ${set.blockedBy.map((b) => b.name).join(", ")}` : undefined}
                           data-deliver
                           onClick={() => {
                             const s2 = set.summary;
@@ -282,6 +315,55 @@ export function Roadmap({ workspaceId, slug, sets, entities, asIs, toBe }: {
         ))}
       </ol>
     </section>
+  );
+}
+
+/**
+ * What this plan waits for.
+ *
+ * Shown on every change set, not just the ones that have a dependency, because the absence of one
+ * is also information — a plan that waits for nothing is a plan somebody can start.
+ */
+function Dependencies({ set, all, pending, onAdd, onRemove }: {
+  set: ChangeSetView;
+  all: ChangeSetView[];
+  pending: boolean;
+  onAdd: (dependsOnId: string) => void;
+  onRemove: (dependsOnId: string) => void;
+}) {
+  const [adding, setAdding] = useState("");
+  const taken = new Set([set.id, ...set.dependsOn.map((d) => d.id)]);
+  const candidates = all.filter((c) => !taken.has(c.id));
+  const blocked = new Set(set.blockedBy.map((b) => b.id));
+
+  return (
+    <div className="roadmap-depends" data-depends>
+      <b><Lock size={12} /> Waits for</b>
+      {set.dependsOn.length === 0 ? (
+        <span className="roadmap-depends-none">nothing — this can start whenever you like</span>
+      ) : (
+        <ul>
+          {set.dependsOn.map((d) => (
+            <li key={d.id} className={blocked.has(d.id) ? "outstanding" : "satisfied"}>
+              <span>{d.name}</span>
+              <small>{d.status === "delivered" ? "delivered" : d.status === "abandoned" ? "abandoned — this plan is stranded" : "not delivered yet"}</small>
+              {set.status !== "delivered" && (
+                <button type="button" className="ghost-button" disabled={pending} aria-label={`Stop waiting for ${d.name}`} onClick={() => onRemove(d.id)}><X size={12} /></button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {set.status !== "delivered" && candidates.length > 0 && (
+        <div className="roadmap-depends-add">
+          <select value={adding} onChange={(e) => setAdding(e.target.value)} aria-label="Wait for another change set">
+            <option value="">Wait for…</option>
+            {candidates.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <button type="button" className="ghost-button" disabled={pending || !adding} onClick={() => { onAdd(adding); setAdding(""); }}>Add</button>
+        </div>
+      )}
+    </div>
   );
 }
 
