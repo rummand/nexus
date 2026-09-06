@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Columns3, GitMerge, ListPlus, SpellCheck, Sparkles, Tag, Trash2, Type, Unlink, X } from "lucide-react";
+import { BookOpen, Bot, Check, Columns3, GitMerge, Link2, ListPlus, SpellCheck, Sparkles, Tag, Trash2, Type, Unlink, X } from "lucide-react";
 import type { Proposal } from "@/lib/graph-types";
 import { acceptProposal, acceptProposals, dismissProposal } from "@/lib/actions";
+import { askTheAgent, forgetAgentRun } from "@/lib/agent/actions";
 
 const ICONS: Record<Proposal["type"], React.ReactNode> = {
   merge: <GitMerge size={16} />,
   kind: <Tag size={16} />,
   untyped: <Type size={16} />,
   relation: <Unlink size={16} />,
+  newRelation: <Link2 size={16} />,
   orphan: <Trash2 size={16} />,
   attributeKey: <Columns3 size={16} />,
   attributeValue: <SpellCheck size={16} />,
@@ -21,23 +23,38 @@ const ACCEPT_LABEL: Record<Proposal["type"], string> = {
   kind: "Rename",
   untyped: "Set kind",
   relation: "Label",
+  newRelation: "Connect",
   orphan: "Delete",
   attributeKey: "Rename key",
   attributeValue: "Normalise",
   attributeMissing: "Set value",
 };
 
-/** Agent proposals: deterministic suggestions with accept / dismiss (LeanFlow panel styling). */
-export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string; proposals: Proposal[] }) {
+/** Whether the model can be asked, and what it said last time. Resolved on the server. */
+export interface AgentState {
+  ready: boolean;
+  /** Why it cannot be asked, in words somebody can act on. */
+  hint: string;
+  lastAskedAt: string | null;
+  grounded: string[];
+}
+
+/** Agent proposals: rule-derived and model-derived suggestions, with accept / dismiss. */
+export function ProposalsPanel({ workspaceId, proposals, agent }: { workspaceId: string; proposals: Proposal[]; agent: AgentState }) {
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<string | null>(null);
+  const [rejected, setRejected] = useState<string[]>([]);
+  const fromAgent = proposals.filter((p) => p.source === "agent");
+  const grounded = fromAgent[0]?.grounded ?? agent.grounded;
   /**
-   * Only the ones that need no judgement: high confidence, and no field for a human to fill in.
-   * A bulk button that also applies the guesses would be a way of losing trust quickly.
+   * Only the ones that need no judgement: high confidence, deterministic, and no field for a human
+   * to fill in. A model's suggestion is never in here however sure it sounds — bulk-accepting a
+   * guess fifty at a time is the fastest way to lose the trust the queue depends on.
    */
-  const bulk = proposals.filter((p) => p.confidence === "high" && p.action.kind !== "setKind" && p.action.kind !== "setRelationKind");
+  const bulk = proposals.filter((p) => p.confidence === "high" && p.source !== "agent" && p.action.kind !== "setKind" && p.action.kind !== "setRelationKind");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? proposals : proposals.slice(0, 6);
@@ -59,8 +76,8 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
           <h2 className="flex items-center gap-2"><Sparkles size={20} style={{ color: "var(--blue)" }} /> Agent proposals</h2>
           <p>
             {proposals.length === 0
-              ? "Nothing to propose right now — the graph is consistent."
-              : `${proposals.length} suggestion${proposals.length === 1 ? "" : "s"} from the resolution rules${counts.high ? ` · ${counts.high} high confidence` : ""}. Accept to apply, dismiss to remember your decision.`}
+              ? "Nothing to propose right now — the graph is consistent. Ask the agent to read it if you want a second opinion."
+              : `${proposals.length} suggestion${proposals.length === 1 ? "" : "s"}${fromAgent.length ? `, ${fromAgent.length} from the agent` : " from the resolution rules"}${counts.high ? ` · ${counts.high} high confidence` : ""}. Accept to apply, dismiss to remember your decision.`}
           </p>
         </div>
         <div className="proposal-header-actions">
@@ -90,21 +107,65 @@ export function ProposalsPanel({ workspaceId, proposals }: { workspaceId: string
               Accept the {bulk.length} confident ones
             </button>
           )}
-          <span className="proposal-legend">Rules today · LLM-backed agents plug into the same accept / dismiss flow</span>
+          {agent.ready ? (
+            <button
+              type="button"
+              className="ghost-button"
+              disabled={pending}
+              data-ask-agent
+              onClick={() => {
+                setBusy("agent");
+                setRunResult(null);
+                start(async () => {
+                  const r = await askTheAgent(workspaceId);
+                  setBusy(null);
+                  if ("error" in r) { setRunResult(r.error); setRejected([]); return; }
+                  setRejected(r.rejected);
+                  setRunResult(
+                    [
+                      r.note,
+                      `${r.proposed} proposal${r.proposed === 1 ? "" : "s"} survived checking${r.rejected.length ? `, ${r.rejected.length} thrown away` : ""}.`,
+                      r.sampled ? "The graph was too big to send whole, so it read the objects most in need of attention." : "",
+                    ].filter(Boolean).join(" "),
+                  );
+                });
+              }}
+            >
+              <Bot size={16} /> {busy === "agent" && pending ? "Reading the graph…" : "Ask the agent"}
+            </button>
+          ) : (
+            <span className="proposal-legend" data-agent-unavailable>{agent.hint || "No model configured — the rules run on their own."}</span>
+          )}
+          {fromAgent.length > 0 && (
+            <button type="button" className="ghost-button" disabled={pending} onClick={() => { setBusy("forget"); start(async () => { await forgetAgentRun(workspaceId); setRunResult(null); setRejected([]); setBusy(null); }); }}>
+              <X size={14} /> Clear the agent&rsquo;s run
+            </button>
+          )}
         </div>
       </div>
       {bulkResult && <p className="proposal-bulk-result">{bulkResult}</p>}
+      {runResult && <p className="proposal-bulk-result" data-agent-result>{runResult}</p>}
+      {grounded.length > 0 && (
+        <p className="proposal-grounding"><BookOpen size={13} /> Grounded in: {grounded.join(" · ")}</p>
+      )}
+      {rejected.length > 0 && (
+        <details className="proposal-rejected">
+          <summary>{rejected.length} claim{rejected.length === 1 ? "" : "s"} thrown away before you saw {rejected.length === 1 ? "it" : "them"}</summary>
+          <ul>{rejected.slice(0, 12).map((line, i) => <li key={i}>{line}</li>)}</ul>
+        </details>
+      )}
       {proposals.length > 0 && (
         <div className="proposal-list">
           {visible.map((p) => {
-            const needsInput = (p.type === "untyped" || p.type === "relation" || p.type === "attributeMissing");
-            const value = inputs[p.key] ?? (p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" ? p.action.to : "");
+            const needsInput = (p.type === "untyped" || p.type === "relation" || p.type === "newRelation" || p.type === "attributeMissing");
+            const value = inputs[p.key] ?? (p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" || p.action.kind === "addRelation" ? p.action.to : "");
             return (
               <article key={p.key} className={`proposal-card ${p.confidence}`}>
                 <div className="proposal-icon">{ICONS[p.type]}</div>
                 <div className="proposal-body">
                   <div className="proposal-head">
                     <strong>{p.title}</strong>
+                    {p.source === "agent" && <i className="proposal-source"><Bot size={11} /> agent</i>}
                     <i className={`confidence ${p.confidence}`}>{p.confidence}</i>
                   </div>
                   <p>{p.detail}</p>

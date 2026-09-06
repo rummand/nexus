@@ -119,3 +119,55 @@ export const HEALTH: DocPage = {
     { kind: "try", href: "/w/:slug/graph", label: "See your score" },
   ],
 };
+
+export const AGENT: DocPage = {
+  slug: "agent",
+  title: "Asking the agent to read the model",
+  summary: "A model reads the whole graph and proposes corrections — each one quoting the words it read, and none of them applied until you say so.",
+  keywords: ["agent", "llm", "model", "proposal", "review", "queue", "grounded", "citation", "ai", "classify"],
+  blocks: [
+    { kind: "prose", text: "Most of what Nexus proposes comes from rules: two objects with one name, a kind spelled two ways, an attribute almost every sibling carries. Rules are fast, free and always give the same answer — and they can only ever find what somebody wrote a rule for. A rule can see that two objects share a name. It cannot see that “PI Server” and “Historian” are the same product, that something described as “our work-order system” is an Application, or that a description saying “pulls meter reads from the head-end” is a relation nobody has drawn." },
+    { kind: "prose", text: "**Ask the agent** on the Knowledge graph page hands the whole graph to a model and asks what is wrong with it. What comes back is a *proposal*, in the same review queue as the rules', marked with an **agent** badge." },
+    { kind: "shot", src: "graph-proposals", alt: "The agent proposals queue with merges, a kind rename and attribute suggestions", caption: "The review queue. The agent's suggestions arrive here beside the rules', and are accepted or dismissed the same way." },
+    { kind: "heading", text: "What it may propose", id: "verbs" },
+    {
+      kind: "table",
+      columns: ["Change", "When"],
+      rows: [
+        ["Set a kind", "An object has no kind, or the wrong one."],
+        ["Rename a kind", "The workspace spells one kind two ways, or uses a word the field does not."],
+        ["Merge", "Two objects are the same thing recorded twice."],
+        ["Set an attribute", "An attribute is missing and the object's own words answer it."],
+        ["Connect", "Two objects are related and nobody has drawn it."],
+      ],
+    },
+    { kind: "prose", text: "That is the entire list. There is no verb for deleting an object, editing a board, changing a grant or reaching anything outside the graph — so the worst a confused or hostile model can produce is a suggestion somebody has to click." },
+    { kind: "heading", text: "Every claim quotes the graph", id: "evidence" },
+    { kind: "prose", text: "The agent has to name the object it read and copy the words that justify the change, and the words are checked against that object's own text. A claim it cannot quote is thrown away before you see it — and the count of what was thrown away is shown, so you can tell the difference between a quiet agent and a wrong one." },
+    { kind: "note", tone: "why", title: "Why the quote, and not just a confidence score", text: "A confidence score is the model's opinion of its own opinion. A quote is checkable: “the model thinks this is an Application” is an assertion, and “the model read *work-order management system* on it” is evidence. This is the same rule intake applies to a transcript." },
+    { kind: "heading", text: "How much its opinion is worth", id: "confidence" },
+    {
+      kind: "list",
+      items: [
+        "An agent proposal is never **high** confidence, so it is never in **Accept the confident ones**. A model's guess should not be applied fifty at a time by somebody in a hurry.",
+        "A proposed merge is always **low**: it is the one action here that cannot be undone.",
+        "It will never overwrite an attribute that already has a value. If you answered, that is the answer.",
+        "Where the agent and a rule spot the same thing, one card is shown — the one that can say why.",
+      ],
+    },
+    { kind: "heading", text: "What it was reading", id: "grounding" },
+    { kind: "prose", text: "The run is grounded in the EA knowledge base: the practice most relevant to the task is retrieved and put in front of the model, and the statements it was given are shown under the queue. This agent's expensive mistake is a vocabulary one — calling a department a capability, a file drop an interface — and the corpus has the field's own definitions." },
+    { kind: "heading", text: "Housekeeping", id: "housekeeping" },
+    {
+      kind: "list",
+      items: [
+        "The agent runs when you ask it, never on page load. It costs money and a second or two, and an agent that runs unbidden is one people learn to resent.",
+        "There is one current run per workspace: asking again replaces the last answer rather than piling up.",
+        "Accepting or dismissing removes the card and remembers the decision, so a later run cannot raise it again.",
+        "**Clear the agent's run** throws the whole answer away without deciding on any of it.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "The button appears only when a model is configured (`ANTHROPIC_API_KEY` and `NEXUS_MODEL`). Without one the panel says so and the rules carry on by themselves — nothing here is required for the rest of Nexus to work." },
+    { kind: "try", href: "/w/:slug/graph", label: "Open the knowledge graph" },
+  ],
+};

@@ -234,6 +234,41 @@ export const agentDecisions = pgTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.key] })],
 );
 
+/**
+ * Proposals a model made about the graph, kept until somebody decides on them.
+ *
+ * The rule-derived proposals in `src/lib/proposals.ts` are recomputed on every page load because
+ * they are cheap and deterministic. A model's are neither: asking costs money and a second or two,
+ * and asking twice can give two different answers. So the answer is written down, reviewed at
+ * leisure, and — once accepted or dismissed — deleted, with the decision remembered in
+ * `agent_decisions` under the same key so a later run cannot raise it again.
+ */
+export const agentProposals = pgTable(
+  "agent_proposals",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Stable across runs, derived from the change proposed — see src/lib/agent/validate.ts. */
+    key: text("key").notNull(),
+    type: text("type").notNull(),
+    confidence: text("confidence", { enum: ["high", "medium", "low"] }).notNull(),
+    title: text("title").notNull(),
+    detail: text("detail").notNull(),
+    /** JSON array of entity ids. */
+    entityIds: text("entity_ids").notNull().default("[]"),
+    /** JSON ProposalAction — the only thing accepting it can do. */
+    action: text("action").notNull(),
+    /** JSON array: the words in the graph that justify it, quoted. */
+    evidence: text("evidence").notNull().default("[]"),
+    /** JSON array: the practice from the knowledge base the run was grounded in. */
+    grounded: text("grounded").notNull().default("[]"),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [uniqueIndex("agent_proposals_key_idx").on(t.workspaceId, t.key)],
+);
+
 // ---- intake ----------------------------------------------------------------
 // Unconsolidated data arrives as a *source*: an uploaded transcript, a pasted document, a
 // connector sync. A source is kept whole and raw, because an extraction is only arguable if the
@@ -430,6 +465,7 @@ export type Board = typeof boards.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type Relation = typeof relations_.$inferSelect;
 export type BoardVersion = typeof boardVersions.$inferSelect;
+export type AgentProposalRow = typeof agentProposals.$inferSelect;
 
 // ---- meta-model ------------------------------------------------------------------------------
 // The meta-model is *emergent*: kinds, relation types and attribute keys are derived from the

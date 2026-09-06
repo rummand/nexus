@@ -42,7 +42,7 @@ export interface EntityDetail {
   duplicates: Array<{ id: string; kind: string; name: string; description: string }>;
 }
 
-export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "orphan" | "attributeKey" | "attributeValue" | "attributeMissing";
+export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "newRelation" | "orphan" | "attributeKey" | "attributeValue" | "attributeMissing";
 
 export type ProposalAction =
   | { kind: "merge"; survivorId: string; otherIds: string[] }
@@ -55,7 +55,9 @@ export type ProposalAction =
   /** Replace one attribute value with another for every entity that carries it. */
   | { kind: "renameAttributeValue"; key: string; from: string; to: string }
   /** Set one attribute on one entity (the value may be supplied by the reviewer). */
-  | { kind: "setAttribute"; entityId: string; key: string; to: string };
+  | { kind: "setAttribute"; entityId: string; key: string; to: string }
+  /** Draw a relation that is not in the graph yet. `to` is the relation type, editable on review. */
+  | { kind: "addRelation"; fromEntityId: string; toEntityId: string; to: string };
 
 export interface Proposal {
   key: string;
@@ -66,6 +68,13 @@ export interface Proposal {
   entityIds: string[];
   action: ProposalAction;
   evidence?: string[];
+  /**
+   * Who suggested it. Rule-derived proposals are deterministic and re-derivable; a model's are
+   * neither, so they are labelled, kept out of bulk accept, and reviewed one at a time.
+   */
+  source?: "rules" | "agent";
+  /** For an agent proposal: the practice from the knowledge base that shaped the run. */
+  grounded?: string[];
 }
 
 export interface ImportPayload {

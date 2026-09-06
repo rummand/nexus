@@ -655,6 +655,19 @@ try {
   await page.waitForTimeout(1200);
   assert.equal(await page.locator(".fact-card.change-retired").count(), 0, "returning to today clears the overlay");
 
+  // ---- the agent that reads the graph -------------------------------------------------------
+  // No model is configured in the e2e environment, and the point of this check is that Nexus says
+  // so rather than offering a button that would fail: the rules carry on by themselves.
+  await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+  await page.waitForSelector("#proposals");
+  const agentReady = await page.locator("[data-ask-agent]").count();
+  if (agentReady) {
+    assert.equal(await page.locator("[data-agent-unavailable]").count(), 0, "either the agent can be asked or it says why");
+  } else {
+    assert.match(await page.locator("[data-agent-unavailable]").innerText(), /ANTHROPIC_API_KEY|NEXUS_MODEL|No model/,
+      "with no model configured the panel names what is missing instead of failing");
+  }
+
   // ---- the timeline: a canvas capability, and the roadmap as one thing you can say with it ----
   // On any board, an attribute that reads as a date can become the axis. This is checked on an
   // ordinary landscape board — not the roadmap — because the point is that it is not a roadmap
@@ -733,7 +746,10 @@ try {
 
   await page.goto(`${base}/w/acme-energy/docs/roadmap`, { waitUntil: "load" });
   await page.waitForSelector(".doc-article");
-  await page.waitForTimeout(1500);
+  // Screenshots below the fold are lazy: walk the page the way a reader would before asking
+  // whether they loaded, or the check measures the viewport rather than the documentation.
+  for (const shot of await page.locator(".doc-shot img").all()) await shot.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(2000);
   // the promise of illustrated docs is that the illustrations are there
   const shots = await page.$$eval(".doc-shot img", (els) => els.map((e) => ({ src: e.getAttribute("src"), loaded: e.naturalWidth > 0 })));
   assert.ok(shots.length > 0, "the page is illustrated");

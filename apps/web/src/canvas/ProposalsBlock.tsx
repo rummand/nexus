@@ -62,13 +62,13 @@ export function ProposalsBlock({ entityId }: { entityId: string }) {
   );
 }
 
-const ACCEPT: Record<Proposal["type"], string> = { merge: "Merge", kind: "Rename kind", untyped: "Set kind", relation: "Label", orphan: "Delete", attributeKey: "Rename key", attributeValue: "Normalise", attributeMissing: "Set value" };
+const ACCEPT: Record<Proposal["type"], string> = { merge: "Merge", kind: "Rename kind", untyped: "Set kind", relation: "Label", newRelation: "Connect", orphan: "Delete", attributeKey: "Rename key", attributeValue: "Normalise", attributeMissing: "Set value" };
 
 function needsInput(p: Proposal) {
-  return p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute";
+  return p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" || p.action.kind === "addRelation";
 }
 function defaultInput(p: Proposal) {
-  return p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" ? p.action.to : "";
+  return p.action.kind === "setKind" || p.action.kind === "setRelationKind" || p.action.kind === "setAttribute" || p.action.kind === "addRelation" ? p.action.to : "";
 }
 function placeholder(p: Proposal) {
   return p.action.kind === "setKind" ? "Kind, e.g. Application" : p.action.kind === "setAttribute" ? `Value for ${p.action.key}` : "Relation label";
@@ -124,6 +124,11 @@ export function applyLocally(store: CanvasStore, p: Proposal, override?: string)
       for (const c of byEntity(a.entityId)) { const { entityId: _gone, ...meta } = c.meta ?? {}; void _gone; patch[c.id] = { meta }; }
       break;
     }
+    case "addRelation":
+      // Nothing to mirror: the relation is created in the graph, and a board shows it when the
+      // reader asks for relations (Viewpoint → Show all relations). Drawing a connector nobody
+      // asked for onto the board they are looking at would be the ruder choice.
+      break;
   }
   if (Object.keys(patch).length) s.updateElements(patch, { history: true });
 }

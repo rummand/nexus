@@ -85,6 +85,13 @@
       "when": 1788686521110,
       "tag": "0011_good_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788712386360,
+      "tag": "0012_closed_hex",
+      "breakpoints": true
     }
   ]
 }

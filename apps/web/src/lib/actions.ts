@@ -445,6 +445,26 @@ export async function acceptProposal(workspaceId: string, proposal: Proposal, ov
       await setEntityAttribute(db, a.entityId, a.key, to);
       break;
     }
+    case "addRelation": {
+      // The reviewer may relabel it on the way in; an unlabelled relation is one the next set of
+      // proposals would only ask about again.
+      const kind = (override ?? a.to).trim();
+      if (!kind) return { error: "A relation type is required" };
+      const ends = await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, workspaceId), inArray(s.entities.id, [a.fromEntityId, a.toEntityId])));
+      if (ends.length < 2) return { error: "One of those objects is no longer in the graph" };
+      await db.insert(s.relations_).values({
+        id: `rel_${nanoid(10)}`,
+        workspaceId,
+        fromEntityId: a.fromEntityId,
+        toEntityId: a.toEntityId,
+        kind,
+        attributes: "{}",
+        source: "agent",
+        createdAt: now(),
+        updatedAt: now(),
+      });
+      break;
+    }
   }
   await recordDecision(db, workspaceId, proposal.key, "accepted");
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");

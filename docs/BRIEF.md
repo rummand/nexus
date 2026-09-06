@@ -1003,7 +1003,7 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty pages written for the person doing the architecture rather than the person
+a menu item: twenty-one pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then getting data in, then time.
 
@@ -1093,6 +1093,51 @@ roadmap card is a statement *about* a system at a date; it records which one it 
 board still says which boxes do not exist yet.
 
 
+### 5.26 The agent that reads the graph (v0.2)
+
+§2.2 says the agents build the meta-model. Until now the only model in the product read *sources* —
+a transcript, a document — and everything proposed about the graph itself came from hand-written
+rules. Rules are fast, free and deterministic, and they can only find what somebody wrote a rule
+for: that two objects share a name, that a kind is spelled two ways. They cannot see that "PI
+Server" and "Historian" are the same product, that a thing described as "our work-order system" is
+an Application, or that a description saying "pulls meter reads from the head-end" is a relation
+nobody has drawn.
+
+**Ask the agent**, on the Knowledge graph page, hands the whole graph to a model and asks what is
+wrong with it. What comes back is a plan, not an edit — the same plan-then-validate boundary as
+Compose (§5.17), pointed at the model of the estate rather than at a board:
+
+- **Five verbs and no others.** setKind, renameKind, merge, setAttribute, addRelation. There is no
+  verb for deleting an object, editing a board, changing a grant or reaching anything outside the
+  graph, so the worst a confused or hostile model can produce is a card somebody has to click.
+- **Every id is checked** against the graph that was actually sent, so a hallucinated system cannot
+  become a proposal about a system.
+- **Every claim must quote the graph.** The model names the object it read and copies the words it
+  read; the words are checked against that object's own kind, name, description and attributes. An
+  unquotable claim is dropped and the count of drops is shown, so a quiet agent and a wrong one look
+  different. This is the discipline intake already applies to a transcript (§5.15) — and it is the
+  difference between "the model thinks this is an Application" and "the model read *work-order
+  management* on it".
+- **Its confidence is capped, not trusted.** A model proposal is never "high", so it is never in
+  *Accept the confident ones*; a proposed merge is always "low", because it is the one irreversible
+  action here. It may fill a blank attribute and never overwrite one somebody has answered.
+
+The run is grounded in the EA knowledge base (§5.20) under the `modelling` scope, and the statements
+it was given are shown beneath the queue. That closes a loop the corpus had been missing: until now
+the knowledge base had a library page and no consumer.
+
+Model proposals are stored (`agent_proposals`) rather than recomputed, because asking costs money
+and gives a different answer each time; a re-run replaces the last one, so the agent has one current
+opinion rather than a growing pile. Accepting or dismissing removes the row, and the decision in
+`agent_decisions` is what stops a later run raising it again. The agent and the rules share a key
+scheme on purpose: when both spot the same thing one card is shown, and it is the one that can say
+why — a rule that has noticed an untyped object knows only that it is untyped, while the agent
+arrives quoting the sentence it read.
+
+Everything that decides whether an answer is safe is pure, so the interesting half of the agent is
+tested without a key — including the answers a model gets wrong, which is the half that matters.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1122,7 +1167,7 @@ board still says which boxes do not exist yet.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 59)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 60)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1331,8 +1376,18 @@ board still says which boxes do not exist yet.
 - **Lay out on a board** on the roadmap: the chosen plans drawn as an ordinary board, one card per
   object with `when`, `change` and `effect` as attributes, laid out by that same timeline.
 
+### The agent that reads the graph (v0.2)
+- **Ask the agent** on the Knowledge graph page: a model reads the whole graph and proposes
+  corrections into the same review queue as the rules, badged and reviewed one at a time.
+- Five verbs and no others; every id checked against the graph; every claim quoting the object it
+  came from, with the quote checked and the drops counted.
+- Never high confidence, never a bulk accept, never an overwrite of an attribute somebody answered,
+  and a proposed merge always low.
+- Grounded in the EA knowledge base, with the practice it was given shown under the queue.
+- One stored run per workspace; a decision removes the card and is remembered.
+
 ### Documentation (v0.2)
-- Twenty in-app pages under **Documentation**, from a first board through to plateaus, with a
+- Twenty-one in-app pages under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
 - Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
 - Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
@@ -1486,6 +1541,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | Timeline columns are equal-width periods, not a linear time scale. | A linear scale spends most of the board on the gap between two clusters and squeezes the clusters into nothing: accurate and unreadable. Equal periods keep every card legible and still put earlier things to the left, which is all anybody reads off a timeline. |
 | 2026-09-06 | A date that does not clearly parse is parked, never guessed. | A card silently placed in 1970 is a lie the reader cannot catch; a card in the "no date" lane is a question somebody can answer. This is why a bare `1200` is a cost, not a year. |
 | 2026-09-06 | Cards on a roadmap board reference their object in `meta.about`, not `meta.entityId`. | An entity-backed card is synchronised with its entity both ways: the board would lose its `when` and `effect` on open, and write the change note into the system's description on save. A roadmap card is a statement about a system at a date, not the system. |
+| 2026-09-06 | The model may propose five changes to the graph and nothing else. | A closed verb list is the whole safety story: the graph, entity names and imported documents all go into the prompt, so anything in the workspace could in principle try to instruct the model. It does not matter when the only thing it can express is a suggestion somebody has to click, and there is no verb for deleting, exporting or calling anything. |
+| 2026-09-06 | Every agent proposal must quote the object it came from, checked against that object's text. | A confidence score is the model's opinion of its own opinion; a quote is checkable. It is also what makes a wrong agent visible — the number of claims thrown away is shown rather than swallowed into "no proposals", which would read as "your graph is fine". |
+| 2026-09-06 | An agent proposal is never high confidence and never bulk-acceptable. | Bulk accept exists for deterministic rules that need no judgement. Applying a model's guesses fifty at a time is the fastest way to lose the trust the whole review queue depends on, and a merge — the one irreversible action — is capped lower still. |
+| 2026-09-06 | The agent runs when asked, and its answer is stored rather than recomputed. | It costs money and a second or two, and gives a different answer each time. Recomputing on page load would be expensive, non-deterministic and resented; storing one current run makes it a thing you review at leisure. |
+| 2026-09-06 | Where a rule and the agent propose the same thing, the one with evidence wins. | They share a key scheme so the collision is detectable at all. A rule that has spotted an untyped object knows only that it is untyped; the agent arrives quoting the sentence. Showing both would be a duplicate, and showing the weaker one would waste the better answer. |
+
+
 
 ## 8. Open questions for the product owner
 
@@ -1498,6 +1560,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 60: an agent that reads the graph.** The brief has always said the agents build
+  the meta-model; until now the only model in the product read sources, and everything proposed about
+  the graph itself came from rules that can only find what a rule describes. **Ask the agent** hands
+  the whole graph to a model and asks what is wrong with it. It may propose five things — set a kind,
+  rename a kind, merge, set a missing attribute, draw a relation — and nothing else, so the worst it
+  can produce is a card somebody has to click. Every id is checked against the graph that was sent,
+  and every claim has to quote the object it came from, with the quote checked against that object's
+  own words; what cannot be quoted is thrown away and counted where the reviewer can see it. Its
+  confidence is capped rather than trusted: never high, never bulk-acceptable, a merge always low,
+  and never an overwrite of an attribute somebody has already answered. The run is grounded in the EA
+  knowledge base, which finally gives the corpus a consumer rather than a library page. Proposals are
+  stored as one current run per workspace, land in the existing accept / dismiss queue beside the
+  rules', and lose a collision only to a rule that can also say why. 27 new tests, all of them
+  without a model key — everything that decides whether an answer is safe is pure.
 
 - **2026-09-06 — Rev 59: a time axis for any board, and the roadmap drawn on one.** The roadmap was
   a list, and a list is not how anybody presents a plan. Rather than add a roadmap screen, the

@@ -5,6 +5,7 @@ import { parseDocument, serializeDocument } from "@/canvas/document";
 import type { Proposal } from "./graph-types";
 import { parseAttributes } from "./graph";
 import { evidenceProposals } from "./proposals-evidence";
+import { forgetProposal, storedProposals } from "./agent/store";
 
 /**
  * Agent proposals — deterministic, explainable suggestions derived from the graph.
@@ -288,6 +289,25 @@ export async function computeProposals(db: Db, workspaceId: string): Promise<Pro
   const parsed = new Map(entities.map((e) => [e.id, parseAttributes(e.attributes)]));
   out.push(...evidenceProposals({ entities, relations, decided, attributesOf: (id) => parsed.get(id) ?? {} }));
 
+  /**
+   * Whatever the model said last time it was asked (§5.26).
+   *
+   * The agent uses the same key scheme as the rules on purpose, so the two can propose the same
+   * thing and be recognised as one — a duplicate card is worse than a missing one, and dismissing
+   * a merge should dismiss it whoever raised it. When they do collide, the one that can say *why*
+   * wins: a rule that has spotted an untyped object knows only that it is untyped, while the agent
+   * arrives quoting the sentence it read. Where the rule has evidence of its own it keeps the card,
+   * because a deterministic answer is worth more than an equally-evidenced guess.
+   */
+  const byKey = new Map(out.map((p) => [p.key, p]));
+  for (const p of await storedProposals(db, workspaceId, decided)) {
+    const existing = byKey.get(p.key);
+    if (existing && (existing.evidence?.length || !p.evidence?.length)) continue;
+    byKey.set(p.key, p);
+  }
+  out.length = 0;
+  out.push(...byKey.values());
+
   const rank = { high: 0, medium: 1, low: 2 } as const;
   return out.sort((a, b) => rank[a.confidence] - rank[b.confidence] || a.title.localeCompare(b.title));
 }
@@ -396,4 +416,7 @@ export async function mergeEntities(db: Db, workspaceId: string, survivorId: str
 
 export async function recordDecision(db: Db, workspaceId: string, key: string, decision: "accepted" | "dismissed") {
   await db.insert(s.agentDecisions).values({ workspaceId, key, decision }).onConflictDoUpdate({ target: [s.agentDecisions.workspaceId, s.agentDecisions.key], set: { decision, createdAt: new Date().toISOString() } });
+  // A stored model proposal has done its job the moment somebody decides; the decision itself is
+  // what stops a later run raising it again.
+  await forgetProposal(db, workspaceId, key);
 }

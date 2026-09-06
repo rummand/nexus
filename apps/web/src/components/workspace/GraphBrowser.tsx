@@ -7,7 +7,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
 import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
-import { ProposalsPanel } from "./ProposalsPanel";
+import { ProposalsPanel, type AgentState } from "./ProposalsPanel";
 import { EntityTable } from "./EntityTable";
 import { HealthPanel } from "./HealthPanel";
 import type { HealthReport } from "@/lib/health";
@@ -28,7 +28,7 @@ Customer API,consumed by,ERP Core
 CRM Cloud,supports,Revenue Management`;
 
 /** Workspace knowledge graph: inventory, emergent meta-model, import, lay out on a board. */
-export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null, health, authority }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null; health: HealthReport; authority?: Authority }) {
+export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null, health, authority, agent }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null; health: HealthReport; authority?: Authority; agent: AgentState }) {
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -85,7 +85,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
       />
 
       <div id="proposals">
-        <ProposalsPanel workspaceId={workspaceId} proposals={proposals} />
+        <ProposalsPanel workspaceId={workspaceId} proposals={proposals} agent={agent} />
       </div>
 
       <section className="studio-board-browser" aria-label="Meta-model">
