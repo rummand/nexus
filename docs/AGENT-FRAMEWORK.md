@@ -1,7 +1,9 @@
 # The agent framework — a design note
 
-**Status:** proposal, not built. Written 2026-09-06 in answer to "we need an agentic OS: a framework
-of agents, described, alive, controlled, and able to build new agents with a human in the loop."
+**Status:** built, revs 65–69. Written 2026-09-06 in answer to "we need an agentic OS: a framework
+of agents, described, alive, controlled, and able to build new agents with a human in the loop", and
+kept here as the reasoning behind what now exists. What was decided differently in the building is
+noted inline; the current behaviour is in `BRIEF.md` §5.31–§5.35.
 
 Read `BRIEF.md` first. This note only covers what is not there yet.
 
@@ -215,21 +217,32 @@ API key, an enterprise/commercial agreement, or a self-hosted model — and a so
 wants the third one anyway. *Sign in with Google/Microsoft for **identity*** is a different thing
 and is fine; it belongs with authentication, not here.
 
-## 5. Order of work
+## 5. Order of work — and what happened
 
-1. **Providers as a setting** (§4.5), with an OpenAI-compatible option from day one. Everything else
-   depends on being able to point Nexus at a model without a redeploy, and it is the piece a
-   sovereign pilot needs first.
-2. **Agent as an object, and the run log** (§4.1–4.2), with the existing graph agent rewritten as
-   the first one — proving the shape on something that already works rather than on a new idea.
-3. **Nexus as an MCP server**, read-only plus proposals. The highest-leverage thing on this list:
-   it makes the estate model reachable by every agent an organisation already has, without giving
-   any of them write access.
-4. **The fleet view and acceptance rate** (§4.3).
-5. **MCP outbound**, and with it the first real source connector.
-6. **Agents proposing agents** (§4.4) — last, deliberately. It is only safe once runs are logged,
-   budgets are enforced and acceptance rate is visible, because those are the instruments that tell
-   a person whether the thing they approved is working.
+1. ✅ **Providers as a setting** (§4.5) — rev 65, brief §5.31. Two dialects rather than a vendor
+   list, which is what made a self-hosted endpoint an ordinary choice; a model per job; keys
+   encrypted, or stored plainly and *said so*.
+2. ✅ **Agent as an object, and the run log** (§4.1–4.2) — rev 66, brief §5.32. The graph agent is
+   now the workspace's own **Model reviewer**, an ordinary definition. Two things were added in the
+   building: a **draft is a dry run**, so an agent's first opinions are read before it is given a
+   voice; and refused runs are logged, because an agent quietly stopped by its budget is the fact
+   somebody most needs.
+3. ✅ **Nexus as an MCP server** — rev 67, brief §5.33. Six reading tools plus `propose_change`. The
+   test suite asserts the tool list, so "nothing here writes" stays true rather than remaining true
+   by habit.
+4. ✅ **The fleet view and acceptance rate** (§4.3) — rev 62 (board agents) and rev 66, brief §5.28
+   and §5.32. Acceptance is attributed per agent by copying the agent's name onto the decision
+   before the proposal is deleted.
+5. ✅ **MCP outbound** — rev 69, brief §5.35. The "first real source connector" turned out to be
+   *any* MCP server, which is a better answer than a bespoke ServiceNow client. What a remote server
+   returns becomes an intake source and nothing more.
+6. ✅ **Agents proposing agents** (§4.4) — rev 68, brief §5.34. Capability monotonicity is enforced
+   by the same function a person's form goes through, and a proposed agent cannot run at all until
+   somebody approves it.
+
+**Still open, and deliberately:** triggers and schedules (an agent runs when asked), spend in money
+rather than in runs, and Temporal-style durable execution — all of which the note argues are
+premature until a run lasts longer than a few seconds.
 
 ## 6. Open questions for the product owner
 
