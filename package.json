@@ -16,6 +16,7 @@
     "db:reset": "pnpm --filter @nexus/web db:reset",
     "e2e": "pnpm --filter @nexus/web e2e",
     "kb:ingest": "pnpm --filter @nexus/ea-knowledge ingest",
-    "kb:ask": "pnpm --filter @nexus/ea-knowledge ask"
+    "kb:ask": "pnpm --filter @nexus/ea-knowledge ask",
+    "docs:capture": "pnpm --filter @nexus/web docs:capture"
   }
 }

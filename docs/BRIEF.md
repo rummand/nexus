@@ -1000,6 +1000,35 @@ move. A board can also be viewed at a plateau, through the same picker that show
 set — one code path for "show me the board at a state", whether that state is one plan or a
 milestone made of several.
 
+### 5.23 Documentation, in the product (v0.2)
+
+Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
+a menu item: nineteen pages written for the person doing the architecture rather than the person
+who built the tool, in the order somebody would actually learn it — draw something, understand what
+it did, then the model, then getting data in, then time.
+
+Three decisions make it worth having rather than another README nobody opens.
+
+**It is illustrated from the product itself.** `scripts/capture-docs.mjs` starts a server and a
+database of its own, drives the seeded demo through a real browser and writes thirty screenshots
+into `public/docs`, which are committed. A reader on a train sees the screen; a reviewer sees in the
+diff when one changed; and re-running the script after a UI change is one command. The model is
+switched off for the capture on purpose — a planner would answer differently every run and the
+documentation would end up describing one lucky afternoon.
+
+**It is data, so it can be checked.** Pages are typed block lists (prose, steps, screenshot, note,
+table, keyboard reference, "try it") rather than Markdown. A unit test fails if a page references a
+screenshot that is not on disk, if a screenshot has no alt text, if a "try it" link points at a
+route that does not exist, if two headings share an id, or if a page escapes its section. The
+failure mode of illustrated documentation is rot, and this is the only reason it is safe to promise
+screenshots at all.
+
+**Every how-to ends on the screen it describes.** A "try it" link resolves `:slug` against the
+reader's own workspace, so the guide to retiring a system finishes with a button that opens *their*
+roadmap. The docs are server-rendered with no interactivity beyond the contents highlight:
+documentation that needs JavaScript to be read fails the person who needed it most, whose screen is
+already misbehaving.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1029,7 +1058,7 @@ milestone made of several.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 53)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 54)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1231,6 +1260,13 @@ milestone made of several.
   compared as a diff (arrives / goes / changes, with both values); measured with estate health; and
   viewable on a board through the same state picker.
 
+### Documentation (v0.2)
+- Nineteen in-app pages under **Documentation**, from a first board through to plateaus, with a
+  glossary, a keyboard reference and the questions people ask.
+- Thirty screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
+- Nine tests over the docs as data: missing screenshots, missing alt text, dead links, duplicate
+  heading ids, orphaned pages, and that search finds the page a person would be looking for.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
   camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
@@ -1355,6 +1391,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-06 | Documentation is authored as typed data, not Markdown. | A page here is not only prose — it has procedures, screenshots with captions, and links that resolve to the reader's own workspace. Typed blocks give all of that with no parser to get subtly wrong, and let a test fail when a screenshot or a route disappears. |
+| 2026-09-06 | Screenshots are captured from the running product by a script and committed. | Hand-taken screenshots rot silently and nobody notices until a reader does. A script that brings its own server and database can be re-run after any UI change, and committing the output means the diff shows when a screen changed. |
 | 2026-09-06 | A plateau stores a name, a date and a membership — never a copy of the estate. | A stored copy is a slide: it starts drifting from the model the moment either changes. Deriving the state means a plateau is always exactly as true as the graph it describes. |
 | 2026-09-06 | Plateau membership is explicit, not "every change set dated before it". | Two plateaus can share a date, a plan can be deliberately excluded from one branch of a roadmap, and a membership somebody can see is one they can argue with. Blockers are pulled in with their dependents, because a state that includes a plan but not what it waits for cannot exist. |
 | 2026-09-06 | The plateau diff compares by entity id, never by name. | Renaming a system is a change to it, not a death and a birth. A name-based diff would report every rationalisation as churn and bury the real movement. |
@@ -1383,6 +1421,18 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 54: the documentation.** Nineteen in-app pages under a new **Documentation**
+  menu item, written for architects using Nexus and ordered the way somebody would learn it, from a
+  first board through the model and intake to change sets and plateaus — plus a glossary, a keyboard
+  reference and the questions people actually ask (what happens when two of us edit, why deleting a
+  card did not delete the system, where the data lives). It is illustrated with thirty screenshots
+  captured from the seeded demo by `pnpm docs:capture`, which brings its own server and database and
+  runs with the model switched off so the pictures are the same on every machine. Pages are typed
+  block lists rather than Markdown, which is what lets nine tests fail the build when a screenshot
+  goes missing, an image has no alt text, a "try it" link points nowhere, or a page falls out of its
+  section. Each guide ends with a link that opens the screen it describes in the reader's own
+  workspace.
 
 - **2026-09-06 — Rev 53: plateaus.** The states people actually talk about — "target architecture
   2028" — are now objects rather than slides. A plateau stores a name, a date and which change sets

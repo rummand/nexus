@@ -27,6 +27,13 @@ available; see `apps/web/e2e/smoke.mjs` for the launch pattern) and send them to
 product owner with your report. Do this periodically during longer UI work, not only at
 the end.
 
+## Keep the documentation alive
+
+`apps/web/src/lib/docs` is the in-product documentation (§5.23). When you change something a
+reader would see, update the page that describes it and re-run `pnpm docs:capture` if a screenshot
+is now wrong. The tests will tell you about a missing screenshot; they cannot tell you about a
+stale sentence.
+
 ## Design reference
 
 The UI/UX follows the owner's `rummand/leanflow-studio` repo (see `docs/BRIEF.md` §4a).

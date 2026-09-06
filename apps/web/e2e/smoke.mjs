@@ -656,6 +656,27 @@ try {
   assert.ok((await page.locator(".knowledge-references li").count()) > 0,
     "the works we may not redistribute are listed as such");
 
+  // ---- the documentation -------------------------------------------------------------------
+  await page.goto(`${base}/w/acme-energy/docs`, { waitUntil: "load" });
+  await page.waitForSelector(".doc-index-grid");
+  assert.ok((await page.locator(".doc-index-card").count()) >= 15, "every documentation page is listed");
+  await page.fill('.doc-search input[name="q"]', "retire a system");
+  await page.click('.doc-search button[type="submit"]');
+  await page.waitForSelector(".doc-result");
+  assert.ok((await page.locator(".doc-result").count()) > 0, "the documentation is searchable");
+
+  await page.goto(`${base}/w/acme-energy/docs/roadmap`, { waitUntil: "load" });
+  await page.waitForSelector(".doc-article");
+  await page.waitForTimeout(1500);
+  // the promise of illustrated docs is that the illustrations are there
+  const shots = await page.$$eval(".doc-shot img", (els) => els.map((e) => ({ src: e.getAttribute("src"), loaded: e.naturalWidth > 0 })));
+  assert.ok(shots.length > 0, "the page is illustrated");
+  assert.deepEqual(shots.filter((s2) => !s2.loaded), [], "every screenshot the docs reference actually loads");
+  assert.equal(await page.locator(".doc-nav a.active").innerText(), "Change sets: planning against the model",
+    "the contents marks where you are");
+  assert.ok((await page.locator(".doc-try a").first().getAttribute("href")).startsWith("/w/acme-energy/"),
+    "a “try it” link opens the reader's own workspace");
+
   assert.deepEqual(problems, [], "no browser errors");
   console.log("smoke: all checks passed");
 } catch (error) {

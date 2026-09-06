@@ -106,6 +106,8 @@ try {
       { path: "/w/acme-energy/intake?view=catalog", ready: ".catalog" },
       { path: "/w/acme-energy/knowledge", ready: ".knowledge" },
       { path: "/w/acme-energy/roadmap", ready: ".roadmap" },
+      { path: "/w/acme-energy/docs", ready: ".doc-index-grid" },
+      { path: "/w/acme-energy/docs/roadmap", ready: ".doc-article" },
       { path: "/w/acme-energy/teams", ready: ".studio-home-main" },
       { path: "/w/acme-energy/spaces/space_sandbox", ready: ".studio-starters" },
       // last and slowest: the canvas is client-only, so "load" fires long before it is usable

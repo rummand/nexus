@@ -15,7 +15,8 @@
     "e2e": "node e2e/run.mjs",
     "e2e:attach": "BASE_URL=${BASE_URL:-http://localhost:3000} node e2e/smoke.mjs",
     "db:pg:schema": "node scripts/generate-pg-schema.mjs",
-    "db:pg:generate": "node scripts/generate-pg-schema.mjs && drizzle-kit generate --config drizzle.pg.config.ts"
+    "db:pg:generate": "node scripts/generate-pg-schema.mjs && drizzle-kit generate --config drizzle.pg.config.ts",
+    "docs:capture": "node scripts/capture-docs.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
