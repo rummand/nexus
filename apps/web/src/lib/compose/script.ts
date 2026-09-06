@@ -17,7 +17,7 @@ export interface Vocabulary {
   attributeKeys: string[];
 }
 
-export type LayoutStyle = "grid" | "columns" | "rows" | "circle" | "flow";
+export type LayoutStyle = "grid" | "columns" | "rows" | "circle" | "flow" | "timeline";
 
 export type Instruction =
   | { verb: "clear" }
@@ -26,7 +26,7 @@ export type Instruction =
   | { verb: "expand"; hops: number; relationKinds: string[]; direction: "both" | "out" | "in" }
   | { verb: "connect"; relationKinds: string[] }
   | { verb: "group"; by: string; isAttribute: boolean }
-  | { verb: "layout"; style: LayoutStyle; by?: string }
+  | { verb: "layout"; style: LayoutStyle; by?: string; lanes?: string }
   | { verb: "colour"; by: string; isAttribute: boolean }
   | { verb: "title"; text: string }
   | { verb: "note"; text: string }
@@ -247,11 +247,33 @@ export function parseLine(raw: string, vocab: Vocabulary): ParsedLine {
     const by = tail.match(/\bby\s+(.+)$/i)?.[1]?.trim();
     const attribute = by ? resolve(by, vocab.attributeKeys) ?? (/(kind|type)/i.test(by) ? "kind" : by) : undefined;
     const style: LayoutStyle =
-      /\bcircle|ring\b/i.test(tail) ? "circle"
+      /\btime\s?line|over\s+time|chronolog|roadmap\b/i.test(tail) ? "timeline"
+      : /\bcircle|ring\b/i.test(tail) ? "circle"
       : /\brows?\b/i.test(tail) ? "rows"
       : /\bflow|hierarch|layer|tree|chain\b/i.test(tail) ? "flow"
       : /\bcolumns?\b/i.test(tail) || by ? "columns"
       : "grid";
+
+    if (style === "timeline") {
+      /*
+       * "lay out on a timeline by end of support in lanes by owner". The axis is whichever
+       * attribute follows "by", the lanes whatever follows "in lanes by" — both resolved against
+       * the workspace's real attribute keys, so a near miss lands on the key somebody meant.
+       */
+      const lanePhrase = tail.match(/\b(?:in\s+)?lanes?\s+(?:by\s+)?(.+)$/i)?.[1]?.trim();
+      const axisPhrase = tail.replace(/\b(?:in\s+)?lanes?\s+(?:by\s+)?.+$/i, "").match(/\bby\s+(.+)$/i)?.[1]?.trim();
+      const axis = axisPhrase ? resolve(axisPhrase, vocab.attributeKeys) ?? axisPhrase : undefined;
+      const lanes = lanePhrase
+        ? (/(kind|type)/i.test(lanePhrase) ? "kind" : resolve(lanePhrase, vocab.attributeKeys) ?? lanePhrase)
+        : undefined;
+      if (!axis) return fail("A timeline needs a date to lay out along. Try: lay out on a timeline by lifecycle date.");
+      return {
+        raw,
+        instruction: { verb: "layout", style, by: axis, lanes },
+        echo: `Lay it out on a timeline by ${axis}${lanes ? ` in lanes by ${lanes}` : ""}`,
+      };
+    }
+
     return {
       raw,
       instruction: { verb: "layout", style, by: style === "columns" || style === "rows" ? attribute : undefined },

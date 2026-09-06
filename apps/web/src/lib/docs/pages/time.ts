@@ -4,7 +4,7 @@ export const ROADMAP: DocPage = {
   slug: "roadmap",
   title: "Change sets: planning against the model",
   summary: "Describe what you intend to do to the estate, see what it would break, sequence it, and deliver it.",
-  keywords: ["roadmap", "change set", "retire", "impact", "deliver", "dependency", "plan", "transition"],
+  keywords: ["roadmap", "change set", "retire", "impact", "deliver", "dependency", "plan", "transition", "roadmap board", "timeline"],
   blocks: [
     { kind: "prose", text: "The graph is the estate as it is. A change set is what you intend to do to it — introduce this, retire that, this changes hands, connect these two — and it stays an intention until you deliver it. As-is therefore stays true while a plan is free to be speculative and wrong, which is what planning is." },
     { kind: "shot", src: "roadmap", alt: "The roadmap with as-is and to-be counts and a change set opened", caption: "As-is on the left, to-be on the right, and the plans that get from one to the other in between." },
@@ -53,6 +53,18 @@ export const ROADMAP: DocPage = {
         { do: "A plan with changes that no longer fit the graph is refused rather than half-applied. Fix or remove them first." },
       ],
     },
+    { kind: "heading", text: "Drawing the roadmap", id: "board" },
+    { kind: "prose", text: "A list is not how anybody presents a plan. Press **Lay out on a board** on the roadmap, choose which plans to include and whether the lanes are what happens or the plan responsible, and Nexus builds an ordinary board: one card per object a plan touches, with `when`, `change` and `effect` as attributes." },
+    { kind: "shot", src: "roadmap-board", alt: "A board of the roadmap: lanes for retired, introduced and connected, with month columns along the top", caption: "The roadmap as a board. Lanes are what happens to each object; the axis is when." },
+    {
+      kind: "list",
+      items: [
+        "An object touched by two plans appears **once**, at the first one that touches it — a card is one object in one place — and the later plans are named on it.",
+        "A system a plan introduces is drawn as planned: it is a picture of an intention and stays outside the graph until the plan is delivered.",
+        "The drawing is done by the generic timeline layout — see **Laying a board out on a time axis** — so on the board you can re-lay it out along any other date, colour it by any attribute, or drag it about.",
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why the cards are not the systems themselves", text: "An entity-backed card is kept in step with its entity in both directions. If a roadmap card were one, opening the board would overwrite `when` and `effect` with the system's own attributes, and saving it would write the change note into Maximo's description. A roadmap card is a statement *about* a system at a date, so it records which one it means and otherwise stays out of the graph." },
     { kind: "heading", text: "Seeing a board in the future", id: "overlay" },
     { kind: "prose", text: "On any board, open the Graph panel, switch to Viewpoint, and use **State of the model**. Pick a change set or a plateau and the board shows what that plan does to it: retiring systems struck through, changed ones marked, and a count of planned objects not yet drawn — with a button to place them." },
     { kind: "shot", src: "board-to-be", alt: "A board viewed as of a change set, with a retiring system struck through", caption: "The same board, seen as of a plan. Nothing on it has changed — this is a tint, not an edit." },

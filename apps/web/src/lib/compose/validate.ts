@@ -10,7 +10,7 @@ import type { Instruction, LayoutStyle, Vocabulary } from "./script";
  * touches the graph itself. A board script can only ever read entities and rearrange a document.
  */
 
-const LAYOUTS: LayoutStyle[] = ["grid", "columns", "rows", "circle", "flow"];
+const LAYOUTS: LayoutStyle[] = ["grid", "columns", "rows", "circle", "flow", "timeline"];
 const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
 
 /** Snap a proposed value to something the workspace actually has, or keep it as written. */
@@ -93,10 +93,18 @@ export function validateInstructions(raw: unknown, vocab: Vocabulary, max = 24):
       case "layout": {
         const style = LAYOUTS.includes(norm(s.style) as LayoutStyle) ? (norm(s.style) as LayoutStyle) : "grid";
         const by = str(s.by, 80);
+        const lanes = str(s.lanes, 80);
+        // A timeline needs its axis; the other styles only take a grouping, and only some of them.
+        const wantsBy = style === "columns" || style === "rows" || style === "timeline";
+        if (style === "timeline" && !by) {
+          rejected.push("a timeline with no date attribute to lay out along");
+          break;
+        }
         instructions.push({
           verb: "layout",
           style,
-          by: by && (style === "columns" || style === "rows") ? (/^(kind|type)s?$/i.test(by) ? "kind" : snap(by, vocab.attributeKeys)) : undefined,
+          by: by && wantsBy ? (/^(kind|type)s?$/i.test(by) ? "kind" : snap(by, vocab.attributeKeys)) : undefined,
+          ...(style === "timeline" && lanes ? { lanes: /^(kind|type)s?$/i.test(lanes) ? "kind" : snap(lanes, vocab.attributeKeys) } : {}),
         });
         break;
       }
@@ -139,7 +147,8 @@ export const PLAN_SCHEMA = {
           direction: { type: "string", enum: ["both", "out", "in"], description: "For expand." },
           relationKinds: { type: "array", items: { type: "string" }, description: "For expand and connect: restrict to these relation types." },
           by: { type: "string", description: "For group, colour and layout: an attribute key, or 'kind'." },
-          style: { type: "string", enum: ["grid", "columns", "rows", "circle", "flow"], description: "For layout." },
+          style: { type: "string", enum: ["grid", "columns", "rows", "circle", "flow", "timeline"], description: "For layout. 'timeline' lays cards along a date attribute." },
+          lanes: { type: "string", description: "For a timeline layout: an attribute key, or 'kind', to make lanes from." },
           text: { type: "string", description: "For title and note." },
         },
         required: ["verb"],

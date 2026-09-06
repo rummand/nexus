@@ -297,3 +297,30 @@ describe("what the planner may look at", () => {
     expect(sample.text).toContain("200 match");
   });
 });
+
+describe("laying a board out on a timeline", () => {
+  const vocab = { kinds: ["Application"], relationKinds: [], attributeKeys: ["end of support", "owner"] };
+
+  it("reads the axis and the lanes out of the sentence", () => {
+    const line = parseLine("lay out on a timeline by end of support in lanes by owner", vocab);
+    expect(line.instruction).toEqual({ verb: "layout", style: "timeline", by: "end of support", lanes: "owner" });
+    expect(line.echo).toBe("Lay it out on a timeline by end of support in lanes by owner");
+  });
+
+  it("takes the shorter forms people write", () => {
+    expect(parseLine("lay out over time by end of support", vocab).instruction).toMatchObject({ style: "timeline", by: "end of support" });
+    expect(parseLine("arrange as a roadmap by end of support lanes by kind", vocab).instruction).toMatchObject({ style: "timeline", lanes: "kind" });
+  });
+
+  it("says what is missing rather than laying out nothing", () => {
+    // an unreadable line becomes an "unknown" instruction carrying the hint, as every other does
+    const line = parseLine("lay out on a timeline", vocab);
+    expect(line.instruction).toMatchObject({ verb: "unknown" });
+    expect(line.echo).toMatch(/needs a date/);
+  });
+
+  it("still understands the layouts that were there before", () => {
+    expect(parseLine("lay out as flow", vocab).instruction).toEqual({ verb: "layout", style: "flow", by: undefined });
+    expect(parseLine("lay out in columns by owner", vocab).instruction).toEqual({ verb: "layout", style: "columns", by: "owner" });
+  });
+});

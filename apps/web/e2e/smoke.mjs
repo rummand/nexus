@@ -655,6 +655,43 @@ try {
   await page.waitForTimeout(1200);
   assert.equal(await page.locator(".fact-card.change-retired").count(), 0, "returning to today clears the overlay");
 
+  // ---- the timeline: a canvas capability, and the roadmap as one thing you can say with it ----
+  // On any board, an attribute that reads as a date can become the axis. This is checked on an
+  // ordinary landscape board — not the roadmap — because the point is that it is not a roadmap
+  // feature: the same control lays a board out by end-of-support, contract renewal, anything.
+  await page.goto(`${base}/b/brd_integrations`, { waitUntil: "load" });
+  await page.waitForSelector("[data-element-id]");
+  await page.click('button:has-text("Viewpoint")');
+  await page.waitForSelector("[data-timeline-controls]", { timeout: 20000 });
+  const dateKey = await page.$$eval("[data-timeline-controls] select", (els) => [...els[0].options].map((o) => o.value).find(Boolean));
+  assert.ok(dateKey, "the board offers the attributes that read as dates");
+  await page.selectOption("[data-timeline-controls] select >> nth=0", dateKey);
+  const framesBefore = await page.locator(".board-frame").count();
+  await page.click("[data-timeline-controls] .viewpoint-primary");
+  await page.waitForFunction((n) => document.querySelectorAll(".board-frame").length > n, framesBefore, { timeout: 20000 });
+  // fit the board so the new layout is on screen — the canvas culls what is outside the viewport
+  await page.click('button:has-text("Fit board")');
+  await page.waitForTimeout(900);
+  // titles live in always-editable inputs, so read their values rather than the rendered text
+  const titles = await page.$$eval(".board-object input", (els) => els.map((e) => e.value));
+  assert.ok(titles.some((t) => /^20[23]\d/.test(t)), "the axis is labelled with the periods it covers");
+  assert.ok(titles.some((t) => /no end of support/.test(t)),
+    "cards without a readable date are parked in a lane of their own, not dropped");
+
+  // the roadmap, drawn as an ordinary board
+  await page.goto(`${base}/w/acme-energy/roadmap`, { waitUntil: "load" });
+  await page.waitForSelector(".roadmap");
+  await page.click("[data-draw-roadmap]");
+  await page.waitForSelector("[data-draw-form]");
+  await page.click("[data-draw-form] button[type=submit]");
+  await page.waitForURL(/\/b\/brd_/, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 45000 });
+  const drawn = await page.$$eval(".board-object input", (els) => els.map((e) => e.value));
+  assert.ok(drawn.includes("Retired"), "objects are laned by what happens to them");
+  assert.ok(drawn.includes("Maximo"), "the plans' objects are on the board");
+  assert.ok((await page.locator(".fact-card.planned").count()) >= 1,
+    "a system a plan introduces is drawn as an intention, not created");
+
   // ---- the EA knowledge base: search the corpus and read the doctrine ----------------------
   await page.goto(`${base}/w/acme-energy/knowledge`, { waitUntil: "load" });
   await page.waitForSelector(".knowledge");

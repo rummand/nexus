@@ -70,6 +70,8 @@ than routes; they revalidate the affected pages.
 | Teams | `createTeam`, `renameTeam`, `setTeamMembership`, `deleteTeam` |
 | Graph | `importGraphText` (CSV / JSON, see below), `renameKind`, `renameRelationKind`, `updateEntity`, `setEntityAttributeAction` (empty value removes), `deleteEntity`, `mergeEntitiesAction` |
 | Proposals | `acceptProposal` (applies the proposal's action, with an optional override value), `dismissProposal` (remembered per proposal key) |
+| Change sets | `createChangeSet`, `updateChangeSet`, `deleteChangeSet`, `addChange`, `removeChange`, `addDependency` / `removeDependency` (cycles refused), `deliverChangeSet` (refused while a blocker is outstanding or a change has gone stale), `createRoadmapBoard` (draws the chosen plans on a new board and redirects to it) |
+| Plateaus | `createPlateau`, `updatePlateau`, `deletePlateau`, `includeInPlateau` (pulls in what the plan waits for), `excludeFromPlateau` (refused while something still needs it) |
 
 ### Import format
 

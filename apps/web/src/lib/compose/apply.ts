@@ -3,6 +3,7 @@ import { CARD_H, CARD_W, cardForEntity } from "@/canvas/entityCard";
 import { cardColorForKind, isBoxElement, type CanvasDocument, type CanvasElement, type CardElement } from "@/canvas/document";
 import { parseQuery } from "../query";
 import type { Instruction } from "./script";
+import { planTimeline } from "@/canvas/timeline";
 
 /**
  * Executing a board script.
@@ -272,6 +273,34 @@ export function applyInstruction(doc: CanvasDocument, ctx: ComposeContext, ins: 
       const cards = placedCards(document);
       if (cards.length === 0) return { document, result: { ok: false, message: "nothing here to lay out" } };
       for (const el of Object.values(elements)) if (el.type === "frame" && el.meta?.composed) delete elements[el.id];
+
+      if (ins.style === "timeline") {
+        /*
+         * The timeline is the one layout that also draws: lanes as frames and periods as section
+         * blocks. They are marked `composed` like any generated frame, so re-running the script
+         * replaces them instead of stacking a second axis on the first.
+         */
+        for (const el of Object.values(elements)) if (el.type === "text" && el.meta?.composedPeriod) delete elements[el.id];
+        const plan = planTimeline(cards, { dateKey: ins.by ?? "", laneKey: ins.lanes === "kind" ? undefined : ins.lanes, laneByKind: ins.lanes === "kind", origin: ORIGIN });
+        if (!plan.lanes.length) {
+          return { document, result: { ok: false, message: `nothing here has a readable date in “${ins.by}”` } };
+        }
+        for (const lane of plan.lanes) {
+          const id = nanoid(10);
+          elements[id] = { id, type: "frame", x: lane.x, y: lane.y, w: lane.w, h: lane.h, title: lane.title, color: lane.color, z: 0, meta: { composed: true } };
+        }
+        for (const period of plan.periods) {
+          const id = nanoid(10);
+          elements[id] = { id, type: "text", variant: "section", x: period.x, y: period.y, w: period.w, h: period.h, title: period.label, text: "", color: "#1376d4", z: 0, meta: { composedPeriod: true } };
+        }
+        for (const [id, at] of Object.entries(plan.positions)) {
+          const card = elements[id];
+          if (card && isBoxElement(card)) elements[id] = { ...card, x: at.x, y: at.y };
+        }
+        const parked = plan.undated.length ? `, ${plan.undated.length} with no date parked at the end` : "";
+        return ok(`laid ${Object.keys(plan.positions).length} object${Object.keys(plan.positions).length === 1 ? "" : "s"} out along ${ins.by}${ins.lanes ? ` in lanes by ${ins.lanes}` : ""}${parked}`);
+      }
+
       const positioned = layoutCards(cards, ctx, ins.style, ins.by);
       for (const [id, at] of positioned) {
         const card = elements[id];

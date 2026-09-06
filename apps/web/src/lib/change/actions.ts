@@ -3,10 +3,13 @@
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
+import { serializeDocument } from "@/canvas/document";
+import { roadmapDocument } from "./board";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { project } from "./project";
 import { allBlockers, blocking, wouldCycle } from "./order";
@@ -406,4 +409,61 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
   await db.update(s.changeSets).set({ status: "delivered", deliveredAt: ts, updatedAt: ts }).where(eq(s.changeSets.id, changeSetId));
   await touch(set.workspaceId, set.id);
   return { ok: true, introduced, retired, altered, connected, severed };
+}
+
+// ---- the roadmap as a board --------------------------------------------------
+
+/**
+ * Draw the roadmap on a board.
+ *
+ * A list is not how anybody presents a plan, and a picture exported from a planning tool is dead
+ * the day it is made. This makes an ordinary board: one card per object a plan touches, carrying
+ * `when`, `change` and `effect` as attributes, laid out by the *generic* timeline capability. It
+ * can then be dragged, annotated, re-laid-out along any other date, and shown in a meeting — and
+ * nothing about it is a roadmap except the attributes on the cards.
+ */
+export async function createRoadmapBoard(input: {
+  workspaceId: string;
+  spaceId?: string;
+  changeSetIds?: string[];
+  lanesBy?: "effect" | "change set";
+  name?: string;
+}): Promise<{ error: string } | never> {
+  const db = await getDb();
+  const user = await currentUser();
+  const [{ entities, relations }, sets, deps] = await Promise.all([
+    graphRows(db, input.workspaceId),
+    listChangeSets(db, input.workspaceId),
+    listDependencies(db, input.workspaceId),
+  ]);
+
+  const space = input.spaceId
+    ? await db.query.spaces.findFirst({ where: and(eq(s.spaces.id, input.spaceId), eq(s.spaces.workspaceId, input.workspaceId)) })
+    : await db.query.spaces.findFirst({ where: eq(s.spaces.workspaceId, input.workspaceId), orderBy: s.spaces.name });
+  if (!space) return { error: "This workspace has no space to put a board in." };
+
+  const title = input.name?.trim() || "Roadmap";
+  const { document, placed, undated } = roadmapDocument(entities, relations, sets, deps, {
+    changeSetIds: input.changeSetIds,
+    lanesBy: input.lanesBy,
+    title,
+  });
+  if (placed === 0 && undated === 0) return { error: "There is nothing planned to lay out yet." };
+
+  const id = `brd_${nanoid(10)}`;
+  await db.insert(s.boards).values({
+    id,
+    workspaceId: input.workspaceId,
+    spaceId: space.id,
+    name: title,
+    description: `${placed + undated} objects from the roadmap, laid out on a time axis.`,
+    createdById: user.id,
+    document: serializeDocument(document),
+    createdAt: now(),
+    updatedAt: now(),
+    lastOpenedAt: now(),
+  });
+  const slug = await slugOf(input.workspaceId);
+  if (slug) revalidatePath(`/w/${slug}`, "layout");
+  redirect(`/b/${id}`);
 }

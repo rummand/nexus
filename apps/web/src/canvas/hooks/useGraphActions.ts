@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { cardColorForKind, isBoxElement, type CanvasElement, type CardElement } from "../document";
 import { boxContainsBox } from "../geometry";
 import { LENS_PALETTE } from "../lens";
+import { CARD_H, CARD_W, originBelow, planTimeline } from "../timeline";
 import { useCanvasStore } from "../store";
 import { isEntityId, type NeighborhoodResponse } from "@/lib/graph-types";
 
@@ -180,6 +181,40 @@ export function useGraphActions() {
     return arrangeBy((c) => c.attributes?.[key] ?? "", (v) => ({ title: v ? `${key}: ${v}` : `no ${key}`, color: v ? LENS_PALETTE[order.indexOf(v) % LENS_PALETTE.length]! : "#94a3b8" }));
   }, [arrangeBy, store]);
 
+  /**
+   * Lay the board out on a time axis.
+   *
+   * Generic on purpose: any attribute that reads as a date can be the axis and any other can be
+   * the lanes, so this serves contract renewals and support windows as readily as a roadmap.
+   * The lanes and the period labels are ordinary frames and section blocks — once it has run, the
+   * result is a board somebody can rearrange by hand like any other.
+   */
+  const arrangeOnTimeline = useCallback((dateKey: string, laneKey?: string, laneByKind = false) => {
+    const s = store.getState();
+    const cards = Object.values(s.elements).filter((el): el is CardElement => el.type === "card");
+    if (!cards.length) return 0;
+    const boxes = Object.values(s.elements).filter(isBoxElement);
+    const plan = planTimeline(cards, { dateKey, laneKey, laneByKind, origin: originBelow(boxes) });
+    if (!plan.lanes.length) return 0;
+
+    const created: CanvasElement[] = [
+      ...plan.lanes.map((lane) => ({ id: nanoid(10), type: "frame" as const, x: lane.x, y: lane.y, w: lane.w, h: lane.h, title: lane.title, color: lane.color, z: 0 })),
+      ...plan.periods.map((period) => ({
+        id: nanoid(10), type: "text" as const, variant: "section" as const,
+        x: period.x, y: period.y, w: period.w, h: period.h,
+        title: period.label, text: "", color: "#1376d4", z: 0,
+      })),
+    ];
+    const patch: Record<string, Partial<CanvasElement>> = {};
+    for (const [id, at] of Object.entries(plan.positions)) patch[id] = { x: at.x, y: at.y, w: CARD_W, h: CARD_H };
+
+    s.pushHistory();
+    s.addElements(created, { select: false, history: false });
+    s.updateElements(patch);
+    s.zoomToFit();
+    return Object.keys(plan.positions).length;
+  }, [store]);
+
   /** Lay the selected box elements out on a grid. */
   const distributeSelection = useCallback(() => {
     const s = store.getState();
@@ -195,5 +230,5 @@ export function useGraphActions() {
     s.updateElements(patch, { history: true });
   }, [store]);
 
-  return { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, distributeSelection };
+  return { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, arrangeOnTimeline, distributeSelection };
 }

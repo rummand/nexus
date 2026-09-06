@@ -182,3 +182,49 @@ export const SEARCH: DocPage = {
     { kind: "prose", text: "The search box in the sidebar is different: it looks across boards and objects in the whole workspace, and is the quickest way to find where something is drawn." },
   ],
 };
+
+export const TIMELINE: DocPage = {
+  slug: "timeline",
+  title: "Laying a board out on a time axis",
+  summary: "Any attribute that reads as a date can become the axis of a board — end of support, contract renewal, the date a plan lands.",
+  keywords: ["timeline", "time axis", "date", "end of support", "lifecycle", "lanes", "swimlane", "roadmap", "arrange", "layout"],
+  blocks: [
+    { kind: "prose", text: "Most tools have a roadmap screen: a fixed picture, built from a fixed data model, that you cannot use for anything else. Nexus has a timeline *layout* instead. If the cards on a board carry an attribute that reads as a date, that attribute can be the axis, and anything else about them can be the lanes. A roadmap is then one of the things you can say with it rather than a screen of its own." },
+    { kind: "shot", src: "board-timeline", alt: "A landscape board laid out along end of support, with year columns and a lane for cards with no date", caption: "An ordinary landscape board, laid out along end of support. The relations came with the cards — this is the same board, moved." },
+    { kind: "heading", text: "Doing it", id: "doing" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Open the Graph panel and switch to Viewpoint. If anything on the board has a date-shaped attribute, a **Timeline** group appears.", note: "Only attributes that actually parse as dates are offered. Laying a board out by “owner” and getting one column would look like a broken feature rather than a misunderstanding." },
+        { do: "Pick the attribute for **Along** — the axis." },
+        { do: "Optionally pick **In lanes by**: kind, or any other attribute. Lanes are ordered busiest first." },
+        { do: "Press Lay out. The layout is placed below whatever is already on the board, so nothing you drew is overwritten." },
+      ],
+    },
+    { kind: "heading", text: "Dates it understands", id: "dates" },
+    {
+      kind: "table",
+      columns: ["You type", "It reads"],
+      rows: [
+        ["`2027-03-14`", "14 March 2027"],
+        ["`2027-03`", "March 2027"],
+        ["`2027 Q3` or `Q3 2027`", "the third quarter of 2027"],
+        ["`March 2027`, `Mar 2027`", "March 2027"],
+        ["`2027`", "the year — but only if the number could plausibly be a year"],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why “1200” is not a date", text: "It is a cost, a count or a port number. A card silently placed in the year 1200 is a lie the reader has no way to catch; a card parked in the “no date” lane is a question somebody can answer. Anything that does not clearly parse goes in that lane rather than being guessed at." },
+    { kind: "heading", text: "How the axis is drawn", id: "axis" },
+    {
+      kind: "list",
+      items: [
+        "The granularity is chosen from the span: months for a few months, quarters for a year or two, years beyond that.",
+        "Every period between the first and the last gets a column, **including the empty ones** — so a gap in the plan is visible rather than closed up.",
+        "Columns are equal width rather than a linear time scale. A linear scale spends most of the board on the gap between two clusters and squeezes the clusters into nothing: accurate, and unreadable.",
+        "Cards in the same lane and period stack downwards, and the lane grows to hold them.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "Compose can do it in a line: `lay out applications on a timeline by end of support in lanes by owner`. The lanes are frames and the period labels are section blocks, so everything the layout draws is an ordinary board object you can rename, recolour or delete." },
+    { kind: "try", href: "/w/:slug", label: "Open a board and try it" },
+  ],
+};

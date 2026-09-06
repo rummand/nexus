@@ -1003,14 +1003,14 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: nineteen pages written for the person doing the architecture rather than the person
+a menu item: twenty pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then getting data in, then time.
 
 Three decisions make it worth having rather than another README nobody opens.
 
 **It is illustrated from the product itself.** `scripts/capture-docs.mjs` starts a server and a
-database of its own, drives the seeded demo through a real browser and writes thirty screenshots
+database of its own, drives the seeded demo through a real browser and writes thirty-three screenshots
 into `public/docs`, which are committed. Each one is cropped to the page's own content: the
 workspace navigation is identical on every screen, and repeating it in thirty pictures spends the
 reader's width on something they are already looking at. The one exception is the home page, where
@@ -1056,6 +1056,43 @@ returns the scrubber to today saw an overlay that had not arrived, and put it ba
 the board went on into the future. One source of truth removed the race rather than timing around
 it, and turning the overlay off anywhere else now moves the scrubber for free.
 
+### 5.25 The timeline layout, and the roadmap as a board (v0.2)
+
+The roadmap was a list. A list is not how anybody presents a plan, and the obvious fix — a roadmap
+screen with a bar chart on it — is the wrong one: it adds a second place where objects live, drawn
+by code that can only ever draw roadmaps.
+
+So the capability went on the canvas instead. `src/canvas/timeline.ts` lays *any* cards out along
+*any* attribute that reads as a date, in lanes made from *any* other attribute or from the card's
+kind. It is pure over boxes, so it is tested without a browser and reused by three callers: the
+Viewpoint panel (**Timeline → Along / In lanes by**), Compose (`lay out applications on a timeline
+by end of support in lanes by owner`), and the roadmap.
+
+- Dates are read forgivingly about form and strictly about ambiguity: `2027-03-14`, `2027-03`,
+  `2027`, `2027 Q3`, `Q3 2027`, `March 2027`, `Mar 2027`. Anything else — including a bare number
+  that cannot be a year — is treated as having no date and parked in a lane of its own.
+- Granularity follows the span: months, then quarters, then years. Every period between the first
+  and the last gets a column *including the empty ones*, so a gap in the plan stays visible.
+- Columns are equal width rather than a linear time scale, because a linear scale spends the board
+  on the gap between two clusters and squeezes the clusters into nothing.
+- The layout starts below whatever is already on the board, and everything it draws — lanes as
+  frames, period labels as section blocks — is an ordinary board object.
+
+**Lay out on a board** on the roadmap (`src/lib/change/board.ts`) then becomes a thin thing: it
+works out which objects each plan touches, in delivery order, makes one card per object carrying
+`when`, `change` and `effect` as ordinary attributes, and hands them to the layout. An object
+touched by two plans appears once, at the first plan that touches it, with the later ones named on
+the card — a card is one object in one place, and drawing it twice would make the board disagree
+with the model.
+
+The cards deliberately do **not** carry `meta.entityId`. An entity-backed card is kept in step with
+its entity in both directions, so opening the board would overwrite `when` and `effect` with the
+system's own attributes and saving it would write the change note into Maximo's description. A
+roadmap card is a statement *about* a system at a date; it records which one it means in
+`meta.about` and otherwise stays out of the graph. Introductions keep the `planned` mark, so the
+board still says which boxes do not exist yet.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1085,7 +1122,7 @@ it, and turning the overlay off anywhere else now moves the scrubber for free.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 58)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 59)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1288,11 +1325,16 @@ it, and turning the overlay off anywhere else now moves the scrubber for free.
 - Plateaus: named, dated states defined by which change sets have landed; derived, never stored;
   compared as a diff (arrives / goes / changes, with both values); measured with estate health; and
   viewable on a board through the same state picker.
+- A timeline layout on the canvas: lay any board out along any date-shaped attribute, in lanes by
+  any other attribute or by kind — from the Viewpoint panel or from a Compose line. Unreadable dates
+  are parked, never guessed at.
+- **Lay out on a board** on the roadmap: the chosen plans drawn as an ordinary board, one card per
+  object with `when`, `change` and `effect` as attributes, laid out by that same timeline.
 
 ### Documentation (v0.2)
-- Nineteen in-app pages under **Documentation**, from a first board through to plateaus, with a
+- Twenty in-app pages under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
-- Thirty screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
+- Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
 - Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
   dead links, duplicate heading ids, orphaned pages, and that search finds the page a person would
   be looking for.
@@ -1440,6 +1482,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | Every lesson must quote the corpus verbatim, checked by a test. | A hand-written file of "what is true about architecture" is exactly where plausible folklore accumulates. Tying each rule to a passage that must exist is the only cheap defence, and it is the same rule we already impose on the model in intake. |
 | 2026-09-05 | The Postgres schema is generated from the SQLite one, not maintained by hand. | Two hand-written schemas diverge the first time someone is in a hurry, and the divergence shows up as a missing column in production. A generator plus a `--check` test makes drift a failing test instead. |
 | 2026-09-05 | A stale board save is refused (409) rather than merged or retried. | We have no merge, so writing anyway would drop somebody's work silently — the worst outcome. Retrying is the same thing on a delay. Refusing, saying so, and offering a reload is the only honest option until real-time collaboration exists. |
+| 2026-09-06 | A time axis is a canvas layout, not a roadmap screen. | A roadmap screen can only ever draw roadmaps. A layout that puts any cards along any date-shaped attribute answers the same question and also answers "when does each of these contracts expire", and it keeps every object on the canvas where it can be dragged, coloured, queried and exported like everything else. |
+| 2026-09-06 | Timeline columns are equal-width periods, not a linear time scale. | A linear scale spends most of the board on the gap between two clusters and squeezes the clusters into nothing: accurate and unreadable. Equal periods keep every card legible and still put earlier things to the left, which is all anybody reads off a timeline. |
+| 2026-09-06 | A date that does not clearly parse is parked, never guessed. | A card silently placed in 1970 is a lie the reader cannot catch; a card in the "no date" lane is a question somebody can answer. This is why a bare `1200` is a cost, not a year. |
+| 2026-09-06 | Cards on a roadmap board reference their object in `meta.about`, not `meta.entityId`. | An entity-backed card is synchronised with its entity both ways: the board would lose its `when` and `effect` on open, and write the change note into the system's description on save. A roadmap card is a statement about a system at a date, not the system. |
 
 ## 8. Open questions for the product owner
 
@@ -1452,6 +1498,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 59: a time axis for any board, and the roadmap drawn on one.** The roadmap was
+  a list, and a list is not how anybody presents a plan. Rather than add a roadmap screen, the
+  canvas gained a general capability: lay any board out along any attribute that reads as a date, in
+  lanes made from any other attribute or from the card's kind. It is offered in the Viewpoint panel,
+  in Compose (`lay out applications on a timeline by end of support in lanes by owner`) and, now, by
+  **Lay out on a board** on the roadmap — which turns the chosen change sets into an ordinary board
+  of cards carrying `when`, `change` and `effect` as attributes and lets the generic layout do the
+  drawing. An object touched by two plans appears once, at the earliest, with the later plans named
+  on it; introductions stay marked planned. The cards reference their object in `meta.about` rather
+  than `meta.entityId`, because an entity-backed card would have its roadmap attributes overwritten
+  on open and would write the change note back into the system on save. Dates are read forgivingly
+  about form and strictly about ambiguity — a bare `1200` is a cost, not a year — and anything
+  unreadable is parked in a lane of its own instead of being placed wrongly. 25 new unit tests, two
+  new e2e paths and two new documentation pages' worth of screenshots.
 
 - **2026-09-06 — Rev 58: the demo roadmap, backfilled.** The seed only runs on an empty database,
   so the deployed instance — set up long before change sets existed — showed an empty Roadmap for

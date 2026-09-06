@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import {
   AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, GitBranch, Link2,
-  Lock, Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
+  LayoutGrid, Lock, Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
 } from "lucide-react";
-import { addChange, addDependency, createChangeSet, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
+import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
 import type { Nature } from "@/lib/change/impact";
 import { RoadmapTabs } from "./RoadmapTabs";
@@ -77,6 +77,7 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
 }) {
   const [pending, start] = useTransition();
   const [creating, setCreating] = useState(false);
+  const [drawing, setDrawing] = useState(false);
   const [openId, setOpenId] = useState<string | null>(sets[0]?.id ?? null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -97,6 +98,9 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
           </p>
         </div>
         <div className="studio-home-actions">
+          <button type="button" className="ghost-button" onClick={() => setDrawing((d) => !d)} disabled={planned.length === 0} data-draw-roadmap>
+            <LayoutGrid size={16} /> Lay out on a board
+          </button>
           <button type="button" className="primary-home-button" onClick={() => setCreating(true)} data-new-change-set>
             <Plus size={16} /> New change set
           </button>
@@ -134,6 +138,16 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
       </div>
 
       {message && <p className="roadmap-message">{message}</p>}
+      {drawing && (
+        <LayOutOnBoard
+          workspaceId={workspaceId}
+          sets={planned}
+          pending={pending}
+          onCancel={() => setDrawing(false)}
+          onError={(error) => { setMessage(error); setDrawing(false); }}
+          start={start}
+        />
+      )}
       {creating && (
         <NewChangeSet
           workspaceId={workspaceId}
@@ -410,6 +424,73 @@ function NewChangeSet({ workspaceId, pending, onCancel, onCreate }: {
       <label className="field wide"><span>What is this change, and why</span><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="One paragraph. The reasoning is the part somebody will need in two years." /></label>
       <div className="roadmap-new-actions">
         <button type="submit" className="primary-home-button" disabled={pending || !name.trim()}>Create</button>
+        <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Turning the plans into a board.
+ *
+ * Everything this offers is an argument to a generic canvas layout — which objects, what the lanes
+ * are made of, what to call it. There is no roadmap renderer behind it: the board it produces is
+ * the same kind of board as every other one, and stops looking like a roadmap the moment somebody
+ * drags a card, which is the correct behaviour for a drawing of an opinion.
+ */
+function LayOutOnBoard({ workspaceId, sets, pending, onCancel, onError, start }: {
+  workspaceId: string;
+  sets: ChangeSetView[];
+  pending: boolean;
+  onCancel: () => void;
+  onError: (message: string) => void;
+  start: (fn: () => void) => void;
+}) {
+  const [name, setName] = useState("Roadmap");
+  const [lanesBy, setLanesBy] = useState<"effect" | "change set">("effect");
+  const [chosen, setChosen] = useState<string[]>(sets.map((s) => s.id));
+  const toggle = (id: string) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+
+  return (
+    <form
+      className="roadmap-new"
+      data-draw-form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!chosen.length) return;
+        start(async () => {
+          const r = await createRoadmapBoard({ workspaceId, name, lanesBy, changeSetIds: chosen });
+          if (r && "error" in r) onError(r.error);
+        });
+      }}
+    >
+      <label className="field"><span>Board name</span><input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
+      <label className="field">
+        <span>Lanes</span>
+        <select value={lanesBy} onChange={(e) => setLanesBy(e.target.value as "effect" | "change set")}>
+          <option value="effect">What happens to it</option>
+          <option value="change set">The plan responsible</option>
+        </select>
+      </label>
+      <div className="field wide">
+        <span>Which plans</span>
+        <div className="roadmap-pick">
+          {sets.map((set) => (
+            <label key={set.id} className={chosen.includes(set.id) ? "on" : ""}>
+              <input type="checkbox" checked={chosen.includes(set.id)} onChange={() => toggle(set.id)} />
+              {set.name}
+              <i>{set.targetDate || "undated"}</i>
+            </label>
+          ))}
+        </div>
+      </div>
+      <p className="roadmap-new-hint">
+        One card per object a plan touches, with <code>when</code>, <code>change</code> and <code>effect</code> as
+        attributes. On the board you can re-lay it out along any other date — an end-of-support column, a contract
+        renewal — because the timeline is a canvas capability, not a roadmap screen.
+      </p>
+      <div className="roadmap-new-actions">
+        <button type="submit" className="primary-home-button" disabled={pending || !chosen.length}>{pending ? "Drawing…" : "Create board"}</button>
         <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
       </div>
     </form>

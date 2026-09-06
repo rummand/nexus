@@ -299,6 +299,30 @@ try {
     await page.waitForTimeout(1200);
   });
 
+  // ---- the timeline: a canvas capability, and the roadmap drawn with it ----
+  await shot("board-timeline", async () => {
+    await goto("/b/brd_integrations", "[data-element-id]");
+    await page.waitForTimeout(1800);
+    await page.click('button:has-text("Viewpoint")');
+    await page.waitForSelector("[data-timeline-controls]", { timeout: 60_000 });
+    const key = await page.$$eval("[data-timeline-controls] select", (els) => [...els[0].options].map((o) => o.value).find(Boolean));
+    await page.selectOption("[data-timeline-controls] select >> nth=0", key);
+    await page.click("[data-timeline-controls] .viewpoint-primary");
+    await page.waitForTimeout(1200);
+    await page.click('button:has-text("Fit board")');
+    await page.waitForTimeout(1500);
+  });
+
+  await shot("roadmap-board", async () => {
+    await goto(`${w}/roadmap`, ".roadmap");
+    await page.click("[data-draw-roadmap]");
+    await page.waitForSelector("[data-draw-form]");
+    await page.click("[data-draw-form] button[type=submit]");
+    await page.waitForURL(/\/b\/brd_/, { timeout: 60_000 });
+    await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 60_000 });
+    await page.waitForTimeout(2000);
+  });
+
   // ---- knowledge ----------------------------------------------------------
   await shot("knowledge", () => goto(`${w}/knowledge?q=how+do+you+rationalise+an+application+portfolio`, ".knowledge-passage"), { settle: 900 });
   await shot("knowledge-doctrine", () => goto(`${w}/knowledge?tab=lessons`, ".knowledge-lesson"), { settle: 900 });

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import type { QueryResponse } from "@/lib/graph-types";
-import { cardColorForKind, isBoxElement } from "./document";
+import { cardColorForKind, isBoxElement, type CardElement } from "./document";
 import { attributeKeysOnBoard, NO_LENS, relationKindsOnBoard } from "./lens";
+import { dateAttributeKeys } from "./timeline";
 import { useCanvas, useCanvasStore } from "./store";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { isEntityId } from "@/lib/graph-types";
@@ -20,8 +21,16 @@ export function ViewpointPanel() {
   const lensResult = useCanvas((s) => s.lensResult);
   const attributeKeys = useMemo(() => attributeKeysOnBoard(elements), [elements]);
   const [viewName, setViewName] = useState("");
-  const { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, distributeSelection } = useGraphActions();
+  const { busy, showRelations, expandSelection, arrangeByKind, arrangeByAttribute, arrangeOnTimeline, distributeSelection } = useGraphActions();
   const [groupKey, setGroupKey] = useState("");
+  const [timelineKey, setTimelineKey] = useState("");
+  const [laneKey, setLaneKey] = useState("");
+  /**
+   * Only attributes that actually read as dates are offered as an axis. Letting somebody lay a
+   * board out by "owner" and get one column would look like a broken feature rather than a
+   * misunderstanding.
+   */
+  const dateKeys = useMemo(() => dateAttributeKeys(Object.values(elements).filter((el): el is CardElement => el.type === "card")), [elements]);
   const [queryText, setQueryText] = useState(lens.type === "query" ? lens.q : "");
   const [queryHits, setQueryHits] = useState<QueryResponse["entities"] | null>(null);
   const workspaceId = useCanvas((s) => s.workspaceId);
@@ -227,6 +236,35 @@ export function ViewpointPanel() {
           <button type="button" onClick={() => store.getState().zoomToFit()}>Fit board</button>
         </div>
       </div>
+
+      {dateKeys.length > 0 && (
+        <div className="viewpoint-group" data-timeline-controls>
+          <span>Timeline</span>
+          <div className="viewpoint-row">
+            <em>Along</em>
+            <select className="viewpoint-select" value={timelineKey} aria-label="Attribute to use as the time axis" onChange={(e) => setTimelineKey(e.target.value)}>
+              <option value="">choose a date…</option>
+              {dateKeys.map((k) => <option key={k.key} value={k.key}>{k.key} ({k.count})</option>)}
+            </select>
+          </div>
+          <div className="viewpoint-row">
+            <em>In lanes by</em>
+            <select className="viewpoint-select" value={laneKey} aria-label="Attribute to make lanes from" onChange={(e) => setLaneKey(e.target.value)}>
+              <option value="">nothing — one lane</option>
+              <option value="__kind">kind</option>
+              {attributeKeys.filter((k) => k.key !== timelineKey).map((k) => <option key={k.key} value={k.key}>{k.key}</option>)}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="viewpoint-primary"
+            disabled={busy || !timelineKey}
+            onClick={() => run(`Laid out along ${timelineKey}`, () => arrangeOnTimeline(timelineKey, laneKey === "__kind" ? undefined : laneKey || undefined, laneKey === "__kind"))}
+          >
+            {timelineKey ? `Lay out along ${timelineKey}` : "Pick a date attribute"}
+          </button>
+        </div>
+      )}
 
       <div className="viewpoint-group">
         <span>Lens {lens.type !== "none" && <button type="button" className="viewpoint-link" onClick={() => store.getState().setLens(NO_LENS)}>clear</button>}</span>

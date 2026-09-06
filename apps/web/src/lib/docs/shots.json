@@ -35,6 +35,10 @@
     "width": 1720,
     "height": 1000
   },
+  "board-timeline": {
+    "width": 1720,
+    "height": 1000
+  },
   "board-to-be": {
     "width": 1720,
     "height": 1000
@@ -117,6 +121,10 @@
   },
   "roadmap": {
     "width": 1400,
+    "height": 1000
+  },
+  "roadmap-board": {
+    "width": 1720,
     "height": 1000
   },
   "roadmap-dependencies": {

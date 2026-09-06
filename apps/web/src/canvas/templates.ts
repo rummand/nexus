@@ -40,18 +40,24 @@ export function card(x: number, y: number, kind: string, title: string, descript
   return { id, type: "card", x, y, w: 236, h: 124, kind, color: cardColorForKind(kind), title, description, z: nextZ(), meta: { entityId: `ent_${nanoid(12)}` }, ...(attributes ? { attributes } : {}) };
 }
 
-/** Demo attributes for well-known applications (lifecycle / owner / criticality). */
+/**
+ * Demo attributes for well-known applications.
+ *
+ * `end of support` is a real date on purpose: it is the commonest reason an architect reaches for
+ * a timeline, and without one on the seeded estate the generic timeline layout has nothing to
+ * demonstrate itself with.
+ */
 const DEMO_ATTRIBUTES: Record<string, Record<string, string>> = {
-  "SCADA / EMS": { lifecycle: "active", criticality: "high", owner: "Grid Operations" },
-  "Outage Mgmt": { lifecycle: "active", criticality: "high", owner: "Grid Operations" },
-  Historian: { lifecycle: "end of life", criticality: "medium", owner: "Grid Operations" },
-  Maximo: { lifecycle: "active", criticality: "medium", owner: "Asset Management" },
-  "Asset Register": { lifecycle: "phase out", criticality: "medium", owner: "Asset Management" },
-  "SAP S/4": { lifecycle: "active", criticality: "high", owner: "Corporate IT" },
+  "SCADA / EMS": { lifecycle: "active", criticality: "high", owner: "Grid Operations", "end of support": "2030-06" },
+  "Outage Mgmt": { lifecycle: "active", criticality: "high", owner: "Grid Operations", "end of support": "2029-12" },
+  Historian: { lifecycle: "end of life", criticality: "medium", owner: "Grid Operations", "end of support": "2027-06" },
+  Maximo: { lifecycle: "active", criticality: "medium", owner: "Asset Management", "end of support": "2026-12" },
+  "Asset Register": { lifecycle: "phase out", criticality: "medium", owner: "Asset Management", "end of support": "2028-03" },
+  "SAP S/4": { lifecycle: "active", criticality: "high", owner: "Corporate IT", "end of support": "2031-12" },
   "CRM Cloud": { lifecycle: "active", criticality: "medium", owner: "Customer" },
-  "ERP Core": { lifecycle: "active", criticality: "high", owner: "Corporate IT" },
+  "ERP Core": { lifecycle: "active", criticality: "high", owner: "Corporate IT", "end of support": "2029-06" },
   "Data Lake": { lifecycle: "plan", criticality: "medium", owner: "Data Platform" },
-  "Settlement Engine": { lifecycle: "active", criticality: "high", owner: "Market" },
+  "Settlement Engine": { lifecycle: "active", criticality: "high", owner: "Market", "end of support": "2028-09" },
 };
 export function demoAttributes(name: string) {
   return DEMO_ATTRIBUTES[name];

@@ -1,5 +1,5 @@
 import { FIRST_BOARD, START } from "./pages/getting-started";
-import { BOARDS_AND_GRAPH, CANVAS, COMPOSE, SEARCH, VIEWPOINTS } from "./pages/canvas";
+import { BOARDS_AND_GRAPH, CANVAS, COMPOSE, SEARCH, TIMELINE, VIEWPOINTS } from "./pages/canvas";
 import { EXPLORER, GRAPH, HEALTH, META_MODEL } from "./pages/model";
 import { CATALOGUE, INTAKE, KNOWLEDGE } from "./pages/data";
 import { PLATEAUS, ROADMAP } from "./pages/time";
@@ -14,7 +14,7 @@ import { pageText, type DocPage, type DocSection } from "./types";
  */
 export const SECTIONS: DocSection[] = [
   { title: "Getting started", pages: [START, FIRST_BOARD] },
-  { title: "Working on the canvas", pages: [CANVAS, BOARDS_AND_GRAPH, VIEWPOINTS, COMPOSE, SEARCH] },
+  { title: "Working on the canvas", pages: [CANVAS, BOARDS_AND_GRAPH, VIEWPOINTS, TIMELINE, COMPOSE, SEARCH] },
   { title: "The model", pages: [GRAPH, EXPLORER, META_MODEL, HEALTH] },
   { title: "Bringing data in", pages: [INTAKE, CATALOGUE, KNOWLEDGE] },
   { title: "Planning ahead", pages: [ROADMAP, PLATEAUS] },
