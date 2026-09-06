@@ -3,6 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PAGES, SECTIONS, docPage, neighbours, searchDocs } from "./index";
 import { pageText, resolveHref } from "./types";
+import shotSizes from "./shots.json";
+
+/** The manifest is typed from its literal keys; a lookup by an arbitrary slug needs the wider shape. */
+const SHOTS = shotSizes as Record<string, { width: number; height: number } | undefined>;
 
 /**
  * The documentation is data, so it can be checked like data.
@@ -20,6 +24,12 @@ describe("the documentation", () => {
     for (const shot of shots) {
       const file = path.resolve(__dirname, "../../../public/docs", `${shot.src}.png`);
       expect(existsSync(file), `${shot.page} references ${shot.src}.png, which is not in public/docs — run scripts/capture-docs.mjs`).toBe(true);
+    }
+  });
+
+  it("knows the size of every screenshot, so the page does not jump as it loads", () => {
+    for (const shot of shots) {
+      expect(SHOTS[shot.src], `${shot.src} is missing from shots.json — re-run scripts/capture-docs.mjs`).toBeTruthy();
     }
   });
 

@@ -14,14 +14,18 @@
  *   node scripts/capture-docs.mjs roadmap    # only shots whose name contains "roadmap"
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 import path from "node:path";
 
 const OUT = path.resolve("public/docs");
 const only = process.argv[2] ?? "";
-const VIEWPORT = { width: 1560, height: 980 };
+/*
+ * Wide enough that cropping the workspace navigation out still leaves a content column bigger
+ * than the ~900px the documentation renders at.
+ */
+const VIEWPORT = { width: 1720, height: 1000 };
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -57,6 +61,14 @@ const log = [];
 server.stdout.on("data", (d) => log.push(String(d)));
 server.stderr.on("data", (d) => log.push(String(d)));
 
+/**
+ * The size of every shot, written next to the docs code.
+ *
+ * Cropped and full-window captures no longer share an aspect ratio, so the renderer cannot assume
+ * one — and a wrong intrinsic size means the page jumps as each image loads. Recording the real
+ * dimensions here keeps that automatic rather than something an author has to remember.
+ */
+const sizes = {};
 let taken = 0;
 try {
   const deadline = Date.now() + 180_000;
@@ -81,16 +93,43 @@ try {
   const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   page.on("pageerror", (e) => console.log(`  ! page error: ${e.message}`));
 
-  /** Take one shot, unless the run is narrowed to a name that does not match. */
+  /**
+   * Take one shot, unless the run is narrowed to a name that does not match.
+   *
+   * Workspace pages are cropped to their content: the navigation sidebar is identical on every
+   * screen, so repeating it in thirty screenshots wastes the width the reader has and buries the
+   * thing each picture is actually about. `options.full` keeps the whole window for the one shot
+   * where the navigation *is* the subject; `options.selector` clips to a single panel.
+   */
   const shot = async (name, prepare, options = {}) => {
     if (only && !name.includes(only)) return;
     process.stdout.write(`  ${name} … `);
     await prepare();
     await page.waitForTimeout(options.settle ?? 700);
-    const clip = options.selector ? await page.locator(options.selector).boundingBox() : undefined;
-    await page.screenshot({ path: path.join(OUT, `${name}.png`), ...(clip ? { clip: pad(clip, options.padding ?? 12) } : {}) });
+    let clip;
+    if (options.selector) {
+      const box = await page.locator(options.selector).boundingBox();
+      if (box) clip = pad(box, options.padding ?? 12);
+    } else if (!options.full) {
+      clip = await contentClip();
+    }
+    await page.screenshot({ path: path.join(OUT, `${name}.png`), ...(clip ? { clip } : {}) });
+    sizes[name] = clip
+      ? { width: Math.round(clip.width), height: Math.round(clip.height) }
+      : { width: VIEWPORT.width, height: VIEWPORT.height };
     taken++;
     console.log("ok");
+  };
+
+  /**
+   * The window minus the workspace navigation, or nothing at all on a board — a board fills the
+   * window and has no sidebar to lose.
+   */
+  const contentClip = async () => {
+    const sidebar = await page.locator(".studio-home-sidebar").boundingBox().catch(() => null);
+    if (!sidebar) return undefined;
+    const x = Math.round(sidebar.x + sidebar.width);
+    return { x, y: 0, width: VIEWPORT.width - x, height: VIEWPORT.height };
   };
   const pad = (box, by) => ({
     x: Math.max(0, box.x - by),
@@ -105,7 +144,8 @@ try {
   const w = "/w/acme-energy";
 
   // ---- the shell ----------------------------------------------------------
-  await shot("home", () => goto(w, ".studio-home-nav"));
+  // The one page where the navigation is the subject, so it keeps the whole window.
+  await shot("home", () => goto(w, ".studio-home-nav"), { full: true });
 
   // ---- a board ------------------------------------------------------------
   await shot("board", () => goto("/b/brd_landscape", "[data-element-id]"), { settle: 2000 });
@@ -255,6 +295,16 @@ try {
   await shot("knowledge-sources", () => goto(`${w}/knowledge?tab=sources`, ".knowledge-source-list"), { settle: 900 });
 
   await browser.close();
+  // Merge rather than replace, so a narrowed run does not forget the shots it did not take.
+  const manifest = path.resolve("src/lib/docs/shots.json");
+  let existing = {};
+  try {
+    existing = JSON.parse(await import("node:fs").then((fs) => fs.readFileSync(manifest, "utf8")));
+  } catch {
+    /* first run */
+  }
+  const merged = Object.fromEntries(Object.entries({ ...existing, ...sizes }).sort(([a], [b]) => a.localeCompare(b)));
+  writeFileSync(manifest, `${JSON.stringify(merged, null, 2)}\n`);
   console.log(`\n${taken} screenshot${taken === 1 ? "" : "s"} written to public/docs`);
 } catch (error) {
   console.error(`\ncapture failed: ${error instanceof Error ? error.message : error}`);

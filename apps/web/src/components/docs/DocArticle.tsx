@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink, HelpCircle, Lightbulb } from "lucide-react";
 import type { Block, DocPage } from "@/lib/docs";
 import { resolveHref } from "@/lib/docs";
+import SHOTS from "@/lib/docs/shots.json";
 
 /**
  * One documentation page.
@@ -99,17 +100,20 @@ function BlockView({ block, slug }: { block: Block; slug: string }) {
         </div>
       );
 
-    case "shot":
+    case "shot": {
+      /*
+        Real dimensions, recorded by scripts/capture-docs.mjs. Most shots are cropped to the page
+        content and a couple keep the whole window, so they do not share an aspect ratio — and a
+        guessed one would make the article jump as each image loads.
+      */
+      const size = (SHOTS as Record<string, { width: number; height: number } | undefined>)[block.src] ?? { width: 1400, height: 1000 };
       return (
         <figure className="doc-shot">
-          {/*
-            Fixed intrinsic size because every capture uses the same viewport (scripts/capture-docs.mjs);
-            the CSS scales it down and the aspect ratio holds, so nothing jumps as the image loads.
-          */}
-          <Image src={`/docs/${block.src}.png`} alt={block.alt} width={1560} height={980} sizes="(max-width: 1100px) 100vw, 900px" />
+          <Image src={`/docs/${block.src}.png`} alt={block.alt} width={size.width} height={size.height} sizes="(max-width: 1100px) 100vw, 900px" />
           <figcaption>{block.caption}</figcaption>
         </figure>
       );
+    }
 
     case "note":
       return (

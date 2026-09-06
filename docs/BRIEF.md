@@ -1011,10 +1011,15 @@ Three decisions make it worth having rather than another README nobody opens.
 
 **It is illustrated from the product itself.** `scripts/capture-docs.mjs` starts a server and a
 database of its own, drives the seeded demo through a real browser and writes thirty screenshots
-into `public/docs`, which are committed. A reader on a train sees the screen; a reviewer sees in the
-diff when one changed; and re-running the script after a UI change is one command. The model is
-switched off for the capture on purpose — a planner would answer differently every run and the
-documentation would end up describing one lucky afternoon.
+into `public/docs`, which are committed. Each one is cropped to the page's own content: the
+workspace navigation is identical on every screen, and repeating it in thirty pictures spends the
+reader's width on something they are already looking at. The one exception is the home page, where
+the navigation *is* the subject. The capture records each image's real dimensions in
+`shots.json`, so the article reserves the right space and does not jump as the screenshots load.
+A reader on a train sees the screen; a reviewer sees in the diff when one changed; and re-running
+the script after a UI change is one command. The model is switched off for the capture on purpose
+— a planner would answer differently every run and the documentation would end up describing one
+lucky afternoon.
 
 **It is data, so it can be checked.** Pages are typed block lists (prose, steps, screenshot, note,
 table, keyboard reference, "try it") rather than Markdown. A unit test fails if a page references a
@@ -1058,7 +1063,7 @@ already misbehaving.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 54)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 55)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1264,8 +1269,9 @@ already misbehaving.
 - Nineteen in-app pages under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
 - Thirty screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
-- Nine tests over the docs as data: missing screenshots, missing alt text, dead links, duplicate
-  heading ids, orphaned pages, and that search finds the page a person would be looking for.
+- Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
+  dead links, duplicate heading ids, orphaned pages, and that search finds the page a person would
+  be looking for.
 
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
@@ -1421,6 +1427,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 55: screenshots cropped to their subject.** Every documentation screenshot
+  included the workspace navigation, which is the same on every screen — thirty repetitions of the
+  sidebar, spending the reader's width on the one thing they were already looking at. The capture
+  script now crops each shot to the page's own content, keeping the whole window only for the home
+  page, where the navigation is the subject. Since cropped and full-window captures no longer share
+  an aspect ratio, the script also records each image's real dimensions in `shots.json` and the
+  renderer uses them, so the article reserves the right space instead of jumping as the images
+  load; a test fails if a shot is missing from that manifest.
 
 - **2026-09-06 — Rev 54: the documentation.** Nineteen in-app pages under a new **Documentation**
   menu item, written for architects using Nexus and ordered the way somebody would learn it, from a

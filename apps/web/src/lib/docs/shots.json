@@ -1,0 +1,122 @@
+{
+  "board": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-card": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-command-bar": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-compose": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-compose-built": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-graph-panel": {
+    "width": 258,
+    "height": 420
+  },
+  "board-inspector": {
+    "width": 254,
+    "height": 660
+  },
+  "board-lens-impact": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-to-be": {
+    "width": 1720,
+    "height": 1000
+  },
+  "board-viewpoint": {
+    "width": 258,
+    "height": 888
+  },
+  "explorer": {
+    "width": 1400,
+    "height": 1000
+  },
+  "graph": {
+    "width": 1400,
+    "height": 1000
+  },
+  "graph-entities": {
+    "width": 1400,
+    "height": 1000
+  },
+  "graph-health": {
+    "width": 1400,
+    "height": 1000
+  },
+  "graph-proposals": {
+    "width": 1400,
+    "height": 1000
+  },
+  "home": {
+    "width": 1720,
+    "height": 1000
+  },
+  "intake-catalogue": {
+    "width": 1400,
+    "height": 1000
+  },
+  "intake-new": {
+    "width": 1400,
+    "height": 1000
+  },
+  "intake-review": {
+    "width": 1400,
+    "height": 1000
+  },
+  "intake-run": {
+    "width": 1400,
+    "height": 1000
+  },
+  "intake-viewpoints": {
+    "width": 1400,
+    "height": 1000
+  },
+  "knowledge": {
+    "width": 1400,
+    "height": 1000
+  },
+  "knowledge-doctrine": {
+    "width": 1400,
+    "height": 1000
+  },
+  "knowledge-sources": {
+    "width": 1400,
+    "height": 1000
+  },
+  "meta": {
+    "width": 1400,
+    "height": 1000
+  },
+  "meta-diagram": {
+    "width": 1400,
+    "height": 1000
+  },
+  "plateaus": {
+    "width": 1400,
+    "height": 1000
+  },
+  "plateaus-compare": {
+    "width": 1400,
+    "height": 1000
+  },
+  "roadmap": {
+    "width": 1400,
+    "height": 1000
+  },
+  "roadmap-dependencies": {
+    "width": 1400,
+    "height": 1000
+  }
+}
