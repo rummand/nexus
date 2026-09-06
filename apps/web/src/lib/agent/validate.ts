@@ -1,4 +1,5 @@
 import type { Proposal, ProposalType } from "../graph-types";
+import { normalise as norm, quotesFrom } from "./quote";
 
 /**
  * What a model is allowed to claim about the graph.
@@ -51,7 +52,6 @@ export interface AgentReview {
 }
 
 const MAX_PROPOSALS = 40;
-const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
 const str = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const ids = (v: unknown, max = 8): string[] =>
   Array.isArray(v) ? v.map((x) => str(x, 60)).filter(Boolean).slice(0, max) : [];
@@ -60,21 +60,6 @@ const ids = (v: unknown, max = 8): string[] =>
 function textOf(e: AgentEntity): string {
   const attrs = Object.entries(e.attributes).map(([k, v]) => `${k} ${v}`).join(" ");
   return norm(`${e.kind} ${e.name} ${e.description} ${attrs}`);
-}
-
-/**
- * Loose about form, strict about substance: the model may re-wrap whitespace or change case when
- * it quotes, and may elide a middle, but the words have to be there. Four characters is the floor —
- * a graph object's own words are often a single term ("SCADA", "batch"), unlike a transcript's
- * sentences, and demanding a long quote would reject the honest citations along with the invented
- * ones.
- */
-function quoted(haystack: string, quote: string): boolean {
-  const needle = norm(quote);
-  if (needle.length < 4) return false;
-  if (haystack.includes(needle)) return true;
-  const parts = needle.split(/\s*(?:…|\.\.\.)\s*/).filter((p) => p.length >= 4);
-  return parts.length > 1 && parts.every((p) => haystack.includes(p));
 }
 
 /** Snap a value onto the vocabulary this workspace already uses, or keep it as a new one. */
@@ -117,7 +102,7 @@ export function validateProposals(raw: unknown, graph: AgentGraph, decided: Set<
 
     if (!why) { rejected.push(`${label}: no reason given`); continue; }
     if (!readFrom) { rejected.push(`${label}: cited an object that is not in this graph`); continue; }
-    if (!quoted(textById.get(readFrom.id)!, quote)) {
+    if (!quotesFrom(textById.get(readFrom.id)!, quote)) {
       rejected.push(`${label}: quoted words that “${readFrom.name}” does not say`);
       continue;
     }

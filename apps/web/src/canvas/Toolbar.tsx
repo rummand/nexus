@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Box, Circle, Database, Diamond, Filter, Frame, Hand, Heading, Map as MapIcon, Minus, MousePointer2, Redo2, Shapes, Square, StickyNote, Type, Undo2 } from "lucide-react";
+import { ArrowRight, Bot, Box, Circle, Database, Diamond, Filter, Frame, Hand, Heading, Map as MapIcon, Minus, MousePointer2, Redo2, Shapes, Square, StickyNote, Type, Undo2 } from "lucide-react";
 import { useCanvas, useCanvasStore, type ConnectorPreset, type Tool } from "./store";
 
 const TOOLS: Array<{ tool: Tool; label: string; key: string; badge?: string; icon: React.ReactNode }> = [
@@ -11,6 +11,7 @@ const TOOLS: Array<{ tool: Tool; label: string; key: string; badge?: string; ico
   { tool: "sticky", label: "Note", key: "N", badge: "note", icon: <StickyNote size={22} /> },
   { tool: "text", label: "Text block", key: "T", badge: "text", icon: <Type size={22} /> },
   { tool: "section", label: "Section", key: "S", badge: "section", icon: <Heading size={22} /> },
+  { tool: "agent", label: "Agent — put one where the work is", key: "A", badge: "agent", icon: <Bot size={22} /> },
 ];
 
 const SHAPE_TOOLS = new Set<Tool>(["rect", "ellipse", "diamond", "connector"]);

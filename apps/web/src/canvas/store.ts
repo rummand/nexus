@@ -27,7 +27,7 @@ import type { Box, BoxElement, CanvasDocument, CanvasElement, ConnectorEnd, Elem
 import { DOCUMENT_VERSION, isBoxElement } from "./document";
 import { type AlignMode, type Camera, type Insets, alignBoxes, cameraToFitInsets, contentBounds, distributeBoxes, elementBounds, unionBoxes, zoomCameraAt, zoomCameraTo, clamp, MIN_ZOOM, MAX_ZOOM } from "./geometry";
 
-export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" | "card" | "rect" | "ellipse" | "diamond" | "connector";
+export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" | "card" | "agent" | "rect" | "ellipse" | "diamond" | "connector";
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 

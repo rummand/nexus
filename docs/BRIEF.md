@@ -1003,7 +1003,7 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty-one pages written for the person doing the architecture rather than the person
+a menu item: twenty-two pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then getting data in, then time.
 
@@ -1138,6 +1138,46 @@ Everything that decides whether an answer is safe is pure, so the interesting ha
 tested without a key — including the answers a model gets wrong, which is the half that matters.
 
 
+### 5.27 Agents on the board (v0.2)
+
+§5.26 put a model behind a button on the Knowledge graph page. That is a useful thing and a small
+idea: an agent you have to go somewhere to consult is a feature of a page, and this product is a
+canvas. The point of an AI-native platform is not a screen where the AI lives; it is that agents are
+*present in the work*.
+
+So an agent is now an element. You place it with a tool like a card or a note, it renders as an
+object on the board, you drag it, duplicate it, lock it, delete it, and it appears in the board's
+version history like everything else. What makes it an agent is three things a person controls
+directly:
+
+- **A purpose, in their words.** The purpose field is the whole interface. It is the instruction the
+  agent is given, which means two agents on one board with different purposes are genuinely two
+  different agents rather than two copies of one feature.
+- **A scope decided by where it sits.** *The board*, *its frame* — the smallest frame containing it,
+  so dragging it into "OT estate" changes its job — or *what it joins*, the objects a line connects
+  it to. Every other tool would make somebody write a filter. On a canvas, where a thing sits
+  already means something, and it means it to everybody looking at the board rather than only to the
+  person who wrote the query.
+- **A voice that is not an edit.** It answers with **remarks**: a short note pinned to one object,
+  quoting the words on that object which prompted it. The object gets a badge; you read the remark
+  on the object itself; you keep it as a note, or dismiss it. An agent on a board changes nothing by
+  speaking, which is what makes it safe to have several of them, always there, in the middle of
+  somebody's thinking.
+
+Remarks live in the document rather than in a table, because a remark is an annotation on a drawing:
+it should travel with the drawing, be exported with it, be undone with it, and be there for the
+colleague who opens the board next week.
+
+The validator is the same boundary as everywhere else (`lib/agent/remarks.ts`): a remark must be
+about something the agent was actually shown and must quote that object's own words, one remark per
+object, and silence is a valid answer. What cannot be grounded is thrown away before anybody sees
+it. The closed schema has no verb that changes anything at all — which is a stronger guarantee than
+§5.26's five verbs, and the reason an agent can sit on a board unattended.
+
+Everything about scope and speech is pure over the document, so what an agent may see and may say is
+tested without a browser or a model key.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1170,7 +1210,7 @@ tested without a key — including the answers a model gets wrong, which is the 
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 60)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 61)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1389,8 +1429,17 @@ tested without a key — including the answers a model gets wrong, which is the 
 - Grounded in the EA knowledge base, with the practice it was given shown under the queue.
 - One stored run per workspace; a decision removes the card and is remembered.
 
+### Agents on the board (v0.2)
+- An agent is an element: place it with the **A** tool, name it, write what it is for, and it is an
+  ordinary object you can drag, duplicate, lock, export and undo.
+- Scope is where you put it: the board, the frame it sits in, or the objects you join it to.
+- It answers with remarks pinned to the objects it read, each quoting their own words; the object
+  carries a badge and the remark is read in place.
+- **Keep as a note** makes it yours; **Dismiss** removes it; the agent changes nothing by speaking.
+- The closed schema has no verb that alters anything, so an agent can sit on a board unattended.
+
 ### Documentation (v0.2)
-- Twenty-one in-app pages under **Documentation**, from a first board through to plateaus, with a
+- Twenty-two in-app pages under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
 - Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
 - Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
@@ -1551,6 +1600,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | Where a rule and the agent propose the same thing, the one with evidence wins. | They share a key scheme so the collision is detectable at all. A rule that has spotted an untyped object knows only that it is untyped; the agent arrives quoting the sentence. Showing both would be a duplicate, and showing the weaker one would waste the better answer. |
 
 
+| 2026-09-06 | An agent is an element on the board, not a page. | An agent you have to go somewhere to consult is a feature of a page; this product is a canvas, and the claim "AI-native" means agents present in the work rather than a screen where the AI lives. Being an element also gets it dragging, duplication, locking, export, undo and version history for nothing. |
+| 2026-09-06 | A board agent's scope is where you put it, not a query. | On a canvas, position already carries meaning — this frame is the OT estate, these three cards are the ones under discussion. Dragging an agent into a frame says what it watches faster than any filter language, and says it to everybody looking at the board rather than only to whoever wrote the query. |
+| 2026-09-06 | A board agent answers with remarks, and remarks change nothing. | Its schema has no verb that alters anything at all. That is what makes it safe for several agents to sit on a board unattended in the middle of somebody's thinking — and "keep as a note" is the only way its words become part of the board, which keeps a person the author of what the board says. |
+| 2026-09-06 | Remarks live in the document, not in a table. | A remark is an annotation on a drawing. It should travel with the drawing: exported with it, undone with it, versioned with it, and there for whoever opens the board next week. |
+| 2026-09-06 | An agent is drawn in exports rather than skipped. | An element you can see on screen and cannot find in the picture you exported is a small betrayal, even when the element is scaffolding. Its remarks are not drawn — those belong to the objects they are about, and anybody who wants one in the picture keeps it as a note first. |
+
+
 
 ## 8. Open questions for the product owner
 
@@ -1563,6 +1619,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 61: agents live on the board.** Rev 60 put a model behind a button on a page,
+  which is a useful thing and a small idea: an agent you have to go somewhere to consult is a feature
+  of a page, and this product is a canvas. An agent is now an *element*. Place it with the Agent tool
+  where the work is, name it, and write what it is for in your own words — that text is the
+  instruction it gets, so two agents on one board are genuinely two agents. What it can see is
+  decided by where it sits: the whole board, the frame you dropped it into, or the objects you join
+  it to with a line; nobody writes a filter, and everybody looking at the board can see what each
+  agent is watching. It answers with remarks — a note pinned to one object, quoting the words on that
+  object which prompted it — and the object carries a badge you click to read it in place. Keep it as
+  a note and it becomes yours; dismiss it and it is gone. The schema it must answer in has no verb
+  that changes anything at all, which is why an agent can sit on a board unattended. Remarks live in
+  the document, so they are exported, undone and versioned with the drawing they annotate. 15 new
+  tests over scope and speech, a new documentation page, and an e2e path that places an agent,
+  scopes it by frame and checks that one which cannot run says so on the board.
 
 - **2026-09-06 — Rev 60: an agent that reads the graph.** The brief has always said the agents build
   the meta-model; until now the only model in the product read sources, and everything proposed about

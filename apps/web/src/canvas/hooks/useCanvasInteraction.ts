@@ -29,6 +29,7 @@ export const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
   ellipse: { w: 180, h: 120 },
   diamond: { w: 180, h: 140 },
   frame: { w: 640, h: 420 },
+  agent: { w: 300, h: 240 },
 };
 
 export function elementIdFromTarget(target: EventTarget | null): ElementId | null {
@@ -91,6 +92,8 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         return { id, type: "card", ...centred, kind: "Application", color: cardColorForKind("Application"), title: "", description: "", z: 0, meta: { entityId: `${ENTITY_ID_PREFIX}${nanoid(12)}` } };
       case "sticky":
         return { id, type: "sticky", ...centred, title: "", text: "", color: NOTE_COLORS[0], z: 0 };
+      case "agent":
+        return { id, type: "agent", ...centred, name: "", purpose: "", scope: "board", color: "#4f46e5", z: 0, remarks: [] };
       case "text":
         return { id, type: "text", variant: "text", ...centred, title: "", text: "", color: TEXT_COLORS[0], z: 0 };
       case "section":
@@ -173,7 +176,8 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         case "card":
         case "sticky":
         case "text":
-        case "section": {
+        case "section":
+        case "agent": {
           const el = createForTool(s.tool, world);
           if (!el) return;
           s.addElements([el], { select: true });

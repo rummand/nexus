@@ -6,6 +6,7 @@ import { attributeIsRisk, cardColorForKind, FRAME_COLORS, isBoxElement, type Car
 import { useCanvas, useCanvasStore } from "../store";
 import { EditableText } from "./EditableText";
 import { LiveField } from "./LiveField";
+import { AgentView, RemarkBadge } from "./AgentView";
 
 /** Renders one box element, subscribing only to its own slice of the store. */
 export const ElementView = memo(function ElementView({ id }: { id: ElementId }) {
@@ -19,6 +20,7 @@ export const ElementView = memo(function ElementView({ id }: { id: ElementId }) 
     case "text": return <TextBlockView el={el} selected={selected} fresh={editing} />;
     case "shape": return <ShapeView el={el} selected={selected} editing={editing} />;
     case "frame": return <FrameView el={el} selected={selected} />;
+    case "agent": return <AgentView el={el} selected={selected} fresh={editing} />;
   }
 });
 
@@ -68,6 +70,7 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
       {changeState && <span className={`fact-change-badge ${changeState}`} title={`This change set would ${changeState === "retired" ? "retire" : changeState === "added" ? "introduce" : "change"} this`}>{changeState}</span>}
       {lensBadge && <span className="fact-lens-badge" style={lensColor ? { background: lensColor } : undefined}>{lensBadge}</span>}
       {proposalCount > 0 && <span className="fact-proposal-badge" data-proposal-badge title={`${proposalCount} agent proposal${proposalCount === 1 ? "" : "s"} — select the card to review`}>✦ {proposalCount}</span>}
+      <RemarkBadge id={el.id} />
       <span className="fact-kind">
         <i />
         <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" list="nexus-kinds" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
@@ -95,6 +98,7 @@ function NoteView({ el, selected, fresh }: { el: StickyElement; selected: boolea
   const patch = usePatch<StickyElement>(el.id);
   return (
     <div data-element-id={el.id} className={selected ? "board-object impact-note selected" : "board-object impact-note"} style={boxStyle(el, { "--note-color": el.color } as CSSProperties)}>
+      <RemarkBadge id={el.id} />
       <span>Note</span>
       <LiveField active={selected} className="impact-note-title-input" value={el.title} placeholder="Title" ariaLabel="Note title" autoFocus={fresh} onChange={(title) => patch({ title })} />
       <LiveField active={selected} className="impact-note-body-input" multiline value={el.text} placeholder="Write a note…" ariaLabel="Note body" onChange={(text) => patch({ text })} />

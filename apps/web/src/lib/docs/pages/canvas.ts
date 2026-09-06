@@ -228,3 +228,49 @@ export const TIMELINE: DocPage = {
     { kind: "try", href: "/w/:slug", label: "Open a board and try it" },
   ],
 };
+
+export const BOARD_AGENTS: DocPage = {
+  slug: "agents-on-the-board",
+  title: "Agents on the board",
+  summary: "Put an agent where the work is, tell it what to watch in your own words, and read what it says on the objects it is talking about.",
+  keywords: ["agent", "board agent", "remark", "watch", "scope", "wake", "ai", "assistant", "annotation"],
+  blocks: [
+    { kind: "prose", text: "An agent in Nexus is an object on a board, not a feature of a page. You place it where the work is — beside the systems it should watch, inside the frame that scopes it, on the board the conversation is happening on. It has a name you give it, a purpose you write in your own words, and a scope decided by where you put it." },
+    { kind: "prose", text: "What it produces is a **remark**: a short note pinned to one object, quoting the words on that object which prompted it. An agent on a board changes nothing by speaking. That is what makes it safe to have several of them, always there, in the middle of your thinking." },
+    { kind: "heading", text: "Putting one down", id: "placing" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Pick the **Agent** tool (or press A) and click where you want it." },
+        { do: "Name it for the job: “Succession watch”, “Ownership”, “Where does this contradict itself”." },
+        { do: "Write what it is for. This is the whole interface — it is the instruction the agent is given, so say it the way you would say it to a colleague.", note: "Two agents on one board with different purposes really are two different agents, not two copies of one feature." },
+        { do: "Choose what it can see, then press **Wake**." },
+      ],
+    },
+    { kind: "heading", text: "What it can see", id: "scope" },
+    {
+      kind: "table",
+      columns: ["Scope", "What it reads"],
+      rows: [
+        ["the board", "Everything drawn here."],
+        ["its frame", "Whatever frame you dropped it into — the smallest one that contains it. Drag it somewhere else and its job changes."],
+        ["what it joins", "Only the objects you connect it to with a line."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why scope is a place, not a query", text: "Every other tool would make you write a filter. On a canvas, where a thing sits already means something: this frame is the OT estate, these three cards are the ones under discussion. Dragging an agent into a frame is a faster and more honest way of saying what it should watch than any query language, and anyone looking at the board can see what it is watching without being told." },
+    { kind: "heading", text: "Reading what it said", id: "remarks" },
+    {
+      kind: "list",
+      items: [
+        "Objects it has something to say about get a small badge. Click it to read the remark, in place.",
+        "Every remark quotes the words on that object which prompted it — a remark it cannot ground is thrown away before you see it.",
+        "**Keep as a note** turns it into an ordinary note beside the object. That is the only way an agent's words become part of the board: you make them yours.",
+        "**Dismiss** removes it. **Look again** re-reads. The bin on the agent takes back everything it said.",
+        "One remark per object per run, and silence is a valid answer — an agent that fills a board with observations is one nobody finishes reading.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "An agent is an ordinary object: drag it, duplicate it, lock it, delete it, and it appears in the board's version history like everything else. Its remarks travel with the board, so a colleague opening it later sees what was said." },
+    { kind: "note", tone: "warning", title: "It needs a model", text: "Waking an agent needs `ANTHROPIC_API_KEY` and `NEXUS_MODEL` configured. Without them the agent says so on the board rather than failing quietly — and every other part of Nexus carries on working." },
+    { kind: "try", href: "/w/:slug", label: "Open a board and place one" },
+  ],
+};

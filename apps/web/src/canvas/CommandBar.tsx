@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nanoid } from "nanoid";
-import { Box, Database, Frame, Plus, Search, Shapes, Spline, StickyNote, Type } from "lucide-react";
+import { Bot, Box, Database, Frame, Plus, Search, Shapes, Spline, StickyNote, Type } from "lucide-react";
 import { cardColorForKind, elementName, elementTypeLabel, type CanvasElement } from "./document";
 import { useCanvas, useCanvasStore } from "./store";
 import { isEntityId, type GraphSnapshot, type QueryResponse } from "@/lib/graph-types";
@@ -16,6 +16,7 @@ function iconFor(el: CanvasElement) {
     case "frame": return <Frame size={13} />;
     case "shape": return <Shapes size={13} />;
     case "connector": return <Spline size={13} />;
+    case "agent": return <Bot size={13} />;
   }
 }
 
@@ -27,6 +28,7 @@ function searchText(el: CanvasElement) {
     case "shape": return el.text;
     case "frame": return el.title;
     case "connector": return el.label;
+    case "agent": return `${el.name} ${el.purpose}`;
   }
 }
 

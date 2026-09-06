@@ -9,6 +9,7 @@ export function elementLabel(el: CanvasElement): string {
     case "shape": return el.text || `${el.shape} shape`;
     case "frame": return el.title || "(untitled frame)";
     case "connector": return el.label || "(unlabelled connector)";
+    case "agent": return el.name || "(unnamed agent)";
   }
 }
 

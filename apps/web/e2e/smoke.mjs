@@ -668,6 +668,26 @@ try {
       "with no model configured the panel names what is missing instead of failing");
   }
 
+  // ---- an agent on the board -----------------------------------------------------------------
+  // Placing one and scoping it works with or without a model; waking it needs one, and with none
+  // configured the agent has to say so on the board rather than fail silently.
+  await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 5, null, { timeout: 45000 });
+  await page.click('[aria-label="Agent — put one where the work is"]');
+  const canvasBox = await page.locator(".canvas-viewport").boundingBox();
+  await page.mouse.click(canvasBox.x + 420, canvasBox.y + 700);
+  await page.waitForSelector("[data-agent]", { timeout: 20000 });
+  const placed = page.locator("[data-agent]").last();
+  await placed.locator('textarea[aria-label="What this agent is for"]').fill("Where does this landscape contradict itself?");
+  await placed.locator(".board-agent-scope button", { hasText: "its frame" }).click();
+  assert.equal(await placed.locator(".board-agent-scope button.on").innerText(), "its frame",
+    "an agent is scoped by where you put it, not by a query somebody has to write");
+  await placed.locator("[data-wake-agent]").click();
+  await page.waitForSelector("[data-agent] .board-agent-said", { timeout: 30000 });
+  const said = await placed.locator(".board-agent-said").innerText();
+  assert.ok(/ANTHROPIC_API_KEY|NEXUS_MODEL|No model|nothing in this agent/i.test(said),
+    `an agent that cannot run says why on the board — got "${said}"`);
+
   // ---- the timeline: a canvas capability, and the roadmap as one thing you can say with it ----
   // On any board, an attribute that reads as a date can become the axis. This is checked on an
   // ordinary landscape board — not the roadmap — because the point is that it is not a roadmap

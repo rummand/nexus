@@ -79,6 +79,43 @@ export interface FrameElement extends BaseElement {
   color: string;
 }
 
+/**
+ * An agent, on the board.
+ *
+ * The reason this is an element and not a setting is the whole idea: an agent should be somewhere
+ * — next to the systems it watches, inside the frame that scopes it, on the board the conversation
+ * is happening on. It has a place, a purpose written by a person, a scope it can see, and a voice.
+ *
+ * Its voice is `remarks`: notes about other elements, each quoting the words it read. They live in
+ * the document because a remark is an annotation on a drawing, so it should travel with the
+ * drawing — versioned by board history, exported with it, undone with it. An agent changes nothing
+ * by speaking; a person decides what to do about what it said.
+ */
+export interface AgentElement extends BaseElement {
+  type: "agent";
+  name: string;
+  /** What it is for, in the person's own words. This is the instruction it is given. */
+  purpose: string;
+  /** What it may look at: what it is joined to, whatever frame it sits in, or the whole board. */
+  scope: "connected" | "frame" | "board";
+  color: string;
+  /** Set while a run is in flight, so the board shows the agent thinking. */
+  thinking?: boolean;
+  lastRunAt?: string;
+  /** Its own sentence about what it saw, shown on the agent itself. */
+  note?: string;
+  remarks?: AgentRemark[];
+}
+
+export interface AgentRemark {
+  id: string;
+  /** The element this is about. */
+  about: ElementId;
+  text: string;
+  /** The words on that element which prompted it, copied and checked. */
+  quote: string;
+}
+
 export type ConnectorEnd = { elementId: ElementId } | { point: Point };
 
 export interface ConnectorElement {
@@ -98,7 +135,7 @@ export interface ConnectorElement {
   locked?: boolean;
 }
 
-export type BoxElement = StickyElement | TextElement | CardElement | ShapeElement | FrameElement;
+export type BoxElement = StickyElement | TextElement | CardElement | ShapeElement | FrameElement | AgentElement;
 export type CanvasElement = BoxElement | ConnectorElement;
 export type ElementType = CanvasElement["type"];
 
@@ -143,6 +180,7 @@ export function elementTypeLabel(el: CanvasElement): string {
     case "text": return el.variant === "section" ? "Section" : "Text";
     case "shape": return el.shape === "rect" ? "Rectangle" : el.shape === "ellipse" ? "Oval" : "Rhombus";
     case "frame": return "Frame";
+    case "agent": return "Agent";
     case "connector": return "Connector";
   }
 }
@@ -155,6 +193,7 @@ export function elementName(el: CanvasElement): string {
     case "text": return el.title || el.text.split("\n")[0] || (el.variant === "section" ? "Section" : "Text");
     case "shape": return el.text || elementTypeLabel(el);
     case "frame": return el.title || "Frame";
+    case "agent": return el.name || "Agent";
     case "connector": return el.label || "Connector";
   }
 }

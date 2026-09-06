@@ -1,4 +1,4 @@
-import type { CanvasDocument, CanvasElement, CardElement, FrameElement, ShapeElement, StickyElement, TextElement } from "./document";
+import type { AgentElement, CanvasDocument, CanvasElement, CardElement, FrameElement, ShapeElement, StickyElement, TextElement } from "./document";
 import { attributeIsRisk, isBoxElement } from "./document";
 import { connectorPath, contentBounds } from "./geometry";
 
@@ -83,6 +83,25 @@ function note(el: StickyElement): string {
   return out.join("");
 }
 
+/**
+ * An agent, in an export.
+ *
+ * Drawn rather than skipped: an element you can see on screen and cannot find in the picture you
+ * exported is a small betrayal, even when the element is scaffolding. Its remarks are not drawn —
+ * those belong to the objects they are about, and a person who wants one in the picture keeps it
+ * as a note first.
+ */
+function agentBox(el: AgentElement): string {
+  const out: string[] = [];
+  out.push(`<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" rx="16" fill="#ffffff" stroke="${el.color}" stroke-width="2"/>`);
+  out.push(textBlock(el.x + 14, el.y + 13, ["AGENT"], 9, { fill: el.color, weight: 900 }));
+  out.push(textBlock(el.x + 14, el.y + 30, wrapText(el.name || "Agent", el.w - 28, 14, 1), 14, { weight: 800, lineHeight: 17 }));
+  out.push(textBlock(el.x + 14, el.y + 54, wrapText(el.purpose, el.w - 28, 11, 4), 11, { fill: "#53627a", weight: 600, lineHeight: 14 }));
+  const said = (el.remarks?.length ?? 0);
+  if (said) out.push(textBlock(el.x + 14, el.y + el.h - 20, [`${said} remark${said === 1 ? "" : "s"} on this board`], 10, { fill: "#8a95a8", weight: 800 }));
+  return out.join("");
+}
+
 function textEl(el: TextElement): string {
   const out: string[] = [];
   if (el.variant === "section") out.push(`<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" rx="12" fill="${el.color}14" stroke="${el.color}55" stroke-width="1.5"/>`);
@@ -130,6 +149,7 @@ export function documentToSvg(doc: CanvasDocument, opts: { title?: string; backg
       case "sticky": parts.push(note(el)); break;
       case "text": parts.push(textEl(el)); break;
       case "shape": parts.push(shape(el)); break;
+      case "agent": parts.push(agentBox(el)); break;
     }
   }
   const connectors = Object.values(elements).filter((e): e is Extract<CanvasElement, { type: "connector" }> => e.type === "connector").sort((a, b) => a.z - b.z);
