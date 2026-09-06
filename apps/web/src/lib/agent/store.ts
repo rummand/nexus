@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -34,14 +34,28 @@ export async function agentGraph(db: Db, workspaceId: string): Promise<AgentGrap
   };
 }
 
-/** Replace the workspace's stored run with this one. */
-export async function saveRun(db: Db, workspaceId: string, run: AgentRun): Promise<number> {
-  await db.delete(s.agentProposals).where(eq(s.agentProposals.workspaceId, workspaceId));
+/**
+ * Replace this agent's stored run with a new one.
+ *
+ * Each agent has one current opinion, not a growing pile — but only its own. Before agents could be
+ * described there was one agent and one queue, and replacing the queue was the same thing as
+ * replacing the run; with a fleet, wiping the workspace's proposals because a second agent ran
+ * would throw away the first agent's unreviewed work.
+ */
+export async function saveRun(db: Db, workspaceId: string, run: AgentRun, from: { agentId?: string | null; runId?: string | null } = {}): Promise<number> {
+  const agentId = from.agentId ?? null;
+  await db.delete(s.agentProposals).where(
+    agentId
+      ? and(eq(s.agentProposals.workspaceId, workspaceId), eq(s.agentProposals.agentId, agentId))
+      : and(eq(s.agentProposals.workspaceId, workspaceId), isNull(s.agentProposals.agentId)),
+  );
   if (run.proposals.length === 0) return 0;
   await db.insert(s.agentProposals).values(
     run.proposals.map((p) => ({
       id: `agp_${nanoid(10)}`,
       workspaceId,
+      agentId,
+      runId: from.runId ?? null,
       key: p.key,
       type: p.type,
       confidence: p.confidence,
@@ -86,11 +100,13 @@ function parseAction(raw: string): ProposalAction | null {
 }
 
 export async function storedProposals(db: Db, workspaceId: string, decided: Set<string>): Promise<Proposal[]> {
-  const rows = await db
-    .select()
-    .from(s.agentProposals)
-    .where(eq(s.agentProposals.workspaceId, workspaceId))
-    .orderBy(desc(s.agentProposals.createdAt));
+  const [rows, agents] = await Promise.all([
+    db.select().from(s.agentProposals).where(eq(s.agentProposals.workspaceId, workspaceId)).orderBy(desc(s.agentProposals.createdAt)),
+    db.select().from(s.agentDefinitions).where(eq(s.agentDefinitions.workspaceId, workspaceId)),
+  ]);
+  // Which agent said it. A reviewer deciding on a suggestion is entitled to know whose judgement
+  // they are reading, and it is the thing that makes an agent's acceptance rate legible later.
+  const named = new Map(agents.map((a) => [a.id, a.name]));
   const out: Proposal[] = [];
   for (const row of rows) {
     if (decided.has(row.key)) continue;
@@ -107,6 +123,7 @@ export async function storedProposals(db: Db, workspaceId: string, decided: Set<
       evidence: parseArray(row.evidence),
       grounded: parseArray(row.grounded),
       source: "agent",
+      agentName: named.get(row.agentId ?? "") ?? "",
     });
   }
   return out;

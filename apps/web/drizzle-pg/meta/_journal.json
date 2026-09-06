@@ -64,6 +64,13 @@
       "when": 1788728815133,
       "tag": "0008_sticky_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788729976851,
+      "tag": "0009_spotty_pandemic",
+      "breakpoints": true
     }
   ]
 }

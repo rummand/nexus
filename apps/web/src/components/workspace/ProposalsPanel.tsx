@@ -165,7 +165,7 @@ export function ProposalsPanel({ workspaceId, proposals, agent }: { workspaceId:
                 <div className="proposal-body">
                   <div className="proposal-head">
                     <strong>{p.title}</strong>
-                    {p.source === "agent" && <i className="proposal-source"><Bot size={11} /> agent</i>}
+                    {p.source === "agent" && <i className="proposal-source"><Bot size={11} /> {p.agentName || "agent"}</i>}
                     <i className={`confidence ${p.confidence}`}>{p.confidence}</i>
                   </div>
                   <p>{p.detail}</p>

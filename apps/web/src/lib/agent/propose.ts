@@ -1,6 +1,7 @@
 import { callModel } from "@/lib/models/call";
 import type { ModelChoice } from "@/lib/models/types";
 import { agentGrounding, groundedIn } from "../knowledge";
+import { VERBS, VERB_LABEL, type Grounding, type Verb } from "./definition";
 import { PROPOSE_SCHEMA } from "./schema";
 import { validateProposals, type AgentGraph, type AgentReview } from "./validate";
 
@@ -102,10 +103,27 @@ export function sample(graph: AgentGraph): { graph: AgentGraph; sampled: boolean
  * Throws only on a configuration or transport problem — a model that answers nonsense is handled
  * by the validator, not by an exception, and its nonsense is reported rather than hidden.
  */
-export async function proposeWithModel(full: AgentGraph, choice: ModelChoice, decided: Set<string> = new Set()): Promise<AgentRun> {
+export interface ProposeOptions {
+  /** The verbs this agent was given. Both told to the model and enforced by the validator. */
+  verbs?: readonly Verb[];
+  /** The agent's purpose, in its author's words. This is what makes two agents two agents. */
+  purpose?: string;
+  /** How many proposals this run may leave behind, from the agent's budget. */
+  maxProposals?: number;
+  /** Which part of the corpus grounds it. "" for none; "modelling" is the default reviewer's. */
+  grounding?: Grounding;
+}
+
+export async function proposeWithModel(
+  full: AgentGraph,
+  choice: ModelChoice,
+  decided: Set<string> = new Set(),
+  options: ProposeOptions = {},
+): Promise<AgentRun> {
   if (full.entities.length === 0) {
     return { proposals: [], rejected: [], note: "There is nothing in the graph yet.", grounded: [], sampled: false };
   }
+  const verbs = options.verbs?.length ? options.verbs : VERBS;
 
   const { graph, sampled } = sample(full);
   /**
@@ -114,11 +132,24 @@ export async function proposeWithModel(full: AgentGraph, choice: ModelChoice, de
    * own definitions. With no corpus it appends nothing and the agent behaves as it otherwise would.
    */
   const task = `review the model: ${[...new Set(graph.entities.map((e) => e.kind))].join(" ")}`;
-  const grounding = agentGrounding("modelling", task, 4);
+  const scope = options.grounding ?? "modelling";
+  const grounding = scope ? agentGrounding(scope, task, 4) : "";
+
+  /*
+   * A described agent (§5.32) is its purpose plus its verbs, and both go into the prompt as well
+   * as into the validator. Telling the model what it may not say is not a safety mechanism — the
+   * validator is — but it stops the agent spending its answer on proposals that will be thrown
+   * away, which a reviewer would otherwise read as the agent being bad at its job.
+   */
+  const brief = [
+    options.purpose ? `\n\nWhat you are for, in the words of the person who set you up:\n${options.purpose}` : "",
+    verbs.length === VERBS.length ? "" : `\n\nYou may only propose: ${verbs.join(", ")} (${verbs.map((v) => VERB_LABEL[v]).join("; ")}). Anything else is discarded unread.`,
+    options.maxProposals ? `\n\nAt most ${options.maxProposals} proposals. Choose the ones a person would most want to see.` : "",
+  ].join("");
 
   const body = await callModel(choice, {
     max_tokens: 8000,
-    system: grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM,
+    system: `${grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM}${brief}`,
     tools: [{ name: "propose_changes", description: "Propose corrections to the model.", input_schema: PROPOSE_SCHEMA }],
     tool_choice: { type: "tool", name: "propose_changes" },
     messages: [{ role: "user", content: digest(graph, sampled) }],
@@ -126,11 +157,19 @@ export async function proposeWithModel(full: AgentGraph, choice: ModelChoice, de
 
   const call = body.content?.find((c) => c.type === "tool_use" && c.name === "propose_changes");
   const input = (call?.input ?? {}) as { note?: unknown };
-  const review = validateProposals(call?.input ?? {}, graph, decided);
+  const review = validateProposals(call?.input ?? {}, graph, decided, verbs);
+  const capped = options.maxProposals && review.proposals.length > options.maxProposals
+    ? {
+        proposals: review.proposals.slice(0, options.maxProposals),
+        // Being over budget is not a rejection of the proposal; it is a fact about the agent, and
+        // the run log is where it belongs rather than hidden in a slice.
+        rejected: [...review.rejected, `${review.proposals.length - options.maxProposals} more proposal(s) were left out: this agent's budget is ${options.maxProposals} a run`],
+      }
+    : review;
   return {
-    ...review,
+    ...capped,
     note: typeof input.note === "string" ? input.note.trim().slice(0, 600) : "",
-    grounded: groundedIn("modelling", task, 4),
+    grounded: scope ? groundedIn(scope, task, 4) : [],
     sampled,
   };
 }

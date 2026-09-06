@@ -838,6 +838,46 @@ try {
   assert.ok((await page.locator(".knowledge-references li").count()) > 0,
     "the works we may not redistribute are listed as such");
 
+  // ---- describing an agent -------------------------------------------------------------------
+  // The form, the scope count, the refusals and the run log are all real without a model. The
+  // answering half needs a key and is covered by the unit tests instead.
+  await page.goto(`${base}/w/acme-energy/agents/new`, { waitUntil: "load" });
+  await page.waitForSelector("[data-agent-form]", { timeout: 30000 });
+  await page.fill("[data-agent-name]", "Smoke reviewer");
+  await page.click("[data-agent-save]");
+  await page.waitForSelector("[data-agent-message]", { timeout: 20000 });
+  assert.match(await page.locator("[data-agent-message]").innerText(), /what it may read|in a sentence/,
+    "an agent with no purpose and no scope is refused, with a reason");
+
+  await page.fill("[data-agent-purpose]", "Find applications with no owner and propose one only where the object's own words answer it.");
+  await page.fill("[data-agent-scope]", "kind:Application missing:owner");
+  await page.click(".agent-scope button");
+  await page.waitForSelector("[data-scope-count]", { timeout: 20000 });
+  assert.match(await page.locator("[data-scope-count]").innerText(), /object/, "the scope says how much it would read");
+
+  await page.check('[data-verb="setAttribute"] input');
+  await page.uncheck('[data-verb="setKind"] input');
+  await page.click("[data-agent-save]");
+  await page.waitForURL(/\/agents\/agt_/, { timeout: 30000 });
+  await page.waitForSelector("[data-agent-status]");
+  assert.equal((await page.locator("[data-agent-status]").innerText()).toLowerCase(), "draft",
+    "a new agent starts as a draft, whichever status was asked for");
+
+  // A paused agent is refused before it can cost anything, and the refusal is written down.
+  await page.click('[data-set-status="paused"]');
+  await page.waitForTimeout(700);
+  await page.click("[data-agent-run]");
+  await page.waitForSelector("[data-agent-runs]", { timeout: 30000 });
+  assert.match(await page.locator("[data-agent-runs]").innerText(), /paused/,
+    "a refused run is recorded rather than silently doing nothing");
+
+  await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
+  await page.waitForSelector("[data-defined]", { timeout: 30000 });
+  const listed = await page.locator("[data-defined-agent]").first().innerText();
+  assert.match(listed, /Smoke reviewer/, "the fleet lists described agents");
+  assert.match(listed, /setAttribute/, "and what each one may propose");
+  assert.match(await page.locator("[data-activity]").innerText(), /Smoke reviewer/, "with an activity feed of what has run");
+
   // ---- where the thinking happens ----------------------------------------------------------
   // The one screen that decides what the rest of the product talks to. The check that matters is
   // that a key entered here cannot be read back out of the page that shows it.

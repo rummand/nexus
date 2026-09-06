@@ -227,6 +227,8 @@ export const agentDecisions = sqliteTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     key: text("key").notNull(),
     decision: text("decision", { enum: ["accepted", "dismissed"] }).notNull(),
+    /** Copied off the proposal being decided, so an agent's acceptance survives the proposal. */
+    agentId: text("agent_id"),
     createdAt: timestamp("created_at"),
   },
   (t) => [primaryKey({ columns: [t.workspaceId, t.key] })],
@@ -262,6 +264,9 @@ export const agentProposals = sqliteTable(
     evidence: text("evidence").notNull().default("[]"),
     /** JSON array: the practice from the knowledge base the run was grounded in. */
     grounded: text("grounded").notNull().default("[]"),
+    /** Which described agent proposed it, and in which run — so acceptance is measurable per agent. */
+    agentId: text("agent_id"),
+    runId: text("run_id"),
     createdAt: timestamp("created_at"),
   },
   (t) => [uniqueIndex("agent_proposals_key_idx").on(t.workspaceId, t.key)],
@@ -402,6 +407,91 @@ export const modelTasks = sqliteTable(
 
 export type ModelProviderRow = typeof modelProviders.$inferSelect;
 export type ModelTaskRow = typeof modelTasks.$inferSelect;
+
+
+// ---- described agents ------------------------------------------------------
+// An agent stops being a hand-written module and becomes a row somebody can read: what it is for,
+// who owns it, what it may read, what it may propose, what it may spend, and whether it is allowed
+// to speak yet. Everything here exists so "what is this thing allowed to do" is answerable from a
+// screen rather than from the source.
+
+export const agentDefinitions = sqliteTable(
+  "agent_definitions",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** One sentence a person can judge it against. It is also the instruction the model gets. */
+    purpose: text("purpose").notNull().default(""),
+    /** Who is answerable for it. An agent nobody owns is nobody's to switch off. */
+    ownerTeamId: text("owner_team_id").references(() => teams.id, { onDelete: "set null" }),
+    /** A graph query (lib/query.ts): what it may read. Never "everything" by default. */
+    scope: text("scope").notNull().default(""),
+    /** JSON array of verbs from the closed list of five. */
+    verbs: text("verbs").notNull().default("[]"),
+    /** Which knowledge-base scope grounds it, or "" for none. */
+    grounding: text("grounding").notNull().default(""),
+    providerId: text("provider_id").references(() => modelProviders.id, { onDelete: "set null" }),
+    model: text("model").notNull().default(""),
+    trigger: text("trigger").notNull().default("manual"),
+    /** JSON { runsPerDay, maxProposals } — enforced before the model is called. */
+    budget: text("budget").notNull().default("{}"),
+    /** draft (dry run) | active | paused | retired. */
+    status: text("status").notNull().default("draft"),
+    /** The definition that proposed this one, when an agent wrote it. */
+    parentId: text("parent_id"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("agent_definitions_workspace_idx").on(t.workspaceId)],
+);
+
+/**
+ * One row per run, whatever the outcome.
+ *
+ * The run log is what makes a fleet governable: it is the only place that can answer what an agent
+ * has cost, what it has said, how much of that survived validation and how much of *that* a person
+ * kept. A failed run is written too — an agent that has failed eleven times is a fact somebody
+ * needs, and a log that only records successes is a log that flatters.
+ */
+export const agentRuns = sqliteTable(
+  "agent_runs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: text("agent_id").references(() => agentDefinitions.id, { onDelete: "cascade" }),
+    /** Copied so a deleted agent still has a legible history. */
+    agentName: text("agent_name").notNull().default(""),
+    trigger: text("trigger").notNull().default("manual"),
+    /** ok | failed | refused (a budget or a status stopped it before it cost anything). */
+    outcome: text("outcome").notNull().default("ok"),
+    /** True when nothing reached the review queue because the agent is a draft. */
+    dryRun: integer("dry_run", { mode: "boolean" }).notNull().default(false),
+    /** What it was pointed at, and how much of it there was. */
+    scope: text("scope").notNull().default(""),
+    objectsRead: integer("objects_read").notNull().default(0),
+    proposed: integer("proposed").notNull().default(0),
+    /** Claims validation threw away — the honest count, not a hidden one. */
+    rejected: integer("rejected").notNull().default(0),
+    /** JSON array of the reasons, so a dry run can be read in full. */
+    detail: text("detail").notNull().default("[]"),
+    /** JSON array of what it proposed, kept for a dry run and for the record. */
+    proposals: text("proposals").notNull().default("[]"),
+    note: text("note").notNull().default(""),
+    model: text("model").notNull().default(""),
+    error: text("error").notNull().default(""),
+    ms: integer("ms").notNull().default(0),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("agent_runs_workspace_idx").on(t.workspaceId, t.createdAt), index("agent_runs_agent_idx").on(t.agentId)],
+);
+
+export type AgentDefinitionRow = typeof agentDefinitions.$inferSelect;
+export type AgentRunRow = typeof agentRuns.$inferSelect;
 
 // ---- the landing zone ------------------------------------------------------
 // Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a

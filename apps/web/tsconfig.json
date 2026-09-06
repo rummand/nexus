@@ -42,7 +42,9 @@
     ".next-shot/types/**/*.ts",
     ".next-shot/dev/types/**/*.ts",
     ".next-docs/types/**/*.ts",
-    ".next-docs/dev/types/**/*.ts"
+    ".next-docs/dev/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

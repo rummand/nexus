@@ -1,4 +1,5 @@
 import type { Proposal, ProposalType } from "../graph-types";
+import { VERBS, type Verb } from "./definition";
 import { normalise as norm, quotesFrom } from "./quote";
 
 /**
@@ -75,7 +76,18 @@ function snap(value: string, options: string[]): { value: string; isNew: boolean
  */
 const confidenceOf = (v: unknown): "medium" | "low" => (v === "low" ? "low" : "medium");
 
-export function validateProposals(raw: unknown, graph: AgentGraph, decided: Set<string> = new Set()): AgentReview {
+/**
+ * `allowed` is the verbs *this* agent was given (§5.32). Undefined means all five, which is what
+ * the workspace's own reviewer gets. A proposal outside the list is rejected in the open, with the
+ * reason said out loud, because an agent quietly dropping a third of its own answers is how a
+ * definition's scope stops being believed.
+ */
+export function validateProposals(
+  raw: unknown,
+  graph: AgentGraph,
+  decided: Set<string> = new Set(),
+  allowed: readonly Verb[] = VERBS,
+): AgentReview {
   const rejected: string[] = [];
   const out = new Map<string, Proposal>();
   if (!raw || typeof raw !== "object") return { proposals: [], rejected: ["the model returned nothing usable"] };
@@ -94,6 +106,10 @@ export function validateProposals(raw: unknown, graph: AgentGraph, decided: Set<
     if (!item || typeof item !== "object") continue;
     const p = item as Record<string, unknown>;
     const change = str(p.change, 40);
+    if ((VERBS as readonly string[]).includes(change) && !allowed.includes(change as Verb)) {
+      rejected.push(`${change}: this agent may not propose that`);
+      continue;
+    }
     const why = str(p.why, 300);
     const quote = str(p.quote, 300);
     const readFrom = byId.get(str(p.readFrom, 60));

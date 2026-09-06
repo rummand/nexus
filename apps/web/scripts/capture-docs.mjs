@@ -377,6 +377,21 @@ try {
     await page.waitForTimeout(1000);
   });
 
+  /*
+   * Describing an agent needs no model — the form, the scope count and the run log are the product.
+   * Only the answering half needs a key, and that half is described in words rather than faked.
+   */
+  await shot("agent-described", async () => {
+    await goto(`${w}/agents/new`, "[data-agent-form]");
+    await page.fill("[data-agent-name]", "Ownerless applications");
+    await page.fill("[data-agent-purpose]", "Every application should say who owns it. Find the ones that do not, and propose an owner only where the object's own words answer it.");
+    await page.fill("[data-agent-scope]", "kind:Application missing:owner");
+    await page.click(".agent-scope button");
+    await page.waitForSelector("[data-scope-count]", { timeout: 30_000 });
+    await page.check('[data-verb="setAttribute"] input');
+    await page.waitForTimeout(400);
+  });
+
   // ---- settings -------------------------------------------------------------
   /*
    * A provider with no key, because that is the one this capture can show honestly: a local

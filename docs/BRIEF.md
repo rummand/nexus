@@ -1342,6 +1342,56 @@ makes the provider unusable rather than falling through to another one, because 
 something the administrator did not choose is worse than stopping.
 
 
+### 5.32 An agent, described (v0.2)
+
+Every agent in Nexus so far was a hand-written module. The one that reads the graph (§5.26) took the
+whole workspace, could propose all five changes, cost whatever it cost and answered to nobody. That
+is fine for one agent and untenable for a fleet: "what is this thing allowed to do" should be
+answerable by a person reading a screen, not by us reading source.
+
+**A definition** (`lib/agent/definition.ts`, `definitions.ts`). An agent is now a row: a name, a
+purpose, an owner, a scope, verbs, grounding, a model, a budget and a status. The module that holds
+the rules is pure, so they can be read in one sitting and tested without a workspace. Four refusals
+carry the design:
+
+- **No scope, no agent.** The scope is a graph query (§5.9) and only what it matches goes into the
+  prompt. An agent for the OT estate cannot comment on finance systems because it was never shown
+  them. Relations are included only where *both* ends are in scope — a relation with one end outside
+  would put the name of an unreadable object into the prompt.
+- **No owner, no agent.** An agent nobody owns is nobody's to switch off.
+- **No verbs, no agent.** Otherwise it runs, costs money and has nothing it is allowed to say.
+- **A budget is clamped, not believed.** Runs a day and proposals a run, both enforced before a
+  model is called; a refusal is written to the log rather than silently doing nothing.
+
+**Draft is a dry run.** A new agent starts as a draft whatever the form asked for, and a draft runs
+for real but keeps its proposals on the run: nothing reaches the review queue until a person presses
+*Give it a voice*. That is what lets somebody read an agent's first opinions before granting it one,
+the way they would with a new colleague, and it costs a single call.
+
+**The run log** (`agent_runs`). One row per run, whatever happened: what it read, what it proposed,
+what validation threw away and why, the model that answered, how long it took. Failed and refused
+runs are kept too — a log that records only successes is a log that flatters, and "this agent has
+been quietly refused eleven times" is exactly the fact somebody needs.
+
+**Verbs are enforced twice.** The definition's verbs go into the prompt *and* into
+`validateProposals`, which rejects anything outside them in the open with the reason said out loud.
+Telling the model is a courtesy that stops it wasting its answer; the validator is the mechanism.
+
+**Attribution end to end.** A queued proposal now carries the agent and the run that produced it,
+the review queue shows the agent's name beside its suggestion, and a decision copies that name off
+the proposal before it is deleted — which is what lets the fleet say how often people keep what a
+given agent says (§5.28) long after the proposal is gone.
+
+**The old agent is the first described one.** *Ask the agent* on the Knowledge graph page now runs
+the workspace's **Model reviewer**: an ordinary definition, created the first time it is needed,
+owned by a team, budgeted, logged and listed with the rest. The button is unchanged; what it starts
+is now something a person can read and switch off.
+
+Capability monotonicity is written and tested (`checkDefinition` refuses a child with a verb or a
+budget its parent lacks) but nothing calls it yet — it is the rule §4.4 of the agent-framework note
+needs before an agent may propose an agent, and it is cheaper to have in place first.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1374,7 +1424,7 @@ something the administrator did not choose is worse than stopping.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 65)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 66)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1636,6 +1686,17 @@ something the administrator did not choose is worse than stopping.
 - The environment (`ANTHROPIC_API_KEY` + `NEXUS_MODEL`) remains the fallback, so nothing that
   worked yesterday stops working.
 
+### Described agents (v0.2)
+- `/w/:slug/agents/new`: write an agent down — name, purpose, owning team, a scope query with a live
+  count of what it matches, the verbs it may use, grounding, model and budget.
+- A new agent is a **draft**: it runs, and its proposals stay on the run so you can read them before
+  giving it a voice. Active, paused and retired are the other three states.
+- Every run is logged: read, proposed, thrown away in checking, model, duration — including runs a
+  budget or a pause refused before they cost anything.
+- The review queue names the agent that made each suggestion, and a decision is attributed to it.
+- **Ask the agent** on the Knowledge graph page runs the workspace's own *Model reviewer*, which is
+  an ordinary described agent.
+
 ### Documentation (v0.2)
 - Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
   glossary, a keyboard reference and the questions people ask.
@@ -1831,6 +1892,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | A key that cannot be decrypted stops the provider rather than falling through to the next one. | The fallback chain exists for a provider nobody has configured, not for one somebody configured and whose secret has rotated. Silently using a different model — possibly a hosted one, for an organisation that chose a local one — is a worse outcome than an error message naming the key to re-enter. |
 | 2026-09-06 | The environment variables stay supported as the last fallback. | They are how every existing deployment is configured, including the one running the tests. A settings page that quietly took a working instance's model away would be a regression dressed as a feature. |
 
+| 2026-09-06 | An agent is a row a person can read, not a module we write. | "What is this thing allowed to do" is the first question anybody asks about a fleet, and it should be answerable from a screen. Every field on the definition — owner, scope, verbs, budget — is the answer to a question a security review will ask. |
+| 2026-09-06 | A scope is required, and it is a query. | Defaulting to "the whole model" is exactly how six agents end up all reading everything with no way to say what any of them can see. Writing the query costs a minute and is what makes the rest legible; `*` stays available for an agent that really is the workspace's reviewer. |
+| 2026-09-06 | A relation is in scope only when both its ends are. | Otherwise the name of an object the agent may not read arrives in its prompt through the back door. Obvious once written down and invisible otherwise. |
+| 2026-09-06 | A new agent starts as a draft, and a draft is a dry run. | Reading what something would have said before letting it say it is what people do with a new colleague. It costs one call, and it is the difference between an agent you trust and an agent you tolerate. |
+| 2026-09-06 | Failed and refused runs are logged like any other. | A log that records only what worked is a log that flatters. "It has been refused by its budget eleven times" and "it has failed since the key changed" are the two things somebody actually needs months later. |
+| 2026-09-06 | The verbs an agent was given are enforced by the validator, not only by the prompt. | Telling the model what it may not say stops it wasting its answer; it does not stop anything. The validator is the mechanism, and it rejects out-of-scope verbs in the open so an agent's own limits are visible in its run log rather than hidden as silence. |
+| 2026-09-06 | A decision copies the agent's name off the proposal before the proposal is deleted. | It is the only moment both facts exist together. Without it the fleet could never say how often people keep what a given agent says, which is the one number that measures an agent being useful rather than talking. |
+| 2026-09-06 | Capability monotonicity is built before anything can create an agent. | An agent proposing an agent is safe only if it cannot hand on a verb or a budget it does not have. Writing and testing that rule while nothing depends on it is much cheaper than retrofitting it to the feature that needs it. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -1844,6 +1914,25 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 66: an agent you can read.** Agents in Nexus were hand-written modules: the one
+  that reviews the graph read the whole workspace, could propose anything, and answered to nobody. An
+  agent is now **described** — a name, a purpose in your own words, an owning team, a scope query
+  that decides what it may read, the verbs it may use, grounding, a model and a budget in runs a day
+  and proposals a run. Four things are refused outright, and each is a way a fleet becomes
+  unaccountable: no scope, no owner, no verbs, and a budget bigger than the ceiling. A new agent is a
+  **draft**, and a draft runs as a **dry run**: you read exactly what it would have proposed before
+  pressing *Give it a voice*, which costs one call and is the same courtesy you would extend to a new
+  colleague. Every run is written down — read, proposed, thrown away in checking and why, which model
+  answered, how long — including runs a pause or a budget refused before they cost anything, because
+  a log that only records successes flatters. The verbs are enforced by the validator as well as told
+  to the model, and a proposal now carries the agent that made it all the way to the review queue,
+  where it appears under that agent's name; the decision copies the name before the proposal is
+  deleted, so acceptance stays measurable per agent. *Ask the agent* on the Knowledge graph page now
+  runs the workspace's own **Model reviewer**, an ordinary definition like any other. Capability
+  monotonicity — no agent may create an agent that can do what it cannot — is written and tested
+  ahead of the feature that will need it. 18 new unit tests, an e2e over the refusals and the run
+  log, and a documentation page.
 
 - **2026-09-06 — Rev 65: where the thinking happens.** A model was two environment variables, which
   meant one provider chosen at deploy time for everything, no way to run a model on your own

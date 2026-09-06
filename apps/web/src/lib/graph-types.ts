@@ -73,6 +73,8 @@ export interface Proposal {
    * neither, so they are labelled, kept out of bulk accept, and reviewed one at a time.
    */
   source?: "rules" | "agent";
+  /** Which described agent said it (§5.32), so a reviewer knows whose judgement they are reading. */
+  agentName?: string;
   /** For an agent proposal: the practice from the knowledge base that shaped the run. */
   grounded?: string[];
 }

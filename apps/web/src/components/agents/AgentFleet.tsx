@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Bot, Check, Frame as FrameIcon, Globe, Link2, MessageSquare, X } from "lucide-react";
 import { acceptance, verdict, type Fleet, type FleetAgent } from "@/lib/agent/fleet";
+import type { DefinitionSummary } from "@/lib/agent/definitions";
+import type { RunSummary } from "@/lib/agent/fleet-types";
+import { DefinedAgents } from "./DefinedAgents";
 
 /**
  * Every agent in the workspace, and whether it earns its place.
@@ -23,11 +26,13 @@ const when = (iso: string | null) => {
   return days <= 0 ? "read today" : days === 1 ? "read yesterday" : `read ${days} days ago`;
 };
 
-export function AgentFleet({ slug, fleet, model, graphAgent }: {
+export function AgentFleet({ slug, fleet, model, graphAgent, defined, runs }: {
   slug: string;
   fleet: Fleet;
   model: { ready: boolean; hint: string };
   graphAgent: { lastAskedAt: string | null; grounded: string[] };
+  defined: DefinitionSummary[];
+  runs: RunSummary[];
 }) {
   const answered = fleet.totals.kept + fleet.totals.dismissed;
   const overall = acceptance({ kept: fleet.totals.kept, dismissed: fleet.totals.dismissed });
@@ -50,6 +55,24 @@ export function AgentFleet({ slug, fleet, model, graphAgent }: {
         <p className="agent-fleet-warning" data-no-model>{model.hint || "No model is configured, so no agent here can be woken."}</p>
       )}
 
+      <DefinedAgents slug={slug} agents={defined} runs={runs} />
+
+      <div className="agent-fleet-note">
+        <Bot size={14} />
+        <p>
+          What the described agents propose lands in the review queue on the{" "}
+          <Link href={`/w/${slug}/graph#proposals`}>Knowledge graph</Link> page.
+          {graphAgent.lastAskedAt ? " There is a run waiting there now." : " Nothing is waiting there."}
+        </p>
+      </div>
+
+      <h2 className="fleet-section-title">On the boards</h2>
+      <p className="defined-agents-lede">
+        These are not described in words but by where they sit: put one beside the systems it should watch, or
+        inside the frame that scopes it. They answer with remarks pinned to what they read, and change nothing
+        by speaking.
+      </p>
+
       <div className="roadmap-states" data-fleet-totals>
         <div className="roadmap-state">
           <small>On the boards</small>
@@ -67,14 +90,7 @@ export function AgentFleet({ slug, fleet, model, graphAgent }: {
         </div>
       </div>
 
-      <div className="agent-fleet-note">
-        <Bot size={14} />
-        <p>
-          The graph agent is separate: it reads the model rather than a board, and its suggestions land in the
-          review queue on the <Link href={`/w/${slug}/graph#proposals`}>Knowledge graph</Link> page.
-          {graphAgent.lastAskedAt ? " It has a run waiting there now." : " It has not been asked yet."}
-        </p>
-      </div>
+
 
       {fleet.agents.length === 0 ? (
         <div className="roadmap-empty">

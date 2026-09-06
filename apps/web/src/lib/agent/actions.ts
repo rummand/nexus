@@ -4,16 +4,21 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
-import { proposeWithModel } from "./propose";
-import { choose, configured, whyNoModel } from "@/lib/models/resolve";
-import { agentGraph, clearRun, saveRun } from "./store";
+import { ensureReviewer } from "./definitions";
+import { runDefinition } from "./run";
+import { clearRun } from "./store";
 
 /**
  * Asking the agent to look at the model.
  *
  * Deliberately a button rather than something that happens on page load: it costs money, it takes
  * a second or two, and an agent that runs unbidden every time somebody opens a page is an agent
- * people learn to resent. The result replaces the previous run.
+ * people learn to resent.
+ *
+ * Since agents became describable (§5.32) this button no longer runs a hand-written module. It runs
+ * the workspace's own **Model reviewer** — an ordinary definition, created the first time it is
+ * needed, owned by a team, listed in the fleet and logged like every other agent. The button is the
+ * same; what it starts is now something a person can read, budget and switch off.
  */
 
 export interface AgentRunResult {
@@ -26,32 +31,20 @@ export interface AgentRunResult {
 
 export async function askTheAgent(workspaceId: string): Promise<AgentRunResult | { error: string }> {
   const db = await getDb();
-  const choice = await choose(db, workspaceId, "graph agent");
-  if (!choice) {
-    const rows = await db.select().from(s.modelProviders).where(eq(s.modelProviders.workspaceId, workspaceId));
-    return { error: whyNoModel(await configured(db, workspaceId), rows, "graph agent") };
-  }
   const workspace = await db.query.workspaces.findFirst({ where: eq(s.workspaces.id, workspaceId) });
   if (!workspace) return { error: "That workspace is gone." };
 
-  const graph = await agentGraph(db, workspaceId);
-  if (graph.entities.length === 0) return { error: "There is nothing in the graph for the agent to read yet." };
+  const reviewer = await ensureReviewer(db, workspaceId);
+  const result = await runDefinition(db, workspaceId, reviewer.id);
+  if ("error" in result) return result;
+  if (result.outcome === "failed") return { error: result.error ?? "the model could not be reached" };
+  // A refusal is a real answer — the budget is spent, the agent is paused — and reads better as a
+  // sentence than as an empty run.
+  if (result.outcome === "refused") return { error: result.note };
 
-  const decisions = await db.select().from(s.agentDecisions).where(eq(s.agentDecisions.workspaceId, workspaceId));
-  const decided = new Set(decisions.map((d) => d.key));
-
-  let run;
-  try {
-    run = await proposeWithModel(graph, choice, decided);
-  } catch (error) {
-    // Configuration and transport trouble is the person's to see, not something to swallow into
-    // "no proposals" — which would read as "your graph is fine".
-    return { error: error instanceof Error ? error.message : "the model could not be reached" };
-  }
-
-  const proposed = await saveRun(db, workspaceId, run);
   revalidatePath(`/w/${workspace.slug}/graph`);
-  return { proposed, rejected: run.rejected, grounded: run.grounded, note: run.note, sampled: run.sampled };
+  revalidatePath(`/w/${workspace.slug}/agents`);
+  return { proposed: result.proposed, rejected: result.rejected, grounded: result.grounded, note: result.note, sampled: result.sampled };
 }
 
 /** Throw the run away without deciding on any of it. */

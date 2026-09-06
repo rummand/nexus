@@ -196,7 +196,63 @@ export const FLEET: DocPage = {
     { kind: "note", tone: "why", title: "Why measure the human, not the machine", text: "Every other metric an agent could report — how many things it looked at, how fast, how confidently — is a measure of the agent talking. Whether a person kept what it said is the only one that measures it being useful, and it is the one that gets worse when an agent starts padding." },
     { kind: "heading", text: "Deleted agents", id: "gone" },
     { kind: "prose", text: "Removing an agent from a board does not erase how it did. Its record stays at the bottom of the page, under the name it had — which is worth reading before somebody writes the same agent again." },
-    { kind: "note", tone: "tip", text: "The graph agent is listed separately, because it reads the model rather than a board and its suggestions go to the review queue on the Knowledge graph page." },
+    { kind: "note", tone: "tip", text: "Described agents are listed above the board ones, because they are the ones that can be governed: an owner, a scope, verbs and a budget. Their suggestions go to the review queue on the Knowledge graph page, under the name of the agent that made them." },
+    { kind: "try", href: "/w/:slug/agents", label: "See your agents" },
+  ],
+};
+
+export const DESCRIBED: DocPage = {
+  slug: "describing-an-agent",
+  title: "Writing an agent down",
+  summary: "Give an agent a purpose, an owner, a scope, verbs and a budget — then read what it would say before letting it say it.",
+  keywords: ["agent", "define", "describe", "scope", "verbs", "budget", "owner", "draft", "dry run", "governance", "run log", "audit", "pause", "retire"],
+  blocks: [
+    { kind: "prose", text: "A board agent (see the previous page) is described by **where it sits**. This is the other kind: an agent described in **words** — what it is for, who is answerable for it, what it may read, what it may propose and what it may spend. Everything on the form is the answer to a question somebody will one day ask about your fleet." },
+    { kind: "shot", src: "agent-described", alt: "The form for describing an agent: name, purpose, owner, grounding, a scope query with a count, the five verbs as checkboxes, model and budget", caption: "One screen, and every field on it is a limit." },
+
+    { kind: "heading", text: "The fields", id: "fields" },
+    {
+      kind: "table",
+      columns: ["Field", "What it decides"],
+      rows: [
+        ["What it is for", "The instruction it gets. Two agents are two agents because of this sentence, so write it as you would a brief for a person."],
+        ["Owner", "A team, always. An agent nobody owns is nobody's to switch off."],
+        ["What it may read", "A graph query. Only the objects it matches go into the prompt — an agent for the OT estate cannot comment on finance systems because it was never shown them."],
+        ["What it may propose", "Any of the five changes. Nothing here writes anything: every one is a proposal a person still has to accept."],
+        ["Grounded in", "Which doctrine from the EA knowledge base shapes it, and gets cited in what it says."],
+        ["Model", "Its own provider, or whatever Settings → Models has set for the graph agent."],
+        ["Budget", "Runs a day, and proposals a run. Both are enforced before a model is called."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why a scope is required", text: "It would be easy to default to “the whole model”, and that is exactly how a fleet stops being accountable: six agents all reading everything, and no way to answer what any of them can see. Writing the query is a minute's work and it is the minute that makes the rest legible. Write `*` when an agent really should read all of it." },
+
+    { kind: "heading", text: "Draft first", id: "draft" },
+    { kind: "prose", text: "A new agent starts as a **draft**, and a draft runs as a **dry run**: you see exactly what it would have proposed, and nothing reaches the review queue. Read its first few opinions, fix the sentence, run it again — then **Give it a voice** when you like what it says. It is the same courtesy you would extend to a new colleague, and it costs one call." },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Describe it, and save. It is a draft." },
+        { do: "Press Dry run.", note: "One call. The run appears below with everything it would have said, and everything checking threw away." },
+        { do: "Read the dropped ones too.", note: "“Quoted words that X does not say” means the model invented something. A lot of those means the purpose is pointing it at work it cannot do from what it can see." },
+        { do: "Give it a voice — or change what you asked it for and dry run again." },
+      ],
+    },
+
+    { kind: "heading", text: "The run log", id: "runs" },
+    { kind: "prose", text: "Every run leaves a row, whatever happened: what it read, what it proposed, what was thrown away in checking and why, which model answered, how long it took. Runs a budget or a pause **refused** are recorded too — an agent that has been silently refused eleven times is a fact you need." },
+    { kind: "note", tone: "why", title: "Why failed and refused runs are kept", text: "A log that records only what worked is a log that flatters. The two questions worth asking about an agent months later — is it saying anything useful, and is it quietly not running — are both answered by the rows a tidier log would have dropped." },
+    { kind: "note", tone: "tip", text: "Its suggestions appear in the review queue on the Knowledge graph page, labelled with the agent's name — so a reviewer knows whose judgement they are reading, and the fleet can say how often people keep it." },
+
+    { kind: "heading", text: "Pausing and retiring", id: "status" },
+    {
+      kind: "list",
+      items: [
+        "**Draft** — runs, says nothing. Where every agent begins.",
+        "**Active** — runs for real, and what it proposes reaches the review queue.",
+        "**Paused** — will not run. Its history is kept.",
+        "**Retired** — finished, kept so its record outlives it. Bring it back to draft to run it again.",
+      ],
+    },
     { kind: "try", href: "/w/:slug/agents", label: "See your agents" },
   ],
 };

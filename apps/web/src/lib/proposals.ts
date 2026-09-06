@@ -415,7 +415,16 @@ export async function mergeEntities(db: Db, workspaceId: string, survivorId: str
 }
 
 export async function recordDecision(db: Db, workspaceId: string, key: string, decision: "accepted" | "dismissed") {
-  await db.insert(s.agentDecisions).values({ workspaceId, key, decision }).onConflictDoUpdate({ target: [s.agentDecisions.workspaceId, s.agentDecisions.key], set: { decision, createdAt: new Date().toISOString() } });
+  /*
+   * Which agent proposed this is read off the queue row *before* it is deleted, and copied onto the
+   * decision. It is the only moment the two facts exist together, and without it the fleet could
+   * never say how often people keep what a given agent says — the one number that matters (§5.28).
+   */
+  const proposal = await db.query.agentProposals.findFirst({
+    where: and(eq(s.agentProposals.workspaceId, workspaceId), eq(s.agentProposals.key, key)),
+  });
+  const agentId = proposal?.agentId ?? null;
+  await db.insert(s.agentDecisions).values({ workspaceId, key, decision, agentId }).onConflictDoUpdate({ target: [s.agentDecisions.workspaceId, s.agentDecisions.key], set: { decision, agentId, createdAt: new Date().toISOString() } });
   // A stored model proposal has done its job the moment somebody decides; the decision itself is
   // what stops a later run raising it again.
   await forgetProposal(db, workspaceId, key);
