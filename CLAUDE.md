@@ -41,7 +41,8 @@ second visual language.
   - `src/db` — Drizzle ORM schema, client, migrations, seed.
   - `src/components/workspace` — home shell (sidebar, board browser, dialogs).
 - `docs/` — product brief and design notes.
-- `packages/` — reserved for shared packages (canvas core, meta-model, connectors).
+- `packages/ea-knowledge` — the standalone EA knowledge base (corpus, retrieval, doctrine, CLI).
+  It imports nothing from Nexus; keep it that way.
 
 ## Conventions
 

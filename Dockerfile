@@ -11,13 +11,17 @@ WORKDIR /app
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
+# The knowledge base is a workspace package the app depends on; without its manifest here the
+# install produces no link for it and the build fails on the import.
+COPY packages/ea-knowledge/package.json packages/ea-knowledge/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @nexus/web build
 
 FROM base AS runtime
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 \
-    DATABASE_URL=file:/data/nexus.db
+    DATABASE_URL=file:/data/nexus.db \
+    EA_CORPUS_DIR=/app/packages/ea-knowledge/corpus
 COPY --from=build /app /app
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 # /data is chowned here for the no-volume case; the entrypoint redoes it at runtime because a

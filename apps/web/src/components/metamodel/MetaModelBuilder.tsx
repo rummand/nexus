@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { AlertTriangle, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, Spline, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, Spline, Trash2, X } from "lucide-react";
 import type { MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
@@ -22,7 +22,10 @@ const DATA_TYPES = ["text", "number", "date", "boolean", "enum"];
 
 type Selection = { kind: "node" | "relation"; name: string } | null;
 
-export function MetaModelBuilder({ model, workspaceId, slug }: { model: MetaModel; workspaceId: string; slug: string }) {
+/** What the corpus says about a type name — precomputed on the server (§5.20). */
+export interface TypeNote { label: string; title: string; url: string; text: string }
+
+export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote> }) {
   const [selected, setSelected] = useState<Selection>(model.nodeTypes[0] ? { kind: "node", name: model.nodeTypes[0].name } : null);
   const [openNodes, setOpenNodes] = useState(true);
   const [openRels, setOpenRels] = useState(true);
@@ -158,6 +161,7 @@ export function MetaModelBuilder({ model, workspaceId, slug }: { model: MetaMode
 
           {view === "details" && current && selected?.kind === "node" && (
             <NodeTypeDetail
+              note={notes[(current as MetaNodeType).name.toLowerCase()]}
               type={current as MetaNodeType}
               allTypeNames={allTypeNames}
               pending={pending}
@@ -201,10 +205,12 @@ function PresenceTag({ presence }: { presence: Presence }) {
   return <i className={`meta-presence ${presence}`} title={PRESENCE_TITLE[presence]}>{label}</i>;
 }
 
-function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenamed, onDeleted }: {
+function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenamed, onDeleted, note }: {
   type: MetaNodeType; allTypeNames: string[]; pending: boolean;
   run: (fn: () => Promise<unknown>) => void; workspaceId: string;
   onRenamed: (name: string) => void; onDeleted: () => void;
+  /** What the EA corpus says about a type with this name, if anything. */
+  note?: TypeNote;
 }) {
   const [name, setName] = useState(type.name);
   const [description, setDescription] = useState(type.description);
@@ -221,6 +227,21 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
         </div>
         <PresenceTag presence={type.presence} />
       </header>
+
+      {/*
+        The literature on this type, from the knowledge base. A meta-model is a set of claims about
+        what kinds of thing exist; having the definition next to the declaration is how you notice
+        that your "Capability" is really a department.
+      */}
+      {note && (
+        <details className="meta-literature" data-literature>
+          <summary><BookOpen size={12} /> What the literature calls a {type.name.toLowerCase()}</summary>
+          <blockquote>
+            {note.text}
+            <a href={note.url} target="_blank" rel="noreferrer noopener">{note.label}</a>
+          </blockquote>
+        </details>
+      )}
 
       {/*
         Gated on the declaration id, not on presence: for the moment between declaring and the
@@ -316,6 +337,7 @@ function RelationTypeDetail({ type, allTypeNames, pending, run, workspaceId, onR
         </div>
         <PresenceTag presence={type.presence} />
       </header>
+
 
       {/* Gated on the id for the same reason as node types above. */}
       {type.id === null ? (

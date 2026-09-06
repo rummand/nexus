@@ -541,6 +541,36 @@ try {
   await page.waitForTimeout(1500);
   assert.match(await page.locator("[data-step] em").first().innerText(), /do not understand/i, "an unreadable line explains itself");
 
+  // ---- the EA knowledge base: search the corpus and read the doctrine ----------------------
+  await page.goto(`${base}/w/acme-energy/knowledge`, { waitUntil: "load" });
+  await page.waitForSelector(".knowledge");
+  await page.fill('.knowledge-search input[name="q"]', "capability versus process");
+  await page.click('.knowledge-search button[type="submit"]');
+  await page.waitForSelector(".knowledge-passage", { timeout: 20000 });
+  const passages = await page.$$eval(".knowledge-passage", (els) => els.map((e) => ({
+    label: e.querySelector("b")?.textContent ?? "",
+    link: e.querySelector("footer a")?.getAttribute("href") ?? "",
+    license: e.querySelector(".knowledge-license")?.textContent?.trim() ?? "",
+  })));
+  assert.ok(passages.length > 0, "the corpus answers a question");
+  assert.ok(passages.every((p) => p.link.startsWith("https://")), "every passage links to its source");
+  assert.ok(passages.every((p) => p.license.length > 2), "every passage names its licence");
+
+  // a question the corpus has never heard of is answered honestly, not with the nearest thing
+  await page.goto(`${base}/w/acme-energy/knowledge?q=quantum%20flux%20capacitor`, { waitUntil: "load" });
+  await page.waitForSelector(".knowledge-result-count");
+  assert.match(await page.locator(".knowledge-result-count").innerText(), /never seen|Nothing matched/i,
+    "an unknown term is admitted rather than approximated");
+
+  await page.goto(`${base}/w/acme-energy/knowledge?tab=lessons`, { waitUntil: "load" });
+  await page.waitForSelector(".knowledge-lesson");
+  assert.ok((await page.locator(".knowledge-lesson blockquote").count()) > 0, "every lesson shows the passage behind it");
+
+  await page.goto(`${base}/w/acme-energy/knowledge?tab=sources`, { waitUntil: "load" });
+  await page.waitForSelector(".knowledge-license-summary");
+  assert.ok((await page.locator(".knowledge-references li").count()) > 0,
+    "the works we may not redistribute are listed as such");
+
   assert.deepEqual(problems, [], "no browser errors");
   console.log("smoke: all checks passed");
 } catch (error) {

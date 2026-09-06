@@ -20,6 +20,8 @@ The client autosaves with a debounce and flushes on tab hide / unload (`useAutos
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
+| GET | `/api/knowledge` | — | The corpus: `{ builtAt, documents, registered, passages, characters, licenses, lessons }`. |
+| GET | `/api/knowledge?q=…&limit=n` | — | Lexical search over the EA corpus: `{ query, empty, tookMs, unknownTerms, passages[] }`, each passage carrying its label, source link and licence. Works with no model API key. |
 | GET | `/api/boards/:boardId/versions` | — | `{ versions: VersionSummary[] }` newest first. |
 | POST | `/api/boards/:boardId/versions` | `{ label?, document? }` | `{ id, versions }` — manual checkpoint of the given document (or the stored one). |
 | GET | `/api/boards/:boardId/versions/:versionId` | — | `{ document }` — the checkpointed document (used by *Compare*). |

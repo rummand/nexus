@@ -2,6 +2,7 @@ import type { Instruction, Vocabulary } from "./script";
 import { PLAN_SCHEMA, validateInstructions } from "./validate";
 import { INSPECT_SCHEMA, runInspection, validateInspection } from "./inspect";
 import type { ComposeContext } from "./apply";
+import { agentGrounding, groundedIn } from "@/lib/knowledge";
 
 /**
  * The natural-language planner.
@@ -44,6 +45,8 @@ export interface Plan {
   engine: "model" | "rules";
   /** What it looked at before answering, in order — so the reply can be checked. */
   looked: string[];
+  /** The practice from the knowledge base it was grounded in, so the person can see the influence. */
+  grounded: string[];
 }
 
 export function modelConfigured(): boolean {
@@ -102,6 +105,20 @@ Rules:
   the numbers you actually read, and flag anything you assumed or could not answer.
 - When you have looked enough, call build_board. That ends the turn.`;
 
+/**
+ * Practice, from the knowledge base, appended to the system prompt.
+ *
+ * The planner's failure mode is not syntax — validation catches that — it is producing a board
+ * that is technically a board and architecturally useless: applications grouped by the team that
+ * owns them, capabilities and processes mixed on one canvas. The doctrine is retrieved for the
+ * request at hand, cited, and appended; when the corpus is missing it appends nothing and the
+ * planner behaves exactly as it did before (§5.20).
+ */
+function systemFor(prompt: string): string {
+  const grounding = agentGrounding("compose", prompt, 3);
+  return grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM;
+}
+
 function userMessage(prompt: string, ctx: PlanContext): string {
   return [
     `This workspace has:`,
@@ -140,11 +157,12 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
 
   const messages: ModelMessage[] = [{ role: "user", content: userMessage(prompt, ctx) }];
   const looked: string[] = [];
+  const grounded = groundedIn("compose", prompt, 3);
 
   for (let round = 0; round <= MAX_LOOKS; round++) {
     const lastRound = round === MAX_LOOKS;
     const body = await callModel(apiKey, model, {
-      system: SYSTEM,
+      system: systemFor(prompt),
       messages,
       tools: [
         { name: "inspect_graph", description: "Look at the graph before answering. Read-only.", input_schema: INSPECT_SCHEMA },
@@ -165,6 +183,7 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
         rejected,
         engine: "model",
         looked,
+        grounded,
       };
     }
 
@@ -191,7 +210,7 @@ export async function planWithModel(prompt: string, ctx: PlanContext): Promise<P
     });
   }
 
-  return { instructions: [], reply: "", rejected: ["the planner never produced a plan"], engine: "model", looked };
+  return { instructions: [], reply: "", rejected: ["the planner never produced a plan"], engine: "model", looked, grounded };
 }
 
 /** One call to the Messages API. Shared with the intake extractor. */

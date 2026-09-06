@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageSquare, Play, Search, Sparkles, X } from "lucide-react";
+import { BookOpen, MessageSquare, Play, Search, Sparkles, X } from "lucide-react";
 import { useCanvas, useCanvasStore } from "./store";
 import type { CanvasDocument } from "./document";
 import type { ComposeResult, ComposeStep } from "@/lib/compose/run";
@@ -55,6 +55,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
   const [status, setStatus] = useState("");
   const [rejected, setRejected] = useState<string[]>([]);
   const [looked, setLooked] = useState<string[]>([]);
+  const [grounded, setGrounded] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -91,6 +92,7 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
       setStatus(data.status ?? "");
       setRejected(data.rejected ?? []);
       setLooked(data.looked ?? []);
+      setGrounded(data.grounded ?? []);
       // A planner writes a script of its own; show it, so what ran is what you can edit and re-run.
       if (data.document.script && data.document.script !== script) {
         setScript(data.document.script);
@@ -158,6 +160,13 @@ export function ComposePanel({ rootRef }: { rootRef: React.RefObject<HTMLElement
       {looked.length > 0 && (
         <ul className="compose-looked" aria-label="What it checked before answering" data-looked>
           {looked.map((l, i) => <li key={i}><Search size={11} /> {l}</li>)}
+        </ul>
+      )}
+
+      {/* What the knowledge base told it before it answered (§5.20). */}
+      {grounded.length > 0 && (
+        <ul className="compose-grounded" aria-label="Practice it was grounded in" data-grounded>
+          {grounded.map((g, i) => <li key={i}><BookOpen size={11} /> {g}</li>)}
         </ul>
       )}
 

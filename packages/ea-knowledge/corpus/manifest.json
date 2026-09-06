@@ -1,0 +1,1817 @@
+{
+  "builtAt": "2026-09-06",
+  "documents": 113,
+  "characters": 1694764,
+  "sources": [
+    {
+      "id": "12factor:toc",
+      "title": "The Twelve-Factor App",
+      "url": "https://12factor.net/",
+      "license": "MIT",
+      "licenseName": "MIT License",
+      "attribution": "Adam Wiggins and contributors",
+      "topics": [
+        "platform",
+        "principle",
+        "delivery"
+      ],
+      "why": "A short, opinionated standard for how a deployable application should behave; MIT-licensed, so it can be shipped rather than linked.",
+      "fetchedAt": "2026-09-06",
+      "characters": 1185,
+      "hash": "bbcbc52b118b07a7"
+    },
+    {
+      "id": "wp:Advanced_metering_infrastructure",
+      "title": "Advanced metering infrastructure",
+      "url": "https://en.wikipedia.org/wiki/Advanced_metering_infrastructure",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "data"
+      ],
+      "why": "Metering as the largest data source in a utility estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 43702,
+      "hash": "b95a3d851845c13a"
+    },
+    {
+      "id": "wp:Anti-pattern",
+      "title": "Anti-pattern",
+      "url": "https://en.wikipedia.org/wiki/Anti-pattern",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "pattern",
+        "risk"
+      ],
+      "why": "Named failure modes; useful when reviewing a model.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4717,
+      "hash": "459c5e238cc99275"
+    },
+    {
+      "id": "wp:API_management",
+      "title": "API management",
+      "url": "https://en.wikipedia.org/wiki/API_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "API",
+        "governance"
+      ],
+      "why": "Interfaces as managed products rather than incidental endpoints.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4192,
+      "hash": "9218b37e50eda097"
+    },
+    {
+      "id": "wp:Application_lifecycle_management",
+      "title": "Application lifecycle management",
+      "url": "https://en.wikipedia.org/wiki/Application_lifecycle_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "lifecycle",
+        "application"
+      ],
+      "why": "Lifecycle as an attribute with consequences, not a label.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2449,
+      "hash": "54d4c539009b2ba7"
+    },
+    {
+      "id": "wp:Application_portfolio_management",
+      "title": "Application portfolio management",
+      "url": "https://en.wikipedia.org/wiki/Application_portfolio_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "portfolio",
+        "application"
+      ],
+      "why": "Rationalising an estate: the direct use case for this product.",
+      "fetchedAt": "2026-09-06",
+      "characters": 15292,
+      "hash": "2fd7feb2d866b3ae"
+    },
+    {
+      "id": "wp:ArchiMate",
+      "title": "ArchiMate",
+      "url": "https://en.wikipedia.org/wiki/ArchiMate",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "notation",
+        "metamodel"
+      ],
+      "why": "The modelling language whose layers our meta-model is measured against.",
+      "fetchedAt": "2026-09-06",
+      "characters": 18033,
+      "hash": "923ed70e00541e21"
+    },
+    {
+      "id": "wp:Architectural_decision",
+      "title": "Architectural decision",
+      "url": "https://en.wikipedia.org/wiki/Architectural_decision",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "decision",
+        "record"
+      ],
+      "why": "Decisions as artefacts — the ADR practice.",
+      "fetchedAt": "2026-09-06",
+      "characters": 8074,
+      "hash": "2d01b7aee0c5d2e4"
+    },
+    {
+      "id": "wp:Balanced_scorecard",
+      "title": "Balanced scorecard",
+      "url": "https://en.wikipedia.org/wiki/Balanced_scorecard",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "strategy",
+        "measurement"
+      ],
+      "why": "How strategy is measured, which is what a roadmap must connect to.",
+      "fetchedAt": "2026-09-06",
+      "characters": 26079,
+      "hash": "01d7be748b1a8155"
+    },
+    {
+      "id": "wp:Business_architecture",
+      "title": "Business architecture",
+      "url": "https://en.wikipedia.org/wiki/Business_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "capability",
+        "business"
+      ],
+      "why": "The business layer: capabilities, value streams, organisation.",
+      "fetchedAt": "2026-09-06",
+      "characters": 15838,
+      "hash": "4afc01434544bc84"
+    },
+    {
+      "id": "wp:Business_capability_model",
+      "title": "Business capability model",
+      "url": "https://en.wikipedia.org/wiki/Business_capability_model",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "capability",
+        "business"
+      ],
+      "why": "The one artefact executives actually read; also the most abused.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6576,
+      "hash": "d3fb1abd3f2cd764"
+    },
+    {
+      "id": "wp:Business_continuity_planning",
+      "title": "Business continuity planning",
+      "url": "https://en.wikipedia.org/wiki/Business_continuity_planning",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "continuity",
+        "risk"
+      ],
+      "why": "Continuity as the reason criticality is recorded at all.",
+      "fetchedAt": "2026-09-06",
+      "characters": 25118,
+      "hash": "5b65db34152b384a"
+    },
+    {
+      "id": "wp:Business_Model_Canvas",
+      "title": "Business Model Canvas",
+      "url": "https://en.wikipedia.org/wiki/Business_Model_Canvas",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "strategy",
+        "business"
+      ],
+      "why": "A one-page business model, and where architecture attaches to it.",
+      "fetchedAt": "2026-09-06",
+      "characters": 10007,
+      "hash": "bbb6151cdd41160f"
+    },
+    {
+      "id": "wp:Business_Process_Model_and_Notation",
+      "title": "Business Process Model and Notation",
+      "url": "https://en.wikipedia.org/wiki/Business_Process_Model_and_Notation",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "process",
+        "notation"
+      ],
+      "why": "The notation processes are actually drawn in.",
+      "fetchedAt": "2026-09-06",
+      "characters": 18992,
+      "hash": "44dacc62def48c11"
+    },
+    {
+      "id": "wp:Business_process_modeling",
+      "title": "Business process modeling",
+      "url": "https://en.wikipedia.org/wiki/Business_process_modeling",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "process",
+        "notation"
+      ],
+      "why": "Process as distinct from capability — the distinction most models lose.",
+      "fetchedAt": "2026-09-06",
+      "characters": 17855,
+      "hash": "41b0df599c10d217"
+    },
+    {
+      "id": "wp:Business–IT_alignment",
+      "title": "Business–IT alignment",
+      "url": "https://en.wikipedia.org/wiki/Business%E2%80%93IT_alignment",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "alignment",
+        "value"
+      ],
+      "why": "The question enterprise architecture exists to answer.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4169,
+      "hash": "b553c2a64c576551"
+    },
+    {
+      "id": "wp:Capability_management",
+      "title": "Capability management",
+      "url": "https://en.wikipedia.org/wiki/Capability_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "capability",
+        "planning"
+      ],
+      "why": "Capabilities as a planning unit rather than a diagram.",
+      "fetchedAt": "2026-09-06",
+      "characters": 7580,
+      "hash": "ba89bead7a8dbe99"
+    },
+    {
+      "id": "wp:Capability_Maturity_Model_Integration",
+      "title": "Capability Maturity Model Integration",
+      "url": "https://en.wikipedia.org/wiki/Capability_Maturity_Model_Integration",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "maturity",
+        "assessment"
+      ],
+      "why": "Maturity models, used well and badly.",
+      "fetchedAt": "2026-09-06",
+      "characters": 13105,
+      "hash": "305bcf9ce1e5f1a6"
+    },
+    {
+      "id": "wp:Cloud_computing",
+      "title": "Cloud computing",
+      "url": "https://en.wikipedia.org/wiki/Cloud_computing",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "cloud",
+        "platform"
+      ],
+      "why": "The delivery model most target architectures assume.",
+      "fetchedAt": "2026-09-06",
+      "characters": 37404,
+      "hash": "3ac19d8c1a795d5d"
+    },
+    {
+      "id": "wp:COBIT",
+      "title": "COBIT",
+      "url": "https://en.wikipedia.org/wiki/COBIT",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "governance",
+        "control"
+      ],
+      "why": "Governance and control objectives, the audit-facing view.",
+      "fetchedAt": "2026-09-06",
+      "characters": 5253,
+      "hash": "901d6d40d0296421"
+    },
+    {
+      "id": "wp:Cohesion_(computer_science)",
+      "title": "Cohesion (computer science)",
+      "url": "https://en.wikipedia.org/wiki/Cohesion_(computer_science)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "cohesion",
+        "structure"
+      ],
+      "why": "The other half of the pair; a good model maximises it.",
+      "fetchedAt": "2026-09-06",
+      "characters": 5424,
+      "hash": "3a1470673895b3c8"
+    },
+    {
+      "id": "wp:Commercial_off-the-shelf",
+      "title": "Commercial off-the-shelf",
+      "url": "https://en.wikipedia.org/wiki/Commercial_off-the-shelf",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "buy",
+        "sourcing"
+      ],
+      "why": "Buy-versus-build, and what a package does to your process.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9257,
+      "hash": "8e58d4b0c0187a4b"
+    },
+    {
+      "id": "wp:Common_Information_Model_(electricity)",
+      "title": "Common Information Model (electricity)",
+      "url": "https://en.wikipedia.org/wiki/Common_Information_Model_(electricity)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "standard",
+        "data"
+      ],
+      "why": "CIM: the shared data model for electrical networks.",
+      "fetchedAt": "2026-09-06",
+      "characters": 3894,
+      "hash": "a7ecbe5ac8ed81fd"
+    },
+    {
+      "id": "wp:Configuration_management_database",
+      "title": "Configuration management database",
+      "url": "https://en.wikipedia.org/wiki/Configuration_management_database",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "CMDB",
+        "inventory"
+      ],
+      "why": "The other inventory in the building, and why it disagrees with yours.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6742,
+      "hash": "612065fad47e4b42"
+    },
+    {
+      "id": "wp:Containerization_(computing)",
+      "title": "Containerization (computing)",
+      "url": "https://en.wikipedia.org/wiki/Containerization_(computing)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "platform",
+        "packaging"
+      ],
+      "why": "The packaging unit under most current platforms.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2536,
+      "hash": "ab001c89955c2c8a"
+    },
+    {
+      "id": "wp:Continuous_delivery",
+      "title": "Continuous delivery",
+      "url": "https://en.wikipedia.org/wiki/Continuous_delivery",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "delivery",
+        "practice"
+      ],
+      "why": "Delivery cadence as an architectural constraint.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9396,
+      "hash": "02f9ef2424c34630"
+    },
+    {
+      "id": "wp:Conway's_law",
+      "title": "Conway's law",
+      "url": "https://en.wikipedia.org/wiki/Conway's_law",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "organisation",
+        "structure"
+      ],
+      "why": "Why the architecture keeps matching the org chart.",
+      "fetchedAt": "2026-09-06",
+      "characters": 5110,
+      "hash": "ee545237d0934763"
+    },
+    {
+      "id": "wp:Coupling_(computer_programming)",
+      "title": "Coupling (computer programming)",
+      "url": "https://en.wikipedia.org/wiki/Coupling_(computer_programming)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "coupling",
+        "structure"
+      ],
+      "why": "Coupling, stated precisely enough to measure.",
+      "fetchedAt": "2026-09-06",
+      "characters": 16195,
+      "hash": "117646f3d54373de"
+    },
+    {
+      "id": "wp:Critical_infrastructure_protection",
+      "title": "Critical infrastructure protection",
+      "url": "https://en.wikipedia.org/wiki/Critical_infrastructure_protection",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "risk",
+        "utility"
+      ],
+      "why": "Why an energy estate is not an ordinary IT estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 61429,
+      "hash": "2e1a193a6c7682dd"
+    },
+    {
+      "id": "wp:Data_architecture",
+      "title": "Data architecture",
+      "url": "https://en.wikipedia.org/wiki/Data_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "structure"
+      ],
+      "why": "The data layer as a first-class architecture concern.",
+      "fetchedAt": "2026-09-06",
+      "characters": 8298,
+      "hash": "6206207b99832ede"
+    },
+    {
+      "id": "wp:Data_governance",
+      "title": "Data governance",
+      "url": "https://en.wikipedia.org/wiki/Data_governance",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "ownership"
+      ],
+      "why": "Ownership and stewardship — where the owner attribute comes from.",
+      "fetchedAt": "2026-09-06",
+      "characters": 8597,
+      "hash": "e9b692ec2878b5b6"
+    },
+    {
+      "id": "wp:Data_lineage",
+      "title": "Data lineage",
+      "url": "https://en.wikipedia.org/wiki/Data_lineage",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "provenance"
+      ],
+      "why": "Provenance for data — the same argument this product makes for models.",
+      "fetchedAt": "2026-09-06",
+      "characters": 32868,
+      "hash": "4c842af308115564"
+    },
+    {
+      "id": "wp:Data_mesh",
+      "title": "Data mesh",
+      "url": "https://en.wikipedia.org/wiki/Data_mesh",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "ownership"
+      ],
+      "why": "Domain ownership of data products; the current counter-argument to the lake.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4463,
+      "hash": "fe48f38c4b2e3ffe"
+    },
+    {
+      "id": "wp:Data_warehouse",
+      "title": "Data warehouse",
+      "url": "https://en.wikipedia.org/wiki/Data_warehouse",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "analytics"
+      ],
+      "why": "The classical analytical store and its architecture.",
+      "fetchedAt": "2026-09-06",
+      "characters": 28008,
+      "hash": "bdefa8e4c9b3de23"
+    },
+    {
+      "id": "wp:Defense_in_depth_(computing)",
+      "title": "Defense in depth (computing)",
+      "url": "https://en.wikipedia.org/wiki/Defense_in_depth_(computing)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "security",
+        "principle"
+      ],
+      "why": "Layered control: why one boundary is never the answer.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2686,
+      "hash": "6074fe1d777f5949"
+    },
+    {
+      "id": "wp:Demand_response",
+      "title": "Demand response",
+      "url": "https://en.wikipedia.org/wiki/Demand_response",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "process"
+      ],
+      "why": "A business capability that only exists because of the data estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 33363,
+      "hash": "3aff05ca65635a21"
+    },
+    {
+      "id": "wp:Department_of_Defense_Architecture_Framework",
+      "title": "Department of Defense Architecture Framework",
+      "url": "https://en.wikipedia.org/wiki/Department_of_Defense_Architecture_Framework",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "viewpoint"
+      ],
+      "why": "Viewpoints as the organising idea, taken furthest.",
+      "fetchedAt": "2026-09-06",
+      "characters": 41126,
+      "hash": "80c3717756762ebe"
+    },
+    {
+      "id": "wp:Design_pattern",
+      "title": "Design pattern",
+      "url": "https://en.wikipedia.org/wiki/Design_pattern",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "pattern",
+        "reuse"
+      ],
+      "why": "Patterns as named, reusable solutions with stated trade-offs.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2838,
+      "hash": "936550b0f047869f"
+    },
+    {
+      "id": "wp:DevOps",
+      "title": "DevOps",
+      "url": "https://en.wikipedia.org/wiki/DevOps",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "delivery",
+        "organisation"
+      ],
+      "why": "The operating model most delivery organisations now claim.",
+      "fetchedAt": "2026-09-06",
+      "characters": 14700,
+      "hash": "ad1e26ab0e45e983"
+    },
+    {
+      "id": "wp:Digital_transformation",
+      "title": "Digital transformation",
+      "url": "https://en.wikipedia.org/wiki/Digital_transformation",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "change",
+        "strategy"
+      ],
+      "why": "The change programme most architecture work is attached to.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9276,
+      "hash": "dac5f4a6aa217fa8"
+    },
+    {
+      "id": "wp:Digital_twin",
+      "title": "Digital twin",
+      "url": "https://en.wikipedia.org/wiki/Digital_twin",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "model",
+        "operations"
+      ],
+      "why": "A live model of a physical asset; the operational cousin of this product.",
+      "fetchedAt": "2026-09-06",
+      "characters": 20474,
+      "hash": "9dea5fec51655dff"
+    },
+    {
+      "id": "wp:Distributed_generation",
+      "title": "Distributed generation",
+      "url": "https://en.wikipedia.org/wiki/Distributed_generation",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "change"
+      ],
+      "why": "The change driving most current utility architecture work.",
+      "fetchedAt": "2026-09-06",
+      "characters": 27759,
+      "hash": "92e96c5f4be983a5"
+    },
+    {
+      "id": "wp:Distribution_system_operator",
+      "title": "Distribution system operator",
+      "url": "https://en.wikipedia.org/wiki/Distribution_system_operator",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "organisation"
+      ],
+      "why": "The counterpart at distribution level.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4328,
+      "hash": "54bac6abf4f63130"
+    },
+    {
+      "id": "wp:Domain-driven_design",
+      "title": "Domain-driven design",
+      "url": "https://en.wikipedia.org/wiki/Domain-driven_design",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "domain",
+        "decomposition"
+      ],
+      "why": "Bounded contexts: the best available answer to where to cut.",
+      "fetchedAt": "2026-09-06",
+      "characters": 15803,
+      "hash": "7ef3da066b26b6e2"
+    },
+    {
+      "id": "wp:Edge_computing",
+      "title": "Edge computing",
+      "url": "https://en.wikipedia.org/wiki/Edge_computing",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "platform",
+        "distribution"
+      ],
+      "why": "Compute at the edge — unavoidable in a grid estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9355,
+      "hash": "29c50085910a82e2"
+    },
+    {
+      "id": "wp:Enterprise_architecture",
+      "title": "Enterprise architecture",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "discipline",
+        "definition"
+      ],
+      "why": "The base definition every other source is read against.",
+      "fetchedAt": "2026-09-06",
+      "characters": 13289,
+      "hash": "26579c4007b8f895"
+    },
+    {
+      "id": "wp:Enterprise_architecture_framework",
+      "title": "Enterprise architecture framework",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_architecture_framework",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "method"
+      ],
+      "why": "What a framework is for, and how the well-known ones differ.",
+      "fetchedAt": "2026-09-06",
+      "characters": 23523,
+      "hash": "e4a2e85629ca3057"
+    },
+    {
+      "id": "wp:Enterprise_architecture_planning",
+      "title": "Enterprise architecture planning",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_architecture_planning",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "method",
+        "roadmap"
+      ],
+      "why": "The planning tradition: data before applications before technology.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6369,
+      "hash": "954ede169b555e84"
+    },
+    {
+      "id": "wp:Enterprise_asset_management",
+      "title": "Enterprise asset management",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_asset_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "asset",
+        "application"
+      ],
+      "why": "Asset-heavy industries' core system — the utility case.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2238,
+      "hash": "f14f186f38126f5c"
+    },
+    {
+      "id": "wp:Enterprise_information_security_architecture",
+      "title": "Enterprise information security architecture",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_information_security_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "security",
+        "architecture"
+      ],
+      "why": "Security as an architecture layer rather than a bolt-on.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2850,
+      "hash": "e798f66cc574f82a"
+    },
+    {
+      "id": "wp:Enterprise_Integration_Patterns",
+      "title": "Enterprise Integration Patterns",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_Integration_Patterns",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "integration",
+        "pattern"
+      ],
+      "why": "The pattern language integration conversations are held in.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2017,
+      "hash": "400691970c2a6823"
+    },
+    {
+      "id": "wp:Enterprise_modelling",
+      "title": "Enterprise modelling",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_modelling",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "model",
+        "method"
+      ],
+      "why": "Modelling the enterprise as an object in its own right.",
+      "fetchedAt": "2026-09-06",
+      "characters": 20087,
+      "hash": "0a6ef94096a265b6"
+    },
+    {
+      "id": "wp:Enterprise_resource_planning",
+      "title": "Enterprise resource planning",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_resource_planning",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "ERP",
+        "application"
+      ],
+      "why": "The system most estates are organised around.",
+      "fetchedAt": "2026-09-06",
+      "characters": 29490,
+      "hash": "a890751f69d75fc0"
+    },
+    {
+      "id": "wp:Enterprise_service_bus",
+      "title": "Enterprise service bus",
+      "url": "https://en.wikipedia.org/wiki/Enterprise_service_bus",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "integration",
+        "middleware"
+      ],
+      "why": "The centralising answer, and what it costs.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9885,
+      "hash": "6610a27347740919"
+    },
+    {
+      "id": "wp:Entity–relationship_model",
+      "title": "Entity–relationship model",
+      "url": "https://en.wikipedia.org/wiki/Entity%E2%80%93relationship_model",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "model",
+        "data"
+      ],
+      "why": "Entities and relationships, the shape a knowledge graph inherits.",
+      "fetchedAt": "2026-09-06",
+      "characters": 23650,
+      "hash": "3088cb13b7dd428e"
+    },
+    {
+      "id": "wp:Event-driven_architecture",
+      "title": "Event-driven architecture",
+      "url": "https://en.wikipedia.org/wiki/Event-driven_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "event",
+        "integration"
+      ],
+      "why": "Events as the coupling-reducing alternative to request/response.",
+      "fetchedAt": "2026-09-06",
+      "characters": 17514,
+      "hash": "a9ea7ad4bc92c9e6"
+    },
+    {
+      "id": "wp:Federal_Enterprise_Architecture",
+      "title": "Federal Enterprise Architecture",
+      "url": "https://en.wikipedia.org/wiki/Federal_Enterprise_Architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "government"
+      ],
+      "why": "The public-sector reference models, and a cautionary tale about volume.",
+      "fetchedAt": "2026-09-06",
+      "characters": 21585,
+      "hash": "5787f60039c961b5"
+    },
+    {
+      "id": "wp:General_Data_Protection_Regulation",
+      "title": "General Data Protection Regulation",
+      "url": "https://en.wikipedia.org/wiki/General_Data_Protection_Regulation",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "privacy",
+        "compliance"
+      ],
+      "why": "The regulation that made data ownership a modelling attribute.",
+      "fetchedAt": "2026-09-06",
+      "characters": 53737,
+      "hash": "acd4e434f03a71d9"
+    },
+    {
+      "id": "wp:High_availability",
+      "title": "High availability",
+      "url": "https://en.wikipedia.org/wiki/High_availability",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "availability",
+        "quality"
+      ],
+      "why": "Availability, stated in numbers a business can sign.",
+      "fetchedAt": "2026-09-06",
+      "characters": 19152,
+      "hash": "6cac0f5f761e07b3"
+    },
+    {
+      "id": "wp:Identity_management",
+      "title": "Identity management",
+      "url": "https://en.wikipedia.org/wiki/Identity_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "identity",
+        "security"
+      ],
+      "why": "Identity as shared infrastructure across the estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 17265,
+      "hash": "0e76ddfe83ea7968"
+    },
+    {
+      "id": "wp:IEC_61850",
+      "title": "IEC 61850",
+      "url": "https://en.wikipedia.org/wiki/IEC_61850",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "standard",
+        "energy"
+      ],
+      "why": "Substation communication: a standard that constrains the estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 1848,
+      "hash": "16c7d10b803bf9e6"
+    },
+    {
+      "id": "wp:Infrastructure_as_code",
+      "title": "Infrastructure as code",
+      "url": "https://en.wikipedia.org/wiki/Infrastructure_as_code",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "automation",
+        "platform"
+      ],
+      "why": "Infrastructure as a described, versioned thing.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6968,
+      "hash": "39a7610bb8de8db9"
+    },
+    {
+      "id": "wp:Internet_of_things",
+      "title": "Internet of things",
+      "url": "https://en.wikipedia.org/wiki/Internet_of_things",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "device",
+        "data"
+      ],
+      "why": "Where the measurement data in a utility estate comes from.",
+      "fetchedAt": "2026-09-06",
+      "characters": 79408,
+      "hash": "1ca4ea7828e55306"
+    },
+    {
+      "id": "wp:Interoperability",
+      "title": "Interoperability",
+      "url": "https://en.wikipedia.org/wiki/Interoperability",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "integration",
+        "standard"
+      ],
+      "why": "What integration is for, at the level a regulator cares about.",
+      "fetchedAt": "2026-09-06",
+      "characters": 31627,
+      "hash": "87ca16a08172a628"
+    },
+    {
+      "id": "wp:ISO/IEC_42010",
+      "title": "ISO/IEC 42010",
+      "url": "https://en.wikipedia.org/wiki/ISO%2FIEC_42010",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "standard",
+        "viewpoint"
+      ],
+      "why": "The standard that defines architecture description, view and viewpoint.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2282,
+      "hash": "5e460b462828f4ef"
+    },
+    {
+      "id": "wp:IT_disaster_recovery",
+      "title": "IT disaster recovery",
+      "url": "https://en.wikipedia.org/wiki/IT_disaster_recovery",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "continuity",
+        "risk"
+      ],
+      "why": "RTO and RPO: the attributes a criticality rating implies.",
+      "fetchedAt": "2026-09-06",
+      "characters": 14209,
+      "hash": "dd6d2a3ffcc2038d"
+    },
+    {
+      "id": "wp:IT_governance",
+      "title": "IT governance",
+      "url": "https://en.wikipedia.org/wiki/IT_governance",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "governance",
+        "decision"
+      ],
+      "why": "Who decides what — the part of architecture that is not drawing.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9992,
+      "hash": "c464fe6ff81021eb"
+    },
+    {
+      "id": "wp:IT_portfolio_management",
+      "title": "IT portfolio management",
+      "url": "https://en.wikipedia.org/wiki/IT_portfolio_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "portfolio",
+        "investment"
+      ],
+      "why": "Portfolio thinking applied to investment rather than assets.",
+      "fetchedAt": "2026-09-06",
+      "characters": 12895,
+      "hash": "e0bf0d4777741508"
+    },
+    {
+      "id": "wp:IT_service_management",
+      "title": "IT service management",
+      "url": "https://en.wikipedia.org/wiki/IT_service_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "service",
+        "operations"
+      ],
+      "why": "The operational counterpart to the architecture view.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6524,
+      "hash": "5e636c96bb0e761c"
+    },
+    {
+      "id": "wp:ITIL",
+      "title": "ITIL",
+      "url": "https://en.wikipedia.org/wiki/ITIL",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "service",
+        "process"
+      ],
+      "why": "The process vocabulary most operations teams already use.",
+      "fetchedAt": "2026-09-06",
+      "characters": 5343,
+      "hash": "e87ef8cb28739502"
+    },
+    {
+      "id": "wp:Knowledge_graph",
+      "title": "Knowledge graph",
+      "url": "https://en.wikipedia.org/wiki/Knowledge_graph",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "graph",
+        "semantics"
+      ],
+      "why": "The representation Nexus stores the estate in.",
+      "fetchedAt": "2026-09-06",
+      "characters": 10857,
+      "hash": "f56645b034eb91fd"
+    },
+    {
+      "id": "wp:Kubernetes",
+      "title": "Kubernetes",
+      "url": "https://en.wikipedia.org/wiki/Kubernetes",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "platform",
+        "orchestration"
+      ],
+      "why": "The orchestration substrate worth naming as an IT component.",
+      "fetchedAt": "2026-09-06",
+      "characters": 32252,
+      "hash": "2de204200b4ebb06"
+    },
+    {
+      "id": "wp:Legacy_system",
+      "title": "Legacy system",
+      "url": "https://en.wikipedia.org/wiki/Legacy_system",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "legacy",
+        "risk"
+      ],
+      "why": "What makes a system legacy, beyond its age.",
+      "fetchedAt": "2026-09-06",
+      "characters": 17555,
+      "hash": "fd15ae640e1886e3"
+    },
+    {
+      "id": "wp:Master_data_management",
+      "title": "Master data management",
+      "url": "https://en.wikipedia.org/wiki/Master_data_management",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "data",
+        "identity"
+      ],
+      "why": "One identity for a thing across systems: the merge problem, industrialised.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9696,
+      "hash": "d4a3836622876ce1"
+    },
+    {
+      "id": "wp:Metamodeling",
+      "title": "Metamodeling",
+      "url": "https://en.wikipedia.org/wiki/Metamodeling",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "metamodel",
+        "abstraction"
+      ],
+      "why": "The type level: what a meta-model is and what it constrains.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6592,
+      "hash": "84560b9a8ac7ded5"
+    },
+    {
+      "id": "wp:Microservices",
+      "title": "Microservices",
+      "url": "https://en.wikipedia.org/wiki/Microservices",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "service",
+        "decomposition"
+      ],
+      "why": "Decomposition by business capability, and its operational bill.",
+      "fetchedAt": "2026-09-06",
+      "characters": 18397,
+      "hash": "161e0a794656bf49"
+    },
+    {
+      "id": "wp:Model-driven_architecture",
+      "title": "Model-driven architecture",
+      "url": "https://en.wikipedia.org/wiki/Model-driven_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "model",
+        "abstraction"
+      ],
+      "why": "Where model-first thinking came from, and what it over-promised.",
+      "fetchedAt": "2026-09-06",
+      "characters": 13317,
+      "hash": "9faffb5965e78ce7"
+    },
+    {
+      "id": "wp:NATO_Architecture_Framework",
+      "title": "NATO Architecture Framework",
+      "url": "https://en.wikipedia.org/wiki/NATO_Architecture_Framework",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "viewpoint"
+      ],
+      "why": "A viewpoint-led framework maintained outside the vendor world.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4731,
+      "hash": "299f84507bbc45a5"
+    },
+    {
+      "id": "wp:NIS_2_Directive",
+      "title": "NIS 2 Directive",
+      "url": "https://en.wikipedia.org/wiki/NIS_2_Directive",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "compliance",
+        "critical infrastructure"
+      ],
+      "why": "The European obligation utilities are currently rebuilding for.",
+      "fetchedAt": "2026-09-06",
+      "characters": 2706,
+      "hash": "a479df5234d6313d"
+    },
+    {
+      "id": "wp:Non-functional_requirement",
+      "title": "Non-functional requirement",
+      "url": "https://en.wikipedia.org/wiki/Non-functional_requirement",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "quality",
+        "requirement"
+      ],
+      "why": "The qualities architecture is judged on.",
+      "fetchedAt": "2026-09-06",
+      "characters": 5147,
+      "hash": "d7702057501c491a"
+    },
+    {
+      "id": "wp:Observability_(software)",
+      "title": "Observability (software)",
+      "url": "https://en.wikipedia.org/wiki/Observability_(software)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "observability",
+        "operations"
+      ],
+      "why": "Whether you can tell what the estate is doing.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9806,
+      "hash": "81dd93e30ccd80aa"
+    },
+    {
+      "id": "wp:Ontology_(information_science)",
+      "title": "Ontology (information science)",
+      "url": "https://en.wikipedia.org/wiki/Ontology_(information_science)",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "semantics",
+        "metamodel"
+      ],
+      "why": "Ontology versus taxonomy — the distinction the meta-model rests on.",
+      "fetchedAt": "2026-09-06",
+      "characters": 30537,
+      "hash": "fd938102f287afc0"
+    },
+    {
+      "id": "wp:Operating_model",
+      "title": "Operating model",
+      "url": "https://en.wikipedia.org/wiki/Operating_model",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "operating model",
+        "organisation"
+      ],
+      "why": "Standardisation and integration as the two axes of an operating model.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9626,
+      "hash": "9e4e3716f0e43b96"
+    },
+    {
+      "id": "wp:Outage_management_system",
+      "title": "Outage management system",
+      "url": "https://en.wikipedia.org/wiki/Outage_management_system",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "application"
+      ],
+      "why": "An application class at the centre of grid operations, and a good worked example of one.",
+      "fetchedAt": "2026-09-06",
+      "characters": 8399,
+      "hash": "15a2cd075ee66bb9"
+    },
+    {
+      "id": "wp:Platform_as_a_service",
+      "title": "Platform as a service",
+      "url": "https://en.wikipedia.org/wiki/Platform_as_a_service",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "cloud",
+        "platform"
+      ],
+      "why": "Where the responsibility boundary sits in each model.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6651,
+      "hash": "8c6493ffd9cf82fc"
+    },
+    {
+      "id": "wp:Publish–subscribe_pattern",
+      "title": "Publish–subscribe pattern",
+      "url": "https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "event",
+        "pattern"
+      ],
+      "why": "The mechanic under most event architectures.",
+      "fetchedAt": "2026-09-06",
+      "characters": 10626,
+      "hash": "fbfaedae88850b26"
+    },
+    {
+      "id": "wp:Reference_architecture",
+      "title": "Reference architecture",
+      "url": "https://en.wikipedia.org/wiki/Reference_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "pattern",
+        "standardisation"
+      ],
+      "why": "How a reference model is meant to be used, and misused.",
+      "fetchedAt": "2026-09-06",
+      "characters": 3562,
+      "hash": "89edb826a9ede503"
+    },
+    {
+      "id": "wp:Regulatory_compliance",
+      "title": "Regulatory compliance",
+      "url": "https://en.wikipedia.org/wiki/Regulatory_compliance",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "compliance",
+        "risk"
+      ],
+      "why": "The obligation side of an architecture decision.",
+      "fetchedAt": "2026-09-06",
+      "characters": 17627,
+      "hash": "2d3b64f63ce84504"
+    },
+    {
+      "id": "wp:Representational_state_transfer",
+      "title": "Representational state transfer",
+      "url": "https://en.wikipedia.org/wiki/Representational_state_transfer",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "API",
+        "style"
+      ],
+      "why": "The dominant interface style, stated properly.",
+      "fetchedAt": "2026-09-06",
+      "characters": 10195,
+      "hash": "e743363082b57ad9"
+    },
+    {
+      "id": "wp:Resource_Description_Framework",
+      "title": "Resource Description Framework",
+      "url": "https://en.wikipedia.org/wiki/Resource_Description_Framework",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "semantics",
+        "graph"
+      ],
+      "why": "Triples: the minimal graph statement, and its vocabulary discipline.",
+      "fetchedAt": "2026-09-06",
+      "characters": 23859,
+      "hash": "f45e711274fd6d9f"
+    },
+    {
+      "id": "wp:SCADA",
+      "title": "SCADA",
+      "url": "https://en.wikipedia.org/wiki/SCADA",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "operations",
+        "energy"
+      ],
+      "why": "The control system every utility architecture has to account for.",
+      "fetchedAt": "2026-09-06",
+      "characters": 25181,
+      "hash": "007b14fd0d30366f"
+    },
+    {
+      "id": "wp:Scalability",
+      "title": "Scalability",
+      "url": "https://en.wikipedia.org/wiki/Scalability",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "scalability",
+        "quality"
+      ],
+      "why": "Scaling as a property of the design, not the hardware.",
+      "fetchedAt": "2026-09-06",
+      "characters": 12566,
+      "hash": "3504d7ba976d39c4"
+    },
+    {
+      "id": "wp:Semantic_Web",
+      "title": "Semantic Web",
+      "url": "https://en.wikipedia.org/wiki/Semantic_Web",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "semantics",
+        "standard"
+      ],
+      "why": "Where the shared-vocabulary idea comes from.",
+      "fetchedAt": "2026-09-06",
+      "characters": 30735,
+      "hash": "b0bc6725ef14273f"
+    },
+    {
+      "id": "wp:Separation_of_concerns",
+      "title": "Separation of concerns",
+      "url": "https://en.wikipedia.org/wiki/Separation_of_concerns",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "principle",
+        "structure"
+      ],
+      "why": "The principle every layering argument reduces to.",
+      "fetchedAt": "2026-09-06",
+      "characters": 9145,
+      "hash": "2346d82850b51b8c"
+    },
+    {
+      "id": "wp:Service-oriented_architecture",
+      "title": "Service-oriented architecture",
+      "url": "https://en.wikipedia.org/wiki/Service-oriented_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "service",
+        "integration"
+      ],
+      "why": "Services as the unit of reuse; the generation before microservices.",
+      "fetchedAt": "2026-09-06",
+      "characters": 22935,
+      "hash": "d83fbebe18b5b967"
+    },
+    {
+      "id": "wp:Site_reliability_engineering",
+      "title": "Site reliability engineering",
+      "url": "https://en.wikipedia.org/wiki/Site_reliability_engineering",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "reliability",
+        "operations"
+      ],
+      "why": "Reliability as an engineering discipline with budgets.",
+      "fetchedAt": "2026-09-06",
+      "characters": 8196,
+      "hash": "6c859e691031561f"
+    },
+    {
+      "id": "wp:Smart_grid",
+      "title": "Smart grid",
+      "url": "https://en.wikipedia.org/wiki/Smart_grid",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "utility"
+      ],
+      "why": "The domain the seed workspace models.",
+      "fetchedAt": "2026-09-06",
+      "characters": 71201,
+      "hash": "2263baf7cfa6d2cb"
+    },
+    {
+      "id": "wp:Software_architecture",
+      "title": "Software architecture",
+      "url": "https://en.wikipedia.org/wiki/Software_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "software",
+        "structure"
+      ],
+      "why": "Decisions that are expensive to change — the practical definition.",
+      "fetchedAt": "2026-09-06",
+      "characters": 32759,
+      "hash": "50cd34d02eb21aaa"
+    },
+    {
+      "id": "wp:Solution_architecture",
+      "title": "Solution architecture",
+      "url": "https://en.wikipedia.org/wiki/Solution_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "solution",
+        "delivery"
+      ],
+      "why": "Where enterprise intent meets a single delivery.",
+      "fetchedAt": "2026-09-06",
+      "characters": 3955,
+      "hash": "36ae20cc45294b00"
+    },
+    {
+      "id": "wp:Stakeholder_analysis",
+      "title": "Stakeholder analysis",
+      "url": "https://en.wikipedia.org/wiki/Stakeholder_analysis",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "stakeholder",
+        "governance"
+      ],
+      "why": "Who a view is for, which is what makes it a viewpoint.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6634,
+      "hash": "24a5011df5e715af"
+    },
+    {
+      "id": "wp:Strangler_fig_pattern",
+      "title": "Strangler fig pattern",
+      "url": "https://en.wikipedia.org/wiki/Strangler_fig_pattern",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "migration",
+        "pattern"
+      ],
+      "why": "How a legacy system is actually replaced.",
+      "fetchedAt": "2026-09-06",
+      "characters": 1444,
+      "hash": "de6f8f404d98c7dd"
+    },
+    {
+      "id": "wp:System_integration",
+      "title": "System integration",
+      "url": "https://en.wikipedia.org/wiki/System_integration",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "integration",
+        "delivery"
+      ],
+      "why": "Integration as a delivery activity with its own failure modes.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6641,
+      "hash": "820eb89962653a5b"
+    },
+    {
+      "id": "wp:Systems_architecture",
+      "title": "Systems architecture",
+      "url": "https://en.wikipedia.org/wiki/Systems_architecture",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "systems",
+        "structure"
+      ],
+      "why": "Structure, components and their relations, in the general case.",
+      "fetchedAt": "2026-09-06",
+      "characters": 11812,
+      "hash": "9571b5d9055a595f"
+    },
+    {
+      "id": "wp:Technical_debt",
+      "title": "Technical debt",
+      "url": "https://en.wikipedia.org/wiki/Technical_debt",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "debt",
+        "risk"
+      ],
+      "why": "The metaphor architects argue with finance in.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6754,
+      "hash": "3efcb15751407640"
+    },
+    {
+      "id": "wp:Threat_model",
+      "title": "Threat model",
+      "url": "https://en.wikipedia.org/wiki/Threat_model",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "security",
+        "method"
+      ],
+      "why": "Modelling what can go wrong, in the same breath as what should.",
+      "fetchedAt": "2026-09-06",
+      "characters": 11565,
+      "hash": "8fe5607fe3d4ff0f"
+    },
+    {
+      "id": "wp:TOGAF",
+      "title": "TOGAF",
+      "url": "https://en.wikipedia.org/wiki/TOGAF",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "ADM"
+      ],
+      "why": "The most widely used framework; its phases shape most engagements.",
+      "fetchedAt": "2026-09-06",
+      "characters": 6657,
+      "hash": "a2fd310fda61fba5"
+    },
+    {
+      "id": "wp:Total_cost_of_ownership",
+      "title": "Total cost of ownership",
+      "url": "https://en.wikipedia.org/wiki/Total_cost_of_ownership",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "cost",
+        "portfolio"
+      ],
+      "why": "The number a rationalisation case is made in.",
+      "fetchedAt": "2026-09-06",
+      "characters": 7588,
+      "hash": "a8a295adcaefe50b"
+    },
+    {
+      "id": "wp:Transmission_system_operator",
+      "title": "Transmission system operator",
+      "url": "https://en.wikipedia.org/wiki/Transmission_system_operator",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "energy",
+        "organisation"
+      ],
+      "why": "The organisation type the product owner works for.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4276,
+      "hash": "bffe6c5c779b2e9c"
+    },
+    {
+      "id": "wp:Unified_Modeling_Language",
+      "title": "Unified Modeling Language",
+      "url": "https://en.wikipedia.org/wiki/Unified_Modeling_Language",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "notation",
+        "model"
+      ],
+      "why": "The notation most technical modelling still borrows from.",
+      "fetchedAt": "2026-09-06",
+      "characters": 14886,
+      "hash": "096c3e789443af56"
+    },
+    {
+      "id": "wp:Value_stream_mapping",
+      "title": "Value stream mapping",
+      "url": "https://en.wikipedia.org/wiki/Value_stream_mapping",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "value",
+        "process"
+      ],
+      "why": "Value streams: the horizontal cut through capabilities.",
+      "fetchedAt": "2026-09-06",
+      "characters": 7094,
+      "hash": "012bfc70acdacd1d"
+    },
+    {
+      "id": "wp:Wardley_map",
+      "title": "Wardley map",
+      "url": "https://en.wikipedia.org/wiki/Wardley_map",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "strategy",
+        "evolution"
+      ],
+      "why": "Evolution of components — why not everything deserves a bespoke build.",
+      "fetchedAt": "2026-09-06",
+      "characters": 4147,
+      "hash": "cdd5403218d6546e"
+    },
+    {
+      "id": "wp:Zachman_Framework",
+      "title": "Zachman Framework",
+      "url": "https://en.wikipedia.org/wiki/Zachman_Framework",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "framework",
+        "taxonomy"
+      ],
+      "why": "The taxonomy that started the field: perspectives × interrogatives.",
+      "fetchedAt": "2026-09-06",
+      "characters": 25464,
+      "hash": "8749f5bf2e3ee2a4"
+    },
+    {
+      "id": "wp:Zero_trust_security_model",
+      "title": "Zero trust security model",
+      "url": "https://en.wikipedia.org/wiki/Zero_trust_security_model",
+      "license": "CC-BY-SA-4.0",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0",
+      "attribution": "Wikipedia contributors",
+      "topics": [
+        "security",
+        "principle"
+      ],
+      "why": "The current default posture for a distributed estate.",
+      "fetchedAt": "2026-09-06",
+      "characters": 7699,
+      "hash": "50622f125f805def"
+    }
+  ],
+  "unreachable": []
+}

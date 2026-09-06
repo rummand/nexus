@@ -1801,3 +1801,91 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .proposal-header-actions { align-items: flex-end; display: flex; flex-direction: column; gap: 6px; }
 .proposal-header-actions .primary-home-button { height: 32px; min-height: 32px; white-space: nowrap; width: auto; }
 .proposal-bulk-result { background: #e8f7ee; border-radius: 9px; color: #17803d; font-size: 12.5px; margin: 0 0 10px; padding: 8px 11px; }
+
+/* ---- EA knowledge base (§5.20) ------------------------------------------- */
+
+.knowledge { gap: 20px; }
+.knowledge-lede { color: #56637a; font-size: 13.5px; line-height: 1.6; margin: 8px 0 0; max-width: 78ch; }
+.knowledge-lede a { color: var(--blue); }
+.knowledge-stats { gap: 8px; }
+.knowledge-stat { background: #fff; border: 1px solid var(--line); border-radius: 999px; color: #5b6879; font-size: 11.5px; padding: 5px 11px; }
+.knowledge-stat b { color: var(--ink); font-size: 12.5px; }
+
+.knowledge-tabs { border-bottom: 1px solid var(--line); display: flex; gap: 4px; }
+.knowledge-tabs a {
+  align-items: center; border-bottom: 2px solid transparent; color: #5b6879; display: inline-flex;
+  font-size: 12.5px; font-weight: 700; gap: 6px; margin-bottom: -1px; padding: 8px 12px;
+}
+.knowledge-tabs a:hover { color: var(--blue); }
+.knowledge-tabs a.active { border-bottom-color: var(--blue); color: var(--blue); }
+.knowledge-tabs em { background: #f1f5f9; border-radius: 999px; color: #6c7a91; font-size: 10px; font-style: normal; font-weight: 800; padding: 1px 6px; }
+
+.knowledge-search { align-items: center; display: flex; gap: 10px; }
+.knowledge-search .studio-home-search { flex: 1 1 auto; height: 40px; max-width: 720px; }
+.knowledge-search input { font-size: 14px; }
+
+.knowledge-empty { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.knowledge-empty p { align-items: center; color: #56637a; display: flex; font-size: 13.5px; gap: 8px; line-height: 1.6; margin: 0; max-width: 82ch; }
+.knowledge-empty.warn { background: #fff8f0; border-color: #f2d5b4; }
+.knowledge-empty code { background: #f2f6fb; border-radius: 5px; font-size: 12.5px; padding: 1px 5px; }
+.knowledge-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.knowledge-examples a { background: #f5f8fc; border: 1px solid var(--line); border-radius: 999px; color: #46556d; font-size: 12px; padding: 5px 12px; }
+.knowledge-examples a:hover { border-color: #b8d7ff; color: var(--blue); }
+
+.knowledge-results { display: grid; gap: 12px; }
+.knowledge-result-count { color: #65738a; font-size: 12.5px; margin: 0; }
+.knowledge-result-count em { color: #8a6d3b; font-style: normal; }
+.knowledge-passage { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.knowledge-passage-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; }
+.knowledge-passage-head b { color: var(--ink); font-size: 13px; }
+.knowledge-license { align-items: center; background: #f1f5f9; border-radius: 999px; color: #6c7a91; display: inline-flex; flex: 0 0 auto; font-size: 10.5px; font-weight: 700; gap: 4px; padding: 2px 8px; }
+.knowledge-passage p { color: #33405a; font-size: 13.5px; line-height: 1.65; margin: 8px 0 10px; white-space: pre-wrap; }
+.knowledge-passage footer { align-items: center; color: #8a94a6; display: flex; font-size: 11.5px; gap: 12px; justify-content: space-between; }
+.knowledge-passage footer a { align-items: center; color: var(--blue); display: inline-flex; gap: 5px; }
+
+.knowledge-lessons { display: grid; gap: 18px; }
+.knowledge-scope h2 { align-items: center; color: var(--ink); display: flex; font-size: 15px; gap: 8px; margin: 0 0 10px; }
+.knowledge-scope h2 svg { color: var(--blue); }
+.knowledge-scope h2 small { color: #8a94a6; font-size: 12px; font-weight: 500; }
+.knowledge-scope ul { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.knowledge-lesson { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.knowledge-lesson strong { color: var(--ink); display: block; font-size: 13.5px; }
+.knowledge-lesson p { color: #56637a; font-size: 13px; line-height: 1.6; margin: 5px 0 10px; }
+.knowledge-lesson blockquote { background: #f7fafd; border-left: 3px solid #cfe0f2; border-radius: 0 8px 8px 0; color: #46556d; font-size: 12.5px; line-height: 1.6; margin: 0; padding: 9px 12px; }
+.knowledge-lesson blockquote svg { color: #9fb6cf; margin-right: 4px; vertical-align: -1px; }
+.knowledge-lesson cite { color: #8a94a6; display: block; font-size: 11.5px; font-style: normal; margin-top: 6px; }
+
+.knowledge-sources { display: grid; gap: 18px; }
+.knowledge-sources h2 { align-items: center; color: var(--ink); display: flex; font-size: 15px; gap: 8px; margin: 0 0 6px; }
+.knowledge-sources h2 svg { color: var(--blue); }
+.knowledge-sources h2 small { color: #8a94a6; font-size: 12px; font-weight: 500; }
+.knowledge-sources > section > p { color: #56637a; font-size: 13px; line-height: 1.6; margin: 0 0 10px; max-width: 82ch; }
+.knowledge-license-summary ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.knowledge-license-summary li { background: #fff; border: 1px solid var(--line); border-radius: 999px; color: #56637a; font-size: 12px; padding: 5px 12px; }
+.knowledge-license-summary li b { color: var(--ink); }
+.knowledge-license-summary small { color: #8a94a6; display: block; font-size: 11.5px; margin-top: 8px; }
+.knowledge-source-list ul, .knowledge-references ul { background: #fff; border: 1px solid var(--line); border-radius: 14px; display: grid; list-style: none; margin: 0; padding: 0; }
+.knowledge-source-list li, .knowledge-references li { align-items: center; border-top: 1px solid #eef2f7; display: flex; gap: 14px; justify-content: space-between; padding: 10px 16px; }
+.knowledge-source-list li:first-child, .knowledge-references li:first-child { border-top: 0; }
+.knowledge-source-list a, .knowledge-references a { align-items: center; color: var(--ink); display: inline-flex; font-size: 13px; font-weight: 700; gap: 5px; }
+.knowledge-source-list a:hover, .knowledge-references a:hover { color: var(--blue); }
+.knowledge-source-list span, .knowledge-references span { color: #7a8698; display: block; font-size: 12px; margin-top: 2px; }
+.knowledge-source-meta { align-items: center; color: #8a94a6; display: flex; flex: 0 0 auto; font-size: 11px; gap: 6px; }
+.knowledge-source-meta em { background: #f1f5f9; border-radius: 999px; font-style: normal; padding: 2px 8px; }
+.health-authority { margin: 4px 0 0; }
+.health-authority summary { align-items: center; color: #5b6879; cursor: pointer; display: flex; font-size: 11.5px; gap: 5px; list-style: none; }
+.health-authority summary::-webkit-details-marker { display: none; }
+.health-authority summary:hover { color: var(--blue); }
+.health-authority summary svg { color: #9fb6cf; flex: 0 0 auto; }
+.health-authority blockquote { background: #f7fafd; border-left: 3px solid #cfe0f2; border-radius: 0 8px 8px 0; color: #46556d; font-size: 11.5px; line-height: 1.55; margin: 6px 0 0; padding: 8px 10px; }
+.health-authority blockquote a { color: var(--blue); display: block; margin-top: 5px; }
+.meta-literature { margin: 10px 0 0; }
+.meta-literature summary { align-items: center; color: #5b6879; cursor: pointer; display: flex; font-size: 11.5px; gap: 6px; list-style: none; }
+.meta-literature summary::-webkit-details-marker { display: none; }
+.meta-literature summary:hover { color: var(--blue); }
+.meta-literature summary svg { color: #9fb6cf; }
+.meta-literature blockquote { background: #f7fafd; border-left: 3px solid #cfe0f2; border-radius: 0 8px 8px 0; color: #46556d; font-size: 12px; line-height: 1.6; margin: 7px 0 0; padding: 9px 12px; }
+.meta-literature blockquote a { color: var(--blue); display: block; margin-top: 6px; }
+.compose-grounded { display: grid; gap: 4px; list-style: none; margin: 8px 0 0; padding: 0; }
+.compose-grounded li { align-items: center; color: #5b6879; display: flex; font-size: 11px; gap: 6px; line-height: 1.45; }
+.compose-grounded li svg { color: #9fb6cf; flex: 0 0 auto; }

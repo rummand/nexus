@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ChevronDown, ChevronRight } from "lucide-react";
+import { Activity, ChevronDown, ChevronRight, Quote } from "lucide-react";
 import type { HealthReport, Measure } from "@/lib/health";
 import { healthLabel } from "@/lib/health";
 
@@ -24,13 +24,18 @@ const DESTINATION: Record<Measure["id"], { href: (slug: string) => string; label
   lifecycle: { href: () => "#entities", label: "Open the entity table" },
 };
 
-export function HealthPanel({ report, slug, proposed, onShowEntities }: {
+/** The practice behind a measure, from the knowledge base (§5.20). Empty when no corpus is built. */
+export type Authority = Record<string, { statement: string; quote: string; title: string; url: string }>;
+
+export function HealthPanel({ report, slug, proposed, onShowEntities, authority = {} }: {
   report: HealthReport;
   slug: string;
   /** How many of each measure the agent can already propose a fix for. */
   proposed: Partial<Record<Measure["id"], number>>;
   /** Filter the entity table to the offenders behind one measure. */
   onShowEntities: (ids: string[], name: string) => void;
+  /** What the literature says each measure is for; shown under the goal. */
+  authority?: Authority;
 }) {
   const [open, setOpen] = useState(false);
   const worst = [...report.measures].sort((a, b) => a.score - b.score)[0];
@@ -61,6 +66,15 @@ export function HealthPanel({ report, slug, proposed, onShowEntities }: {
               </div>
               <p className="health-goal">{m.goal}</p>
               <p className="health-detail">{m.detail}</p>
+              {authority[m.id] && (
+                <details className="health-authority">
+                  <summary><Quote size={11} /> {authority[m.id]!.statement}</summary>
+                  <blockquote>
+                    {authority[m.id]!.quote}
+                    <a href={authority[m.id]!.url} target="_blank" rel="noreferrer noopener">{authority[m.id]!.title}</a>
+                  </blockquote>
+                </details>
+              )}
               {m.offenders > 0 && (
                 <div className="health-actions">
                   <span>{m.fix}</span>

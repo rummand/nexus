@@ -153,7 +153,7 @@ When the reference evolves, port the change here and note it in the changelog.
 | Styling | Tailwind CSS v4 | Fast iteration, design tokens in CSS variables. |
 | State (canvas) | Zustand | Tiny, fast, selector-based re-rendering — right for a canvas with many elements. |
 | Persistence | Drizzle ORM + SQLite (libsql) in dev; Postgres target for SaaS | Zero-setup local development; Drizzle keeps the schema portable to Postgres. |
-| Monorepo | pnpm workspaces (`apps/*`, `packages/*`) | Space to split out the canvas core, meta-model and connectors as packages. |
+| Monorepo | pnpm workspaces (`apps/*`, `packages/*`) | Space to split out shared code; `packages/ea-knowledge` is the first, and had to be separate to be provably standalone. |
 | Testing | Vitest (unit) + Playwright (e2e/smoke) | Geometry and store logic are pure and unit-testable; the canvas gets browser smoke tests. |
 
 ### 5.2 Repository layout
@@ -167,7 +167,8 @@ nexus/
 │  ├─ src/canvas/             infinite-canvas engine
 │  ├─ src/db/                 Drizzle schema, client, migrations, seed
 │  └─ src/components/         shared UI
-└─ packages/                  (reserved) canvas-core, meta-model, connectors
+└─ packages/
+   └─ ea-knowledge/           standalone EA knowledge base: corpus, retrieval, doctrine, CLI
 ```
 
 ### 5.3 Canvas engine design
@@ -855,6 +856,59 @@ Requests with no revision keep last-writer-wins, so an older client degrades rat
 Not done: the save is still the whole document. Element-level persistence is a bigger change to
 the document contract (§7) and the guard is what actually made concurrent editing safe.
 
+### 5.20 The EA knowledge base: a module that teaches the agents (v0.2)
+
+Nexus asks agents to do enterprise architecture, and until now the only architecture knowledge in
+the building was whatever the model happened to have absorbed in training and whatever the prompt
+happened to say. `packages/ea-knowledge` is the answer: **a standalone module** — its own package,
+its own CLI, no import of Nexus anywhere in it — holding a curated corpus of openly-licensed EA
+writing, retrieval that always answers with citations, and the doctrine the agents are grounded in.
+
+**A curated corpus, not a crawl.** Every source is registered by hand in `src/sources.ts` with a
+licence, topics and a sentence saying what it is good for. A corpus scraped from whatever is free
+retrieves badly — an index cannot tell an article that *defines* a term from one that mentions it
+— and cannot be shipped, because nobody checked the terms.
+
+**Licence first.** The corpus is committed to this repository and served from a product, which is
+redistribution, so the test is not "can I read it" but "may I ship it". Wikipedia (CC BY-SA 4.0)
+and the Twelve-Factor App (MIT) pass; TOGAF, ArchiMate, the BIZBOK and every architecture textbook
+do not. Those are listed openly in `REFERENCES` — cited and linked, never ingested — and the
+Sources tab says so out loud rather than leaving a gap where the canon should be. The ingester
+refuses any licence not on the redistributable list.
+
+**Lexical retrieval, deliberately.** BM25 with a phrase boost, a title/section nudge and a cap of
+two passages per document, over passages cut on paragraph boundaries that carry their heading path
+("TOGAF § Architecture Development Method"). No embeddings, because the module has to work with no
+model API key at all — a knowledge base that silently returns nothing without a key is not one.
+It is also explainable: every hit says which of your words matched, and a term the corpus has never
+seen is reported as such instead of being approximated by the nearest article.
+
+**Two layers: evidence and doctrine.** Retrieval gives an agent evidence. What changes an agent's
+behaviour is a short rule applied while it decides — "a capability is what the organisation does,
+not the team that does it". Those live in `src/lesson-data.ts`, scoped to the agent they belong to,
+and **every one of them quotes a passage that is really in the corpus**: `lessons.test.ts` checks
+each quote against the fetched text and fails if it is not there. That is the same discipline
+intake applies to a model's claims about a transcript, turned on ourselves.
+
+Where the module shows up in the product:
+
+- **EA knowledge** in the sidebar: search the corpus, read the doctrine, see every source with its
+  licence and the works we may not redistribute. Server-rendered and URL-driven, so a passage can
+  be sent to a colleague as a link.
+- **Compose** and **Intake** append the relevant doctrine to their system prompts. The planner's
+  failure mode is not syntax — validation catches that — it is a board that is technically fine and
+  architecturally useless; the extractor's is a vocabulary mistake, a team recorded as a capability.
+- **Estate health** shows the practice behind each measure, with the passage it came from: the
+  difference between a metric and an argument.
+- **The meta-model** puts the field's own definition next to a declared type, which is how you
+  notice that your "Capability" is really a department.
+
+Everywhere it plugs in, missing grounding is a no-op: with no corpus the agents behave exactly as
+they did before. Grounding makes them better; it is not what makes them work.
+
+`GET /api/knowledge?q=…` exposes the same retrieval to anything that is not this UI. `ea-kb` does
+it from a terminal with no database and no server.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -884,7 +938,7 @@ the document contract (§7) and the guard is what actually made concurrent editi
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-05 — rev 49)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 50)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1062,6 +1116,15 @@ the document contract (§7) and the guard is what actually made concurrent editi
 - Conditional board saves: `boards.revision`, a 409 on a stale write, "Changed elsewhere — reload"
   in the topbar, and server-side document writers bumping the revision so a restore wins.
 
+### EA knowledge base (v0.2)
+- `packages/ea-knowledge`: a standalone module — corpus, retrieval, doctrine, CLI — that imports
+  nothing from Nexus.
+- A curated, openly-licensed corpus with a licence per source, and the unshippable canon listed as
+  referenced-only.
+- BM25 retrieval with citations that works with no model API key; `GET /api/knowledge` and `ea-kb`.
+- Doctrine scoped per agent, every rule quoting the corpus verbatim, enforced by a test.
+- Grounding in Compose, Intake, estate health and the meta-model — a no-op when no corpus is built.
+
 ### Quality gates
 - `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
   camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
@@ -1186,6 +1249,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-05 | Health is one weighted number with six measures, each carrying the entities behind it. | A dashboard of six numbers is ignored; one number with a word attached ("thin") is argued with, which is the point. Carrying the entity ids is what turns the argument into work: the number is one click from the rows that cause it. |
 
 | 2026-09-05 | The e2e suite runs against a database and server of its own, created and destroyed per run. | Sharing the development database was wrong in both directions: the suite silted the demo up (a note per run, and one careless rebuild emptied a seeded board), and the demo's drift broke the suite — three false failures in an afternoon, and the meta-model coverage quietly disappearing as earlier runs declared every type there was. A known starting state is what lets a test assert instead of guard. |
+| 2026-09-06 | The EA knowledge base is a separate package, not a folder in the web app. | The product owner asked for a module that stands alone and teaches the agents. A package with its own CLI and no import of Nexus can be shown to be standalone rather than merely described that way — and the constraint is what forced retrieval to work without a database, a server or a model key. |
+| 2026-09-06 | Lexical retrieval (BM25) rather than embeddings. | The module must work with no model API key: a knowledge base that silently returns nothing without one is not a knowledge base. Lexical retrieval is also explainable — every hit names the words that matched — which matters when the point of a citation is that a human can check it. |
+| 2026-09-06 | The corpus is committed, and only openly-licensed sources may enter it. | Shipping the text is what makes the module work offline and lets a human read exactly what the agents are grounded in. That is redistribution, so the licence gate is not optional; the canon that cannot be shipped is listed openly as referenced-only rather than quietly omitted. |
+| 2026-09-06 | Every lesson must quote the corpus verbatim, checked by a test. | A hand-written file of "what is true about architecture" is exactly where plausible folklore accumulates. Tying each rule to a passage that must exist is the only cheap defence, and it is the same rule we already impose on the model in intake. |
 | 2026-09-05 | The Postgres schema is generated from the SQLite one, not maintained by hand. | Two hand-written schemas diverge the first time someone is in a hurry, and the divergence shows up as a missing column in production. A generator plus a `--check` test makes drift a failing test instead. |
 | 2026-09-05 | A stale board save is refused (409) rather than merged or retried. | We have no merge, so writing anyway would drop somebody's work silently — the worst outcome. Retrying is the same thing on a delay. Refusing, saying so, and offering a reload is the only honest option until real-time collaboration exists. |
 
@@ -1200,6 +1267,20 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 50: an EA knowledge base the agents are taught from.** A new standalone
+  package, `packages/ea-knowledge`, with its own CLI and no import of Nexus: a curated corpus of
+  openly-licensed enterprise-architecture writing (a licence recorded per source; the unshippable
+  canon — TOGAF, ArchiMate, the textbooks — listed openly as referenced-only), BM25 retrieval that
+  works with no model API key and answers with citations, and the doctrine the agents are grounded
+  in. The doctrine is the part that changes behaviour: short rules scoped per agent, each quoting a
+  passage that is really in the corpus, with a test that fails if it is not — the discipline intake
+  already applies to the model, turned on ourselves. It shows up as an **EA knowledge** page
+  (search, doctrine, sources and licences), as grounding appended to the Compose planner and the
+  intake extractor, as the practice behind each estate-health measure, and as the field's own
+  definition next to a declared meta-model type. With no corpus every one of those is a no-op, so
+  grounding makes the agents better without being what makes them work. `GET /api/knowledge` and
+  `ea-kb ask` expose the same retrieval outside the UI.
 
 - **2026-09-05 — Rev 49: two dialects and a save that can be refused.** The store is no longer tied
   to one SQLite file on one volume: the connection string picks the driver, and the Postgres schema

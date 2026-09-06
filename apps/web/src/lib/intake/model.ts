@@ -2,6 +2,7 @@ import { callModel, modelConfigured } from "../compose/llm";
 import type { Passage } from "./types";
 import type { Vocabulary } from "./extract";
 import { EXTRACTION_SCHEMA, validateExtraction, type ModelExtraction } from "./validate-extraction";
+import { agentGrounding } from "@/lib/knowledge";
 
 /**
  * Reading a source with a model.
@@ -66,9 +67,16 @@ export async function extractWithModel(name: string, passages: Passage[], vocab:
   if (!apiKey || !model) throw new Error("no model configured");
   if (passages.length === 0) return { candidates: [], relations: [], viewpoints: [], rejected: [] };
 
+  /**
+   * Doctrine from the knowledge base, appended to the prompt (§5.20). The extractor's expensive
+   * mistake is a vocabulary one — recording a team as a capability, a project as an application —
+   * and a rule about that distinction costs a few dozen tokens. With no corpus it appends nothing.
+   */
+  const grounding = agentGrounding("intake", `${name} ${vocab.kinds.join(" ")}`, 3);
+
   const body = await callModel(apiKey, model, {
     max_tokens: 8000,
-    system: SYSTEM,
+    system: grounding ? `${SYSTEM}\n\n${grounding}` : SYSTEM,
     tools: [{ name: "record_extraction", description: "Record what the source says.", input_schema: EXTRACTION_SCHEMA }],
     tool_choice: { type: "tool", name: "record_extraction" },
     messages: [{ role: "user", content: sourceMessage(passages, vocab, name) }],

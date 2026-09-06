@@ -11,6 +11,7 @@ import { ProposalsPanel } from "./ProposalsPanel";
 import { EntityTable } from "./EntityTable";
 import { HealthPanel } from "./HealthPanel";
 import type { HealthReport } from "@/lib/health";
+import type { Authority } from "./HealthPanel";
 import { EntityDrawer } from "./EntityDrawer";
 import { createBoardFromGraph, deleteEntity, importGraphText, renameKind, renameRelationKind, updateEntity } from "@/lib/actions";
 import { Modal } from "./Modal";
@@ -27,7 +28,7 @@ Customer API,consumed by,ERP Core
 CRM Cloud,supports,Revenue Management`;
 
 /** Workspace knowledge graph: inventory, emergent meta-model, import, lay out on a board. */
-export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null, health }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null; health: HealthReport }) {
+export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, initialEntityId = null, health, authority }: { workspaceId: string; slug: string; snapshot: GraphSnapshot; spaces: Space[]; proposals: Proposal[]; initialEntityId?: string | null; health: HealthReport; authority?: Authority }) {
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -66,6 +67,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
 
       <HealthPanel
         report={health}
+        authority={authority}
         slug={slug}
         proposed={{
           // Which gaps the agent can already close from evidence, so the number points at the work.

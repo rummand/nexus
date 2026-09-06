@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
+    "@nexus/ea-knowledge": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.41.0",
     "nanoid": "^5.1.5",
@@ -26,6 +27,7 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

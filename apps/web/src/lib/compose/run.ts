@@ -34,6 +34,8 @@ export interface ComposeResult {
   rejected: string[];
   /** What the planner looked at before answering, so its reply can be checked. */
   looked: string[];
+  /** The practice from the knowledge base the planner was grounded in. */
+  grounded: string[];
   /** What to tell the person if the model is not configured. */
   status: string;
   /** The script the plan amounts to, so it can be read, edited and re-run by hand. */
@@ -104,6 +106,7 @@ export async function composeBoard(
   let reply = "";
   let rejected: string[] = [];
   let looked: string[] = [];
+  let grounded: string[] = [];
 
   const wantsModel = engine === "model" || (engine === "auto" && modelConfigured());
   if (wantsModel) {
@@ -118,6 +121,7 @@ export async function composeBoard(
       reply = plan.reply;
       rejected = plan.rejected;
       looked = plan.looked;
+      grounded = plan.grounded;
       planned = plan.instructions.map((instruction) => ({ instruction, raw: describeInstruction(instruction), echo: describeInstruction(instruction) }));
     } catch (error) {
       // A planner that is down is not a reason to do nothing: fall back and say so.
@@ -152,6 +156,7 @@ export async function composeBoard(
     reply,
     rejected,
     looked,
+    grounded,
     status: modelStatus(),
     script: planned.map((p) => p.raw).join("\n"),
   };
