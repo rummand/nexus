@@ -616,6 +616,18 @@ try {
   await page.selectOption("[data-state-picker] select", changeOption);
   await page.waitForSelector(".fact-card.change-retired", { timeout: 20000 });
   assert.ok((await page.locator(".fact-card.change-retired").count()) >= 1, "the retiring system is struck through on the board");
+  // …and the same picker can show a whole plateau, not only one plan. This path is here because
+  // it once silently did nothing: the API route behind it had been written to the wrong directory,
+  // the fetch failed, and the picker simply offered no named states.
+  const plateauOption = await page.$$eval("[data-state-picker] option", (els) => els.map((e) => e.value).find((v) => v.startsWith("plt:")));
+  assert.ok(plateauOption, "named states are offered on the board");
+  await page.selectOption("[data-state-picker] select", plateauOption);
+  await page.waitForSelector(".fact-card.change-retired", { timeout: 20000 });
+  assert.match(await page.locator(".viewpoint-state-detail").innerText(), /Retiring/,
+    "a plateau overlay says what it breaks, exactly as a change set does");
+  await page.selectOption("[data-state-picker] select", changeOption);
+  await page.waitForSelector(".fact-card.change-retired", { timeout: 20000 });
+
   await page.click('[data-state-picker] button:has-text("Place them")');
   await page.waitForSelector(".fact-card.planned", { timeout: 20000 });
   // …and a planned card is a drawing of an intention: it must not create the system

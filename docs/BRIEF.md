@@ -1063,7 +1063,7 @@ already misbehaving.
 - Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 55)
+## 6a. What exists today (v0.2, 2026-09-06 — rev 56)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1427,6 +1427,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 - Sovereign deployment: which model providers must be supported locally?
 
 ## 9. Changelog
+
+- **2026-09-06 — Rev 56: a route in the wrong directory.** The two plateau API routes had been
+  written to the repository root rather than into `apps/web`, so Next never registered them: the
+  board's state picker asked for the workspace's named states, got a 404, and — because the fetch
+  failure was swallowed — simply offered none. Nothing caught it. Typecheck and lint only run inside
+  the packages, and the end-to-end suite exercised the overlay through a change set but never
+  through a plateau. Moved, and the suite now selects a plateau on a board and asserts the impact
+  line it produces, which is the check that would have failed loudly the first time.
 
 - **2026-09-06 — Rev 55: screenshots cropped to their subject.** Every documentation screenshot
   included the workspace navigation, which is the same on every screen — thirty repetitions of the
