@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PAGES, SECTIONS, docPage, neighbours, searchDocs } from "./index";
-import { pageText, resolveHref } from "./types";
+import { INLINE_SPAN, pageText, resolveHref, strayAsterisks } from "./types";
 import shotSizes from "./shots.json";
 
 /** The manifest is typed from its literal keys; a lookup by an arbitrary slug needs the wider shape. */
@@ -92,5 +92,33 @@ describe("the documentation", () => {
   it("indexes the whole page, not just its title", () => {
     const page = docPage("canvas")!;
     expect(pageText(page)).toMatch(/Alt/); // from a list item deep in the page
+  });
+
+  /*
+   * Emphasis a reader can see.
+   *
+   * A hundred-odd `*like this*` had been written across these pages before the renderer knew what
+   * to do with a single asterisk, and every one of them reached the reader with its asterisks
+   * showing. The renderer learned the span; this keeps the pages inside what it knows, so the next
+   * unmatched asterisk is a failing test rather than a blemish nobody notices for a month.
+   */
+  it("only uses markup the renderer understands", () => {
+    const spans = (text: string) => text.split(INLINE_SPAN).filter((_, i) => i % 2 === 1);
+    for (const page of PAGES) {
+      const text = pageText(page);
+      expect({ page: page.slug, stray: strayAsterisks(text) }).toEqual({ page: page.slug, stray: [] });
+      expect({ page: page.slug, ticks: (text.match(/`/g) ?? []).length % 2 }).toEqual({ page: page.slug, ticks: 0 });
+      for (const span of spans(text)) expect(span.length).toBeGreaterThan(2);
+    }
+  });
+
+  it("reads bold, emphasis and code, and leaves a lone asterisk alone", () => {
+    const parts = (t: string) => t.split(INLINE_SPAN).filter(Boolean);
+    expect(parts("a **bold** one")).toEqual(["a ", "**bold**", " one"]);
+    expect(parts("a *quiet* one")).toEqual(["a ", "*quiet*", " one"]);
+    expect(parts("`code` too")).toEqual(["`code`", " too"]);
+    expect(parts("2 * 3 * 4")).toEqual(["2 * 3 * 4"]);
+    expect(strayAsterisks("2 * 3")).toEqual(["*"]);
+    expect(strayAsterisks("a **bold** and *quiet* one")).toEqual([]);
   });
 });

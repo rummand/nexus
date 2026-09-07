@@ -60,4 +60,4 @@ export function searchDocs(query: string, limit = 8): Array<{ page: DocPage; sco
   return hits.sort((a, b) => b.score - a.score || a.page.title.localeCompare(b.page.title)).slice(0, limit);
 }
 
-export { type Block, type DocPage, type DocSection, resolveHref } from "./types";
+export { type Block, type DocPage, type DocSection, INLINE_SPAN, resolveHref } from "./types";

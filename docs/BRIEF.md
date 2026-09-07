@@ -1003,15 +1003,16 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty-four pages written for the person doing the architecture rather than the person
+a menu item: twenty-seven pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
-it did, then the model, then getting data in, then time.
+it did, then the model, then the agents, then getting data in, then time.
 
 Three decisions make it worth having rather than another README nobody opens.
 
 **It is illustrated from the product itself.** `scripts/capture-docs.mjs` starts a server and a
-database of its own, drives the seeded demo through a real browser and writes thirty-three screenshots
-into `public/docs`, which are committed. Each one is cropped to the page's own content: the
+database of its own, drives the seeded demo through a real browser and writes forty screenshots
+into `public/docs`, which are committed. A name on the command line narrows a run to the shots a
+change made stale, which is what makes re-capturing a habit rather than an afternoon. Each one is cropped to the page's own content: the
 workspace navigation is identical on every screen, and repeating it in thirty pictures spends the
 reader's width on something they are already looking at. The one exception is the home page, where
 the navigation *is* the subject. The capture records each image's real dimensions in
@@ -1024,7 +1025,10 @@ lucky afternoon.
 **It is data, so it can be checked.** Pages are typed block lists (prose, steps, screenshot, note,
 table, keyboard reference, "try it") rather than Markdown. A unit test fails if a page references a
 screenshot that is not on disk, if a screenshot has no alt text, if a "try it" link points at a
-route that does not exist, if two headings share an id, or if a page escapes its section. The
+route that does not exist, if two headings share an id, if a page escapes its section, or if a page
+uses inline markup the renderer does not understand — that last one arrived after a hundred-odd
+`*emphasised*` phrases turned out to be reaching readers with their asterisks showing, which is
+exactly the kind of rot a person stops noticing after a week. The
 failure mode of illustrated documentation is rot, and this is the only reason it is safe to promise
 screenshots at all.
 
@@ -1671,7 +1675,7 @@ moment before somebody presses Approve.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-07 — rev 73)
+## 6a. What exists today (v0.2, 2026-09-07 — rev 74)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1981,21 +1985,43 @@ moment before somebody presses Approve.
 - "Any MCP server" is now an available connector in the catalogue.
 
 ### Documentation (v0.2)
-- Twenty-four in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, with a
-  glossary, a keyboard reference and the questions people ask.
-- Thirty-three screenshots captured from the seeded demo by `pnpm docs:capture` and committed.
-- Ten tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt text,
-  dead links, duplicate heading ids, orphaned pages, and that search finds the page a person would
-  be looking for.
+- Twenty-seven in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
+  importing data, models and connections, with a glossary, a keyboard reference and the questions
+  people ask.
+- Forty screenshots captured from the seeded demo by `pnpm docs:capture` and committed; the run
+  takes a name to re-capture only the shots a change made stale.
+- Twelve tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt
+  text, dead links, duplicate heading ids, orphaned pages, that search finds the page a person
+  would be looking for, and that no page uses inline markup the renderer does not understand.
+- The renderer reads `**bold**`, `*emphasis*` and `` `code` `` and nothing else — a single asterisk
+  only opens a span when a non-space follows it and closes it, so an ordinary asterisk in a
+  sentence stays where the author put it.
 
 ### Quality gates
-- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, 69 tests:
-  camera math, panel-aware fit, align/distribute, box/resize/connector geometry, store history,
-  frame behaviour and frame→board extraction, lenses (impact / attribute / relation / query),
-  document diff, SVG export and PNG sizing, link-to-existing, graph sync / hydrate / import /
-  layout, proposal rules incl. attribute normalisation, relation create/delete, graph
-  neighbourhood, version checkpoints / restore, query parsing and autocomplete — all against an
-  in-memory SQLite).
+- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, **503 tests** —
+  476 in the app over 46 files, 27 in the knowledge package):
+  - *Canvas*: camera math, panel-aware fit, align/distribute, box/resize/connector geometry,
+    store history, frame behaviour and frame→board extraction, centre-inside containment,
+    lenses (impact / attribute / relation / query), document diff and migration, SVG export and
+    PNG sizing, link-to-existing, the timeline layout.
+  - *Graph*: sync / hydrate / import / layout, proposal rules incl. attribute normalisation and
+    the evidence check, relation create/delete, graph neighbourhood and algorithms, the
+    explorer's force layout, the emergent meta-model, estate health, query parsing and
+    autocomplete, version checkpoints / restore, incremental board saves, the seed, and Postgres
+    schema drift (`schema.pg.ts` regenerated and compared).
+  - *Data in*: intake extraction and commit, the model-backed extractor and its validator, the
+    source catalogue's discovery rules, reading CSV/TSV/JSON/XLSX/DOCX and pasted blocks, folding
+    and provenance, proposing what a file's rows are, and reading a staged board back (the lane
+    as the decision, the same containment rule the canvas drags by).
+  - *Time and composition*: change-set projection and impact, dependency ordering and refused
+    cycles, plateaus and the difference between two of them, the roadmap board, and Compose's
+    plan validator and rule compiler.
+  - *Agents and models*: the graph agent's plan validator, board-agent remarks and scope,
+    described-agent refusals and monotonicity, agents suggesting agents, the fleet's numbers,
+    provider translation between the two dialects and key encryption, and the MCP server's
+    JSON-RPC dispatch, scopes and tool list.
+  - *Documentation*: twelve tests over the docs as data (see above).
+  - Everything that touches the database runs against an in-memory SQLite.
 - **CI** (`.github/workflows/gates.yml`) runs typecheck, lint and the unit tests on one job and the
   browser suite on another, for every push and pull request. A failing browser run uploads
   `e2e/failure.png` as an artifact. This is only possible because the suite brings its own server
@@ -2006,12 +2032,24 @@ moment before somebody presses Approve.
   is what lets the tests assert rather than guard. `BASE_URL=… pnpm e2e:attach` runs against a
   server that is already up, for the fast local loop. It drives the real browser through
   the home, space and team pages and the canvas — create note (typing into the focused
-  title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector,
-  command-bar search, structured graph query, viewpoint tab and kind lens, impact lens, history
-  checkpoint and compare, entity table view, entity deep link, autosave, reload, graph import,
-  create board from a starter, intake pipeline and review, the source catalogue and a grant,
-  registering and removing an unrecognised system, estate health and its drill-through, writing a
-  board with Compose. A failing assertion leaves `e2e/failure.png` and prints where it was.
+  title), drag, zoom, pan, fit, inspector, delete, undo, card, rectangle, connector, context
+  menu, command-bar search, structured graph query, viewpoint tab and kind lens, impact lens,
+  history checkpoint and compare, export and presentation mode, entity drawer, entity table
+  view, entity deep link, drag from the inventory, autosave, reload, graph import, create board
+  from a starter — and then, screen by screen, through everything built on top of it: the graph
+  explorer and a traced path, estate health with its drill-through and an evidence-backed fix,
+  the meta-model tree and diagram, intake and its review, the source catalogue with a grant and
+  an unrecognised host registered and removed, writing a board with Compose, change sets with
+  impact, dependencies and a refused cycle, plateaus and the difference between two of them, a
+  board seen as-is and to-be, the time scrubber, the timeline layout on an ordinary board and
+  the roadmap drawn as one, the graph agent's honest refusal with no model, **import end to end**
+  (four mixed files including an Excel serial and a Word document, a pasted block, the staged
+  board with its lanes and its reviewer, approve and roll back to the graph size it started at),
+  agents on the board and asked about a selection, the fleet, the knowledge base and a question
+  it has never heard, describing an agent with its refusals and run log, the models screen
+  (a key that cannot be read back out, an honest unreachable provider), Nexus answered over MCP
+  and Nexus asking an MCP server, and the documentation with its screenshots really loading.
+  A failing assertion leaves `e2e/failure.png` and prints where it was.
 - The shared-password gate (§5.12) is exercised separately: with NEXUS_ACCESS_PASSWORD set,
   `/api/health` must stay open, protected paths must redirect, a wrong password must be
   rejected and a correct one must land on the originally requested page.
@@ -2022,7 +2060,11 @@ moment before somebody presses Approve.
 - Single workspace; no multiplayer; no comments.
 - Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
   system stack.
-- SQLite only; Postgres wiring is a config change but not yet exercised.
+- Postgres works (one schema, generated, drift caught by a test; the browser suite has been run
+  against Postgres 16) but nothing migrates data across from SQLite — a switch starts from the
+  seed.
+- Nothing in the product is multi-tenant beyond the workspace row: an MCP key, a model provider
+  and an import batch all belong to a workspace, but there is no user behind any of them.
 - Next.js 16 dev server (Turbopack) occasionally panics on first compile of a route;
   `rm -rf apps/web/.next` and restart fixes it. Not seen in production builds.
 
@@ -2220,6 +2262,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-07 | The staged board comes with an agent already on it. | Everywhere else an agent is something you place when you want one. Here the moment of need is known in advance and is exactly the moment somebody is least likely to go and set one up — so it arrives placed, and can be deleted like anything else. |
 | 2026-09-07 | The import reviewer is an ordinary board agent with a different sentence. | A special "import agent" would need its own remarks, its own review loop and its own measure of whether it helps. The sentence is the only part that is import-specific, and keeping it ordinary means it is governed, measured and switch-off-able like the rest of the fleet. |
 | 2026-09-07 | A board agent can see which frame a thing sits in. | People group by frame and the grouping carries meaning; an agent that cannot see it is reading a list where a person is reading a picture. On a staged import the frame *is* the decision, which turns "these two are the same system" into "you have accepted two cards that are the same system". |
+| 2026-09-07 | Documentation is checked for staleness on a schedule, not only when the thing it describes changes. | The rule "update the brief with every change" keeps the *sections* honest but not the *counts and summaries* that sit above them, and nothing about editing an import pipeline reminds anybody that the README's feature list is three months old. A read-through of every document outside the code, against the product as it now runs, is its own piece of work and is worth doing whenever the feature list has moved a long way. |
+| 2026-09-07 | The documentation renderer reads `*emphasis*`, and the pages are tested against what it reads. | Authors write the markup they are used to; a renderer that silently passes some of it through is a slow leak nobody sees, because the person who wrote the sentence never re-reads the rendered page. Teaching it the span is a five-line change — the test that keeps the pages inside what it knows is the part that stops the leak coming back. |
 
 ## 8. Open questions for the product owner
 
@@ -2234,6 +2278,30 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-07 — Rev 74: the documentation caught up with the product.** Nine revisions of feature
+  work had left the writing *around* the product behind the writing *inside* it: the in-app pages
+  were kept current change by change, but `README.md` still described roughly rev 20 — no intake,
+  no import, no agents, no models, no MCP, no knowledge base — and the brief's own numbers had
+  drifted (twenty-four pages when there are twenty-seven, thirty-three screenshots when there are
+  forty, sixty-nine tests when there are five hundred and three). The README's "what it does today"
+  was rewritten against rev 73, its scripts table now lists `docs:capture`, `db:seed` and the two
+  knowledge commands and stops claiming `pnpm e2e` needs a dev server (it brings its own), and its
+  layout block names the directories somebody actually has to find. In the brief, the quality-gates
+  section now describes what the 503 unit tests and the browser suite really cover, and the known
+  gaps admit that Postgres has been exercised rather than pretending it has not. `docs/API.md`
+  gained `search_model`'s table format, the prose leg of an import, and what `meta.importBatch` on
+  a board document means. `docs/AGENT-FRAMEWORK.md` stopped describing itself as a note about what
+  does not exist yet, stopped counting six reading tools where there are five, and recorded that a
+  remote server's rows now become an import batch and that rev 73 placed the first agent the
+  product offers unasked. `docs/DEPLOY.md` gained the branch-deploy path (`railway up --detach`)
+  with the two things worth checking before pointing it at a service that already holds data. The
+  navigation screenshot was re-captured, because it still showed a sidebar with no Import and no
+  Connections in it. Reading every page in the browser to check it also turned up a defect nobody
+  had noticed: the in-product renderer knew `**bold**` and `` `code` `` but not `*emphasis*`, so a
+  hundred-odd emphasised phrases were reaching readers with their asterisks showing. The renderer
+  learned the span — carefully, so a lone asterisk in a sentence is still a lone asterisk — and a
+  twelfth docs test now holds the pages to markup the renderer actually understands.
 
 - **2026-09-07 — Rev 73: an agent beside the import.** A staged batch is where a second opinion is
   worth most and hardest to get, so the staged board now arrives with an **Import reviewer** already

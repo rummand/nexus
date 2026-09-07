@@ -1,11 +1,13 @@
 # The agent framework — a design note
 
-**Status:** built, revs 65–69. Written 2026-09-06 in answer to "we need an agentic OS: a framework
-of agents, described, alive, controlled, and able to build new agents with a human in the loop", and
-kept here as the reasoning behind what now exists. What was decided differently in the building is
-noted inline; the current behaviour is in `BRIEF.md` §5.31–§5.35.
+**Status:** built, revs 65–69, and applied since (the import reviewer, rev 73). Written 2026-09-06
+in answer to "we need an agentic OS: a framework of agents, described, alive, controlled, and able
+to build new agents with a human in the loop", and kept here as the reasoning behind what now
+exists. What was decided differently in the building is noted inline; the current behaviour is in
+`BRIEF.md` §5.31–§5.35 and §5.39.
 
-Read `BRIEF.md` first. This note only covers what is not there yet.
+Read `BRIEF.md` first: it is the record of what the product does. This note is the reasoning
+that got there, kept because the arguments outlive the revisions.
 
 ---
 
@@ -227,7 +229,7 @@ and is fine; it belongs with authentication, not here.
    building: a **draft is a dry run**, so an agent's first opinions are read before it is given a
    voice; and refused runs are logged, because an agent quietly stopped by its budget is the fact
    somebody most needs.
-3. ✅ **Nexus as an MCP server** — rev 67, brief §5.33. Six reading tools plus `propose_change`. The
+3. ✅ **Nexus as an MCP server** — rev 67, brief §5.33. Five reading tools plus `propose_change`. The
    test suite asserts the tool list, so "nothing here writes" stays true rather than remaining true
    by habit.
 4. ✅ **The fleet view and acceptance rate** (§4.3) — rev 62 (board agents) and rev 66, brief §5.28
@@ -235,10 +237,18 @@ and is fine; it belongs with authentication, not here.
    before the proposal is deleted.
 5. ✅ **MCP outbound** — rev 69, brief §5.35. The "first real source connector" turned out to be
    *any* MCP server, which is a better answer than a bespoke ServiceNow client. What a remote server
-   returns becomes an intake source and nothing more.
+   returns is a claim and nothing more: prose becomes an intake source, and — since rev 71, brief
+   §5.37 — rows become a staged import batch, decided on a canvas like any other. Neither reaches
+   the model without a person approving it.
 6. ✅ **Agents proposing agents** (§4.4) — rev 68, brief §5.34. Capability monotonicity is enforced
    by the same function a person's form goes through, and a proposed agent cannot run at all until
    somebody approves it.
+
+7. ✅ **An agent where the work is** — rev 73, brief §5.39. The first agent the product places for
+   you rather than waiting to be asked: a staged import arrives with a reviewer beside it. It is an
+   ordinary board agent with a different sentence, which is the evidence that §4.1's "an agent is an
+   object" was the right shape — a special-purpose import agent would have needed its own remarks,
+   its own review loop and its own measure of whether it helps.
 
 **Still open, and deliberately:** triggers and schedules (an agent runs when asked), spend in money
 rather than in runs, and Temporal-style durable execution — all of which the note argues are

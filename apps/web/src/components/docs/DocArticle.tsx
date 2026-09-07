@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink, HelpCircle, Lightbulb } from "lucide-react";
 import type { Block, DocPage } from "@/lib/docs";
-import { resolveHref } from "@/lib/docs";
+import { INLINE_SPAN, resolveHref } from "@/lib/docs";
 import SHOTS from "@/lib/docs/shots.json";
 
 /**
@@ -54,15 +54,21 @@ export function DocArticle({ page, slug, previous, next }: {
 }
 
 /**
- * Bold and code spans, without a Markdown parser.
+ * Bold, emphasis and code spans, without a Markdown parser.
  *
- * The docs need emphasis in a sentence and nothing more, so this handles `**bold**` and `` `code` ``
- * and leaves everything else alone. A real parser would be more machinery than the job is worth,
- * and a half-parser that silently mangled an unmatched asterisk would be worse than none.
+ * The docs need emphasis in a sentence and nothing more, so this handles `**bold**`, `*emphasis*`
+ * and `` `code` `` and leaves everything else alone. A real parser would be more machinery than the
+ * job is worth, and a half-parser that silently mangled an unmatched asterisk would be worse than
+ * none — so a single asterisk only opens a span when it is followed by a non-space and closed by
+ * one, which leaves an ordinary asterisk in a sentence exactly where the author put it.
+ *
+ * The emphasis arm arrived late: a hundred-odd `*like this*` had been written across the pages on
+ * the assumption it worked, and every one of them was being read with its asterisks showing.
  */
 function inline(text: string): React.ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((part, i) => {
+  return text.split(INLINE_SPAN).filter(Boolean).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*") && part.endsWith("*")) return <em key={i}>{part.slice(1, -1)}</em>;
     if (part.startsWith("`") && part.endsWith("`")) return <code key={i}>{part.slice(1, -1)}</code>;
     return <span key={i}>{part}</span>;
   });

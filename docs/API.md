@@ -72,6 +72,10 @@ Nexus is a Model Context Protocol server (§5.33). JSON-RPC 2.0 over one POST; a
 | `ping` | `{}` |
 | `notifications/*` | 202 with no body |
 
+`search_model` takes the same query language as the command bar and, with `format: "table"`, answers
+as TSV — a header line and one row per object — so the caller (Nexus itself included) can stage the
+answer as an import batch rather than re-parsing prose.
+
 No tool changes the model. `propose_change` is validated exactly as the graph agent's proposals are
 — the closed list of five changes, ids checked, every claim quoting the object it names — and what
 survives waits in the review queue under the name of the key that sent it.
@@ -89,7 +93,7 @@ than routes; they revalidate the affected pages.
 | Graph | `importGraphText` (CSV / JSON, see below), `renameKind`, `renameRelationKind`, `updateEntity`, `setEntityAttributeAction` (empty value removes), `deleteEntity`, `mergeEntitiesAction` |
 | Proposals | `acceptProposal` (applies the proposal's action, with an optional override value), `dismissProposal` (remembered per proposal key) |
 | Models | `addProvider`, `updateProvider` (a new key resets the last check), `removeProvider`, `assignTask` (which provider and model id does which job), `checkProvider` (a real one-token call), `modelSettings` (everything the settings page needs; no key is ever returned) |
-| Import | `createBatch` (FormData with many files; reads, folds and stages them, writing nothing), `createPastedBatch` (a pasted block, shape sniffed from the content), `stageFromServer` (rows a connected MCP server answered), `remapBatch` (change a column's meaning, what a file's rows are, the trust order, or whether people are included), `decideRows` (accept / hold / reject), `approveBatch` (the one call that writes, recording what it wrote), `rollbackBatch` (reverts only that, and reports what it would not touch), `createBatchBoard` (the batch's working surface; one per batch), `redrawBatchBoard`, `deleteBatch`. Saving a staged board reconciles it into the batch — the lanes are the decision (§5.36) |
+| Import | `createBatch` (FormData with many files; tables are read, folded and staged, prose is read for claims through intake's extractor and folded into the same records, and nothing is written), `createPastedBatch` (a pasted block, shape sniffed from the content), `stageFromServer` (rows a connected MCP server answered), `remapBatch` (change a column's meaning, what a file's rows are, the trust order, or whether people are included), `decideRows` (accept / hold / reject), `approveBatch` (the one call that writes, recording what it wrote), `rollbackBatch` (reverts only that, and reports what it would not touch), `createBatchBoard` (the batch's working surface; one per batch), `redrawBatchBoard`, `deleteBatch`. Saving a staged board reconciles it into the batch — the lanes are the decision (§5.36) |
 | Connections (MCP, outbound) | `addServer`, `updateServer`, `removeServer`, `checkServer` (handshake and list its tools), `askServer` (call one tool, return its text), `keepAsSource` (that text becomes an intake source — never a change to the model), `listServers` |
 | Connections (MCP) | `issueKey` (returns the key once — nothing else ever can), `revokeKey`, `forgetKey`, `connectionSettings` |
 | Described agents | `suggestAgents` (an agent proposes agents, capped by its own verbs and budget), `approveAgent` (proposed → draft), `createAgent` (always saved as a draft), `updateAgent`, `setAgentStatus` (draft / active / paused / retired), `removeAgent`, `runAgent` (refused before it costs anything when paused, retired or over budget; a draft runs as a dry run), `scopeSize` (how much a scope query would read) |
@@ -120,5 +124,10 @@ JSON is accepted too: `{ "entities": [{ kind, name, description?, attributes? }]
 Board documents are versioned JSON: `{ version: 2, elements: { [id]: element }, viewpoints?: SavedViewpoint[] }`.
 Element types: `card`, `sticky`, `text`, `shape`, `frame`, `connector` — see `document.ts`.
 Cards carry `meta.entityId`, connectors between cards carry `meta.relationId`; those ids are
-minted on the client and upserted by the server on save. Add a migration in `document.ts` when
-the shape changes.
+minted on the client and upserted by the server on save. `meta.planned` marks a card as a drawing
+of an intention, which the graph sync must not create. A document may also carry
+`meta.importBatch`: after the ordinary sync — which creates nothing, because every staged card is
+planned — saving such a board is also reconciled into that batch (lane → decision, edited card →
+edited record, connector → relation to create, deleted card → out of the import).
+
+Add a migration in `document.ts` when the shape changes.

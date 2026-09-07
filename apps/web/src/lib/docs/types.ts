@@ -77,3 +77,21 @@ export function pageText(page: DocPage): string {
   }
   return parts.filter(Boolean).join(" ");
 }
+
+/**
+ * The inline markup the documentation renderer understands: `**bold**`, `*emphasis*`, `` `code` ``.
+ *
+ * It lives here rather than in the renderer so the tests can hold the pages to it. A single
+ * asterisk only opens a span when a non-space follows it and a non-space closes it, which leaves
+ * an ordinary asterisk in a sentence alone — a half-parser that mangled one would be worse than
+ * having no emphasis at all.
+ */
+export const INLINE_SPAN = /(\*\*[^*]+\*\*|\*(?!\s)[^*]+(?<!\s)\*|`[^`]+`)/g;
+
+/** The asterisks a reader would actually see: the ones no span above claimed. */
+export function strayAsterisks(text: string): string[] {
+  return text
+    .split(INLINE_SPAN)
+    .filter((part, i) => i % 2 === 0)
+    .flatMap((part) => part.match(/\*+/g) ?? []);
+}

@@ -37,6 +37,25 @@ must live on a **persistent volume**; without one every redeploy starts from the
 Redeploys reuse the volume, so boards, entities and versions persist. To start over, delete
 `nexus.db*` on the volume (or wipe the volume) and redeploy.
 
+## Deploying a branch you are working on
+
+The GitHub integration above follows one branch. To put the working tree in front of somebody
+without changing that, push the branch and then upload it straight to the service:
+
+```bash
+railway link                       # once: pick the project, environment and service
+railway up --detach                # builds the current directory with the root Dockerfile
+railway domain                     # the public URL, if one has not been generated yet
+railway logs --deployment          # follow the build
+```
+
+`railway up` uploads what is on disk, so commit and push first or the deployed code is not the
+code in the branch. Two things to check before deploying a branch onto a service that already
+holds data: that the migrations the branch adds are **additive** (a new table or a nullable
+column is safe; a dropped or narrowed column is not, and the volume has no backup), and that any
+new variable the branch needs is set. `GET /api/health` reports the dialect and confirms the
+migrations ran.
+
 ## Any Docker host
 
 ```bash
