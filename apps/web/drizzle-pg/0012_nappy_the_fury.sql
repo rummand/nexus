@@ -1,0 +1,2 @@
+ALTER TABLE "import_batches" ADD COLUMN "board_id" text;--> statement-breakpoint
+ALTER TABLE "import_batches" ADD CONSTRAINT "import_batches_board_id_boards_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."boards"("id") ON DELETE set null ON UPDATE no action;

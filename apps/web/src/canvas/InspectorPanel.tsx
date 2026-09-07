@@ -64,7 +64,10 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
           <p>{elementTypeLabel(single)}{isBoxElement(single) ? ` · ${connectionsOf(single.id)} connections` : ""}{single.locked ? " · locked" : ""}</p>
           {planned && (
             <p className="inspector-planned" data-planned>
-              Planned, not in the graph. This card comes from a change set; it becomes a real object when that change set is delivered.
+              {/* Two things are drawn as planned, and telling somebody the wrong one is worse than saying nothing. */}
+              {typeof single.meta?.staged === "string"
+                ? "Staged, not in the graph. It is a claim from an imported file; the lane it sits in decides what happens to it when the import is approved. Renaming it here renames the record."
+                : "Planned, not in the graph. This card comes from a change set; it becomes a real object when that change set is delivered."}
             </p>
           )}
           <div className="detail-grid">

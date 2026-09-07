@@ -62,6 +62,11 @@ export interface FileInput {
   headers: string[];
   rows: string[][];
   columns: Column[];
+  /**
+   * What the rows in this file are, when they do not say for themselves (§5.36). A kind column
+   * always wins: it knows more than a filename does.
+   */
+  kind?: string;
 }
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
@@ -109,7 +114,7 @@ export function stage(files: FileInput[], options: { includePersonal?: boolean }
       if (name) byName.set(name, target);
 
       target.name ||= claim.name;
-      target.kind ||= claim.kind;
+      target.kind ||= claim.kind || (file.kind ?? "");
       target.description ||= claim.description;
       target.key ||= claim.key;
       if (!target.sources.includes(file.name)) target.sources.push(file.name);

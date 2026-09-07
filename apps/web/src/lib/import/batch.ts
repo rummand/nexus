@@ -2,6 +2,7 @@ import type { Column } from "./map";
 import type { Decision, StagedRecord } from "./stage";
 import type { Issue, Reviewed } from "./review";
 import type { Match, Change } from "./match";
+import type { DrawnRelation, RecordOverride } from "./reconcile";
 
 /**
  * A batch, as it is stored and read back.
@@ -21,6 +22,12 @@ export interface BatchFile {
   columns: Column[];
   headers: string[];
   rows: string[][];
+  /** What the rows in this file are, when no column says (§5.36). Proposed, and settable. */
+  kind?: string;
+  /** Why that kind was proposed, in one sentence a person can judge. */
+  kindWhy?: string;
+  /** True when the rows carry their own kind, so a file-level one would be ignored. */
+  kindFromRows?: boolean;
   /** Prose files are kept whole, for extraction rather than columns. */
   text?: string;
   note?: string;
@@ -30,6 +37,12 @@ export interface StoredReview {
   records: StagedRecord[];
   /** Per record id: the decision, and whether a person made it. */
   decisions: Record<string, { decision: Decision; by: "default" | "person" }>;
+  /** Edits made on the board: a renamed card, a kind set, a description corrected (§5.36). */
+  overrides?: Record<string, RecordOverride>;
+  /** Relations drawn between two staged cards on the board. */
+  drawn?: DrawnRelation[];
+  /** Records a person deleted from the board. Kept as a list, so a redraw does not bring them back. */
+  removed?: string[];
   /** Recomputed on read, but stored so an approved batch still shows what it showed. */
   rows?: Array<{ id: string; match: Match; changes: Change[]; issues: Issue[] }>;
   includePersonal: boolean;
@@ -61,6 +74,11 @@ export function parseReview(raw: string): StoredReview {
   return {
     records: Array.isArray(body.records) ? body.records : [],
     decisions: body.decisions && typeof body.decisions === "object" ? body.decisions : {},
+    overrides: body.overrides && typeof body.overrides === "object" ? body.overrides : undefined,
+    drawn: Array.isArray(body.drawn)
+      ? body.drawn.filter((d): d is DrawnRelation => Boolean(d) && typeof d === "object" && typeof d.from === "string" && typeof d.to === "string")
+      : undefined,
+    removed: strings(body.removed),
     rows: Array.isArray(body.rows) ? body.rows : undefined,
     includePersonal: Boolean(body.includePersonal),
     missing: Array.isArray(body.missing) ? body.missing : undefined,

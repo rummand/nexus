@@ -1242,9 +1242,13 @@ Every committed documentation screenshot was re-captured, because a type-scale c
 them wrong at once — which is exactly the rot the capture script exists to prevent.
 
 
-### 5.30 The landing zone (v0.2)
+### 5.30 Reading what people actually have (v0.2)
 
-Real portfolio data does not arrive as a clean CSV. It arrives as a ServiceNow export, a spreadsheet
+*Renamed in rev 70: this was "the landing zone", and it was framed as an application-portfolio
+feature. It is the reading half of **Import** (§5.36) — the same machinery, pointed at whatever the
+data is about.*
+
+Real data does not arrive as a clean CSV. It arrives as a ServiceNow export, a spreadsheet
 somebody has maintained since 2019, a SharePoint list and a Word document from a governance review —
 four files that disagree with each other and with the model. Nexus now takes all four, works on them
 where a person can see them, and takes only what that person agrees with.
@@ -1501,6 +1505,49 @@ is probably not an MCP endpoint", and an unreachable host says to check whether 
 frame are accepted, because the transport allows either and real servers use both.
 
 
+### 5.36 Import, and the canvas as the place it happens (v0.2)
+
+Two things were wrong with the landing zone, and they were the same thing twice.
+
+It was **APM-shaped**. It lived at `/apm`, it was called a landing zone, and the language around it
+was about business applications — but nothing in the machinery ever cared: a row is a claim about a
+thing, and a thing is whatever the file is a list of. So it is **Import** now, at `/w/:slug/import`
+(the old address redirects), with `lib/import`, and no framing that assumes applications.
+
+And the **canvas was an output**. Decisions were made in a table, and *Draw it on a board* produced
+a picture of them. For a product whose whole premise is an infinite canvas, that is exactly the
+wrong way round: a staged import — four hundred claims you want to see the shape of, sort into
+piles, and argue about with somebody standing next to you — is the best possible canvas work.
+
+**The lanes are the decision** (`reconcile.ts`, `sync.ts`). A staged board carries its batch id in
+the document, and saving it reads the board back: which lane each card's *centre* is in — the same
+containment rule a drag uses, so what a person sees is what is written — plus what they renamed,
+what kind they set, what they connected and what they deleted. Held and Rejected are drawn even when
+empty, because a decision you cannot drag to is a decision the canvas cannot express. There is no
+Apply button: the save is the apply.
+
+**What the board can say that the table cannot.** Rename a card and the record is renamed. Set its
+kind and the record's kind is set. Draw a connector between two staged cards and the import creates
+that relation — named by record rather than by name, so a rename cannot silently repoint it. Delete
+a card and the claim leaves the import.
+
+**And what the table can say that the board cannot** — what a column means, the trust order between
+files, whether people's names come in. Those are properties of the *files*, not of the objects, and
+they stay on the batch page. The two surfaces are views of one batch: a decision on either shows up
+on the other, and the review is computed with the board's edits applied so they cannot disagree.
+
+**Finishing from the canvas.** A bar above the board counts what the lanes currently say — live, from
+the elements, so it moves as a card is dragged — and approves. Once a batch is approved the bar says
+so instead, because a button whose only outcome is "already approved" is not a button.
+
+**What are these rows?** (`proposeFileKind`). Most exports never say what they are *of*: a server
+list is all servers and the filename is the whole of the metadata. Until now that meant rows arrived
+untyped and somebody typed them one at a time. Each file is now asked, with an answer proposed from
+a kind column if the rows carry one, else the file name, else the columns — preferring the
+workspace's own spelling ("Applications" if that is what these people call them) over ours. A row
+that carries its own kind always keeps it: a column knows more than a filename.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1533,7 +1580,7 @@ frame are accepted, because the transport allows either and real servers use bot
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-06 — rev 69)
+## 6a. What exists today (v0.2, 2026-09-07 — rev 70)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1770,15 +1817,19 @@ frame are accepted, because the transport allows either and real servers use bot
   people kept what it said — with the verdict in words.
 - Deleting an agent does not erase its record.
 
-### The landing zone (v0.2)
-- `/w/:slug/apm`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
+### Import (v0.2)
+- `/w/:slug/import`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
   and work on them before anything is written.
 - One object per thing across all the files, with per-field provenance and both values kept where
   the sources disagree.
 - Graded matching against the model, blockers and questions per row, accept / hold / reject.
 - Person-shaped columns excluded by default; what the source has stopped claiming raised, never
   deleted; connections that would go nowhere flagged.
-- **Draw it on a board** — the batch laid out by outcome, as planned cards.
+- Each file is asked **what its rows are**, with the answer proposed and settable; a row that
+  carries its own kind keeps it.
+- **Work on the canvas** — the batch laid out in lanes, where the lane a card is in *is* the
+  decision. Renaming a card renames the record, drawing a connector adds a relation, deleting a
+  card takes it out of the import, and the bar above the board approves.
 - Approve writes it and records what it wrote; roll back undoes exactly that and says what it
   would not touch.
 
@@ -2051,6 +2102,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-06 | Calling a tool and keeping its answer are two buttons. | Evidence somebody has looked at is worth more than evidence that arrived. It also means a tool that returns something useless costs nothing but a glance. |
 | 2026-09-06 | The argument form is built only from top-level scalar fields. | Generating a form for an arbitrary JSON Schema we have never seen produces something worse than a text box. The simple fields cover most tools, and anything deeper belongs to whoever knows that system. |
 
+| 2026-09-07 | The landing zone becomes Import, and stops being about applications. | Nothing in the machinery ever cared what the rows were about — a row is a claim about a thing. The APM framing narrowed a general capability to one use of it, and the name was the only part that had to change. |
+| 2026-09-07 | On a staged board, the lane a card is in is the decision. | This is a canvas product. Making the canvas a picture of decisions taken in a table was backwards: sorting claims into piles is what a canvas is *for*, and a pile that is only a drawing of a pile is a worse table. |
+| 2026-09-07 | Saving the board applies it; there is no Apply button. | A second step would mean two places where the truth lives, and a person who dragged five cards and walked away would have decided nothing. The autosave already exists and the containment rule is the one the drag uses, so the save is honest. |
+| 2026-09-07 | Held and Rejected are drawn even when empty. | A lane only appears when it has rows, and then holding a card is a thing the canvas cannot express — which is exactly how somebody learns to go back to the table. An empty lane is a landing strip. |
+| 2026-09-07 | What a column means stays on the batch page; what happens to an object moves to the board. | They are different kinds of decision. A column's meaning is a property of the file and affects every row; a decision about one object is a property of that object. Putting both on the canvas would make the canvas a form. |
+| 2026-09-07 | Each file is asked what its rows are. | Most exports do not say, and the alternative is four hundred untyped objects and somebody typing them afterwards. Proposing it from the file name in the workspace's own vocabulary makes it one click; a kind column always wins, because it knows more than a filename. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2064,6 +2122,25 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-07 — Rev 70: import, and the canvas as the place it happens.** The landing zone was two
+  things it should not have been: shaped around application portfolio management, and a table with
+  a canvas bolted on for looking at. It is now **Import** — `/w/:slug/import`, `lib/import`, no
+  framing that assumes applications, and the old address redirects — and the canvas is where the
+  work is done. **The lane a card is in is the decision.** Saving a staged board reads it back:
+  which lane each card's centre is in (the same rule a drag uses, so what you see is what is
+  written), what you renamed, what kind you set, what you connected, what you deleted. Held and
+  Rejected are drawn even when empty, because a decision you cannot drag to is one the canvas cannot
+  express. There is no Apply button — the save is the apply — and a bar above the board counts the
+  lanes live and approves from there. Drawing a connector between two staged cards now creates that
+  relation on approval, named by record so a rename cannot repoint it. The batch page keeps what
+  belongs to the *files* — what a column means, the trust order, whether people come in — and the two
+  surfaces are views of one batch, computed with the board's edits applied so they cannot disagree.
+  And because most exports never say what they are *of*, each file is now asked **what its rows
+  are**, proposed from a kind column, the file name or the columns, in the workspace's own spelling.
+  15 new unit tests over the containment and edit rules, an e2e that drags a card into Held on the
+  canvas and then checks the batch page agrees, and the documentation page rewritten around the
+  board.
 
 - **2026-09-06 — Rev 69: Nexus asks back.** The other direction of MCP, and the last piece of the
   agent framework. A system of yours that speaks MCP — a CMDB, a wiki, a ticket tracker — can now be

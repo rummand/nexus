@@ -6,6 +6,8 @@ import { getBoardWithContext } from "@/lib/data";
 import { getDb } from "@/db/client";
 import { hydrateDocument } from "@/lib/graph";
 import { currentUser } from "@/lib/session";
+import { eq } from "drizzle-orm";
+import * as s from "@/db/schema";
 
 type Props = { params: Promise<{ boardId: string }> };
 
@@ -19,11 +21,20 @@ export default async function BoardPage({ params }: Props) {
   const { boardId } = await params;
   const [board, user] = await Promise.all([getBoardWithContext(boardId), currentUser()]);
   if (!board) notFound();
-  const document = await hydrateDocument(await getDb(), parseDocument(board.document));
+  const db = await getDb();
+  const document = await hydrateDocument(db, parseDocument(board.document));
+  /*
+   * A staged import board needs to know whether its batch is still open (§5.36). Read here rather
+   * than in the bar: an approved import should say so the moment the board is opened, not after a
+   * round trip that lets somebody press Approve on something already written.
+   */
+  const batchId = document.meta?.importBatch;
+  const batch = batchId ? await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) }) : null;
   return (
     <BoardCanvasClient
       document={document}
       boardRevision={board.revision}
+      importStatus={batch ? batch.status : batchId ? "gone" : null}
       header={{
         boardId: board.id,
         workspaceId: board.workspaceId,

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -9,12 +9,13 @@ import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
-import { proposeMapping } from "./map";
+import { proposeFileKind, proposeMapping } from "./map";
 import { readFile } from "./read";
 import { stage, type Decision, type FileInput } from "./stage";
 import { KEY_ATTRIBUTE, type MatchTarget } from "./match";
 import { review } from "./review";
 import { batchDocument } from "./board";
+import { withOverrides } from "./reconcile";
 import { applyDecisions, emptyWritten, parseFiles, parseReview, parseWritten, type BatchFile, type StoredReview, type Written } from "./batch";
 
 /**
@@ -37,8 +38,8 @@ async function slugOf(workspaceId: string) {
 async function refresh(workspaceId: string, batchId?: string) {
   const slug = await slugOf(workspaceId);
   if (!slug) return;
-  revalidatePath(`/w/${slug}/apm`);
-  if (batchId) revalidatePath(`/w/${slug}/apm/${batchId}`);
+  revalidatePath(`/w/${slug}/import`);
+  if (batchId) revalidatePath(`/w/${slug}/import/${batchId}`);
   revalidatePath(`/w/${slug}/graph`);
 }
 
@@ -105,9 +106,19 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
     if (at < 0) continue;
     for (const row of file.rows) { const value = (row[at] ?? "").trim(); if (value) known.add(value); }
   }
+  const vocabulary = (await targetsFor(workspaceId)).kinds;
   for (const file of files) {
     if (!file.rows.length) continue;
     file.columns = proposeMapping(file.headers, file.rows, { knownNames: [...known] });
+    /*
+     * And what these rows *are*. Most exports never say — a server list is all servers and the
+     * file name is the whole of the metadata — so it is proposed here and shown as a question a
+     * person can answer in one click, rather than four hundred untyped objects to fix afterwards.
+     */
+    const proposed = proposeFileKind(file.name, file.headers, file.rows, file.columns, vocabulary);
+    file.kind = proposed.kind;
+    file.kindWhy = proposed.why;
+    file.kindFromRows = proposed.fromRows;
   }
 
   const db = await getDb();
@@ -135,12 +146,14 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
 }
 
 const tabular = (files: BatchFile[]): FileInput[] =>
-  files.filter((f) => f.rows.length).map((f) => ({ name: f.name, headers: f.headers, rows: f.rows, columns: f.columns }));
+  files.filter((f) => f.rows.length).map((f) => ({ name: f.name, headers: f.headers, rows: f.rows, columns: f.columns, kind: f.kind }));
 
 /** Change what a column means, or the trust order, and re-stage from the files we still hold. */
 export async function remapBatch(batchId: string, input: {
   fileOrder?: string[];
   columns?: Array<{ file: string; header: string; role: unknown }>;
+  /** What the rows in a file are, when they do not say for themselves (§5.36). */
+  kinds?: Array<{ file: string; kind: string }>;
   includePersonal?: boolean;
 }): Promise<{ ok: true } | { error: string }> {
   const db = await getDb();
@@ -158,6 +171,12 @@ export async function remapBatch(batchId: string, input: {
       if (column && isRole(change.role)) { column.role = change.role; column.why = "You said so."; }
     }
   }
+  if (input.kinds) {
+    for (const change of input.kinds) {
+      const file = files.find((f) => f.name === change.file);
+      if (file) file.kind = change.kind.trim().slice(0, 60);
+    }
+  }
   if (input.fileOrder) {
     const order = input.fileOrder;
     files = [...files].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
@@ -170,10 +189,20 @@ export async function remapBatch(batchId: string, input: {
   // away an afternoon of judgement about the other three hundred rows.
   const decisions: StoredReview["decisions"] = {};
   for (const record of records) if (previous.decisions[record.id]) decisions[record.id] = previous.decisions[record.id]!;
+  const overrides: StoredReview["overrides"] = {};
+  for (const record of records) if (previous.overrides?.[record.id]) overrides[record.id] = previous.overrides[record.id]!;
+  const alive = new Set(records.map((r) => r.id));
 
   await db.update(s.importBatches).set({
     files: JSON.stringify(files),
-    review: JSON.stringify({ records, decisions, includePersonal } satisfies StoredReview),
+    review: JSON.stringify({
+      records,
+      decisions,
+      overrides,
+      drawn: (previous.drawn ?? []).filter((d) => alive.has(d.from) && alive.has(d.to)),
+      removed: (previous.removed ?? []).filter((id) => alive.has(id)),
+      includePersonal,
+    } satisfies StoredReview),
     updatedAt: now(),
   }).where(eq(s.importBatches.id, batchId));
   await refresh(batch.workspaceId, batchId);
@@ -215,7 +244,13 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
 
   const stored = parseReview(batch.review);
   const { targets, kinds } = await targetsFor(batch.workspaceId);
-  const rows = applyDecisions(review(stored.records, targets, { kinds }).rows, stored.decisions);
+  /*
+   * What the board says, not only what the table said. A name corrected on a card, a kind set by
+   * dragging, a row somebody deleted from the board — all of it is a person's judgement about the
+   * import, and approving has to honour it or the canvas is decorative.
+   */
+  const staged = withOverrides(stored.records, stored.overrides ?? {}).filter((r) => !(stored.removed ?? []).includes(r.id));
+  const rows = applyDecisions(review(staged, targets, { kinds }).rows, stored.decisions);
   const taking = rows.filter((r) => r.decision === "accept" && r.record.name.trim());
   if (!taking.length) return { error: "Nothing in this batch is accepted." };
 
@@ -268,6 +303,27 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
   for (const row of taking) byName.set(norm(row.record.name), idOf.get(row.record.id) ?? byName.get(norm(row.record.name)) ?? "");
   const existing = await db.select().from(s.relations_).where(eq(s.relations_.workspaceId, batch.workspaceId));
   const wired = new Set(existing.map((r) => `${r.fromEntityId}|${norm(r.kind)}|${r.toEntityId}`));
+
+  /*
+   * Relations somebody drew between two cards on the board. They are named by record rather than
+   * by name — a connector points at a card, and the card knows which claim it is, so a renamed
+   * object cannot silently point somewhere else.
+   */
+  for (const drawn of stored.drawn ?? []) {
+    const from = idOf.get(drawn.from);
+    const to = idOf.get(drawn.to);
+    if (!from || !to || from === to) continue;
+    const kind = drawn.kind.trim() || "relates to";
+    const signature = `${from}|${norm(kind)}|${to}`;
+    if (wired.has(signature)) continue;
+    const id = `rel_${nanoid(10)}`;
+    await db.insert(s.relations_).values({
+      id, workspaceId: batch.workspaceId, fromEntityId: from, toEntityId: to,
+      kind, attributes: "{}", source: `import:${batchId}`, createdAt: now(), updatedAt: now(),
+    });
+    wired.add(signature);
+    written.relations.push(id);
+  }
 
   for (const row of taking) {
     const from = idOf.get(row.record.id);
@@ -402,16 +458,23 @@ export async function createBatchBoard(batchId: string): Promise<{ error: string
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
+  // One board per batch: a second one would be a second set of lanes writing to the same
+  // decisions, and whichever was saved last would win an argument nobody knew they were having.
+  if (batch.boardId) {
+    const existing = await db.query.boards.findFirst({ where: eq(s.boards.id, batch.boardId) });
+    if (existing) redirect(`/b/${existing.id}`);
+  }
   const stored = parseReview(batch.review);
   const { targets, kinds } = await targetsFor(batch.workspaceId);
-  const rows = applyDecisions(review(stored.records, targets, { kinds }).rows, stored.decisions);
+  const staged = withOverrides(stored.records, stored.overrides ?? {}).filter((r) => !(stored.removed ?? []).includes(r.id));
+  const rows = applyDecisions(review(staged, targets, { kinds }).rows, stored.decisions);
   if (!rows.length) return { error: "There is nothing staged to draw." };
 
   const space = await db.query.spaces.findFirst({ where: eq(s.spaces.workspaceId, batch.workspaceId), orderBy: s.spaces.name });
   if (!space) return { error: "This workspace has no space to put a board in." };
 
   const title = `Staged · ${batch.name}`.slice(0, 120);
-  const { document, drawn, summarised } = batchDocument(rows, { title });
+  const { document, drawn, summarised } = batchDocument(rows, { title, batchId });
   const user = await currentUser();
   const id = `brd_${nanoid(10)}`;
   await db.insert(s.boards).values({
@@ -419,14 +482,43 @@ export async function createBatchBoard(batchId: string): Promise<{ error: string
     workspaceId: batch.workspaceId,
     spaceId: space.id,
     name: title,
-    description: `${drawn} staged object${drawn === 1 ? "" : "s"} drawn${summarised ? `, ${summarised} summarised` : ""}. Nothing here is in the graph.`,
+    description: `${drawn} staged object${drawn === 1 ? "" : "s"}${summarised ? `, ${summarised} summarised` : ""}. Drag between lanes to decide; nothing is in the graph until the batch is approved.`,
     createdById: user.id,
     document: serializeDocument(document),
     createdAt: now(),
     updatedAt: now(),
     lastOpenedAt: now(),
   });
+  await db.update(s.importBatches).set({ boardId: id, updatedAt: now() }).where(eq(s.importBatches.id, batchId));
   const slug = await slugOf(batch.workspaceId);
   if (slug) revalidatePath(`/w/${slug}`, "layout");
   redirect(`/b/${id}`);
+}
+
+/**
+ * Draw the board again from what the batch now says.
+ *
+ * Needed when the mapping changes underneath it: re-reading a column re-stages every record, and
+ * the cards on the board are then about claims that no longer exist. It replaces the document
+ * rather than patching it, and says so — an arrangement somebody made by hand is worth keeping,
+ * but not at the price of a board that quietly describes the wrong import.
+ */
+export async function redrawBatchBoard(batchId: string): Promise<{ ok: true; drawn: number } | { error: string }> {
+  const db = await getDb();
+  const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
+  if (!batch) return { error: "That batch is gone." };
+  if (!batch.boardId) return { error: "This batch has no board yet." };
+  const board = await db.query.boards.findFirst({ where: eq(s.boards.id, batch.boardId) });
+  if (!board) return { error: "That board has been deleted. Draw a new one." };
+
+  const stored = parseReview(batch.review);
+  const { targets, kinds } = await targetsFor(batch.workspaceId);
+  const staged = withOverrides(stored.records, stored.overrides ?? {}).filter((r) => !(stored.removed ?? []).includes(r.id));
+  const rows = applyDecisions(review(staged, targets, { kinds }).rows, stored.decisions);
+  const { document, drawn } = batchDocument(rows, { title: board.name, batchId });
+  await db.update(s.boards)
+    .set({ document: serializeDocument(document), updatedAt: now(), revision: sql`${s.boards.revision} + 1` })
+    .where(eq(s.boards.id, board.id));
+  await refresh(batch.workspaceId, batchId);
+  return { ok: true, drawn };
 }

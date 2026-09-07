@@ -38,7 +38,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={17} />}>Graph explorer</SidebarLink>
         <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={17} />}>Meta-model</SidebarLink>
         <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={17} />}>Intake</SidebarLink>
-        <SidebarLink key="apm" href={`${base}/apm`} icon={<DownloadCloud size={17} />}>Landing zone</SidebarLink>
+        <SidebarLink key="import" href={`${base}/import`} icon={<DownloadCloud size={17} />}>Import</SidebarLink>
         <SidebarLink key="roadmap" href={`${base}/roadmap`} icon={<GitBranch size={17} />}>Roadmap</SidebarLink>
         <SidebarLink key="agents" href={`${base}/agents`} icon={<Bot size={17} />}>Agents</SidebarLink>
         <SidebarLink key="knowledge" href={`${base}/knowledge`} icon={<BookOpen size={17} />}>EA knowledge</SidebarLink>

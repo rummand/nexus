@@ -5,12 +5,13 @@ import type { CanvasDocument } from "./document";
 import { CanvasStoreContext, createCanvasStore, useStore, type ScrollMode } from "./store";
 import { Canvas } from "./Canvas";
 import { StudioTopbar, type StudioTopbarProps } from "./StudioTopbar";
+import { ImportBar } from "./ImportBar";
 import { markBoardOpened } from "@/lib/actions";
 
 const SCROLL_MODE_KEY = "nexus.scrollMode";
 
 /** Client entry point for a board: owns the store and renders the studio shell. */
-export function BoardCanvas({ document, header, boardRevision = 0 }: { document: CanvasDocument; header: StudioTopbarProps; boardRevision?: number }) {
+export function BoardCanvas({ document, header, boardRevision = 0, importStatus = null }: { document: CanvasDocument; header: StudioTopbarProps; boardRevision?: number; importStatus?: string | null }) {
   const [store] = useState(() => {
     let scrollMode: ScrollMode = "pan";
     try {
@@ -42,10 +43,13 @@ export function BoardCanvas({ document, header, boardRevision = 0 }: { document:
   }, [store]);
 
   const presenting = useStore(store, (s) => s.presenting);
+  const importBatch = useStore(store, (s) => s.importBatch);
   return (
     <CanvasStoreContext.Provider value={store}>
-      <div className={presenting ? "miro-studio presenting" : "miro-studio"}>
+      <div className={`miro-studio${presenting ? " presenting" : ""}${!presenting && importBatch ? " staged-import" : ""}`}>
         {!presenting && <StudioTopbar {...header} />}
+        {/* A staged import is work, not a drawing: say so, and let it be finished from here (§5.36). */}
+        {!presenting && importBatch && <ImportBar batchId={importBatch} slug={header.workspace.slug} status={importStatus} />}
         <Canvas />
       </div>
     </CanvasStoreContext.Provider>

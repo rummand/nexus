@@ -7,14 +7,6 @@
     "width": 1452,
     "height": 1000
   },
-  "apm-board": {
-    "width": 1720,
-    "height": 1000
-  },
-  "apm-review": {
-    "width": 1452,
-    "height": 1000
-  },
   "ask-selection": {
     "width": 1720,
     "height": 1000
@@ -93,6 +85,14 @@
   },
   "home": {
     "width": 1720,
+    "height": 1000
+  },
+  "import-board": {
+    "width": 1720,
+    "height": 1000
+  },
+  "import-review": {
+    "width": 1452,
     "height": 1000
   },
   "intake-catalogue": {

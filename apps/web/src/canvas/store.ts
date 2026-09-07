@@ -83,6 +83,13 @@ export interface CanvasState {
   viewpoints: SavedViewpoint[];
   /** The Compose script that produced this board, persisted with it. */
   script: string;
+  /**
+   * The staged import this board is the working surface of (§5.36), or "".
+   *
+   * It is carried through the store rather than only read on the server so the canvas can say what
+   * it is looking at — a board whose lanes are decisions should not look like an ordinary drawing.
+   */
+  importBatch: string;
   /** Presentation mode: chrome hidden, canvas only (Esc leaves). */
   presenting: boolean;
   /** Index of the frame currently shown as a "slide" while presenting (null = whole board). */
@@ -325,6 +332,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       proposalsByEntity: {},
       viewpoints: document.viewpoints ?? [],
       script: document.script ?? "",
+      importBatch: document.meta?.importBatch ?? "",
 
       // ---- camera ----
       setViewport: (w, h) => set({ viewport: { w: Math.max(1, w), h: Math.max(1, h) } }),
@@ -589,6 +597,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
           elements: s.elements,
           ...(s.viewpoints.length ? { viewpoints: s.viewpoints } : {}),
           ...(s.script.trim() ? { script: s.script } : {}),
+          ...(s.importBatch ? { meta: { importBatch: s.importBatch } } : {}),
         };
       },
     };

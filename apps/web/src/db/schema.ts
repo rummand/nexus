@@ -568,7 +568,7 @@ export type McpServerRow = typeof mcpServers.$inferSelect;
 // ---- the landing zone ------------------------------------------------------
 // Files arrive as a *batch*: a ServiceNow export, an old spreadsheet, a Word document from a
 // governance review. Nothing they say is true until somebody approves it, so the whole staged
-// review lives here as JSON — the shapes belong to src/lib/apm and pinning them into columns would
+// review lives here as JSON — the shapes belong to src/lib/import and pinning them into columns would
 // freeze a pipeline meant to keep learning what a bad export looks like.
 
 export const importBatches = sqliteTable(
@@ -590,6 +590,12 @@ export const importBatches = sqliteTable(
      * an honest rollback possible. Empty until it is approved.
      */
     written: text("written").notNull().default("{}"),
+    /**
+     * The board that is this batch's working surface (§5.36). Set when one is drawn; the board is
+     * where the decisions are actually taken, so the link matters in both directions — the
+     * document carries the batch id, and the batch carries the board id.
+     */
+    boardId: text("board_id").references(() => boards.id, { onDelete: "set null" }),
     createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     approvedById: text("approved_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),

@@ -19,6 +19,6 @@ const BoardCanvas = dynamic(() => import("./BoardCanvas").then((m) => m.BoardCan
   ),
 });
 
-export function BoardCanvasClient(props: { document: CanvasDocument; header: StudioTopbarProps; boardRevision: number }) {
+export function BoardCanvasClient(props: { document: CanvasDocument; header: StudioTopbarProps; boardRevision: number; importStatus?: string | null }) {
   return <BoardCanvas {...props} />;
 }

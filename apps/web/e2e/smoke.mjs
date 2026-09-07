@@ -673,7 +673,7 @@ try {
       "with no model configured the panel names what is missing instead of failing");
   }
 
-  // ---- the landing zone: files in, reviewed, approved, and put back --------------------------
+  // ---- import: files in, decided on the canvas, approved, and put back -----------------------
   // The whole point of the feature is that the last step really undoes the one before it, so this
   // walks the round trip and checks the graph is the size it started at.
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
@@ -687,39 +687,77 @@ try {
   };
   const before = await countEntities();
 
-  await page.goto(`${base}/w/acme-energy/apm`, { waitUntil: "load" });
-  await page.waitForSelector("[data-apm-upload]");
-  await page.setInputFiles("[data-apm-files]", [
+  await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector("[data-import-upload]");
+  await page.setInputFiles("[data-import-files]", [
     fixture("servicenow-business-applications.csv"),
     fixture("sharepoint-app-list.csv"),
     fixture("application-audit-2019.xlsx"),
     fixture("architecture-review-q3.docx"),
   ]);
-  await page.click("[data-apm-upload] button[type=submit]");
-  await page.waitForURL(/\/apm\/bat_/, { timeout: 60000 });
-  await page.waitForSelector("[data-apm-counts]", { timeout: 30000 });
+  await page.click("[data-import-upload] button[type=submit]");
+  await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
+  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
   const batchUrl = page.url();
-  const counts = await page.locator("[data-apm-counts]").innerText();
+  const counts = await page.locator("[data-import-counts]").innerText();
   assert.match(counts, /objects staged/, "the batch is staged");
-  assert.ok((await page.locator("[data-apm-row]").count()) > 0, "there are rows to review");
+  assert.ok((await page.locator("[data-import-row]").count()) > 0, "there are rows to review");
   // an Excel serial became a date, and a person column was kept out
-  const files = await page.locator(".apm-files").innerText();
+  const files = await page.locator(".import-files").innerText();
   assert.match(files, /application-audit-2019\.xlsx/, "the spreadsheet was read");
   assert.match(files, /architecture-review-q3\.docx/, "…and the Word document came along as prose");
-  assert.equal(await page.locator(".apm-personal-toggle input").isChecked(), false,
+  assert.equal(await page.locator(".import-personal-toggle input").isChecked(), false,
     "the columns that name people are excluded until somebody says otherwise");
+  // Rev 70: what the rows *are* is part of the import, not something a column has to carry.
+  assert.match(files, /What are these rows\?/, "each file is asked what its rows are");
+  assert.match(files, /Each row says for itself|reads as a list of|already has/, "…and the answer is proposed with a reason");
+
+  /*
+   * The canvas is the import tool: dragging a card into another lane is the decision. This is the
+   * claim the whole reshape rests on, so it is checked end to end — drag, autosave, and then ask
+   * the batch page, which is a different surface reading the same batch.
+   */
+  await page.click("[data-draw-batch]");
+  await page.waitForURL(/\/b\/brd_/, { timeout: 60000 });
+  await page.waitForSelector("[data-import-bar]", { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 6, null, { timeout: 45000 });
+  await page.waitForTimeout(1200);
+  assert.match(await page.locator("[data-import-counts]").innerText(), /accepted/, "the board says what its lanes mean");
+
+  const spots = await page.evaluate(() => {
+    const centre = (el) => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+    const all = [...document.querySelectorAll("[data-element-id]")];
+    const card = all.find((el) => el.className.includes("fact-card"));
+    const held = all.filter((el) => el.className.includes("board-frame"))
+      .find((f) => (f.querySelector("input")?.value ?? "").includes("Held"));
+    return { card: card ? centre(card) : null, held: held ? centre(held) : null };
+  });
+  assert.ok(spots.card && spots.held, "there is a card to drag and a Held lane to drag it into");
+  await page.mouse.move(spots.card.x, spots.card.y);
+  await page.mouse.down();
+  await page.mouse.move(spots.held.x, spots.held.y, { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  assert.match(await page.locator("[data-import-counts]").innerText(), /1 held/, "the count follows the drag, live");
+  await page.waitForFunction(() => document.body.innerText.includes("Saved"), null, { timeout: 30000 });
+  await page.waitForTimeout(2000);
+
+  await page.goto(batchUrl, { waitUntil: "load" });
+  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
+  assert.match(await page.locator("[data-import-counts]").innerText(), /1 held/,
+    "the batch page agrees with the board: the lane was the decision");
 
   await page.click("[data-approve-batch]"); // a dialog handler is already installed above
-  await page.waitForSelector("[data-apm-result]", { timeout: 60000 });
-  assert.match(await page.locator("[data-apm-result]").innerText(), /created/, "approving says what it wrote");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-import-result]").innerText(), /created/, "approving says what it wrote");
   const after = await countEntities();
   assert.ok(after > before, `approving created objects (${before} → ${after})`);
 
   await page.goto(batchUrl, { waitUntil: "load" });
   await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
   await page.click("[data-rollback-batch]");
-  await page.waitForSelector("[data-apm-result]", { timeout: 60000 });
-  assert.match(await page.locator("[data-apm-result]").innerText(), /deleted/, "the rollback says what it undid");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-import-result]").innerText(), /deleted/, "the rollback says what it undid");
   assert.equal(await countEntities(), before, "rolling back puts the graph back exactly as it was");
 
   // ---- an agent on the board -----------------------------------------------------------------

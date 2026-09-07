@@ -162,6 +162,15 @@ export interface CanvasDocument {
    * script is still there when you come back — otherwise it is a one-shot toy.
    */
   script?: string;
+  /**
+   * What this board is *for*, when it is not only a drawing.
+   *
+   * `importBatch` marks a board as the working surface of a staged import (§5.36): the lanes are
+   * decisions, and saving the board writes those decisions back to the batch. It lives in the
+   * document rather than in a column because the board is the thing being edited, and a link kept
+   * anywhere else would be one duplicate and export away from being wrong.
+   */
+  meta?: { importBatch?: string };
 }
 
 export function emptyDocument(): CanvasDocument {
@@ -233,11 +242,13 @@ export function migrateDocument(doc: Partial<CanvasDocument> & { version?: numbe
   }
   const viewpoints = Array.isArray(doc.viewpoints) ? doc.viewpoints.filter((v) => v && typeof v.id === "string" && typeof v.name === "string") : undefined;
   const script = typeof doc.script === "string" && doc.script.trim() ? doc.script.slice(0, 8000) : undefined;
+  const batch = doc.meta && typeof doc.meta === "object" && typeof doc.meta.importBatch === "string" ? doc.meta.importBatch.slice(0, 60) : "";
   return {
     version: DOCUMENT_VERSION,
     elements,
     ...(viewpoints && viewpoints.length ? { viewpoints } : {}),
     ...(script ? { script } : {}),
+    ...(batch ? { meta: { importBatch: batch } } : {}),
   };
 }
 

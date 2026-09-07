@@ -241,7 +241,7 @@ export function ModelSettings({ slug, workspaceId, providers, tasks, secretConfi
         })}
       </section>
 
-      <p className="apm-footnote">
+      <p className="import-footnote">
         Keys are stored on the server and never sent to the browser. <a href={`/w/${slug}/docs/models`}>How this works</a>
       </p>
     </section>

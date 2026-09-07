@@ -101,13 +101,17 @@ export const KNOWLEDGE: DocPage = {
 };
 
 export const LANDING: DocPage = {
-  slug: "landing-zone",
-  title: "The landing zone",
-  summary: "Upload the exports you actually have, work on them where you can see them, and take only what you agree with — reversibly.",
+  slug: "import",
+  title: "Importing data",
+  summary: "Bring in the exports you actually have — of anything, not just applications — decide on a canvas, and take only what you agree with, reversibly.",
   keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match"],
   blocks: [
-    { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. The landing zone takes the files you have, folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change — before anything does." },
-    { kind: "shot", src: "apm-review", alt: "A staged batch of four files with each column's meaning shown and editable, and the objects listed below", caption: "Four files, one review. Every column's meaning is proposed with a reason and can be changed; nothing is in the model yet." },
+    { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. **Import** takes the files you have — applications, servers, interfaces, capabilities, contracts, whatever the data is about — folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change before anything does." },
+    { kind: "note", tone: "why", title: "The canvas is the tool, not the picture", text: "The deciding happens on a board: the batch is laid out in lanes, and **the lane a card is in is the decision**. Drag it into Held and it is held; rename the card and the record is renamed; draw a connector between two cards and the import will make that relation. Four hundred rows in a list is a thing you scroll past — the same four hundred as cards you can sort into piles is a thing two people can settle in an afternoon." },
+    { kind: "shot", src: "import-review", alt: "A staged batch of four files with each column's meaning shown and editable, and the objects listed below", caption: "Four files, one review. Every column's meaning is proposed with a reason and can be changed; nothing is in the model yet." },
+    { kind: "heading", text: "What are these rows?", id: "kind" },
+    { kind: "prose", text: "Most exports never say what they are *of*: a server list is all servers and the file name is the whole of the metadata. So each file is asked, and the answer is proposed with a reason — from a kind column if the rows carry one, from the file name, from your own vocabulary if you already have that kind. Correct it in one place and every row in that file gets it; a row that carries its own kind always keeps it." },
+
     { kind: "heading", text: "What it can read", id: "formats" },
     {
       kind: "table",
@@ -137,21 +141,34 @@ export const LANDING: DocPage = {
         ["Something the export used to list and no longer does", "Tells you. Retired, out of scope, or a filtered export — only you know, and nothing is deleted for you."],
       ],
     },
-    { kind: "heading", text: "Seeing it before taking it", id: "board" },
-    { kind: "prose", text: "**Draw it on a board** lays the whole batch out by what would happen to each object: new, changed, unchanged, held, rejected. Four hundred rows in a list is a thing you scroll past; the same four hundred on a canvas is a thing whose shape you can see. Every card is marked planned, so drawing it creates nothing." },
-    { kind: "shot", src: "apm-board", alt: "The staged batch drawn on a board in lanes for new, changed and held, with hatched planned cards", caption: "The batch as a board. Hatched cards are claims — walk around it, annotate it, put an agent beside it." },
+    { kind: "heading", text: "Deciding on the canvas", id: "board" },
+    { kind: "prose", text: "**Work on the canvas** lays the batch out in lanes by what would happen to each object — new, changed, unchanged, held, rejected — and hands you the board. Every card is marked planned, so nothing here is in the model; the bar at the top counts what the lanes currently say and is where you approve." },
+    { kind: "shot", src: "import-board", alt: "A staged import board with lanes for new, changed, held and rejected, hatched planned cards, and a bar at the top counting what the lanes say", caption: "The lanes are the decision. The bar counts them as you drag, and approves when you are ready." },
+    {
+      kind: "table",
+      columns: ["On the board", "What it means"],
+      rows: [
+        ["Drag a card into another lane", "That is the decision. Held and Rejected are always drawn, even when empty, so every decision is somewhere you can drag to."],
+        ["Rename a card, or set its kind", "The staged record is renamed. Correcting it here beats finding the row in a table of four hundred."],
+        ["Draw a connector between two cards", "The import will create that relation — the one the export forgot."],
+        ["Delete a card", "It is taken out of the import. A redraw will not bring it back."],
+        ["Anything else", "It is an ordinary board: annotate it, put an agent beside it, walk a colleague around it."],
+      ],
+    },
+    { kind: "note", tone: "tip", text: "The board and the batch page are two views of one import — a decision made on either shows up on the other. If you change what a column means afterwards, every record is re-staged; **Redraw the board** lays the cards out again from what the batch now says." },
     { kind: "heading", text: "Approving, and putting it back", id: "approve" },
     {
       kind: "steps",
       steps: [
-        { do: "Work through **Needs you**. Accept, hold or reject each row; a held row is never written.", note: "You can accept the 300 clean rows and keep arguing about the 40 — approving takes whatever is accepted at that moment." },
-        { do: "Approve. New objects are created, matched ones updated, and relations drawn between things that exist." },
+        { do: "Settle what the columns mean, and what the rows are, on the batch page." },
+        { do: "Do the deciding on the canvas — or work through **Needs you** in the list, whichever suits the batch.", note: "You can accept the 300 clean rows and keep arguing about the 40; approving takes whatever is accepted at that moment." },
+        { do: "Approve, from the board or the list. New objects are created, matched ones updated, and relations drawn — including the ones you drew." },
         { do: "Every object it creates records the batch it came from, so “where did this come from” is a query rather than somebody's memory." },
         { do: "**Roll it back** if it was wrong." },
       ],
     },
     { kind: "note", tone: "why", title: "What an honest rollback will not do", text: "It reverts what it wrote and only what it wrote. An object it created is deleted only if nobody has connected anything to it or drawn it on a board since; a field is restored only if it still holds the value the batch put there. Everything it declines to touch is counted and named, because a rollback that quietly leaves half the estate changed is worse than one that admits it cannot finish." },
     { kind: "note", tone: "tip", text: "Re-importing next month's export is an update, not a copy, wherever a source key column was mapped: the key is stored on the object the first time and matched on afterwards, even if the system has been renamed since." },
-    { kind: "try", href: "/w/:slug/apm", label: "Open the landing zone" },
+    { kind: "try", href: "/w/:slug/import", label: "Open import" },
   ],
 };

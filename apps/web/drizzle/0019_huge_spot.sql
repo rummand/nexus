@@ -1,0 +1,1 @@
+ALTER TABLE `import_batches` ADD `board_id` text REFERENCES boards(id);

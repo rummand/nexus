@@ -234,3 +234,91 @@ export function describeRole(role: Role): string {
     case "ignore": return "ignored";
   }
 }
+
+/**
+ * What are these rows *about*?
+ *
+ * Most exports never say. A ServiceNow business-application extract is all applications, a server
+ * list is all servers, and neither carries a column that says so — the file name and the
+ * conversation you had with whoever sent it are the whole of the metadata. Until rev 70 that made
+ * an import a portfolio import: rows without a kind column arrived untyped and somebody typed them
+ * afterwards, one at a time.
+ *
+ * So the file gets a kind, proposed here and settable by a person. It is applied only to rows that
+ * do not carry their own — a real kind column always wins, because it knows more than the filename.
+ *
+ * The rules are deliberately shallow: the workspace's own vocabulary first (if these people call
+ * them "Applications", propose that spelling), then a small built-in list, then nothing. Guessing
+ * harder would produce a confident wrong answer, and the cost of "" is one dropdown.
+ */
+const SINGULAR: Array<[RegExp, string]> = [
+  [/applications?|apps?|business apps?/, "Application"],
+  [/servers?|hosts?|vms?|virtual machines?/, "Server"],
+  [/databases?|dbs?|schemas?/, "Database"],
+  [/interfaces?|integrations?|apis?|feeds?/, "Interface"],
+  [/capabilit(y|ies)/, "Capability"],
+  [/processes|process/, "Process"],
+  [/services?/, "Service"],
+  [/components?/, "Component"],
+  [/data ?(objects?|sets?|entities)/, "Data object"],
+  [/vendors?|suppliers?/, "Vendor"],
+  [/contracts?|licen[cs]es?/, "Contract"],
+  [/sites?|locations?|facilit(y|ies)|substations?/, "Site"],
+  [/devices?|equipment|assets?/, "Device"],
+  [/teams?|departments?|organisations?|organizations?/, "Team"],
+];
+
+export interface KindProposal {
+  /** The kind to give rows that do not carry their own, or "" when nothing is worth guessing. */
+  kind: string;
+  why: string;
+  /** True when the rows carry their own kind and a file-level one would be ignored anyway. */
+  fromRows: boolean;
+}
+
+export function proposeFileKind(
+  fileName: string,
+  headers: string[],
+  rows: string[][],
+  columns: Column[],
+  knownKinds: string[] = [],
+): KindProposal {
+  // A kind column that is actually filled in makes the question moot.
+  const at = columns.findIndex((c) => c.role.as === "kind");
+  if (at >= 0) {
+    const filled = rows.filter((r) => (r[at] ?? "").trim()).length;
+    if (rows.length && filled / rows.length >= 0.5) {
+      const common = mostCommon(rows.map((r) => (r[at] ?? "").trim()).filter(Boolean));
+      return { kind: "", why: `Each row says what it is — “${headers[at]}” is filled in on ${filled} of ${rows.length}${common ? `, mostly “${common}”` : ""}.`, fromRows: true };
+    }
+  }
+
+  const haystack = norm(fileName.replace(/\.[a-z0-9]+$/i, ""));
+  const snap = (guess: string) => knownKinds.find((k) => norm(k) === norm(guess)) ?? guess;
+
+  // The workspace's own words first: if these people already have a kind whose name is in the file
+  // name, use their spelling of it rather than ours.
+  // "Applications" should match a file called "application-list", and vice versa: one trailing s
+  // is the whole of the difference between a kind's name and how somebody writes a filename.
+  const stem = (v: string) => (v.endsWith("s") ? v.slice(0, -1) : v);
+  for (const known of knownKinds) {
+    const word = norm(known);
+    if (word.length > 2 && (haystack.includes(word) || haystack.includes(`${word}s`) || haystack.includes(stem(word)))) {
+      return { kind: known, why: `The file is called “${fileName}”, and this workspace already has ${known} objects.`, fromRows: false };
+    }
+  }
+  for (const [pattern, kind] of SINGULAR) {
+    if (pattern.test(haystack)) return { kind: snap(kind), why: `“${fileName}” reads as a list of ${snap(kind).toLowerCase()} records.`, fromRows: false };
+  }
+  const header = headers.map(norm).join(" ");
+  for (const [pattern, kind] of SINGULAR) {
+    if (pattern.test(header)) return { kind: snap(kind), why: `Nothing in the file name says, but its columns read as ${snap(kind).toLowerCase()} records.`, fromRows: false };
+  }
+  return { kind: "", why: "Nothing here says what these rows are. Say so, or they arrive with no kind and somebody types them later.", fromRows: false };
+}
+
+function mostCommon(values: string[]): string {
+  const counts = new Map<string, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+}

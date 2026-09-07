@@ -4,13 +4,13 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, Info,
-  LayoutGrid, Pause, Undo2, UserRound, X,
+  LayoutGrid, Pause, RefreshCw, Undo2, UserRound, X,
 } from "lucide-react";
-import type { Role } from "@/lib/apm/map";
-import type { Decision } from "@/lib/apm/stage";
-import type { Issue, Severity } from "@/lib/apm/review";
-import type { Change, MatchHow } from "@/lib/apm/match";
-import { approveBatch, createBatchBoard, decideRows, remapBatch, rollbackBatch } from "@/lib/apm/actions";
+import type { Role } from "@/lib/import/map";
+import type { Decision } from "@/lib/import/stage";
+import type { Issue, Severity } from "@/lib/import/review";
+import type { Change, MatchHow } from "@/lib/import/match";
+import { approveBatch, createBatchBoard, decideRows, redrawBatchBoard, remapBatch, rollbackBatch } from "@/lib/import/actions";
 
 /**
  * The review.
@@ -48,6 +48,10 @@ export interface FileView {
   note: string | null;
   rows: number;
   text: string | null;
+  /** What the rows in this file are, when no column says (§5.36). */
+  kind: string;
+  kindWhy: string;
+  kindFromRows: boolean;
   columns: Array<{ header: string; role: Role; label: string; why: string; sample: string[] }>;
 }
 
@@ -71,9 +75,11 @@ const SEVERITY_ICON: Record<Severity, React.ReactNode> = {
 
 type Filter = "questions" | "new" | "changed" | "all";
 
-export function BatchReview({ slug, batch, files, rows, counts, missing, written }: {
+export function BatchReview({ slug, batch, files, rows, counts, missing, written, kinds }: {
   slug: string;
-  batch: { id: string; name: string; status: "staged" | "approved" | "rolled back"; createdAt: string; approvedAt: string | null; includePersonal: boolean };
+  batch: { id: string; name: string; status: "staged" | "approved" | "rolled back"; createdAt: string; approvedAt: string | null; includePersonal: boolean; boardId: string | null };
+  /** The kinds this workspace already uses, so an import speaks its vocabulary rather than ours. */
+  kinds: string[];
   files: FileView[];
   rows: RowView[];
   counts: { total: number; create: number; update: number; unchanged: number; held: number; rejected: number };
@@ -107,6 +113,14 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
     });
   };
 
+  const setKind = (file: string, kind: string) => {
+    start(async () => {
+      const r = await remapBatch(batch.id, { kinds: [{ file, kind }] });
+      if ("error" in r) setMessage(r.error);
+      router.refresh();
+    });
+  };
+
   const setRole = (file: string, header: string, as: string) => {
     const role: Role = as === "attribute" || as === "date" || as === "person"
       ? ({ as, key: header.toLowerCase().replace(/[_\-.]+/g, " ").replace(/\s+/g, " ").trim() } as Role)
@@ -128,20 +142,38 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
           <h1>{batch.name}</h1>
           <p className="roadmap-lede">
             {staged
-              ? "Everything the files claim, folded into one object per thing, matched against what you already have. Work through the questions, then approve — or draw it on a board first and walk around it."
+              ? "Everything the files claim, folded into one object per thing, matched against what you already have. Settle what the columns mean here, then do the deciding on the board — the lanes there are the decision."
               : batch.status === "approved"
                 ? `Approved ${batch.approvedAt ? new Date(batch.approvedAt).toLocaleString() : ""}: ${written.created} created, ${written.updated} changed, ${written.relations} connected. It can still be put back.`
                 : "This batch was approved and then rolled back. What it wrote has been undone, except where somebody had since built on it."}
           </p>
         </div>
         <div className="studio-home-actions">
-          <button type="button" className="ghost-button" disabled={pending} data-draw-batch onClick={() => start(async () => { const r = await createBatchBoard(batch.id); if (r && "error" in r) setMessage(r.error); })}>
-            <LayoutGrid size={15} /> Draw it on a board
+          {staged && batch.boardId && (
+            <button
+              type="button"
+              className="ghost-button"
+              disabled={pending}
+              data-redraw-board
+              title="Lay the cards out again from what the batch now says. An arrangement you made by hand is replaced."
+              onClick={() => start(async () => { const r = await redrawBatchBoard(batch.id); setMessage("error" in r ? r.error : `Board redrawn: ${r.drawn} cards.`); router.refresh(); })}
+            >
+              <RefreshCw size={15} /> Redraw the board
+            </button>
+          )}
+          <button
+            type="button"
+            className={staged ? "primary-home-button" : "ghost-button"}
+            disabled={pending}
+            data-draw-batch
+            onClick={() => start(async () => { const r = await createBatchBoard(batch.id); if (r && "error" in r) setMessage(r.error); })}
+          >
+            <LayoutGrid size={15} /> {batch.boardId ? "Open the board" : "Work on the canvas"}
           </button>
           {staged && (
             <button
               type="button"
-              className="primary-home-button"
+              className={batch.boardId ? "ghost-button" : "primary-home-button"}
               disabled={pending || counts.create + counts.update === 0}
               data-approve-batch
               onClick={() => {
@@ -179,7 +211,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
         </div>
       </header>
 
-      {message && <p className="proposal-bulk-result" data-apm-result>{message}</p>}
+      {message && <p className="proposal-bulk-result" data-import-result>{message}</p>}
       {notes.length > 0 && (
         <details className="proposal-rejected" open>
           <summary>{notes.length} thing{notes.length === 1 ? "" : "s"} the rollback would not touch</summary>
@@ -187,7 +219,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
         </details>
       )}
 
-      <div className="apm-counts" data-apm-counts>
+      <div className="import-counts" data-import-counts>
         <b>{counts.total.toLocaleString()}</b> object{counts.total === 1 ? "" : "s"} staged ·
         <em className="create"> {counts.create} new</em> ·
         <em className="update"> {counts.update} changed</em> ·
@@ -197,24 +229,46 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
         {questions.length > 0 && <em className="question"> · {questions.length} need you</em>}
       </div>
 
-      <section className="apm-files" aria-label="Files in this batch">
+      <datalist id="import-kinds">{kinds.map((k) => <option key={k} value={k} />)}</datalist>
+
+      <section className="import-files" aria-label="Files in this batch">
         {files.map((file) => (
-          <article key={file.name} className="apm-file">
+          <article key={file.name} className="import-file">
             <header>
               {file.text ? <FileText size={14} /> : <FileSpreadsheet size={14} />}
               <strong>{file.name}</strong>
               <i>{file.format}{file.rows ? ` · ${file.rows.toLocaleString()} rows` : ""}</i>
             </header>
-            {file.note && <p className="apm-file-note"><Info size={12} /> {file.note}</p>}
+            {file.note && <p className="import-file-note"><Info size={12} /> {file.note}</p>}
+            {file.text === null && (
+              <div className={`import-file-kind ${file.kind || file.kindFromRows ? "" : "unanswered"}`} data-file-kind={file.name}>
+                <span>What are these rows?</span>
+                {file.kindFromRows ? (
+                  <i>Each row says for itself.</i>
+                ) : (
+                  <>
+                    <input
+                      list="import-kinds"
+                      defaultValue={file.kind}
+                      placeholder="Application, Server, Capability…"
+                      disabled={!staged || pending}
+                      aria-label={`What the rows in ${file.name} are`}
+                      onBlur={(e) => e.target.value.trim() !== file.kind && setKind(file.name, e.target.value)}
+                    />
+                    <small>{file.kindWhy}</small>
+                  </>
+                )}
+              </div>
+            )}
             {file.text !== null ? (
-              <p className="apm-file-prose">
+              <p className="import-file-prose">
                 Prose, not a table. It is kept with the batch; reading it for claims is the intake pipeline&rsquo;s job.
                 <span>{file.text}…</span>
               </p>
             ) : (
-              <div className="apm-columns">
+              <div className="import-columns">
                 {file.columns.map((column) => (
-                  <div key={column.header} className={`apm-column ${column.role.as}`} title={column.why}>
+                  <div key={column.header} className={`import-column ${column.role.as}`} title={column.why}>
                     <b>{column.header}</b>
                     <select
                       value={column.role.as}
@@ -231,7 +285,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
             )}
           </article>
         ))}
-        <label className="apm-personal-toggle">
+        <label className="import-personal-toggle">
           <input
             type="checkbox"
             checked={batch.includePersonal}
@@ -245,7 +299,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
       </section>
 
       {missing.length > 0 && (
-        <section className="apm-missing" data-apm-missing>
+        <section className="import-missing" data-import-missing>
           <h2><AlertTriangle size={14} /> {missing.length} object{missing.length === 1 ? "" : "s"} the source has stopped claiming</h2>
           <p>Nothing is deleted for you. Retired, moved out of scope, or a filtered export — only you know which.</p>
           <ul>{missing.map((m) => <li key={m.name}><strong>{m.name}</strong> {m.message}</li>)}</ul>
@@ -259,38 +313,38 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
       </nav>
 
       {shown.length === 0 ? (
-        <p className="apm-empty">
+        <p className="import-empty">
           {filter === "questions" ? "Nothing here needs a decision. Look through “All” before you approve." : "Nothing in this view."}
         </p>
       ) : (
-        <ol className="apm-rows" data-apm-rows>
+        <ol className="import-rows" data-import-rows>
           {shown.slice(0, 300).map((row) => (
-            <li key={row.id} className={`apm-row ${row.decision}`} data-apm-row={row.id}>
-              <button type="button" className="apm-row-head" onClick={() => setOpen(open === row.id ? null : row.id)} aria-expanded={open === row.id}>
+            <li key={row.id} className={`import-row ${row.decision}`} data-import-row={row.id}>
+              <button type="button" className="import-row-head" onClick={() => setOpen(open === row.id ? null : row.id)} aria-expanded={open === row.id}>
                 <strong>{row.name || "(no name)"}</strong>
-                {row.kind && <i className="apm-kind">{row.kind}</i>}
+                {row.kind && <i className="import-kind">{row.kind}</i>}
                 <Outcome row={row} />
-                <span className="apm-row-sources">{row.sources.join(" + ")}</span>
+                <span className="import-row-sources">{row.sources.join(" + ")}</span>
                 {row.issues.filter((i) => i.severity !== "note").length > 0 && (
-                  <i className="apm-flag">{row.issues.filter((i) => i.severity !== "note").length}</i>
+                  <i className="import-flag">{row.issues.filter((i) => i.severity !== "note").length}</i>
                 )}
               </button>
 
               {open === row.id && (
-                <div className="apm-row-body">
+                <div className="import-row-body">
                   {row.issues.map((issue, i) => (
-                    <p key={i} className={`apm-issue ${issue.severity}`}>{SEVERITY_ICON[issue.severity]} {issue.message}</p>
+                    <p key={i} className={`import-issue ${issue.severity}`}>{SEVERITY_ICON[issue.severity]} {issue.message}</p>
                   ))}
 
                   {row.changes.length > 0 && (
-                    <div className="apm-changes">
+                    <div className="import-changes">
                       {row.changes.map((change) => (
                         <span key={change.key}><b>{change.key}</b> {change.from || "—"} <ArrowRight size={11} /> {change.to}</span>
                       ))}
                     </div>
                   )}
 
-                  <div className="apm-values">
+                  <div className="import-values">
                     {row.attributes.map((attribute) => (
                       <div key={attribute.key} className={attribute.others.length ? "conflict" : ""}>
                         <b>{attribute.key}</b>
@@ -311,18 +365,18 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
                   </div>
 
                   {row.relations.length > 0 && (
-                    <div className="apm-relations">
+                    <div className="import-relations">
                       {row.relations.map((relation, i) => <span key={i}>{relation.kind} <ArrowRight size={10} /> {relation.target}</span>)}
                     </div>
                   )}
 
-                  <p className="apm-provenance">
+                  <p className="import-provenance">
                     {row.rows.map((r) => `${r.source} row ${r.row}`).join(" · ")}
                     {row.key && ` · key ${row.key}`}
                   </p>
 
                   {staged && (
-                    <div className="apm-decide">
+                    <div className="import-decide">
                       {(["accept", "hold", "reject"] as Decision[]).map((decision) => (
                         <button
                           key={decision}
@@ -345,10 +399,10 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
         </ol>
       )}
 
-      {shown.length > 300 && <p className="apm-empty">Showing the first 300 of {shown.length}. Narrow it with the filters above, or draw it on a board.</p>}
+      {shown.length > 300 && <p className="import-empty">Showing the first 300 of {shown.length}. Narrow it with the filters above, or draw it on a board.</p>}
 
       {staged && shown.length > 0 && filter === "questions" && (
-        <div className="apm-bulk">
+        <div className="import-bulk">
           <button type="button" className="ghost-button" disabled={pending} onClick={() => decide(shown.map((r) => r.id), "accept")}>
             <Check size={13} /> Accept all {shown.length} of these
           </button>
@@ -357,17 +411,17 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
           </button>
         </div>
       )}
-      <p className="apm-footnote">
-        Batch {batch.id} · staged {new Date(batch.createdAt).toLocaleString()} · <a href={`/w/${slug}/apm`}>all batches</a>
+      <p className="import-footnote">
+        Batch {batch.id} · staged {new Date(batch.createdAt).toLocaleString()} · <a href={`/w/${slug}/import`}>all batches</a>
       </p>
     </section>
   );
 }
 
 function Outcome({ row }: { row: RowView }) {
-  if (row.decision === "hold") return <i className="apm-outcome held">held</i>;
-  if (row.decision === "reject") return <i className="apm-outcome rejected">rejected</i>;
-  if (row.match.how === "none") return <i className="apm-outcome create">new</i>;
-  if (row.changes.length) return <i className="apm-outcome update">changes {row.changes.length}</i>;
-  return <i className="apm-outcome quiet">unchanged</i>;
+  if (row.decision === "hold") return <i className="import-outcome held">held</i>;
+  if (row.decision === "reject") return <i className="import-outcome rejected">rejected</i>;
+  if (row.match.how === "none") return <i className="import-outcome create">new</i>;
+  if (row.changes.length) return <i className="import-outcome update">changes {row.changes.length}</i>;
+  return <i className="import-outcome quiet">unchanged</i>;
 }

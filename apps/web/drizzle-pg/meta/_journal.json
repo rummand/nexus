@@ -85,6 +85,13 @@
       "when": 1788732800634,
       "tag": "0011_faithful_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788756802667,
+      "tag": "0012_nappy_the_fury",
+      "breakpoints": true
     }
   ]
 }

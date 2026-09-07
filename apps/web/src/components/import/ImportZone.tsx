@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, FileSpreadsheet, FileText, Trash2, Upload } from "lucide-react";
-import { createBatch, deleteBatch } from "@/lib/apm/actions";
+import { createBatch, deleteBatch } from "@/lib/import/actions";
 
 /**
  * Where data arrives.
@@ -31,7 +31,7 @@ const STATUS: Record<BatchSummary["status"], { label: string; className: string 
   "rolled back": { label: "rolled back", className: "undone" },
 };
 
-export function LandingZone({ slug, workspaceId, batches }: { slug: string; workspaceId: string; batches: BatchSummary[] }) {
+export function ImportZone({ slug, workspaceId, batches }: { slug: string; workspaceId: string; batches: BatchSummary[] }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement | null>(null);
   const [chosen, setChosen] = useState<string[]>([]);
@@ -46,7 +46,7 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
     start(async () => {
       const result = await createBatch(data);
       if ("error" in result) { setError(result.error); return; }
-      router.push(`/w/${slug}/apm/${result.id}`);
+      router.push(`/w/${slug}/import/${result.id}`);
     });
   };
 
@@ -66,8 +66,8 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
 
       <form
         ref={form}
-        className="apm-drop"
-        data-apm-upload
+        className="import-drop"
+        data-import-upload
         onSubmit={(e) => { e.preventDefault(); send(); }}
       >
         <label>
@@ -78,17 +78,17 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
             type="file"
             name="files"
             multiple
-            data-apm-files
+            data-import-files
             accept=".csv,.tsv,.tab,.json,.xlsx,.xlsm,.docx,.md,.markdown,.txt,text/*"
             onChange={(e) => setChosen([...(e.target.files ?? [])].map((f) => f.name))}
           />
         </label>
         {chosen.length > 0 && (
-          <div className="apm-chosen">
+          <div className="import-chosen">
             {chosen.map((name) => <em key={name}>{name}</em>)}
           </div>
         )}
-        <div className="apm-drop-actions">
+        <div className="import-drop-actions">
           <button type="submit" className="primary-home-button" disabled={pending || chosen.length === 0}>
             {pending ? "Reading…" : `Stage ${chosen.length || ""} file${chosen.length === 1 ? "" : "s"}`.trim()}
           </button>
@@ -96,7 +96,7 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
             The files are read, folded together and checked against the graph. The graph is not touched.
           </span>
         </div>
-        {error && <p className="form-error" data-apm-error><AlertTriangle size={13} /> {error}</p>}
+        {error && <p className="form-error" data-import-error><AlertTriangle size={13} /> {error}</p>}
       </form>
 
       {batches.length === 0 ? (
@@ -108,16 +108,16 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
           </p>
         </div>
       ) : (
-        <ol className="apm-batches" data-apm-batches>
+        <ol className="import-batches" data-import-batches>
           {batches.map((batch) => (
-            <li key={batch.id} className={`apm-batch ${STATUS[batch.status].className}`} data-batch={batch.id}>
-              <div className="apm-batch-body">
-                <div className="apm-batch-head">
-                  <Link href={`/w/${slug}/apm/${batch.id}`}><strong>{batch.name}</strong></Link>
-                  <i className={`apm-status ${STATUS[batch.status].className}`}>{STATUS[batch.status].label}</i>
+            <li key={batch.id} className={`import-batch ${STATUS[batch.status].className}`} data-batch={batch.id}>
+              <div className="import-batch-body">
+                <div className="import-batch-head">
+                  <Link href={`/w/${slug}/import/${batch.id}`}><strong>{batch.name}</strong></Link>
+                  <i className={`import-status ${STATUS[batch.status].className}`}>{STATUS[batch.status].label}</i>
                   <span>{new Date(batch.createdAt).toLocaleString()}</span>
                 </div>
-                <div className="apm-batch-files">
+                <div className="import-batch-files">
                   {batch.files.map((file) => (
                     <em key={file.name} title={file.format}>
                       {file.prose ? <FileText size={11} /> : <FileSpreadsheet size={11} />}
@@ -132,8 +132,8 @@ export function LandingZone({ slug, workspaceId, batches }: { slug: string; work
                   {batch.status === "rolled back" && " · put back"}
                 </p>
               </div>
-              <div className="apm-batch-actions">
-                <Link className="ghost-button" href={`/w/${slug}/apm/${batch.id}`}>
+              <div className="import-batch-actions">
+                <Link className="ghost-button" href={`/w/${slug}/import/${batch.id}`}>
                   {batch.status === "staged" ? "Review" : <><Check size={13} /> Open</>}
                 </Link>
                 {batch.status === "staged" && (

@@ -5,6 +5,7 @@ import { boards } from "@/db/schema";
 import { migrateDocument, parseDocument, type CanvasDocument } from "@/canvas/document";
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 import { saveBoardDocument } from "@/lib/board-save";
+import { reconcileBoard } from "@/lib/import/sync";
 
 type Params = { params: Promise<{ boardId: string }> };
 
@@ -54,5 +55,11 @@ export async function PUT(req: Request, { params }: Params) {
     );
   }
   await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId }, doc);
+  /*
+   * A staged import board is a working surface, not a drawing (§5.36): its lanes are decisions and
+   * its cards are claims, so saving it writes those decisions back to the batch. Staged cards are
+   * `planned`, so the graph sync above has already ignored them — nothing here reaches the model.
+   */
+  if (doc.meta?.importBatch) await reconcileBoard(db, doc.meta.importBatch, doc);
   return NextResponse.json({ ok: true, updatedAt: result.updatedAt, revision: result.revision });
 }
