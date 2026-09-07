@@ -1,5 +1,5 @@
 import type { Column } from "./map";
-import type { Decision, StagedRecord } from "./stage";
+import type { Decision, ProseClaim, StagedRecord } from "./stage";
 import type { Issue, Reviewed } from "./review";
 import type { Match, Change } from "./match";
 import type { DrawnRelation, RecordOverride } from "./reconcile";
@@ -30,6 +30,13 @@ export interface BatchFile {
   kindFromRows?: boolean;
   /** Prose files are kept whole, for extraction rather than columns. */
   text?: string;
+  /**
+   * What was read out of that prose (§5.38), stored so a re-map re-stages without re-reading —
+   * which matters because reading is the one step in this pipeline that can cost money.
+   */
+  claims?: ProseClaim[];
+  /** One sentence about how it was read and what came out. */
+  claimsNote?: string;
   note?: string;
 }
 

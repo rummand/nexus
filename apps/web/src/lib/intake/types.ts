@@ -46,6 +46,12 @@ export interface Candidate {
   name: string;
   description: string;
   attributes: Record<string, string>;
+  /**
+   * Per attribute, the words that state it (§5.38). Kept apart from the values so the existing
+   * shape is unchanged for everything that only wants the value — and so a reviewer can be shown
+   * the sentence rather than told to trust one.
+   */
+  attributeQuotes?: Record<string, string>;
   confidence: Confidence;
   /** Why the extractor thinks so, in one line. */
   reason: string;

@@ -12,6 +12,13 @@ import { serializeDocument } from "@/canvas/document";
 import { proposeFileKind, proposeMapping } from "./map";
 import { readFile, readPasted } from "./read";
 import { stage, type Decision, type FileInput } from "./stage";
+import { claimsFrom, describeProse } from "./prose";
+import { runPipeline } from "@/lib/intake/pipeline";
+import { parsePassages } from "@/lib/intake/transcript";
+import { extractWithModel } from "@/lib/intake/model";
+import { vocabulary } from "@/lib/intake/vocabulary";
+import { choose } from "@/lib/models/resolve";
+import type { Db } from "@/db/client";
 import { KEY_ATTRIBUTE, type MatchTarget } from "./match";
 import { review } from "./review";
 import { batchDocument } from "./board";
@@ -100,7 +107,17 @@ async function stageBatch(workspaceId: string, files: BatchFile[], origin: Batch
     file.kindFromRows = proposed.fromRows;
   }
 
+  /*
+   * The prose in the batch, read for claims (§5.38).
+   *
+   * Done once, here, and stored on the file: re-mapping a column must not re-read a document,
+   * because reading is the one step in this pipeline that can cost money. A model reads it when one
+   * is configured and the rules read it when not — the same choice intake makes, and the same
+   * validation either way.
+   */
   const db = await getDb();
+  await readProse(db, workspaceId, files);
+
   const user = await currentUser();
   const id = `bat_${nanoid(10)}`;
   const records = stage(tabular(files));
@@ -196,8 +213,43 @@ export async function stageFromServer(workspaceId: string, input: { server: stri
   return stageBatch(workspaceId, [asBatchFile(read)], "connected system", name);
 }
 
+/*
+ * Everything the stager reads, in the batch's own trust order: a table contributes rows, a document
+ * contributes claims, and both are folded into the same records (§5.38). Keeping them in one list
+ * is what makes "put the governance review above the 2019 spreadsheet" an ordinary reorder.
+ */
 const tabular = (files: BatchFile[]): FileInput[] =>
-  files.filter((f) => f.rows.length).map((f) => ({ name: f.name, headers: f.headers, rows: f.rows, columns: f.columns, kind: f.kind }));
+  files
+    .filter((f) => f.rows.length || f.claims?.length)
+    .map((f) => ({ name: f.name, headers: f.headers, rows: f.rows, columns: f.columns, kind: f.kind, claims: f.claims }));
+
+/** Read every prose file in the batch for claims about the objects the tables name. */
+async function readProse(db: Db, workspaceId: string, files: BatchFile[]): Promise<void> {
+  const prose = files.filter((f) => f.text?.trim() && !f.claims);
+  if (!prose.length) return;
+
+  const vocab = await vocabulary(workspaceId);
+  const choice = await choose(db, workspaceId, "intake");
+  for (const file of prose) {
+    const text = file.text ?? "";
+    let read;
+    if (choice) {
+      try {
+        read = await extractWithModel(file.name, parsePassages(text), vocab, choice);
+      } catch {
+        read = undefined; // a model that is down is not a reason to read nothing
+      }
+    }
+    try {
+      const extraction = runPipeline({ name: file.name, text, vocabulary: vocab, read });
+      file.claims = claimsFrom(extraction);
+      file.claimsNote = describeProse(extraction, file.claims);
+    } catch (error) {
+      file.claims = [];
+      file.claimsNote = `It could not be read: ${error instanceof Error ? error.message : "unknown error"}. It is kept with the batch.`;
+    }
+  }
+}
 
 /** Change what a column means, or the trust order, and re-stage from the files we still hold. */
 export async function remapBatch(batchId: string, input: {

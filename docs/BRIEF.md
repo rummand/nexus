@@ -1576,6 +1576,44 @@ All three doors converge on one `stageBatch`, so "paste" cannot quietly become a
 answered this* are different kinds of claim even when the staging is identical.
 
 
+### 5.38 Prose and tables as one pipeline (v0.2)
+
+A batch could contain a Word document and did nothing with it. The file was kept, and the review
+said reading it for claims was the intake pipeline's job — two pipelines side by side for one
+obvious piece of work, because the governance review in the batch is *about* the systems in the
+export sitting next to it.
+
+**The prose in a batch is read for claims and folded into the same records.** Intake's extractor
+(§5.15) runs over each prose file, and what it finds becomes ordinary field values on the staged
+records: same folding by name, same trust order, same conflict display. "Maximo is out of support
+from December" lands on the Maximo record beside the ServiceNow row.
+
+**With the sentence.** A `FieldValue` now carries an optional `quote`, and the review shows it under
+the value. A column's provenance can be the column; a document's has to be the words, or "the
+review says the owner is Grid Ops" is an assertion nobody can check. A claim that cannot be quoted
+never arrives — intake already drops those and reports them.
+
+**The trust order is the file order, still.** A document sits in the same list as the tables: put it
+above the 2019 spreadsheet and it wins; leave it below and its value is kept beside the winner with
+its sentence. That is one mechanism for both kinds of source rather than a special rule for prose.
+
+**A document may introduce an object.** A candidate matching nothing in the batch becomes a staged
+record of its own — the system somebody named in the review that no export has caught up with.
+
+**What it does not take.** Viewpoints — decisions, actions, risks, the things people *said* — are
+not claims about the estate's shape and stay on the intake screen. An import is about what the
+model should contain.
+
+**Reading happens once.** The claims are stored on the batch's file, so re-mapping a column
+re-stages without re-reading: reading is the one step in this pipeline that can cost money.
+
+**And the extractor learned to state values** (`validate-extraction.ts`). Until now a source could
+name an object and quote the sentence, but had nowhere to put what the sentence *said*: "out of
+support from December" was thrown away. An object may now carry `facts` — a key, a value and the
+words that state it — each checked against the passages like every other claim. That is a better
+intake as well as a working import.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1608,7 +1646,7 @@ answered this* are different kinds of claim even when the staging is identical.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-07 — rev 71)
+## 6a. What exists today (v0.2, 2026-09-07 — rev 72)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1857,6 +1895,8 @@ answered this* are different kinds of claim even when the staging is identical.
   deleted; connections that would go nowhere flagged.
 - Each file is asked **what its rows are**, with the answer proposed and settable; a row that
   carries its own kind keeps it.
+- **Prose in a batch is read for claims** and folded into the same records, with the sentence each
+  value came from shown under it, obeying the same trust order as the tables.
 - **Work on the canvas** — the batch laid out in lanes, where the lane a card is in *is* the
   decision. Renaming a card renames the record, drawing a connector adds a relation, deleting a
   card takes it out of the import, and the bar above the board approves.
@@ -2144,6 +2184,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-07 | Asking a connected system lives on the import page; configuring one stays on Connections. | They are different jobs done by different people at different times. Somebody importing today should not have to visit the page where servers and keys are set up, and somebody adding a server should not be shown a staging form. |
 | 2026-09-07 | `search_model` can answer with rows when asked. | Prose is right for a model summarising to a person, which is the usual caller. But a caller that will process the answer should not have to parse bullets, and offering both is what makes one Nexus able to import from another. |
 
+| 2026-09-07 | Prose in a batch is folded into the same records as the tables. | The document in the batch is about the systems in the export. Reading it in a different part of the product and asking a person to reconcile the two by hand is the product refusing to do the obvious thing. |
+| 2026-09-07 | A value read from prose carries the sentence it came from. | A column's provenance can be the column, because anybody can open the file and look at it. A document's cannot: "the review says the owner is Grid Ops" is unarguable without the words, and unarguable claims are how a model stops being believed. |
+| 2026-09-07 | A document takes its place in the trust order like any other file. | It is tempting to give prose a special rule — always wins, never wins, wins for dates. All of those are wrong for somebody. Reordering the files is a gesture people already understand, and it makes the answer theirs. |
+| 2026-09-07 | Viewpoints stay out of import. | A decision somebody took and a risk somebody raised are not claims about the estate's shape. They have a place on the intake screen; putting them in a staged batch would make the import a meeting record. |
+| 2026-09-07 | The extractor may now state values, not only name things. | "Maximo is out of support from December" was being read, quoted, and then discarded because a candidate had nowhere to put a fact. Adding quoted facts to the schema was a smaller change than the workaround, and it improves intake independently of import. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2157,6 +2203,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-07 — Rev 72: prose and tables as one pipeline.** A batch could contain a Word document
+  and did nothing with it — two ingestion pipelines side by side for one obvious job, since the
+  governance review in the batch is *about* the systems in the export next to it. The prose in a
+  batch is now read by intake's extractor and folded into the same staged records: same folding by
+  name, same trust order, same conflict display. "Maximo is out of support from December" lands on
+  the Maximo record beside the ServiceNow row — and **carries its sentence**, because a document's
+  provenance has to be the words. A document takes its place in the file order like any other
+  source, so putting the review above the 2019 spreadsheet is the same gesture as reordering two
+  spreadsheets; below it, its answer is kept beside the winner rather than dropped. It can also
+  introduce an object no export mentioned. Viewpoints — decisions, actions, risks — stay on the
+  intake screen, because an import is about what the model should contain. Reading happens once and
+  is stored, so re-mapping a column never re-reads a document. And the extractor learned to **state
+  values**: an object may carry quoted facts, each checked against the passages, which is what makes
+  the whole thing possible and is a better intake regardless. 4 new unit tests over the fold and the
+  trust order; the e2e checks the document appears as a source of a record the tables created.
 
 - **2026-09-07 — Rev 71: three doors into import.** A file is one of the three ways data actually
   arrives. **Paste** takes a block of anything — its shape worked out from the content, with the

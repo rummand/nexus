@@ -21,6 +21,13 @@ export interface FieldValue {
   /** The file it came from. */
   source: string;
   column: string;
+  /**
+   * The sentence it was read from, when it came out of prose rather than a cell (§5.38).
+   *
+   * A column's provenance is the column; a document's provenance has to be the words, or "the
+   * governance review says the owner is Grid Ops" is an assertion with no way to check it.
+   */
+  quote?: string;
 }
 
 export interface Field {
@@ -36,6 +43,8 @@ export interface StagedRelation {
   target: string;
   source: string;
   column: string;
+  /** The sentence it was read from, for a relation that came out of prose. */
+  quote?: string;
 }
 
 export type Decision = "accept" | "hold" | "reject";
@@ -67,6 +76,25 @@ export interface FileInput {
    * always wins: it knows more than a filename does.
    */
   kind?: string;
+  /**
+   * What was read out of this file's prose, for a document rather than a table (§5.38).
+   *
+   * A prose file contributes claims instead of rows, and they fold into the same records in the
+   * same trust order — so the Word document's sentence about Maximo lands on the Maximo record
+   * beside the ServiceNow row, and whichever file is trusted less keeps its value visibly.
+   */
+  claims?: ProseClaim[];
+}
+
+/** One thing a document says about one object, with the words it says it in. */
+export interface ProseClaim {
+  name: string;
+  kind: string;
+  description: string;
+  attributes: Record<string, { value: string; quote: string }>;
+  relations: Array<{ kind: string; target: string; quote: string }>;
+  /** The extractor's own confidence, kept so a review can weigh a claim nobody has checked. */
+  confidence: string;
 }
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
@@ -84,6 +112,38 @@ export function stage(files: FileInput[], options: { includePersonal?: boolean }
   const order: StagedRecord[] = [];
 
   for (const file of files) {
+    /*
+     * A prose file contributes claims rather than rows, in its own place in the trust order — so
+     * putting the governance review above the 2019 spreadsheet is the same gesture as putting one
+     * spreadsheet above another.
+     */
+    if (file.claims?.length) {
+      for (const claim of file.claims) {
+        const name = claim.name.trim();
+        if (!name) continue;
+        const key = `name:${norm(name)}`;
+        const existing = byName.get(key);
+        const target = existing ?? blank(key, name);
+        if (!existing) order.push(target);
+        byName.set(key, target);
+
+        target.name ||= name;
+        target.kind ||= claim.kind;
+        target.description ||= claim.description;
+        if (!target.sources.includes(file.name)) target.sources.push(file.name);
+
+        for (const [attribute, { value, quote }] of Object.entries(claim.attributes)) {
+          if (!value.trim()) continue;
+          merge(target.attributes, attribute, { value, source: file.name, column: "read from the text", quote });
+        }
+        for (const relation of claim.relations) {
+          if (target.relations.some((r) => r.kind === relation.kind && norm(r.target) === norm(relation.target))) continue;
+          target.relations.push({ kind: relation.kind, target: relation.target, source: file.name, column: "read from the text", quote: relation.quote });
+        }
+      }
+      continue;
+    }
+
     const dayFirst = new Map<string, boolean | null>();
     for (const [i, column] of file.columns.entries()) {
       if (column.role.as === "date") {

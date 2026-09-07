@@ -78,6 +78,38 @@ export function validateExtraction(raw: unknown, passages: Passage[], vocab: Voc
     return mentions;
   };
 
+  /**
+   * Values a source states about an object.
+   *
+   * "Maximo is out of support from December" is a fact about Maximo, not merely a mention of it,
+   * and until §5.38 the extractor threw that away — it could name the object and quote the
+   * sentence but had nowhere to put what the sentence *said*. Import needs it: a document in a
+   * batch is claiming a value the same way a column does.
+   *
+   * The same rule as everything else here: the words have to be somewhere in the source, or the
+   * fact is dropped and reported. A fact nobody can check is an assertion.
+   */
+  const factsFrom = (claimed: unknown, name: string): { values: Record<string, string>; quotes: Record<string, string> } => {
+    if (!Array.isArray(claimed)) return { values: {}, quotes: {} };
+    const facts: Record<string, string> = {};
+    const quotes: Record<string, string> = {};
+    for (const item of claimed.slice(0, 12)) {
+      if (!item || typeof item !== "object") continue;
+      const fact = item as { key?: unknown; value?: unknown; quote?: unknown };
+      const key = norm(str(fact.key, 60));
+      const value = str(fact.value, 200);
+      const quote = str(fact.quote, 400);
+      if (!key || !value) continue;
+      if (![...byId.values()].some((passage) => quoteIsIn(passage, quote))) {
+        rejected.push(`“${name}” ${key}: quoted words that are not in the source`);
+        continue;
+      }
+      facts[key] = value;
+      quotes[key] = quote;
+    }
+    return { values: facts, quotes };
+  };
+
   // ---- objects ------------------------------------------------------------------------------
   const byKey = new Map<string, Candidate>();
   if (Array.isArray(body.objects)) {
@@ -91,12 +123,14 @@ export function validateExtraction(raw: unknown, passages: Passage[], vocab: Voc
       if (mentions.length === 0) { rejected.push(`“${name}”: nothing in the source says so`); continue; }
       const key = keyOf(kind, name);
       if (byKey.has(key)) continue;
+      const facts = factsFrom(o.facts, name);
       byKey.set(key, {
         key,
         kind,
         name,
         description: str(o.description, 400),
-        attributes: {},
+        attributes: facts.values,
+        ...(Object.keys(facts.quotes).length ? { attributeQuotes: facts.quotes } : {}),
         confidence: confidenceOf(o.confidence),
         reason: str(o.why, 200) || "read from the source",
         mentions,
@@ -177,6 +211,21 @@ export const EXTRACTION_SCHEMA = {
           name: { type: "string", description: "What it is called, as the source calls it." },
           kind: { type: "string", description: "Its type. Prefer a kind this workspace already uses." },
           description: { type: "string" },
+          facts: {
+            type: "array",
+            description:
+              "Things the source *states* about it as values: an owner, a lifecycle, an end-of-support date, a criticality. " +
+              "Only what is said, never what is implied, and each one quoted like everything else.",
+            items: {
+              type: "object",
+              properties: {
+                key: { type: "string", description: "What kind of fact, e.g. owner, lifecycle, end of support." },
+                value: { type: "string", description: "The value, as the source gives it." },
+                quote: { type: "string", description: "The words that say so, copied exactly from one of the passages." },
+              },
+              required: ["key", "value", "quote"],
+            },
+          },
           why: { type: "string", description: "One short line on why you believe it exists." },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
           quotes: {

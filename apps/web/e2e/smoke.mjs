@@ -720,6 +720,14 @@ try {
   const files = await page.locator(".import-files").innerText();
   assert.match(files, /application-audit-2019\.xlsx/, "the spreadsheet was read");
   assert.match(files, /architecture-review-q3\.docx/, "…and the Word document came along as prose");
+  /*
+   * Rev 72: the document is read for claims and folded into the same records, so it appears as a
+   * *source* of an object the exports also describe rather than sitting beside the batch unread.
+   * With no model configured the rules read it, which is fewer claims but the same path.
+   */
+  assert.match(files, /read by the (rules|model)/, "the document says how it was read and what came out");
+  const withDoc = await page.locator("[data-import-row]", { hasText: "architecture-review-q3.docx" }).count();
+  assert.ok(withDoc > 0, "what the document says lands on the records the tables created");
   assert.equal(await page.locator(".import-personal-toggle input").isChecked(), false,
     "the columns that name people are excluded until somebody says otherwise");
   // Rev 70: what the rows *are* is part of the import, not something a column has to carry.

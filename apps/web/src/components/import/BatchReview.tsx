@@ -32,7 +32,7 @@ export interface RowView {
   key: string;
   sources: string[];
   rows: Array<{ source: string; row: number }>;
-  attributes: Array<{ key: string; value: string; from: string; others: Array<{ value: string; from: string }> }>;
+  attributes: Array<{ key: string; value: string; from: string; quote?: string; others: Array<{ value: string; from: string; quote?: string }> }>;
   personal: Array<{ key: string; value: string; from: string }>;
   relations: Array<{ kind: string; target: string }>;
   match: { how: MatchHow; name: string; kind: string; alternatives: string[] };
@@ -50,6 +50,8 @@ export interface FileView {
   text: string | null;
   /** What the rows in this file are, when no column says (§5.36). */
   kind: string;
+  /** For a prose file: how it was read, and what came out of it (§5.38). */
+  claimsNote: string | null;
   kindWhy: string;
   kindFromRows: boolean;
   columns: Array<{ header: string; role: Role; label: string; why: string; sample: string[] }>;
@@ -262,7 +264,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
             )}
             {file.text !== null ? (
               <p className="import-file-prose">
-                Prose, not a table. It is kept with the batch; reading it for claims is the intake pipeline&rsquo;s job.
+                {file.claimsNote ?? "Prose, not a table. It is kept with the batch."}
                 <span>{file.text}…</span>
               </p>
             ) : (
@@ -350,8 +352,13 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
                         <b>{attribute.key}</b>
                         <span>{attribute.value}</span>
                         <small>{attribute.from}</small>
+                        {/* A value read from prose shows the sentence: an unquotable claim is an assertion (§5.38). */}
+                        {attribute.quote && <q className="import-quote">{attribute.quote}</q>}
                         {attribute.others.map((other, i) => (
-                          <em key={i} title="Kept, but not written — the file above it in the trust order won">{other.value} · {other.from}</em>
+                          <em key={i} title="Kept, but not written — the file above it in the trust order won">
+                            {other.value} · {other.from}
+                            {other.quote && <q className="import-quote">{other.quote}</q>}
+                          </em>
                         ))}
                       </div>
                     ))}

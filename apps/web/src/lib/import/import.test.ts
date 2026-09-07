@@ -282,3 +282,86 @@ describe("telling a relation from an adjective", () => {
     expect(describeRole(columns[1]!.role)).toBe("relation · depends on");
   });
 });
+
+describe("a document and a table in one batch", () => {
+  /**
+   * The claim this whole unification rests on: a sentence in the governance review lands on the
+   * same record as the row in the export, keeps the words it came from, and loses to a more
+   * trusted file rather than overwriting it.
+   */
+  const table = {
+    name: "servicenow.csv",
+    headers: ["Name", "Owner"],
+    rows: [["Maximo", "Asset Management"], ["SCADA", "Grid Operations"]],
+    columns: [
+      { header: "Name", role: { as: "name" } as const, why: "", sample: [] },
+      { header: "Owner", role: { as: "attribute", key: "owner" } as const, why: "", sample: [] },
+    ],
+  };
+  const review = {
+    name: "review.docx",
+    headers: [],
+    rows: [] as string[][],
+    columns: [],
+    claims: [
+      {
+        name: "Maximo",
+        kind: "Application",
+        description: "",
+        attributes: {
+          "end of support": { value: "2026-12-31", quote: "Maximo is out of support from December." },
+          owner: { value: "Facilities", quote: "Facilities have taken Maximo over." },
+        },
+        relations: [{ kind: "replaced by", target: "SAP PM", quote: "Maximo will be replaced by SAP PM." }],
+        confidence: "medium",
+      },
+      {
+        name: "Meter Data Hub",
+        kind: "Application",
+        description: "The new head-end.",
+        attributes: {},
+        relations: [],
+        confidence: "low",
+      },
+    ],
+  };
+
+  it("folds what a document says onto the record the table created", () => {
+    const [maximo] = stage([table, review]);
+    expect(maximo!.name).toBe("Maximo");
+    expect(maximo!.sources).toEqual(["servicenow.csv", "review.docx"]);
+    expect(maximo!.attributes["end of support"]!.chosen).toMatchObject({
+      value: "2026-12-31",
+      source: "review.docx",
+      quote: "Maximo is out of support from December.",
+    });
+  });
+
+  it("keeps the trust order: the file above wins, and the document's answer is kept beside it", () => {
+    const [maximo] = stage([table, review]);
+    expect(maximo!.attributes.owner!.chosen.value).toBe("Asset Management");
+    expect(maximo!.attributes.owner!.others[0]).toMatchObject({ value: "Facilities", quote: "Facilities have taken Maximo over." });
+
+    // Reorder the files and the document wins instead — the same gesture as reordering two tables.
+    const [first] = stage([review, table]);
+    expect(first!.attributes.owner!.chosen).toMatchObject({ value: "Facilities", source: "review.docx" });
+  });
+
+  it("lets a document introduce an object no export mentioned", () => {
+    const records = stage([table, review]);
+    const introduced = records.find((r) => r.name === "Meter Data Hub");
+    expect(introduced).toBeTruthy();
+    expect(introduced!.kind).toBe("Application");
+    expect(introduced!.sources).toEqual(["review.docx"]);
+  });
+
+  it("carries a relation the document states, with the sentence it stated it in", () => {
+    const [maximo] = stage([table, review]);
+    expect(maximo!.relations[0]).toMatchObject({
+      kind: "replaced by",
+      target: "SAP PM",
+      source: "review.docx",
+      quote: "Maximo will be replaced by SAP PM.",
+    });
+  });
+});

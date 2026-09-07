@@ -4,8 +4,9 @@ import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
+import { vocabulary } from "./vocabulary";
 import * as s from "@/db/schema";
-import { commitExtraction, INTAKE_RECORD_KINDS, type CommitSelection } from "./commit";
+import { commitExtraction, type CommitSelection } from "./commit";
 import { providerById } from "../catalog/providers";
 import { runPipeline } from "./pipeline";
 import { extractWithModel } from "./model";
@@ -13,7 +14,6 @@ import { choose } from "@/lib/models/resolve";
 import { parsePassages } from "./transcript";
 import { detectSourceKind } from "./transcript";
 import type { Extraction } from "./types";
-import type { Vocabulary } from "./extract";
 
 /**
  * Intake actions: add a source, run the pipeline over it, commit what a human accepted.
@@ -30,26 +30,6 @@ async function touched(workspaceId: string) {
   const db = await getDb();
   const [ws] = await db.select({ slug: s.workspaces.slug }).from(s.workspaces).where(eq(s.workspaces.id, workspaceId));
   if (ws) revalidatePath(`/w/${ws.slug}`, "layout");
-}
-
-/** What the workspace already knows, so an extraction links instead of duplicating. */
-async function vocabulary(workspaceId: string): Promise<Vocabulary> {
-  const db = await getDb();
-  const [entities, relations, declaredNodes, declaredRels] = await Promise.all([
-    db.select({ id: s.entities.id, name: s.entities.name, kind: s.entities.kind }).from(s.entities).where(eq(s.entities.workspaceId, workspaceId)),
-    db.select({ kind: s.relations_.kind }).from(s.relations_).where(eq(s.relations_.workspaceId, workspaceId)),
-    db.select({ name: s.nodeTypes.name }).from(s.nodeTypes).where(eq(s.nodeTypes.workspaceId, workspaceId)),
-    db.select({ name: s.relationTypes.name }).from(s.relationTypes).where(eq(s.relationTypes.workspaceId, workspaceId)),
-  ]);
-  const kinds = new Set<string>([...declaredNodes.map((n) => n.name), ...entities.map((e) => e.kind)].filter(Boolean));
-  const relationKinds = new Set<string>([...declaredRels.map((r) => r.name), ...relations.map((r) => r.kind)].filter(Boolean));
-  const records = new Set(INTAKE_RECORD_KINDS.map((k) => k.toLowerCase()));
-  return {
-    // What intake wrote is evidence, not vocabulary — see INTAKE_RECORD_KINDS.
-    entities: entities.filter((e) => !records.has(e.kind.trim().toLowerCase())),
-    kinds: [...kinds],
-    relationKinds: [...relationKinds],
-  };
 }
 
 export async function createSource(input: { workspaceId: string; name: string; text: string; connector: string }) {

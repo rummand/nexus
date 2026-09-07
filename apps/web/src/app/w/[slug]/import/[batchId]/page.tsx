@@ -59,7 +59,8 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
       key,
       value: field.chosen.value,
       from: field.chosen.source,
-      others: field.others.map((o) => ({ value: o.value, from: o.source })),
+      quote: field.chosen.quote,
+      others: field.others.map((o) => ({ value: o.value, from: o.source, quote: o.quote })),
     })),
     personal: Object.entries(row.record.personal).map(([key, field]) => ({ key, value: field.chosen.value, from: field.chosen.source })),
     relations: row.record.relations.map((r) => ({ kind: r.kind, target: r.target })),
@@ -92,6 +93,7 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
         kind: file.kind ?? "",
         kindWhy: file.kindWhy ?? "",
         kindFromRows: Boolean(file.kindFromRows),
+        claimsNote: file.claimsNote ?? null,
         columns: file.columns.map((c) => ({ header: c.header, role: c.role, label: describeRole(c.role), why: c.why, sample: c.sample })),
       }))}
       rows={views}
