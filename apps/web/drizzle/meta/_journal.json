@@ -141,6 +141,13 @@
       "when": 1788756800994,
       "tag": "0019_huge_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1788761408576,
+      "tag": "0020_remarkable_sunspot",
+      "breakpoints": true
     }
   ]
 }

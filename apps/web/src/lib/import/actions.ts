@@ -10,7 +10,7 @@ import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
 import { proposeFileKind, proposeMapping } from "./map";
-import { readFile } from "./read";
+import { readFile, readPasted } from "./read";
 import { stage, type Decision, type FileInput } from "./stage";
 import { KEY_ATTRIBUTE, type MatchTarget } from "./match";
 import { review } from "./review";
@@ -54,48 +54,28 @@ export async function targetsFor(workspaceId: string): Promise<{ targets: MatchT
 }
 
 /**
- * Read the uploaded files and stage them. Nothing is written to the graph.
+ * One way in, three doors.
  *
- * The files are kept whole in the batch, so the mapping can be changed and everything re-staged
- * without asking somebody to upload a 40MB export twice.
+ * Files, a pasted block, or a tool on a system that speaks MCP: all three arrive here as the same
+ * thing — named blobs of table or prose — and are staged identically. The doors differ only in how
+ * the bytes were obtained, and keeping the staging in one function is what stops "paste" quietly
+ * becoming a worse import than "upload".
+ *
+ * Whatever arrives is kept whole in the batch, so the mapping can be changed and everything
+ * re-staged without asking somebody to fetch a 40MB export twice.
  */
-export async function createBatch(form: FormData): Promise<{ id: string } | { error: string }> {
-  const workspaceId = String(form.get("workspaceId") ?? "");
-  const uploads = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (!workspaceId) return { error: "No workspace." };
-  if (!uploads.length) return { error: "Choose at least one file." };
+export type BatchOrigin = "files" | "paste" | "connected system";
 
-  const files: BatchFile[] = [];
-  const failed: string[] = [];
+async function stageBatch(workspaceId: string, files: BatchFile[], origin: BatchOrigin, name?: string): Promise<{ id: string } | { error: string }> {
+  if (!files.length) return { error: "There was nothing readable in that." };
+
   // The names this workspace already knows, so a column of names can be told from a column of
-  // adjectives. The batch's own names are added after the first pass below.
-  const known = new Set((await targetsFor(workspaceId)).targets.map((t) => t.name));
-  for (const upload of uploads.slice(0, 12)) {
-    if (upload.size > MAX_BYTES) { failed.push(`${upload.name} is larger than 12MB`); continue; }
-    try {
-      const read = readFile(upload.name, Buffer.from(await upload.arrayBuffer()));
-      if (read.shape === "table") {
-        files.push({
-          name: read.name,
-          format: read.format,
-          headers: read.headers,
-          rows: read.rows,
-          columns: proposeMapping(read.headers, read.rows),
-          note: read.note,
-        });
-      } else {
-        // Prose is kept for extraction rather than columns (§5.15). It is carried in the batch so
-        // the two halves of an import — a table and the document that explains it — stay together.
-        files.push({ name: read.name, format: read.format, headers: [], rows: [], columns: [], text: read.text, note: read.note });
-      }
-    } catch (error) {
-      failed.push(`${upload.name}: ${error instanceof Error ? error.message : "could not be read"}`);
-    }
-  }
-  if (!files.length) return { error: failed.join("; ") || "None of those files could be read." };
+  // adjectives. The batch's own names are added by the first pass below.
+  const { targets, kinds: vocabulary } = await targetsFor(workspaceId);
+  const known = new Set(targets.map((t) => t.name));
 
   /*
-   * A second pass at the mapping, now that every file has been read.
+   * A second pass at the mapping, now that everything has been read.
    *
    * The first pass found each file's name column; the names in those columns are exactly what tells
    * "Depends on: Data Lake" from "Hosting: on premise". A ServiceNow export that points at systems
@@ -106,7 +86,6 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
     if (at < 0) continue;
     for (const row of file.rows) { const value = (row[at] ?? "").trim(); if (value) known.add(value); }
   }
-  const vocabulary = (await targetsFor(workspaceId)).kinds;
   for (const file of files) {
     if (!file.rows.length) continue;
     file.columns = proposeMapping(file.headers, file.rows, { knownNames: [...known] });
@@ -132,7 +111,8 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
     workspaceId,
     // Named for a list, not a title bar: the file names are on the batch's own page, and a heading
     // four filenames long is a heading nobody reads.
-    name: files.length === 1 ? files[0]!.name : `${files[0]!.name} + ${files.length - 1} more`,
+    name: (name ?? (files.length === 1 ? files[0]!.name : `${files[0]!.name} + ${files.length - 1} more`)).slice(0, 120),
+    origin,
     status: "staged",
     files: JSON.stringify(files),
     review: JSON.stringify(stored),
@@ -143,6 +123,77 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
   });
   await refresh(workspaceId, id);
   return { id };
+}
+
+/** What a read file becomes in a batch: rows to map, or prose to read for claims (§5.15). */
+function asBatchFile(read: ReturnType<typeof readFile>): BatchFile {
+  return read.shape === "table"
+    ? { name: read.name, format: read.format, headers: read.headers, rows: read.rows, columns: proposeMapping(read.headers, read.rows), note: read.note }
+    : { name: read.name, format: read.format, headers: [], rows: [], columns: [], text: read.text, note: read.note };
+}
+
+/** Files somebody uploaded. */
+export async function createBatch(form: FormData): Promise<{ id: string } | { error: string }> {
+  const workspaceId = String(form.get("workspaceId") ?? "");
+  const uploads = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!workspaceId) return { error: "No workspace." };
+  if (!uploads.length) return { error: "Choose at least one file." };
+
+  const files: BatchFile[] = [];
+  const failed: string[] = [];
+  for (const upload of uploads.slice(0, 12)) {
+    if (upload.size > MAX_BYTES) { failed.push(`${upload.name} is larger than 12MB`); continue; }
+    try {
+      files.push(asBatchFile(readFile(upload.name, Buffer.from(await upload.arrayBuffer()))));
+    } catch (error) {
+      failed.push(`${upload.name}: ${error instanceof Error ? error.message : "could not be read"}`);
+    }
+  }
+  if (!files.length) return { error: failed.join("; ") || "None of those files could be read." };
+  return stageBatch(workspaceId, files, "files");
+}
+
+/**
+ * A block somebody pasted.
+ *
+ * The most common thing an architect has is not a file: it is forty rows in a mail, a query result
+ * from somebody's console, a list in a chat message. Making them save it as a CSV first is a step
+ * whose only purpose is to satisfy the import feature.
+ */
+export async function createPastedBatch(workspaceId: string, input: { name: string; text: string }): Promise<{ id: string } | { error: string }> {
+  const text = input.text.slice(0, 4_000_000);
+  if (!text.trim()) return { error: "There is nothing in that." };
+  const name = input.name.trim().slice(0, 80) || "Pasted";
+  let read;
+  try {
+    read = readPasted(name, text);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "That could not be read." };
+  }
+  if (read.shape === "table" && !read.headers.length) return { error: "That has no header row, so there is nothing to map." };
+  return stageBatch(workspaceId, [asBatchFile(read)], "paste", name);
+}
+
+/**
+ * What a connected system answered.
+ *
+ * The tool has already been called and the answer shown (§5.35) — this is the second button, for
+ * an answer that reads as a table. Prose from a server goes to intake, where it is read for
+ * claims; rows go here, where they are mapped and matched. Same discipline either way: nothing a
+ * remote system says reaches the model without a person accepting it.
+ */
+export async function stageFromServer(workspaceId: string, input: { server: string; tool: string; text: string }): Promise<{ id: string } | { error: string }> {
+  const name = `${input.server} · ${input.tool}`.slice(0, 80);
+  let read;
+  try {
+    read = readPasted(name, input.text.slice(0, 4_000_000));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "That could not be read." };
+  }
+  if (read.shape !== "table" || !read.headers.length) {
+    return { error: "That answer does not read as a table. Keep it as a source instead — intake reads prose for claims." };
+  }
+  return stageBatch(workspaceId, [asBatchFile(read)], "connected system", name);
 }
 
 const tabular = (files: BatchFile[]): FileInput[] =>

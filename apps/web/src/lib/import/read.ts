@@ -284,3 +284,47 @@ function* matchAll(text: string, re: RegExp): Generator<RegExpExecArray> {
     if (m.index === rx.lastIndex) rx.lastIndex++;
   }
 }
+
+/**
+ * Read something somebody pasted, or a connected system answered with.
+ *
+ * The same reader, minus the filename. A pasted block has no extension to trust and often no
+ * newline at the end, so the shape is decided from the content alone: JSON if it parses as a list
+ * of objects, a table if the lines share a delimiter, and prose otherwise — which is the honest
+ * answer for the half of what people paste that really is prose.
+ *
+ * The delimiter is chosen by counting rather than by looking at the first line: a CSV whose first
+ * header contains a tab, or a TSV describing values with commas in them, are both common and both
+ * read wrongly by a sniff that stops at the first separator it sees.
+ */
+export function readPasted(name: string, text: string): ReadFile {
+  const body = text.replace(/^\uFEFF/, "").trim();
+  if (!body) return { shape: "text", name, format: "text", text: "" };
+
+  if (body.startsWith("{") || body.startsWith("[")) {
+    try {
+      const table = fromJson(body);
+      if (table.headers.length) return { shape: "table", name, format: "json", ...table };
+    } catch {
+      // Not JSON after all, or JSON that is not a list of records. Fall through and try the rest.
+    }
+  }
+
+  const lines = body.split(/\r?\n/).filter((l) => l.trim()).slice(0, 40);
+  const count = (sep: string) => {
+    const per = lines.map((l) => l.split(sep).length - 1);
+    const first = per[0] ?? 0;
+    // A table is regular: the header's separator count is the one the rows repeat.
+    return first > 0 && per.filter((n) => n === first).length >= Math.max(2, Math.floor(per.length * 0.7)) ? first : 0;
+  };
+  const tabs = count("\t");
+  const commas = count(",");
+  const semis = count(";");
+  const best = Math.max(tabs, commas, semis);
+  if (best > 0 && lines.length > 1) {
+    const sep = tabs === best ? "\t" : commas === best ? "," : ";";
+    return { shape: "table", name, format: sep === "\t" ? "tsv" : "csv", ...delimited(body, sep) };
+  }
+
+  return { shape: "text", name, format: "text", text: body.slice(0, MAX_TEXT) };
+}

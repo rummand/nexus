@@ -1548,6 +1548,34 @@ workspace's own spelling ("Applications" if that is what these people call them)
 that carries its own kind always keeps it: a column knows more than a filename.
 
 
+### 5.37 Three doors into import (v0.2)
+
+Import was a file drop, and a file is only one of the three ways data actually arrives.
+
+**Paste.** The most common thing an architect has is not a file: it is forty rows in a mail, a
+query result from somebody's console, a list in a chat message. Making them save it as a CSV first
+is a step whose only purpose is to satisfy the import feature. A pasted block is sniffed from its
+content rather than a filename — JSON if it parses as a list of records, a table if the lines
+*agree* on a delimiter (counted across the block, because a CSV containing tabs and a TSV
+containing commas are both common and both read wrongly by a sniff that stops at the first
+separator), prose otherwise.
+
+**A connected system.** A system that speaks MCP (§5.35) can be asked from the import page itself:
+pick the system, pick a tool, fill in what it wants, read the answer, stage it. Rows are mapped and
+matched like any import; prose goes to intake instead, and the refusal says so. Configuring servers
+stays on the Connections page — this is the door, not the plumbing.
+
+**And Nexus answers rows when asked.** `search_model` now takes `format: "table"` and returns
+tab-separated rows instead of prose. The default stays prose because the caller is usually a model
+summarising for a person, but "give me that as a table" is a reasonable ask — and it is what lets
+one Nexus import from another. The e2e uses exactly that: it asks this instance's own endpoint for
+its applications as a table and stages them, and every row matches itself as unchanged.
+
+All three doors converge on one `stageBatch`, so "paste" cannot quietly become a worse import than
+"upload". The batch records which door it came through, because *somebody pasted this* and *a CMDB
+answered this* are different kinds of claim even when the staging is identical.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1580,7 +1608,7 @@ that carries its own kind always keeps it: a column knows more than a filename.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-07 — rev 70)
+## 6a. What exists today (v0.2, 2026-09-07 — rev 71)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1818,6 +1846,8 @@ that carries its own kind always keeps it: a column knows more than a filename.
 - Deleting an agent does not erase its record.
 
 ### Import (v0.2)
+- Three ways in: **files**, a **pasted** block (shape sniffed from the content), or a **connected
+  system** — ask a tool on an MCP server from the import page and stage what it answers.
 - `/w/:slug/import`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
   and work on them before anything is written.
 - One object per thing across all the files, with per-field provenance and both values kept where
@@ -2109,6 +2139,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-07 | What a column means stays on the batch page; what happens to an object moves to the board. | They are different kinds of decision. A column's meaning is a property of the file and affects every row; a decision about one object is a property of that object. Putting both on the canvas would make the canvas a form. |
 | 2026-09-07 | Each file is asked what its rows are. | Most exports do not say, and the alternative is four hundred untyped objects and somebody typing them afterwards. Proposing it from the file name in the workspace's own vocabulary makes it one click; a kind column always wins, because it knows more than a filename. |
 
+| 2026-09-07 | Paste is a first-class door, not a convenience. | The most common thing somebody has is forty rows in a mail. Requiring a file makes the product's front door narrower than the data, and "save this as a CSV first" is a step that exists only for us. |
+| 2026-09-07 | A pasted block's delimiter is counted across the block, not sniffed from the first line. | A CSV whose values contain tabs and a TSV whose values contain commas are both ordinary. The separator every line agrees on is the one that is real; the first one seen is a coin toss. |
+| 2026-09-07 | Asking a connected system lives on the import page; configuring one stays on Connections. | They are different jobs done by different people at different times. Somebody importing today should not have to visit the page where servers and keys are set up, and somebody adding a server should not be shown a staging form. |
+| 2026-09-07 | `search_model` can answer with rows when asked. | Prose is right for a model summarising to a person, which is the usual caller. But a caller that will process the answer should not have to parse bullets, and offering both is what makes one Nexus able to import from another. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2122,6 +2157,17 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-07 — Rev 71: three doors into import.** A file is one of the three ways data actually
+  arrives. **Paste** takes a block of anything — its shape worked out from the content, with the
+  delimiter counted across the block rather than guessed from the first line, so a CSV containing
+  tabs is still a CSV. **A connected system** puts the MCP call on the import page itself: pick a
+  system, pick a tool, fill in what it wants, read the answer, stage it; prose goes to intake
+  instead and the refusal says why. And Nexus now answers rows when asked — `search_model` takes
+  `format: "table"` — which is what lets one Nexus import from another, and is how the e2e proves
+  the door: it asks this instance for its own applications as a table, stages them, and every row
+  matches itself. All three doors converge on one staging function, and a batch records which door
+  it came through. 5 new unit tests over the paste sniffing.
 
 - **2026-09-07 — Rev 70: import, and the canvas as the place it happens.** The landing zone was two
   things it should not have been: shaped around application portfolio management, and a table with

@@ -95,6 +95,11 @@ export const TOOLS: Tool[] = [
       {
         query: { type: "string", description: 'What to look for, e.g. kind:Application missing:owner' },
         limit: { type: "number", description: "How many objects to return (default 25, max 100)" },
+        format: {
+          type: "string",
+          enum: ["prose", "table"],
+          description: "prose (default) reads like an answer; table returns tab-separated rows with a header, for a caller that wants to process them",
+        },
       },
       ["query"],
     ),
@@ -103,6 +108,24 @@ export const TOOLS: Tool[] = [
       const limit = Math.min(100, Math.max(1, num(args.limit, 25)));
       const found = await runQuery(ctx.db, ctx.workspaceId, query, limit);
       if (!found.entities.length) return `Nothing in ${ctx.workspaceName} matches ${query}. ${found.explanation}.`;
+
+      /*
+       * Rows, for a caller that is going to do something with them rather than read them.
+       *
+       * The default stays prose because the thing on the other end is usually a model summarising
+       * for a person. But "give me that as a table" is a reasonable ask — and it is what makes one
+       * Nexus able to import from another, or from any system that offers the same courtesy.
+       */
+      if (str(args.format, 20) === "table") {
+        const keys = [...new Set(found.entities.flatMap((e) => Object.keys(e.attributes)))].slice(0, 12);
+        const header = ["id", "kind", "name", "description", ...keys];
+        const clean = (v: string) => v.replace(/[\t\r\n]+/g, " ").trim();
+        const rows = found.entities.map((e) =>
+          [e.id, e.kind, e.name, e.description, ...keys.map((k) => e.attributes[k] ?? "")].map(clean).join("\t"),
+        );
+        return [header.join("\t"), ...rows].join("\n");
+      }
+
       const lines = found.entities.map((e) => {
         const attrs = attrLine(e.attributes);
         return `- ${e.name} [${e.kind || "no kind"}] (${e.id})${e.description ? ` — ${e.description}` : ""}${attrs ? ` {${attrs}}` : ""}`;

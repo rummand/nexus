@@ -687,7 +687,21 @@ try {
   };
   const before = await countEntities();
 
+  // Paste: the most common thing somebody has is not a file (§5.37).
   await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector('[data-door="paste"]', { timeout: 30000 });
+  await page.click('[data-door="paste"]');
+  await page.fill("[data-paste-name]", "Gateways from a mail");
+  await page.fill("[data-paste-text]", "Name\tKind\tOwner\nRTU Gateway North\tDevice\tGrid Operations\nRTU Gateway South\tDevice\tGrid Operations");
+  await page.click("[data-stage-paste]");
+  await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
+  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
+  assert.match(await page.locator("[data-import-counts]").innerText(), /2\s+objects staged/,
+    "a pasted block is staged like a file");
+  await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector("[data-import-batches]");
+  assert.match(await page.locator("[data-import-batches]").innerText(), /paste/i, "…and says it came from a paste");
+
   await page.waitForSelector("[data-import-upload]");
   await page.setInputFiles("[data-import-files]", [
     fixture("servicenow-business-applications.csv"),
@@ -1028,6 +1042,28 @@ try {
   await page.waitForTimeout(1500);
   assert.match(await page.locator("body").innerText(), /over MCP/,
     "what a remote server said arrives as an intake source, not as a change to the model");
+
+  /*
+   * The third door into import (§5.37): ask a connected system for rows and stage them. Asked for
+   * a table, this instance answers its own model back — which matches itself, and is the shortest
+   * honest proof that the round trip works.
+   */
+  await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector('[data-door="server"]', { timeout: 30000 });
+  await page.click('[data-door="server"]');
+  await page.waitForSelector("[data-ask-server]", { timeout: 30000 });
+  await page.selectOption('select[aria-label="Which tool"]', "search_model");
+  await page.fill('[data-arg="query"]', "kind:Application");
+  await page.fill('[data-arg="format"]', "table");
+  await page.click("[data-ask-server]");
+  await page.waitForSelector(".import-server-answer", { timeout: 60000 });
+  assert.match(await page.locator(".import-server-answer pre").innerText(), /^id\tkind\tname/,
+    "asked for a table, it answers with rows");
+  await page.click("[data-stage-answer]");
+  await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
+  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
+  assert.match(await page.locator("[data-import-counts]").innerText(), /unchanged/,
+    "the model imported from itself matches itself");
 
   await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
   await page.waitForSelector("[data-keys]");

@@ -1,0 +1,1 @@
+ALTER TABLE `import_batches` ADD `origin` text DEFAULT 'files' NOT NULL;

@@ -109,6 +109,17 @@ export const LANDING: DocPage = {
     { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. **Import** takes the files you have — applications, servers, interfaces, capabilities, contracts, whatever the data is about — folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change before anything does." },
     { kind: "note", tone: "why", title: "The canvas is the tool, not the picture", text: "The deciding happens on a board: the batch is laid out in lanes, and **the lane a card is in is the decision**. Drag it into Held and it is held; rename the card and the record is renamed; draw a connector between two cards and the import will make that relation. Four hundred rows in a list is a thing you scroll past — the same four hundred as cards you can sort into piles is a thing two people can settle in an afternoon." },
     { kind: "shot", src: "import-review", alt: "A staged batch of four files with each column's meaning shown and editable, and the objects listed below", caption: "Four files, one review. Every column's meaning is proposed with a reason and can be changed; nothing is in the model yet." },
+    { kind: "heading", text: "Three ways in", id: "doors" },
+    {
+      kind: "list",
+      items: [
+        "**Files** — up to twelve at a time, of mixed formats. The usual case.",
+        "**Paste** — a header line and rows, in commas, tabs or semicolons, or a JSON list. The most common thing somebody has is not a file: it is forty rows in a mail or a query result from a console, and saving that as a CSV first is a step whose only purpose is to satisfy an import feature.",
+        "**A connected system** — pick a system that speaks MCP, ask one of its tools, read the answer, and stage it. Prose from a server goes to intake instead, where it is read for claims.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "All three end in the same place: a staged batch, decided on a canvas, approved by a person. The batch remembers which door it came through, because “somebody pasted this” and “a CMDB answered this” are different kinds of claim." },
+
     { kind: "heading", text: "What are these rows?", id: "kind" },
     { kind: "prose", text: "Most exports never say what they are *of*: a server list is all servers and the file name is the whole of the metadata. So each file is asked, and the answer is proposed with a reason — from a kind column if the rows carry one, from the file name, from your own vocabulary if you already have that kind. Correct it in one place and every row in that file gets it; a row that carries its own kind always keeps it." },
 

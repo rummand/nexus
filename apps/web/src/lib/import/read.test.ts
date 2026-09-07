@@ -1,6 +1,6 @@
 import { deflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { decode, delimited, excelDate, formatOf, fromDocx, fromXlsx, readFile } from "./read";
+import { decode, delimited, excelDate, formatOf, fromDocx, fromXlsx, readFile, readPasted } from "./read";
 import { unzip } from "./unzip";
 
 /**
@@ -190,5 +190,47 @@ describe("choosing how to read a file", () => {
     expect(formatOf("dump", Buffer.from("a\tb\n1\t2"))).toBe("tsv");
     expect(formatOf("dump", Buffer.from("a,b\n1,2"))).toBe("csv");
     expect(formatOf("dump", Buffer.from("just some prose about the estate"))).toBe("text");
+  });
+});
+
+describe("what somebody pasted", () => {
+  it("reads a block with a header line as a table, whatever separates it", () => {
+    const csv = readPasted("pasted", "Name,Kind,Owner\nMaximo,Application,Asset Management\nSCADA,Application,Grid Ops");
+    expect(csv.shape).toBe("table");
+    if (csv.shape !== "table") return;
+    expect(csv.headers).toEqual(["Name", "Kind", "Owner"]);
+    expect(csv.rows).toHaveLength(2);
+
+    const tsv = readPasted("pasted", "Name\tOwner\nMaximo\tAsset Management\nSCADA\tGrid Ops");
+    expect(tsv.shape === "table" && tsv.headers).toEqual(["Name", "Owner"]);
+
+    const semi = readPasted("pasted", "Name;Owner\nMaximo;Asset Management\nSCADA;Grid Ops");
+    expect(semi.shape === "table" && semi.headers).toEqual(["Name", "Owner"]);
+  });
+
+  it("counts separators across the block rather than trusting the first one it sees", () => {
+    // A CSV whose values contain tabs would be read as a TSV by a sniff that stops at the first
+    // separator; the regular one is the one every line agrees on.
+    const table = readPasted("pasted", "Name,Description\nMaximo,Work orders\tand permits\nSCADA,Grid control");
+    expect(table.shape === "table" && table.headers).toEqual(["Name", "Description"]);
+  });
+
+  it("reads a JSON list of records", () => {
+    const json = readPasted("pasted", '[{"name":"Maximo","owner":"Asset Management"},{"name":"SCADA","owner":"Grid Ops"}]');
+    expect(json.shape === "table" && json.headers).toEqual(["name", "owner"]);
+  });
+
+  it("calls prose prose rather than forcing it into columns", () => {
+    const prose = readPasted("pasted", "Maximo is out of support from December, and there is no named successor yet.");
+    expect(prose.shape).toBe("text");
+
+    // One line with commas is a sentence, not a table: a table needs rows that agree with a header.
+    const single = readPasted("pasted", "Maximo, SCADA and the Historian are all out of support");
+    expect(single.shape).toBe("text");
+  });
+
+  it("survives an empty paste", () => {
+    const empty = readPasted("pasted", "   \n  ");
+    expect(empty.shape === "text" && empty.text).toBe("");
   });
 });

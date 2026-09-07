@@ -104,7 +104,7 @@ export const CONNECTIONS: DocPage = {
     {
       kind: "list",
       items: [
-        "**search_model** — the workspace's own query language: `kind:Application missing:owner`, `related:Maximo`, or plain words.",
+        "**search_model** — the workspace's own query language: `kind:Application missing:owner`, `related:Maximo`, or plain words. Ask for `format: table` and it answers with tab-separated rows instead of prose, for a caller that will process them.",
         "**describe_object** — one object, its attributes, every relation with direction, the boards it is on, and where the record came from.",
         "**what_depends_on** — everything within N relations, with how far away each thing is.",
         "**list_kinds** — the vocabulary: kinds, attributes and relation types, with counts.",

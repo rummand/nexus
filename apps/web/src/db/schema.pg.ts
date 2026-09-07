@@ -581,6 +581,12 @@ export const importBatches = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /**
+     * How the data arrived: files | paste | connected system. Provenance starts here — "somebody
+     * pasted this" and "a CMDB answered this" are different kinds of claim, and the difference is
+     * worth keeping even though the staging is identical.
+     */
+    origin: text("origin").notNull().default("files"),
     /** staged → approved → rolled back. A batch is never deleted; the record of it is the audit. */
     status: text("status", { enum: ["staged", "approved", "rolled back"] }).notNull().default("staged"),
     /** The files as read: name, format, the proposed mapping, and their rows. */
