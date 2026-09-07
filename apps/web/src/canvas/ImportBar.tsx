@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { AlertTriangle, Check, DownloadCloud, PauseCircle, X } from "lucide-react";
+import { AlertTriangle, Bot, Check, DownloadCloud, PauseCircle, X } from "lucide-react";
 import { approveBatch } from "@/lib/import/actions";
 import { laneCounts } from "@/lib/import/reconcile";
 import { useCanvas } from "./store";
@@ -25,6 +25,14 @@ export function ImportBar({ batchId, slug, status }: { batchId: string; slug: st
    */
   const elements = useCanvas((s) => s.elements);
   const counts = useMemo(() => laneCounts(elements), [elements]);
+  /*
+   * What the agent beside the board has said and nobody has answered (§5.39). It belongs here
+   * rather than only on the agent: the moment it matters is the moment before somebody approves.
+   */
+  const remarks = useMemo(
+    () => Object.values(elements).reduce((n, el) => n + (el.type === "agent" ? (el.remarks?.length ?? 0) : 0), 0),
+    [elements],
+  );
   const saveState = useCanvas((s) => s.saveState);
   const [pending, start] = useTransition();
   const [result, setResult] = useState<string | null>(null);
@@ -69,6 +77,7 @@ export function ImportBar({ batchId, slug, status }: { batchId: string; slug: st
         <em className="hold"><PauseCircle size={11} /> {counts.hold} held</em>
         <em className="reject"><X size={11} /> {counts.reject} rejected</em>
         {counts.loose > 0 && <em className="loose">{counts.loose} outside any lane</em>}
+        {remarks > 0 && <em className="remarks"><Bot size={11} /> {remarks} remark{remarks === 1 ? "" : "s"} to read</em>}
       </span>
       <span className="import-bar-hint">
         Drag a card into another lane to change what happens to it. Nothing is in the model until you approve.

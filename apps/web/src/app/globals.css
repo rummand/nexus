@@ -816,6 +816,7 @@ a { color: inherit; text-decoration: none; }
 .import-bar-counts em.hold { color: #b45309; }
 .import-bar-counts em.reject { color: #b91c1c; }
 .import-bar-counts em.loose { color: #8b96a9; }
+.import-bar-counts em.remarks { background: #eef2ff; border-color: #d7dcfb; color: #4f46e5; }
 .import-bar-hint { color: #9a7b45; flex: 1 1 200px; font-size: 11.5px; min-width: 0; }
 .import-bar .ghost-button, .import-bar .primary-home-button { margin-left: 0; text-decoration: none; }
 .import-bar .primary-home-button { margin-left: auto; }

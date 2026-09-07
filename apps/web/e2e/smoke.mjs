@@ -745,6 +745,11 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 6, null, { timeout: 45000 });
   await page.waitForTimeout(1200);
   assert.match(await page.locator("[data-import-counts]").innerText(), /accepted/, "the board says what its lanes mean");
+  // Rev 73: the board arrives with a reviewer beside it. Waking it needs a model; being there does not.
+  assert.equal(await page.locator("[data-agent]").count(), 1, "a staged board comes with an agent beside it");
+  // The name is an editable field, like a frame's title, so it is read as a value rather than text.
+  assert.equal(await page.locator('[data-agent] input[aria-label="Agent name"]').inputValue(), "Import reviewer",
+    "…pointed at reviewing the import");
 
   const spots = await page.evaluate(() => {
     const centre = (el) => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };

@@ -79,6 +79,32 @@ export function batchDocument(
       `and draw a connector between two cards to add a relation the export missed. Nothing is in the graph until the batch is approved.`,
   });
 
+  /*
+   * An agent beside the import (§5.39).
+   *
+   * A staged batch is the moment where a second opinion is worth most and hardest to get: four
+   * hundred claims, and the person reviewing them has been staring at a spreadsheet for an hour.
+   * So the board comes with an agent already placed and already pointed at the job — it watches the
+   * whole board, which is the lanes and everything in them, and it changes nothing by speaking.
+   *
+   * It is an ordinary board agent (§5.27): same remarks, same "keep as a note", same acceptance
+   * rate in the fleet. What is import-specific is only the sentence it is given, and a person can
+   * rewrite that like any other.
+   */
+  add({
+    id: nanoid(10),
+    type: "agent",
+    x: 880, y: 0, w: 300, h: 168, z: 1,
+    name: "Import reviewer",
+    purpose:
+      "These cards are claims from an import, not the model: the lane each one sits in is what would happen to it. " +
+      "Before a person accepts them, say what you would question. Two cards that look like the same system under two names. " +
+      "A date that has already passed, or one that contradicts another card. A value that disagrees with what the rest of the batch says. " +
+      "Something accepted that reads like test data, a template row or a duplicate. Quote the card you mean.",
+    scope: "board",
+    color: "#4f46e5",
+  });
+
   let y = 150;
   let drawn = 0;
   let summarised = 0;

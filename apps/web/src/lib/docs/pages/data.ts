@@ -179,6 +179,10 @@ export const LANDING: DocPage = {
         ["Anything else", "It is an ordinary board: annotate it, put an agent beside it, walk a colleague around it."],
       ],
     },
+    { kind: "heading", text: "A second opinion, before yours", id: "agent" },
+    { kind: "prose", text: "The staged board arrives with an **Import reviewer** beside it: an ordinary board agent (see *Agents*) whose sentence is written for this job. Wake it and it reads the lanes and everything in them, and says what it would question — two cards that look like the same system under two names, a date that has already passed, a value that disagrees with the rest of the batch, something accepted that reads like test data. Each remark quotes the card it is about, and the bar above the board counts the ones nobody has answered." },
+    { kind: "note", tone: "why", title: "Why here of all places", text: "A staged batch is where a second opinion is worth most and hardest to get: four hundred claims, and whoever is reviewing them has been staring at a spreadsheet for an hour. The agent changes nothing by speaking — it is the same remark-and-answer loop as any board agent, and its acceptance rate shows up in the fleet like everyone else's." },
+
     { kind: "note", tone: "tip", text: "The board and the batch page are two views of one import — a decision made on either shows up on the other. If you change what a column means afterwards, every record is re-staged; **Redraw the board** lays the cards out again from what the batch now says." },
     { kind: "heading", text: "Approving, and putting it back", id: "approve" },
     {

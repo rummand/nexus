@@ -23,6 +23,15 @@ export interface ScopeItem {
   label: string;
   kind: string;
   text: string;
+  /**
+   * The frame this thing sits in, when it sits in one.
+   *
+   * On a board people group by frame and the grouping means something — the OT estate, this
+   * quarter, the pile we have accepted. An agent that cannot see the grouping is reading a list
+   * where a person is reading a picture, and on a staged import (§5.36) the frame *is* the
+   * decision, so an agent blind to it cannot say "you have accepted two of the same thing".
+   */
+  group?: string;
 }
 
 export interface BoardScope {
@@ -123,9 +132,20 @@ export function scopeFromElements(ids: ElementId[], elements: Record<ElementId, 
 }
 
 function gather(chosen: CanvasElement[], all: CanvasElement[]): Omit<BoardScope, "frame"> {
+  // Which frame each thing sits in, by centre — the rule a drag uses, so what the agent is told
+  // matches what the person moving cards around sees.
+  const frames = all.filter((el) => el.type === "frame");
+  const groupOf = (el: CanvasElement): string | undefined => {
+    if (!isBoxElement(el) || el.type === "frame") return undefined;
+    const cx = el.x + el.w / 2;
+    const cy = el.y + el.h / 2;
+    const frame = frames.find((f) => cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + f.h);
+    return frame && frame.type === "frame" ? frame.title.trim() || undefined : undefined;
+  };
+
   const items = chosen
     .filter((el) => READABLE.has(el.type))
-    .map((el) => ({ id: el.id, label: labelOf(el), kind: kindOf(el), text: wordsOf(el) }))
+    .map((el) => ({ id: el.id, label: labelOf(el), kind: kindOf(el), text: wordsOf(el), group: groupOf(el) }))
     .filter((item) => item.text.length > 0)
     .slice(0, MAX_ITEMS);
 
@@ -151,7 +171,7 @@ function contains(outer: BoxElement, inner: BoxElement): boolean {
 
 /** What the agent is shown. Ids are how it points at things, so they are the first thing on a line. */
 export function digestOf(scope: BoardScope): string {
-  const lines = scope.items.map((i) => `${i.id} [${i.kind}] ${i.text}`);
+  const lines = scope.items.map((i) => `${i.id} [${i.kind}]${i.group ? ` (in “${i.group}”)` : ""} ${i.text}`);
   return [
     scope.frame ? `You are watching the frame “${scope.frame}”.` : "",
     `What you can see (${scope.items.length}). Point at things by the id at the start of the line:`,

@@ -1614,6 +1614,31 @@ words that state it — each checked against the passages like every other claim
 intake as well as a working import.
 
 
+### 5.39 An agent beside the import (v0.2)
+
+A staged batch is where a second opinion is worth most and hardest to get: four hundred claims, and
+whoever is reviewing them has been reading a spreadsheet for an hour. So the staged board arrives
+with an **Import reviewer** already placed and already pointed at the job.
+
+It is an ordinary board agent (§5.27) — same remarks, same quoting, same *keep as a note*, same
+acceptance rate in the fleet, and it changes nothing by speaking. What is import-specific is only
+the sentence it is given: these cards are claims and the lane each sits in is what would happen to
+it, so say what you would question before a person accepts them. Two cards that look like the same
+system under two names, a date that has already passed, a value that disagrees with the rest of the
+batch, something accepted that reads like test data. A person can rewrite that sentence like any
+other agent's.
+
+**And board agents learned to see the grouping.** A `ScopeItem` now carries the frame it sits in,
+by the same centre-inside rule a drag uses, and the digest says so. That is not import-specific:
+on any board people group by frame and the grouping means something — the OT estate, this quarter,
+the pile we have accepted. An agent blind to it was reading a list where a person was reading a
+picture. On a staged import it is the difference between "these two are the same system" and "you
+have *accepted* two cards that are the same system".
+
+The bar above the board counts remarks nobody has answered, because the moment they matter is the
+moment before somebody presses Approve.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1646,7 +1671,7 @@ intake as well as a working import.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-07 — rev 72)
+## 6a. What exists today (v0.2, 2026-09-07 — rev 73)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1897,6 +1922,8 @@ intake as well as a working import.
   carries its own kind keeps it.
 - **Prose in a batch is read for claims** and folded into the same records, with the sentence each
   value came from shown under it, obeying the same trust order as the tables.
+- The staged board comes with an **Import reviewer** beside it: wake it and it says what it would
+  question before you accept. The bar counts remarks nobody has answered.
 - **Work on the canvas** — the batch laid out in lanes, where the lane a card is in *is* the
   decision. Renaming a card renames the record, drawing a connector adds a relation, deleting a
   card takes it out of the import, and the bar above the board approves.
@@ -2190,6 +2217,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-07 | Viewpoints stay out of import. | A decision somebody took and a risk somebody raised are not claims about the estate's shape. They have a place on the intake screen; putting them in a staged batch would make the import a meeting record. |
 | 2026-09-07 | The extractor may now state values, not only name things. | "Maximo is out of support from December" was being read, quoted, and then discarded because a candidate had nowhere to put a fact. Adding quoted facts to the schema was a smaller change than the workaround, and it improves intake independently of import. |
 
+| 2026-09-07 | The staged board comes with an agent already on it. | Everywhere else an agent is something you place when you want one. Here the moment of need is known in advance and is exactly the moment somebody is least likely to go and set one up — so it arrives placed, and can be deleted like anything else. |
+| 2026-09-07 | The import reviewer is an ordinary board agent with a different sentence. | A special "import agent" would need its own remarks, its own review loop and its own measure of whether it helps. The sentence is the only part that is import-specific, and keeping it ordinary means it is governed, measured and switch-off-able like the rest of the fleet. |
+| 2026-09-07 | A board agent can see which frame a thing sits in. | People group by frame and the grouping carries meaning; an agent that cannot see it is reading a list where a person is reading a picture. On a staged import the frame *is* the decision, which turns "these two are the same system" into "you have accepted two cards that are the same system". |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2203,6 +2234,19 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-07 — Rev 73: an agent beside the import.** A staged batch is where a second opinion is
+  worth most and hardest to get, so the staged board now arrives with an **Import reviewer** already
+  placed beside the lanes. It is an ordinary board agent — same remarks, same quoting, same "keep as
+  a note", same acceptance rate in the fleet, changes nothing by speaking — with a sentence written
+  for this job: these cards are claims and the lane each sits in is what would happen to it, so say
+  what you would question before a person accepts them. Two cards that look like the same system
+  under two names, a date already past, a value that disagrees with the rest of the batch, something
+  accepted that reads like test data. The bar above the board counts remarks nobody has answered,
+  because that matters most in the moment before Approve. On the way, **board agents learned to see
+  the grouping**: a scope item now carries the frame it sits in, by the same rule a drag uses, which
+  is what turns "these two are the same system" into "you have *accepted* two cards that are the
+  same system" — and helps every board agent, not only this one.
 
 - **2026-09-07 — Rev 72: prose and tables as one pipeline.** A batch could contain a Word document
   and did nothing with it — two ingestion pipelines side by side for one obvious job, since the
