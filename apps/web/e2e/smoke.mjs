@@ -773,13 +773,22 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(600);
   assert.match(await page.locator("[data-import-counts]").innerText(), /1 held/, "the count follows the drag, live");
-  await page.waitForFunction(() => document.body.innerText.includes("Saved"), null, { timeout: 30000 });
-  await page.waitForTimeout(2000);
+  /*
+   * A live board is written down by the room a moment after it goes quiet (§5.40), so the pill
+   * reads "Shared" and there is no client-side save for this test to watch. Poll the batch itself
+   * instead — that it agrees with the board is the claim here, and waiting for the claim beats
+   * waiting for an implementation detail of how the board got saved.
+   */
+  await page.waitForFunction(() => /Saved|Shared/.test(document.body.innerText), null, { timeout: 30000 });
 
-  await page.goto(batchUrl, { waitUntil: "load" });
-  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
-  assert.match(await page.locator("[data-import-counts]").innerText(), /1 held/,
-    "the batch page agrees with the board: the lane was the decision");
+  let agreed = "";
+  for (let i = 0; i < 20 && !/1 held/.test(agreed); i++) {
+    if (i) await page.waitForTimeout(500);
+    await page.goto(batchUrl, { waitUntil: "load" });
+    await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
+    agreed = await page.locator("[data-import-counts]").innerText();
+  }
+  assert.match(agreed, /1 held/, "the batch page agrees with the board: the lane was the decision");
 
   await page.click("[data-approve-batch]"); // a dialog handler is already installed above
   await page.waitForSelector("[data-import-result]", { timeout: 60000 });
@@ -1115,12 +1124,28 @@ try {
         "a live board says it is shared rather than saved — the room is the writer now");
 
       // A card drawn on one screen appears on the other, without either reloading.
+      //
+      // The spot is found rather than guessed: a fixed coordinate on this board lands on the
+      // Graph panel about half the time, and then the test types into a search box and blames
+      // multiplayer for the card that never appeared.
+      const spot = await page.evaluate(() => {
+        const taken = [...document.querySelectorAll("[data-element-id], .inventory-panel, .inspector-panel, .map-card, .zoom-card, .command-bar, .studio-toolbar, .time-scrubber, [data-lens-legend]")]
+          .map((el) => el.getBoundingClientRect());
+        for (let y = 600; y < 820; y += 15) for (let x = 380; x < 1300; x += 15) {
+          if (!taken.some((r) => x > r.x - 15 && x < r.right + 15 && y > r.y - 15 && y < r.bottom + 15)) return { x, y };
+        }
+        return null;
+      });
+      assert.ok(spot, "there is somewhere on the canvas to put a card");
+
       const title = `Live ${Date.now()}`;
-      await page.click(".canvas-viewport", { position: { x: 520, y: 430 } });
+      const beforeLive = await page.locator("[data-element-id]").count();
+      await page.mouse.click(spot.x, spot.y);
       await page.keyboard.press("c");
-      await page.mouse.click(520, 430);
-      await page.waitForTimeout(400);
+      await page.mouse.click(spot.x, spot.y);
+      await page.waitForSelector(".fact-card input:focus", { timeout: 10000 });
       await page.keyboard.type(title);
+      assert.equal(await page.locator("[data-element-id]").count(), beforeLive + 1, "the card really was drawn");
       await second.waitForSelector(`input[value="${title}"]`, { timeout: 15000 });
 
       // …and the caret in that title is a lock on the other screen, not a race for characters.
