@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { lockedBy } from "@/lib/live/protocol";
 import { useCanvas, useCanvasStore } from "../store";
 
 /**
  * Always-editable field inside a canvas object (LeanFlow pattern): typing never needs an
  * "edit mode". Pointer events stop at the field so the object is not dragged while
  * selecting text; the first change after focus records one undo step.
+ *
+ * It is also where the one thing multiplayer cannot merge is handled (§5.40). Positions and
+ * colours merge fine under last-writer-wins; two people typing into one field under the same rule
+ * silently eat each other's characters. So a field somebody else is in becomes read-only and says
+ * whose it is. The lock is presence, not state: it lifts the moment they blur, close the tab or
+ * lose the connection, and there is nothing to release.
  */
 interface Props {
+  /** The object this field belongs to — the unit the lock is taken on. */
+  elementId: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -25,12 +34,13 @@ interface Props {
   list?: string;
 }
 
-export function LiveField({ value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false, active = true, list }: Props) {
+export function LiveField({ elementId, value, onChange, placeholder, className, style, multiline = false, ariaLabel, autoFocus = false, active = true, list }: Props) {
   const store = useCanvasStore();
   // Fields only take input with the select tool; with pan/creation tools they are inert so
   // the canvas receives the pointer (LeanFlow's isInteractiveTarget rule).
   const toolInert = useCanvas((s) => s.tool !== "select" || s.spaceDown);
-  const inert = toolInert || !active;
+  const heldBy = useCanvas((s) => lockedBy(s.peers, elementId));
+  const inert = toolInert || !active || heldBy !== null;
   const dirty = useRef(false);
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   useEffect(() => {
@@ -57,8 +67,14 @@ export function LiveField({ value, onChange, placeholder, className, style, mult
         (e.target as HTMLElement).blur();
       }
     },
-    onFocus: () => { dirty.current = false; },
-    onBlur: () => { dirty.current = false; if (autoFocus) store.getState().startEditing(null); },
+    onFocus: () => { dirty.current = false; store.getState().setFocused(elementId); },
+    onBlur: () => {
+      dirty.current = false;
+      if (autoFocus) store.getState().startEditing(null);
+      // Only give up the lock if it is still ours: tabbing between two fields of one object
+      // fires this blur after the next field's focus.
+      if (store.getState().focusedId === elementId) store.getState().setFocused(null);
+    },
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (!dirty.current) {
         store.getState().pushHistory();
@@ -67,5 +83,13 @@ export function LiveField({ value, onChange, placeholder, className, style, mult
       onChange(e.target.value);
     },
   };
-  return multiline ? <textarea ref={(el) => { ref.current = el; }} {...common} /> : <input ref={(el) => { ref.current = el; }} {...common} list={inert ? undefined : list} />;
+  const field = multiline
+    ? <textarea ref={(el) => { ref.current = el; }} {...common} />
+    : <input ref={(el) => { ref.current = el; }} {...common} list={inert ? undefined : list} />;
+  if (!heldBy) return field;
+  return (
+    <span className="field-held" style={{ ["--held-color" as string]: heldBy.color }} title={`${heldBy.name} is editing this`}>
+      {field}
+    </span>
+  );
 }

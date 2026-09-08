@@ -9,6 +9,8 @@ import { useCanvasInteraction } from "./hooks/useCanvasInteraction";
 import { useWheel } from "./hooks/useWheel";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAutosave } from "./hooks/useAutosave";
+import { useLive } from "./hooks/useLive";
+import { PeerLayer } from "./PeerLayer";
 import { ElementLayer } from "./ElementLayer";
 import { ConnectorLayer } from "./ConnectorLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
@@ -74,6 +76,7 @@ export function Canvas() {
   useWheel(rootRef);
   useKeyboard(true);
   useAutosave();
+  useLive(rootRef);
 
   // The world transform is written straight to the DOM on camera changes so panning and
   // zooming never re-render the React tree (only the culling key below can).
@@ -143,6 +146,7 @@ export function Canvas() {
       )}
 
       {/* screen-space overlays */}
+      <PeerLayer />
       <GuidesOverlay />
       {!presenting && <SelectionOverlay onBeginResize={interaction.beginResize} />}
       {!presenting && <ContextMenu />}

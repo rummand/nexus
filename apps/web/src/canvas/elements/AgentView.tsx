@@ -64,11 +64,12 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
     <div data-element-id={el.id} data-agent className={cls} style={{ left: el.x, top: el.y, width: el.w, height: el.h, zIndex: el.z, "--agent-color": el.color } as CSSProperties}>
       <header className="board-agent-head">
         <span className="board-agent-face" aria-hidden><Bot size={15} /></span>
-        <LiveField active={selected} value={el.name} placeholder="Name this agent" ariaLabel="Agent name" autoFocus={fresh} onChange={(name) => patch({ name })} />
+        <LiveField elementId={el.id} active={selected} value={el.name} placeholder="Name this agent" ariaLabel="Agent name" autoFocus={fresh} onChange={(name) => patch({ name })} />
         {remarks > 0 && <i className="board-agent-count" title={`${remarks} remark${remarks === 1 ? "" : "s"} on this board`}>{remarks}</i>}
       </header>
 
       <LiveField
+        elementId={el.id}
         active={selected}
         multiline
         className="board-agent-purpose"

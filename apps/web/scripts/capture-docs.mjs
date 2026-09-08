@@ -175,6 +175,40 @@ try {
     await page.waitForTimeout(800);
   }, { selector: ".inventory-panel", padding: 10 });
 
+  /*
+   * The one shot that needs two browsers: a screenshot of multiplayer with nobody else on the
+   * board would be a screenshot of an ordinary board. A second context is a second person — its
+   * own cookies, its own stream — and the picture is taken from the first one's screen, which is
+   * where a reader wants to see somebody else's cursor.
+   */
+  let guestContext = null;
+  await shot("board-together", async () => {
+    guestContext = await browser.newContext({ viewport: VIEWPORT });
+    const guest = await guestContext.newPage();
+    /*
+     * The guest opens the board *first*, so the room already exists and already has somebody in it
+     * when the page being photographed joins: its own `hello` carries the peer list, and the
+     * picture does not depend on a broadcast arriving at a stream that is already open.
+     */
+    await guest.goto(`${base}/b/brd_landscape`, { waitUntil: "load", timeout: 180_000 });
+    await guest.waitForSelector("[data-element-id]", { timeout: 180_000 });
+    await guest.waitForTimeout(1500);
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForSelector(".peer-chip", { timeout: 90_000 });
+    // The guest takes hold of a card and puts their pointer beside it, so the picture shows what
+    // the page is about: their selection, their cursor, and the field they have locked.
+    await guest.locator(".fact-card").nth(1).click();
+    await guest.locator(".fact-card").nth(1).locator("input.fact-title").click();
+    await guest.mouse.move(700, 420);
+    await guest.mouse.move(720, 440);
+    await page.waitForSelector(".peer-cursor", { timeout: 30_000 });
+    // Long enough for the dev server's compile badge to go: this shot opens a second context and
+    // a route or two with it, and a "Compiling…" pill in the corner of the documentation is the
+    // sort of thing a reader notices and nobody who took the picture does.
+    await page.waitForTimeout(4000);
+  }, { settle: 1500 });
+  if (guestContext) await guestContext.close();
+
   await shot("board-lens-impact", async () => {
     await goto("/b/brd_integrations", "[data-element-id]");
     await page.waitForTimeout(1500);

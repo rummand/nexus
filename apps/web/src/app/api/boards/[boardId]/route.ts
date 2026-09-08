@@ -6,6 +6,7 @@ import { migrateDocument, parseDocument, type CanvasDocument } from "@/canvas/do
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 import { saveBoardDocument } from "@/lib/board-save";
 import { reconcileBoard } from "@/lib/import/sync";
+import { boardChangedElsewhere } from "@/lib/live/room";
 
 type Params = { params: Promise<{ boardId: string }> };
 
@@ -61,5 +62,11 @@ export async function PUT(req: Request, { params }: Params) {
    * `planned`, so the graph sync above has already ignored them — nothing here reaches the model.
    */
   if (doc.meta?.importBatch) await reconcileBoard(db, doc.meta.importBatch, doc);
+  /*
+   * A tab that is not on the live channel just wrote the whole document (§5.40) — an old client,
+   * a blocked stream, a script. Anybody who *is* live is holding a room that no longer matches the
+   * database, so hand them this document rather than letting the next patch overwrite the write.
+   */
+  await boardChangedElsewhere(boardId, doc);
   return NextResponse.json({ ok: true, updatedAt: result.updatedAt, revision: result.revision });
 }

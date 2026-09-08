@@ -221,8 +221,15 @@ try {
   await page.click(".panel-tabs button:has-text('Inventory')");
 
   // autosave + reload
-  await page.waitForTimeout(1500);
-  assert.ok(saves >= 1, "autosave issued a PUT");
+  /*
+   * Two ways a board saves itself now (§5.40): this tab PUTs its document, or — when the live
+   * channel is up — the room on the server writes it once the board goes quiet, and this tab
+   * deliberately does not PUT at all. Which one ran is an implementation detail; that the board
+   * survives a reload is the promise, and that is the assertion below.
+   */
+  await page.waitForTimeout(2500);
+  const shared = /Shared/.test(await page.locator(".sync-pill").first().innerText().catch(() => ""));
+  assert.ok(shared || saves >= 1, "the board saved itself — by the room when live, by a PUT when not");
   await page.reload({ waitUntil: "load" });
   await page.locator(`[data-element-id="${noteId}"]`).waitFor({ timeout: 10000 });
   assert.equal(await page.locator(`[data-element-id="${noteId}"] input`).first().inputValue(), TEXT, "note persisted across reload");
@@ -1084,6 +1091,63 @@ try {
   await page.click("[data-revoke]");
   await page.waitForTimeout(1200);
   assert.equal((await rpc({ jsonrpc: "2.0", id: 5, method: "tools/list" })).status, 401, "a revoked key stops being answered");
+
+  // ---- two people on one board ---------------------------------------------------------------
+  /*
+   * The only check in this suite that needs a second browser, and the only way to test the
+   * feature at all: a second context is a second client with its own cookies, its own stream and
+   * its own copy of the document. Everything asserted here is asserted on the *other* screen.
+   */
+  {
+    const other = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const second = await other.newPage();
+    try {
+      const board = `${base}/b/brd_landscape`;
+      await page.goto(board, { waitUntil: "load" });
+      await page.waitForSelector("[data-element-id]");
+      await second.goto(board, { waitUntil: "load" });
+      await second.waitForSelector("[data-element-id]");
+
+      // The stream is up on both, and each can see that somebody else is here.
+      await page.waitForSelector(".peer-chip", { timeout: 15000 });
+      await second.waitForSelector(".peer-chip", { timeout: 15000 });
+      assert.match(await page.locator(".sync-pill").first().innerText(), /Shared/,
+        "a live board says it is shared rather than saved — the room is the writer now");
+
+      // A card drawn on one screen appears on the other, without either reloading.
+      const title = `Live ${Date.now()}`;
+      await page.click(".canvas-viewport", { position: { x: 520, y: 430 } });
+      await page.keyboard.press("c");
+      await page.mouse.click(520, 430);
+      await page.waitForTimeout(400);
+      await page.keyboard.type(title);
+      await second.waitForSelector(`input[value="${title}"]`, { timeout: 15000 });
+
+      // …and the caret in that title is a lock on the other screen, not a race for characters.
+      const held = second.locator(".field-held input").first();
+      await held.waitFor({ timeout: 10000 });
+      assert.notEqual(await held.getAttribute("readonly"), null,
+        "a field somebody else is typing in is read-only for everybody else");
+
+      // Presence draws where they are and what they have hold of.
+      await page.mouse.move(600, 380);
+      await page.mouse.move(640, 400);
+      await second.waitForSelector(".peer-cursor", { timeout: 10000 });
+      assert.ok((await second.locator(".peer-hold").count()) > 0, "the other screen shows what they have selected");
+
+      // Leaving takes the presence with it: no ghosts, and no lock left behind.
+      await other.close();
+      await page.waitForFunction(() => document.querySelectorAll(".peer-chip").length === 0, null, { timeout: 15000 });
+      assert.equal(await page.locator(".field-held").count(), 0, "the lock goes when the person does");
+
+      // The room wrote it down on the way out, so a reload finds the card in the database.
+      await page.waitForTimeout(2500);
+      await page.reload({ waitUntil: "load" });
+      await page.waitForSelector(`input[value="${title}"]`, { timeout: 15000 });
+    } finally {
+      await other.close().catch(() => undefined);
+    }
+  }
 
   // ---- the documentation -------------------------------------------------------------------
   await page.goto(`${base}/w/acme-energy/docs`, { waitUntil: "load" });

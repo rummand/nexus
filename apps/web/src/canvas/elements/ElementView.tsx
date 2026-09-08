@@ -73,9 +73,9 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
       <RemarkBadge id={el.id} />
       <span className="fact-kind">
         <i />
-        <LiveField active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" list="nexus-kinds" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
+        <LiveField elementId={el.id} active={selected} value={el.kind} placeholder="Kind (e.g. Application)" ariaLabel="Card kind" list="nexus-kinds" onChange={(kind) => patch({ kind, color: cardColorForKind(kind) === "#1376d4" && el.color !== "#1376d4" ? el.color : cardColorForKind(kind) })} />
       </span>
-      <LiveField active={selected} className="fact-title" value={el.title} placeholder="Name" ariaLabel="Card title" autoFocus={fresh} onChange={(title) => patch({ title })} list="nexus-entities" />
+      <LiveField elementId={el.id} active={selected} className="fact-title" value={el.title} placeholder="Name" ariaLabel="Card title" autoFocus={fresh} onChange={(title) => patch({ title })} list="nexus-entities" />
       {linkCandidate && (
         <button type="button" className="fact-link-suggest" data-link-suggest onPointerDown={(e) => e.stopPropagation()} onClick={() => linkTo(linkCandidate)} title="Use the existing entity instead of creating a duplicate">
           ⇄ Link to existing {linkCandidate.kind || "entity"} “{linkCandidate.name}”
@@ -89,7 +89,7 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
           {Object.keys(el.attributes).length > 3 && <span className="lifecycle-chip">+{Object.keys(el.attributes).length - 3}</span>}
         </div>
       )}
-      <LiveField active={selected} className="fact-desc" multiline value={el.description} placeholder="Description" ariaLabel="Card description" onChange={(description) => patch({ description })} style={{ flex: 1 }} />
+      <LiveField elementId={el.id} active={selected} className="fact-desc" multiline value={el.description} placeholder="Description" ariaLabel="Card description" onChange={(description) => patch({ description })} style={{ flex: 1 }} />
     </div>
   );
 }
@@ -100,8 +100,8 @@ function NoteView({ el, selected, fresh }: { el: StickyElement; selected: boolea
     <div data-element-id={el.id} className={selected ? "board-object impact-note selected" : "board-object impact-note"} style={boxStyle(el, { "--note-color": el.color } as CSSProperties)}>
       <RemarkBadge id={el.id} />
       <span>Note</span>
-      <LiveField active={selected} className="impact-note-title-input" value={el.title} placeholder="Title" ariaLabel="Note title" autoFocus={fresh} onChange={(title) => patch({ title })} />
-      <LiveField active={selected} className="impact-note-body-input" multiline value={el.text} placeholder="Write a note…" ariaLabel="Note body" onChange={(text) => patch({ text })} />
+      <LiveField elementId={el.id} active={selected} className="impact-note-title-input" value={el.title} placeholder="Title" ariaLabel="Note title" autoFocus={fresh} onChange={(title) => patch({ title })} />
+      <LiveField elementId={el.id} active={selected} className="impact-note-body-input" multiline value={el.text} placeholder="Write a note…" ariaLabel="Note body" onChange={(text) => patch({ text })} />
     </div>
   );
 }
@@ -112,10 +112,10 @@ function TextBlockView({ el, selected, fresh }: { el: TextElement; selected: boo
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--text-block-color": el.color } as CSSProperties)}>
       <div className="board-text-block-title">
-        <LiveField active={selected} value={el.title} placeholder={el.variant === "section" ? "Section title" : "Title"} ariaLabel="Title" autoFocus={fresh} onChange={(title) => patch({ title })} />
+        <LiveField elementId={el.id} active={selected} value={el.title} placeholder={el.variant === "section" ? "Section title" : "Title"} ariaLabel="Title" autoFocus={fresh} onChange={(title) => patch({ title })} />
         <span>{el.variant}</span>
       </div>
-      <LiveField active={selected} multiline value={el.text} placeholder={el.variant === "section" ? "Describe this section…" : "Write text…"} ariaLabel="Body" onChange={(text) => patch({ text })} />
+      <LiveField elementId={el.id} active={selected} multiline value={el.text} placeholder={el.variant === "section" ? "Describe this section…" : "Write text…"} ariaLabel="Body" onChange={(text) => patch({ text })} />
     </div>
   );
 }
@@ -152,7 +152,7 @@ function FrameView({ el, selected }: { el: FrameElement; selected: boolean }) {
       <div className="board-frame-edge" style={{ left: 0, top: 0, bottom: 0, width: edge, cursor: "move" }} />
       <div className="board-frame-edge" style={{ right: 0, top: 0, bottom: 0, width: edge, cursor: "move" }} />
       <div className="board-frame-titlebar">
-        <LiveField active={selected} value={el.title} placeholder="Frame" ariaLabel="Frame title" onChange={(title) => patch({ title })} style={{ width: `${Math.max(6, el.title.length + 1)}ch`, maxWidth: 320 }} />
+        <LiveField elementId={el.id} active={selected} value={el.title} placeholder="Frame" ariaLabel="Frame title" onChange={(title) => patch({ title })} style={{ width: `${Math.max(6, el.title.length + 1)}ch`, maxWidth: 320 }} />
         <span>#{order}</span>
         <button type="button" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); const i = FRAME_COLORS.indexOf(el.color as (typeof FRAME_COLORS)[number]); store.getState().updateElements({ [el.id]: { color: FRAME_COLORS[(i + 1) % FRAME_COLORS.length] } }, { history: true }); }}>Color</button>
         <button type="button" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); store.getState().focusElement(el.id); }}>Focus</button>

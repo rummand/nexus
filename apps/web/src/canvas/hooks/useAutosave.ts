@@ -13,6 +13,13 @@ const DEBOUNCE_MS = 800;
  * meantime the server answers 409 and we stop: retrying would only overwrite their work with
  * ours a few seconds later. That is a terminal state for this tab — the topbar says so and the
  * only honest fix is a reload, because we have no merge.
+ *
+ * **Unless the board is live** (§5.40). When the shared channel is up, the room on the server owns
+ * the document and writes it down once the board goes quiet, so a client that also PUT its whole
+ * document would be racing the room with a stale copy and re-running the graph sync for every
+ * person in the session. So this stands down while `live` is true, and comes straight back if the
+ * stream drops — which makes a blocked or failed stream degrade to exactly the behaviour above
+ * rather than to a board that quietly stops saving.
  */
 export function useAutosave() {
   const store = useCanvasStore();
@@ -25,6 +32,12 @@ export function useAutosave() {
     const save = async (keepalive = false) => {
       if (stopped.current) return;
       const s = store.getState();
+      // The room is the writer while anybody is live on this board.
+      if (s.live) {
+        lastSavedRevision.current = s.revision;
+        if (s.saveState !== "saved") s.setSaveState("saved");
+        return;
+      }
       const revision = s.revision;
       if (revision === lastSavedRevision.current) return;
       s.setSaveState("saving");
@@ -64,6 +77,8 @@ export function useAutosave() {
 
     const unsub = store.subscribe((state, prev) => {
       if (state.revision !== prev.revision) schedule();
+      // Coming off the live channel with unsent work: save it the old way, now.
+      if (prev.live && !state.live && state.revision !== lastSavedRevision.current) schedule();
     });
 
     const onHide = () => {

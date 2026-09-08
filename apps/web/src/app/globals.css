@@ -2709,3 +2709,63 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 @media (prefers-reduced-motion: reduce) {
   .fact-card, .fact-card.change-added, .fact-change-badge { animation: none; transition: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Two people on one board (§5.40)
+
+   Everything here is presence, so everything here is above the canvas and takes
+   no pointer events: a colleague's cursor must never be a thing you can click.
+   --------------------------------------------------------------------------- */
+.peer-layer { inset: 0; pointer-events: none; position: absolute; z-index: 6; }
+
+/* What somebody else has hold of. Deliberately quieter than your own selection —
+   it is information, not a handle. */
+.peer-hold {
+  border: 1.5px solid;
+  border-radius: 10px;
+  opacity: 0.75;
+  position: absolute;
+  transition: left 90ms linear, top 90ms linear, width 90ms linear, height 90ms linear;
+}
+
+.peer-cursor { position: absolute; transform: translate(-2px, -2px); }
+.peer-cursor svg { display: block; filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35)); }
+.peer-cursor b {
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  left: 14px;
+  letter-spacing: 0.01em;
+  padding: 2px 6px;
+  position: absolute;
+  top: 12px;
+  white-space: nowrap;
+}
+
+/* Who is here, in the topbar. */
+.peer-chips { align-items: center; display: flex; padding-right: 6px; }
+.peer-chip {
+  align-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  height: 24px;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  margin-right: -6px;
+  width: 24px;
+}
+.peer-chip.more { background: #94a3b8; }
+
+/* A field somebody else is in. Read-only, and says so by colour rather than by a
+   dialog: the lock lasts as long as their caret does. */
+.field-held { display: block; position: relative; }
+.field-held > input, .field-held > textarea {
+  background: color-mix(in srgb, var(--held-color) 8%, transparent) !important;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--held-color) 55%, transparent);
+  cursor: not-allowed;
+}

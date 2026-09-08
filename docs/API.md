@@ -34,6 +34,30 @@ The client autosaves with a debounce and flushes on tab hide / unload (`useAutos
 Auto checkpoints are taken at most every 10 minutes while editing and pruned to the last 30;
 manual and pre-restore checkpoints are kept.
 
+## Live boards (`/api/boards/:boardId/live`)
+
+Two people on one board (§5.40). Server-sent events down, ordinary POSTs up — no WebSocket, so
+nothing in front of the app has to carry an upgrade.
+
+| Method | Body | Returns |
+|---|---|---|
+| GET | — | `text/event-stream`. First an `event: peer` frame carrying `{ peerId }`, then a `hello` (`{ seq, elements, peers }`), then `patch` (`{ seq, from, patch }`), `presence` (`{ peers }`) and `resync` (`{ seq, elements }`) messages until the connection closes. A comment line every 25s keeps proxies from calling it idle. |
+| POST | `{ kind: "patch", patch }`, `{ kind: "doc", parts }` or `{ kind: "presence", cursor?, selection?, editing? }`, with the peer id in `x-nexus-peer` | `204`, or `409 { reconnect: true }` when that peer has no open stream. |
+
+A `patch` is `{ upsert?: { [id]: element }, remove?: id[] }` — whole elements, so per-element
+last-writer-wins is exact. The server applies patches in arrival order, numbers each one, relays it
+to everybody except the sender, and writes the board down once it goes quiet, through the same save
+path a `PUT` takes. While a board is live its clients do not `PUT`; a `PUT` that arrives anyway
+(an old client, a blocked stream, a script) is relayed to them as a `resync`.
+
+`parts` carries the document's non-element halves — `viewpoints` and `script` — whole-value rather
+than as a delta, because a list of saved views and a block of prose have no useful finer grain.
+They need their own message: while a board is live the client has stopped PUTing, so a viewpoint
+saved during the session would otherwise never be written down.
+
+Presence is never persisted: `cursor` is in world coordinates, `editing` is the element whose text
+that person has focused, and everything they hold disappears when their stream closes.
+
 ## Knowledge graph
 
 | Method | Route | Body | Returns |

@@ -1003,14 +1003,14 @@ milestone made of several.
 ### 5.23 Documentation, in the product (v0.2)
 
 Nexus had accumulated a lot of screens and no explanation of any of them. **Documentation** is now
-a menu item: twenty-seven pages written for the person doing the architecture rather than the person
+a menu item: twenty-eight pages written for the person doing the architecture rather than the person
 who built the tool, in the order somebody would actually learn it — draw something, understand what
 it did, then the model, then the agents, then getting data in, then time.
 
 Three decisions make it worth having rather than another README nobody opens.
 
 **It is illustrated from the product itself.** `scripts/capture-docs.mjs` starts a server and a
-database of its own, drives the seeded demo through a real browser and writes forty screenshots
+database of its own, drives the seeded demo through a real browser and writes forty-one screenshots
 into `public/docs`, which are committed. A name on the command line narrows a run to the shots a
 change made stale, which is what makes re-capturing a habit rather than an afternoon. Each one is cropped to the page's own content: the
 workspace navigation is identical on every screen, and repeating it in thirty pictures spends the
@@ -1643,6 +1643,63 @@ The bar above the board counts remarks nobody has answered, because the moment t
 moment before somebody presses Approve.
 
 
+### 5.40 Two people on one board (v0.2)
+
+Until now the honest answer to "we both opened it" was to refuse the second save: **Changed
+elsewhere — reload.** That was the right answer to the question as it stood — there was no merge,
+and silently overwriting somebody is worse than telling them — but it was the wrong question. An
+architecture canvas is a thing two people stand in front of. The fix was to be able to merge, not
+to apologise better.
+
+**The document's shape is what makes the merge small.** A board is a map of flat objects: nothing
+nests, nothing is ordered, every field is a value. So the rule is per-element last-writer-wins,
+ordered by the server. Two people moving different cards both land, and their patches commute. Two
+people moving the same card is a *real* conflict, not a merge failure, and the later one winning is
+the only sensible answer — what the server adds is that "later" means something, rather than being
+whoever's network was quicker. No CRDT, no operational transform, no vendor: a hundred lines of
+protocol and a diff of the element map.
+
+**Except text, which is not merged at all.** Last-writer-wins on a field two people are typing into
+eats characters, and the product looks like it lost your work. So a field somebody is in is locked:
+it turns their colour and goes read-only for everybody else. That is a smaller promise honestly
+kept instead of a large one quietly broken — and the lock is *presence*, not state, so it lifts the
+moment they blur, close the tab or lose the connection. There is nothing to release and nothing
+that can get stuck.
+
+**Server-sent events, not WebSockets.** One `GET /api/boards/:id/live` that never ends, and small
+`POST`s back on the same URL. The customers are enterprises, and corporate proxies, TLS gateways
+and older load balancers break WebSocket upgrades constantly and silently — the failure mode being
+"the canvas is dead for the one team behind the strict proxy". SSE is plain HTTP: no upgrade, no
+custom server, nothing added to the Dockerfile or the health check. The cost is one extra request
+per edit, which for a canvas is nothing.
+
+**The room is the writer.** While anybody is live, a per-board room on the server holds the
+document, applies patches in arrival order and persists once the board goes quiet — through exactly
+the ordinary save path, so the automatic checkpoint, the graph sync and the import reconcile all
+run as they would for one person. Clients stop PUTing, which is what stops N tabs racing each other
+with N whole documents and N graph syncs. When the stream drops, the client's own autosave comes
+straight back, so a blocked stream degrades to the pre-multiplayer behaviour rather than to a board
+that quietly stops saving.
+
+**Not everything in a document is an element.** Saved viewpoints and the Compose script belong to
+the board but are not on the canvas, so they cannot ride an element patch — and once the client
+stops saving, a viewpoint saved during a shared session would simply never be written down. They
+travel as their own message, whole-value last-writer-wins, which is the right grain for a list of
+saved views and a block of prose. The browser suite found this one before a person did: it reopened
+a Compose-written board and the script that produced it was gone.
+
+**And the board can now be told it changed underneath.** Approving an import, restoring a version
+and deleting a relation all rewrite a board from outside the canvas. Each now hands the live room
+the new document, and everybody standing on it simply sees it. That was the other case that used to
+need a reload.
+
+What you see: coloured cursors in world coordinates (so a colleague zoomed out is pointing at the
+same *card*, not the same bit of glass), a thin outline round what each person has selected,
+initials in the topbar, and **Shared** where the pill used to say *Saved*. Undo stays personal —
+a remote change never lands on your undo stack, because Ctrl+Z quietly reverting a colleague's work
+is the single worst thing a shared canvas can do.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1652,7 +1709,10 @@ moment before somebody presses Approve.
       connectors, frames, undo/redo, copy/paste, autosave.
 
 ### Next (brief 2+ — candidates, to be confirmed by the product owner)
-- Real-time multiplayer on boards (presence, cursors, CRDT/OT).
+- ~~Real-time multiplayer on boards (presence, cursors, CRDT/OT)~~ **Done (v0.2)** — see §5.40.
+  Not a CRDT in the end: the document is a map of flat objects, so per-element last-writer-wins
+  ordered by the server is the whole merge, and text is locked rather than merged. Next: comments,
+  and following somebody's viewport.
 - Authentication and enterprise SSO; roles and permissions per team/space/board.
 - ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
   *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
@@ -1675,7 +1735,7 @@ moment before somebody presses Approve.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-07 — rev 74)
+## 6a. What exists today (v0.2, 2026-09-08 — rev 75)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1984,12 +2044,29 @@ moment before somebody presses Approve.
   document. Nothing a remote server says reaches the graph without that.
 - "Any MCP server" is now an available connector in the catalogue.
 
+### Two people on one board (v0.2)
+- A live channel per board: **server-sent events down, POSTs up** — plain HTTP, no upgrade, no
+  custom server, so a corporate proxy that breaks WebSockets does not break the canvas.
+- Coloured cursors in world coordinates, an outline round what each person has hold of, initials in
+  the topbar, and **Shared** in place of *Saved*.
+- Per-element last-writer-wins ordered by the server; patches for different objects commute, and
+  the same object is a real conflict with a defined winner.
+- A text field somebody is in is **locked** — their colour, read-only for everybody else — because
+  last-writer-wins on characters loses them. The lock is presence, so it cannot get stuck.
+- The room on the server is the writer while anybody is live: one save, one graph sync, one import
+  reconcile per settle, through the ordinary save path. The client's own autosave comes back the
+  moment the stream drops, so a blocked stream degrades instead of breaking.
+- Approving an import, restoring a version, deleting a relation and an ordinary PUT all hand the
+  live room the new document, so a board rewritten from outside simply arrives.
+- Undo stays personal: a remote change never lands on your undo stack.
+
 ### Documentation (v0.2)
-- Twenty-seven in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
+- Twenty-eight in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
   importing data, models and connections, with a glossary, a keyboard reference and the questions
   people ask.
-- Forty screenshots captured from the seeded demo by `pnpm docs:capture` and committed; the run
-  takes a name to re-capture only the shots a change made stale.
+- Forty-one screenshots captured from the seeded demo by `pnpm docs:capture` and committed; the run
+  takes a name to re-capture only the shots a change made stale. One of them drives **two** browser
+  contexts, because a picture of multiplayer with nobody else on the board is a picture of a board.
 - Twelve tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt
   text, dead links, duplicate heading ids, orphaned pages, that search finds the page a person
   would be looking for, and that no page uses inline markup the renderer does not understand.
@@ -2057,7 +2134,12 @@ moment before somebody presses Approve.
 ### Known gaps (intentional for brief 1)
 - No per-user authentication or authorisation; everyone is the seeded demo user. A deployed
   instance can be closed off with a single shared password (§5.12) until real auth lands.
-- Single workspace; no multiplayer; no comments.
+- Single workspace; no comments. Multiplayer exists (§5.40) but everybody is still the seeded demo
+  user, so the cursors are honest about *how many* people are here and not yet about *who*: real
+  names and colours per person arrive with authentication.
+- The live session lives in one server's memory. Behind a load balancer spreading people across
+  replicas, two people could land in different sessions and not see each other — the same limit
+  that makes one SQLite file work today, liftable by carrying patches on Postgres LISTEN/NOTIFY.
 - Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
   system stack.
 - Postgres works (one schema, generated, drift caught by a test; the browser suite has been run
@@ -2264,6 +2346,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-07 | A board agent can see which frame a thing sits in. | People group by frame and the grouping carries meaning; an agent that cannot see it is reading a list where a person is reading a picture. On a staged import the frame *is* the decision, which turns "these two are the same system" into "you have accepted two cards that are the same system". |
 | 2026-09-07 | Documentation is checked for staleness on a schedule, not only when the thing it describes changes. | The rule "update the brief with every change" keeps the *sections* honest but not the *counts and summaries* that sit above them, and nothing about editing an import pipeline reminds anybody that the README's feature list is three months old. A read-through of every document outside the code, against the product as it now runs, is its own piece of work and is worth doing whenever the feature list has moved a long way. |
 | 2026-09-07 | The documentation renderer reads `*emphasis*`, and the pages are tested against what it reads. | Authors write the markup they are used to; a renderer that silently passes some of it through is a slow leak nobody sees, because the person who wrote the sentence never re-reads the rendered page. Teaching it the span is a five-line change — the test that keeps the pages inside what it knows is the part that stops the leak coming back. |
+| 2026-09-08 | Multiplayer merges per element with last-writer-wins, not with a CRDT. | The document is a map of flat objects — nothing nests, nothing is ordered, every field is a value — so patches for different objects already commute and the same object is a real conflict rather than a merge failure. A CRDT would be a dependency, a second document model and a class of bugs nobody on this team could debug, bought to answer a question the data shape has already answered. |
+| 2026-09-08 | Text is locked to one person rather than merged. | The one place last-writer-wins is actively wrong: two people typing into a field lose characters, and it reads as the product eating your work. Locking is a smaller promise honestly kept, and it costs a field rather than a document. Making the lock *presence* rather than state is what stops it ever getting stuck. |
+| 2026-09-08 | Server-sent events and POSTs, not WebSockets. | The customers are enterprises; corporate proxies and TLS gateways break WebSocket upgrades silently and the failure lands on one team behind one proxy. SSE is a `GET` that does not end — plain HTTP/1.1, nothing added to the Dockerfile or the health check, and no custom server. One extra request per edit is a price a canvas does not notice. |
+| 2026-09-08 | While a board is live the server writes it, not the clients. | Several tabs each PUTing a whole document is N races, N graph syncs and a 409 for people who have in fact converged. One room, one document, one debounce down the ordinary save path means a board edited by three people becomes exactly the graph a board edited by one would. The client's autosave stays underneath and comes back the instant the stream drops. |
+| 2026-09-08 | A remote change never touches your undo stack. | Ctrl+Z means "undo what I did" everywhere else, and a shared canvas where it silently reverts a colleague's work is worse than one with no undo at all. It is the reason remote changes come in through their own door in the store rather than through the mutation everything else uses. |
 
 ## 8. Open questions for the product owner
 
@@ -2278,6 +2365,30 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 75: two people on one board.** The honest answer to "we both opened it" used
+  to be to refuse the second save — *Changed elsewhere — reload*. Right answer, wrong question: an
+  architecture canvas is a thing two people stand in front of. Boards are now shared live. Open one
+  somebody else has open and you see their cursor, in board coordinates so a colleague zoomed out
+  still points at the same card; an outline round what they have selected; their initials in the
+  topbar; and everything they change as they change it. The merge is small because the document is
+  a map of flat objects: per-element last-writer-wins ordered by the server, so patches for
+  different objects commute and the same object is a real conflict with a defined winner. No CRDT,
+  no operational transform, no vendor. The exception is text, which is not merged at all — a field
+  somebody is in turns their colour and goes read-only for everybody else, because last-writer-wins
+  on characters loses them; the lock is presence, so it lifts when they blur, close the tab or drop
+  the connection and can never get stuck. The transport is **server-sent events down and POSTs
+  up**, chosen over WebSockets because enterprise proxies break upgrades silently and the failure
+  lands on exactly one team; SSE needs no upgrade, no custom server and nothing new in the
+  Dockerfile. While anybody is live, a room on the server owns the document and persists it once
+  the board goes quiet, down the ordinary save path — one save, one graph sync, one import
+  reconcile, instead of one per tab — and the client's own autosave comes straight back if the
+  stream drops, so a blocked proxy degrades to the old behaviour rather than to a board that
+  quietly stops saving. Approving an import, restoring a version, deleting a relation and a plain
+  PUT now all hand the live room the new document, which was the other case that used to require a
+  reload. Undo stayed personal. Twenty-four unit tests over the merge rules and the room, a browser
+  check that drives **two** contexts at once, and a documentation page and screenshot that do the
+  same — a picture of multiplayer with nobody else on the board is a picture of a board.
 
 - **2026-09-07 — Rev 74: the documentation caught up with the product.** Nine revisions of feature
   work had left the writing *around* the product behind the writing *inside* it: the in-app pages

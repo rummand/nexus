@@ -8,6 +8,7 @@ import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
 import { NexusMark } from "@/components/workspace/NexusMark";
 import { initials } from "@/components/workspace/Sidebar";
+import { PeerChips } from "./PeerLayer";
 import { useCanvas, useCanvasStore } from "./store";
 
 export interface StudioTopbarProps {
@@ -27,6 +28,8 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [, start] = useTransition();
   const saveState = useCanvas((s) => s.saveState);
+  /* On a live board the room is the writer, so "Saved" would be describing somebody else's work. */
+  const live = useCanvas((s) => s.live);
   const count = useCanvas((s) => Object.keys(s.elements).length);
   const zoom = useCanvas((s) => s.camera.zoom);
   const helpOpen = useCanvas((s) => s.panels.help);
@@ -96,6 +99,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
         </div>
       </div>
       <div className="topbar-meta">
+        <PeerChips />
         <span className="canvas-chip">Canvas: {count} objects / Zoom: {Math.round(zoom * 100)}%</span>
         {saveState === "conflict" ? (
           <button
@@ -110,7 +114,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
         ) : (
           <span className={saveState === "error" ? "sync-pill warn" : saveState === "saved" ? "sync-pill" : "sync-pill board-save-pill"}>
             {saveState === "saving" ? <Loader2 size={13} className="spin" /> : saveState === "saved" ? <Check size={13} /> : <CircleDot size={13} />}
-            {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
+            {saveState === "saved" ? (live ? "Shared" : "Saved") : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
           </span>
         )}
         <button className={composeOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("compose")} title="Write the board instead of drawing it"><Sparkles size={16} /> Compose</button>

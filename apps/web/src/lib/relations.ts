@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import { parseDocument, serializeDocument } from "@/canvas/document";
+import { boardChangedElsewhere } from "./live/room";
 
 /**
  * Graph-first relation editing (entity drawer). Boards remain the other way to create relations:
@@ -41,6 +42,7 @@ export async function deleteRelation(db: Db, relationId: string): Promise<{ dele
     if (!doomed.length) continue;
     for (const id of doomed) delete doc.elements[id];
     await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString(), revision: sql`${s.boards.revision} + 1` }).where(eq(s.boards.id, board.id));
+    await boardChangedElsewhere(board.id, doc);
     boardsUpdated++;
   }
   await db.delete(s.relations_).where(eq(s.relations_.id, relationId));

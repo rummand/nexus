@@ -2,6 +2,7 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
+import { boardChangedElsewhere } from "./live/room";
 import { parseDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
 
 /**
@@ -76,5 +77,8 @@ export async function restoreVersion(db: Db, boardId: string, versionId: string,
   // Bump the revision: an editor still holding the pre-restore document must be refused, not
   // allowed to save the version we just replaced back over the top.
   await db.update(s.boards).set({ document: serializeDocument(doc), updatedAt: new Date().toISOString(), revision: sql`${s.boards.revision} + 1` }).where(eq(s.boards.id, boardId));
+  // …and if people are on the board right now, hand them the restored document rather than
+  // leaving the room holding the version we just replaced (§5.40).
+  await boardChangedElsewhere(boardId, doc);
   return doc;
 }

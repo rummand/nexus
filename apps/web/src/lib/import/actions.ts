@@ -9,6 +9,7 @@ import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
+import { boardChangedElsewhere } from "@/lib/live/room";
 import { proposeFileKind, proposeMapping } from "./map";
 import { readFile, readPasted } from "./read";
 import { stage, type Decision, type FileInput } from "./stage";
@@ -622,6 +623,8 @@ export async function redrawBatchBoard(batchId: string): Promise<{ ok: true; dra
   await db.update(s.boards)
     .set({ document: serializeDocument(document), updatedAt: now(), revision: sql`${s.boards.revision} + 1` })
     .where(eq(s.boards.id, board.id));
+  // Somebody may be standing on the board while it is redrawn under them (§5.40).
+  await boardChangedElsewhere(board.id, document);
   await refresh(batch.workspaceId, batchId);
   return { ok: true, drawn };
 }

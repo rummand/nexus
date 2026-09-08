@@ -19,6 +19,7 @@ export interface ChangeOverlay {
   added: Array<{ id: string; name: string; kind: string; description: string }>;
   impact: string;
 }
+import type { DocParts, Peer } from "@/lib/live/protocol";
 import type { VocabEntity } from "./link";
 import { useStore } from "zustand";
 import { createContext, useContext } from "react";
@@ -66,6 +67,22 @@ export interface CanvasState {
    * Sent with each PUT so a stale client is refused instead of overwriting somebody else (§5.19).
    */
   boardRevision: number;
+  /**
+   * Everybody else on this board right now (§5.40), and whether the live channel is up.
+   *
+   * Presence is never part of the document: it is who is here, not what the board says. When
+   * `live` is false the canvas behaves exactly as it did before multiplayer — the client saves for
+   * itself and a losing race is still refused — so a blocked stream degrades rather than breaks.
+   */
+  peers: Peer[];
+  live: boolean;
+  /**
+   * The object whose text this person has focused, broadcast as presence.
+   *
+   * Deliberately not `editingId`: that one means "just created, put the caret in its title", and
+   * overloading it would re-focus the title every time somebody clicked the description.
+   */
+  focusedId: ElementId | null;
   scrollMode: ScrollMode;
   spaceDown: boolean;
   connectorPreset: ConnectorPreset;
@@ -132,6 +149,19 @@ export interface CanvasState {
   setPendingConnector(p: CanvasState["pendingConnector"]): void;
   setSaveState(s: SaveState): void;
   setBoardRevision(n: number): void;
+  setPeers(peers: Peer[]): void;
+  setLive(live: boolean): void;
+  setFocused(id: ElementId | null): void;
+  /**
+   * Take somebody else's change, or the server's copy of the board.
+   *
+   * Never touches the undo stacks: Ctrl+Z is "undo what *I* did", and quietly reverting a
+   * colleague's work because it happened to be the last thing to arrive is the single worst thing
+   * a shared canvas can do.
+   */
+  applyRemote(elements: Elements): void;
+  /** The same, for the parts of the document that are not on the canvas. */
+  applyRemoteDoc(parts: DocParts): void;
   setChangeOverlay(overlay: ChangeOverlay | null): void;
   setConnectorPreset(p: ConnectorPreset): void;
   togglePanel(name: PanelName, value?: boolean): void;
@@ -288,7 +318,12 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       set({
         elements: next,
         revision: s.revision + 1,
-        saveState: "dirty",
+        /*
+         * On a live board the room is the writer and this tab does not know when it wrote (§5.40),
+         * so the pill stays on "Shared" rather than flickering through a save this client is not
+         * doing. "Unsaved changes" would be a claim about somebody else's work.
+         */
+        saveState: s.live ? s.saveState : "dirty",
         ...(history ? { past: [...s.past.slice(-HISTORY_LIMIT + 1), s.elements], future: [] } : {}),
         ...extra,
       });
@@ -314,6 +349,9 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
+      peers: [],
+      live: false,
+      focusedId: null,
       panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false },
       isDragging: false,
       hiddenKinds: [],
@@ -364,9 +402,25 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setBoardRevision: (boardRevision) => set({ boardRevision }),
+      setPeers: (peers) => set({ peers }),
+      setFocused: (focusedId) => set((s) => (s.focusedId === focusedId ? s : { focusedId })),
+      setLive: (live) => set((s) => (s.live === live ? s : { live, saveState: live && s.saveState === "conflict" ? "saved" : s.saveState })),
+      applyRemoteDoc: (parts) =>
+        set((s) => ({
+          ...(parts.viewpoints ? { viewpoints: parts.viewpoints } : {}),
+          ...(parts.script !== undefined && parts.script !== s.script ? { script: parts.script } : {}),
+        })),
+      applyRemote: (elements) =>
+        set((s) => ({
+          elements,
+          // Not `revision`: that is the counter the autosave watches, and a remote change is
+          // already on the server. Bumping it would send their edit back to them as ours.
+          selection: s.selection.filter((id) => id in elements),
+          editingId: s.editingId && s.editingId in elements ? s.editingId : null,
+        })),
       setChangeOverlay: (changeOverlay) => set({ changeOverlay }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
-      setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: "dirty" })),
+      setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: s.live ? s.saveState : "dirty" })),
 
       togglePanel: (name, value) => set((s) => {
         const open = value ?? !s.panels[name];
@@ -406,7 +460,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       saveViewpoint: (name) => {
         const s = get();
         const vp: SavedViewpoint = { id: `vp_${nanoid(8)}`, name: name.trim() || `View ${s.viewpoints.length + 1}`, hiddenKinds: [...s.hiddenKinds], camera: { ...s.camera }, createdAt: new Date().toISOString(), ...(s.lens.type !== "none" ? { lens: s.lens } : {}) };
-        set({ viewpoints: [...s.viewpoints, vp], revision: s.revision + 1, saveState: "dirty" });
+        set({ viewpoints: [...s.viewpoints, vp], revision: s.revision + 1, saveState: s.live ? s.saveState : "dirty" });
       },
       applyViewpoint: (id) => {
         const s = get();
@@ -414,7 +468,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         if (!vp) return;
         set({ hiddenKinds: [...vp.hiddenKinds], lens: vp.lens ?? NO_LENS, ...(vp.camera ? { camera: { ...vp.camera } } : {}) });
       },
-      deleteViewpoint: (id) => set((s) => ({ viewpoints: s.viewpoints.filter((v) => v.id !== id), revision: s.revision + 1, saveState: "dirty" })),
+      deleteViewpoint: (id) => set((s) => ({ viewpoints: s.viewpoints.filter((v) => v.id !== id), revision: s.revision + 1, saveState: s.live ? s.saveState : "dirty" })),
       focusElement: (id) => {
         const s = get();
         if (!s.elements[id]) return;

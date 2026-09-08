@@ -286,3 +286,54 @@ export const BOARD_AGENTS: DocPage = {
     { kind: "try", href: "/w/:slug", label: "Open a board and place one" },
   ],
 };
+
+/**
+ * Two people on one board.
+ *
+ * Written for the moment somebody notices a cursor that is not theirs and wants to know what the
+ * rules are — because on a shared canvas the rules are the feature. It says plainly what merges,
+ * what does not, and what happens when the connection goes, since all three are things a person
+ * will otherwise have to discover by losing something.
+ */
+export const TOGETHER: DocPage = {
+  slug: "together",
+  title: "Two people on one board",
+  summary: "Cursors, who has hold of what, the one thing that locks, and what happens when the connection drops.",
+  keywords: ["multiplayer", "collaboration", "together", "presence", "cursors", "shared", "live", "conflict", "lock", "workshop", "real-time"],
+  blocks: [
+    { kind: "prose", text: "Open a board somebody else already has open and you are both on it. Their cursor moves, what they have selected is outlined in their colour, and anything they change appears on your screen as they do it. Nobody presses share and nobody presses save." },
+    { kind: "shot", src: "board-together", alt: "A board with somebody else's coloured cursor on it, their name beside it, an outline around the card they have selected and their initials in the topbar", caption: "Somebody else on the same board: their pointer, what they have hold of, and the field they are typing in." },
+    { kind: "note", tone: "why", title: "Why this replaced “changed elsewhere — reload”", text: "Until now the second person to save was refused, because refusing is the only honest answer when there is no merge. It was the right answer to the wrong question: an architecture canvas is a thing two people stand in front of, and the fix was to be able to merge rather than to apologise better." },
+    { kind: "heading", text: "What you can see", id: "presence" },
+    {
+      kind: "table",
+      columns: ["On the board", "What it is"],
+      rows: [
+        ["A coloured arrow with a name", "Their pointer, in **board** coordinates — if you are zoomed out further than they are it still points at the same card, not at the same bit of glass."],
+        ["A thin coloured outline", "What they have selected. Quieter than your own selection, because it is information rather than a handle."],
+        ["Initials in the topbar", "Everybody on this board. One person in two tabs is two cursors, and the same colour, because it is one person."],
+        ["**Shared** instead of **Saved**", "The board is writing itself down for all of you together, rather than each tab saving its own copy."],
+      ],
+    },
+    { kind: "heading", text: "What happens when you both touch the same thing", id: "conflicts" },
+    {
+      kind: "table",
+      columns: ["Both of you", "What happens"],
+      rows: [
+        ["Move different cards", "Both moves land. This is almost always what is happening."],
+        ["Move the same card", "The later move wins — a real conflict with a defined answer, decided by the order the server heard them rather than by whose network was quicker."],
+        ["Type in the same field", "You cannot. The first person in has it; for everybody else it turns their colour and goes read-only until they leave it."],
+        ["Delete something the other is editing", "It goes. A board is a shared drawing, and a delete is as legitimate as a move."],
+        ["Undo", "Undoes **your** last change, never theirs. Ctrl+Z on a shared board has to mean what it means everywhere else."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why a lock on text and nothing else", text: "Positions, colours and kinds merge under “the last one wins” without losing anything — there is one value and somebody set it. Two people typing into one field under that same rule silently eat each other's characters, which looks like the product losing your work. Locking the field is a smaller promise, kept: nobody can be halfway through a sentence and have it rewritten underneath them." },
+    { kind: "note", tone: "tip", text: "The lock is presence, not a state. It lifts the moment they click elsewhere, close the tab or lose their connection — there is nothing to release, and nothing that can get stuck." },
+    { kind: "heading", text: "When the connection goes", id: "offline" },
+    { kind: "prose", text: "The board does not stop. It reconnects by itself, and while it is down your tab goes back to saving for itself — which is also what happens if a corporate proxy will not carry the connection at all. In that state two people editing at once is the old story again: the second save is refused and says so, because your tab genuinely cannot see what the other person did." },
+    { kind: "note", tone: "warning", title: "One instance", text: "The shared session lives in the server's memory, so it works when everybody is talking to the same instance — which is the deployment Nexus ships as. Behind a load balancer spreading people across replicas, two people could land in different sessions and not see each other. That is the same limit that makes a single database file work today, and it lifts with the same change." },
+    { kind: "heading", text: "Something else changed the board", id: "elsewhere" },
+    { kind: "prose", text: "Approving an import, restoring a version or deleting a relation rewrites a board from outside the canvas. If you are standing on it when that happens the new version simply arrives, in front of everybody on it. That used to be the case that required a reload." },
+    { kind: "try", href: "/w/:slug", label: "Open a board", note: "Open the same one in a second window to see it for yourself." },
+  ],
+};
