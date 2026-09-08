@@ -99,7 +99,9 @@ export function Plateaus({ workspaceId, slug, plateaus, selectedId, baselineId, 
           onCreate={(input) => start(async () => {
             const r = await createPlateau({ workspaceId, ...input });
             setCreating(false);
-            go({ p: r.id });
+            // A refusal (§5.46) is shown rather than navigating to a plateau that was not created.
+            if ("error" in r) setMessage(r.error);
+            else go({ p: r.id });
           })}
         />
       )}

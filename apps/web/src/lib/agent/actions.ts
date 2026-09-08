@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { ensureReviewer } from "./definitions";
 import { runDefinition } from "./run";
 import { clearRun } from "./store";
@@ -30,6 +31,8 @@ export interface AgentRunResult {
 }
 
 export async function askTheAgent(workspaceId: string): Promise<AgentRunResult | { error: string }> {
+  const no = await deny(workspaceId, "agent.run");
+  if (no) return no;
   const db = await getDb();
   const workspace = await db.query.workspaces.findFirst({ where: eq(s.workspaces.id, workspaceId) });
   if (!workspace) return { error: "That workspace is gone." };
@@ -49,6 +52,8 @@ export async function askTheAgent(workspaceId: string): Promise<AgentRunResult |
 
 /** Throw the run away without deciding on any of it. */
 export async function forgetAgentRun(workspaceId: string) {
+  const no = await deny(workspaceId, "agent.run");
+  if (no) return no;
   const db = await getDb();
   const workspace = await db.query.workspaces.findFirst({ where: eq(s.workspaces.id, workspaceId) });
   await clearRun(db, workspaceId);

@@ -1901,6 +1901,45 @@ occasionally panics compiling a route for the first time in `next dev`. There is
 here; what there is, is `pnpm dev:clean`, which clears `.next` and starts again, and an honest note
 that says so.
 
+### 5.46 Who may do what (v0.2)
+
+`workspace_members.role` had been in the schema since the first week and nothing read it. Since
+§5.41 everybody signs in as themselves — and then every signed-in person could issue an MCP key,
+point the product at a different model, grant a system read access to the estate, approve an import,
+deliver a change set and delete an object from the graph. That was the largest gap between what this
+product looked like it enforced and what it did.
+
+**Capabilities, not role checks.** A role check scattered through ninety server actions is ninety
+places to be inconsistent, and the inconsistency is invisible until somebody finds it. `roles.ts`
+turns a role into sentences about the product — *may approve an import*, *may deliver a change set*
+— in one table, and everything else asks that table.
+
+**The line is consequence outside the screen you are on.** Drawing on a board affects a board;
+editing an object affects the model, which is what the model is for. Approving an import rewrites
+the estate everybody else is reading, issuing a key hands somebody's agent a door, delivering a plan
+moves the model into the future, and a merge or a delete cannot be undone by doing the opposite. So:
+a **guest** reads; a **member** draws, edits and runs agents; an **administrator** approves,
+delivers, deletes, manages agents and configures; an **owner** also manages people. Written out in
+full rather than composed by inheritance, because a reader asking "can a member deliver a change
+set?" should be able to answer it by looking.
+
+**Hiding a button is a courtesy; the server is the enforcement.** Every guarded action re-checks,
+including the board `PUT` and the live channel's patches — a guest is welcome to watch a board live,
+cursor and all, and may not change it. The membership is read per call rather than cached on the
+session, because a demotion has to take effect for somebody who is already signed in.
+
+Two rules the matrix cannot express live with the people actions: **the last owner cannot be demoted
+or removed**, or a workspace ends up with nobody who can add anybody; and **a reset ends that
+person's sessions**, because a new password that leaves a stolen laptop signed in achieves nothing.
+
+Alongside it, two smaller gaps closed. Rows that belonged to an organisation and to nobody in
+particular — an MCP key, a model provider, a connected server — now record **who set them up**, so
+"who issued this key" and "whose account is this spending" have answers. And the account gap is
+closed as far as it should be: somebody can **change their own password** without an administrator
+knowing it, and an owner can add a colleague and reset a password. There is still no sign-up and no
+forgotten-password email, on purpose — SSO is the intended answer to both, and a mail transport in
+the middle of an architecture tool is a moving part nobody asked for.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2322,6 +2361,20 @@ that says so.
 - A custom drag image — the object in its kind's colour — instead of a snapshot of the list row.
 - The full-window dashed border and blue wash are gone; what is left is a hairline.
 
+### Who may do what (v0.2)
+- Four roles — owner, administrator, member, guest — over nine capabilities, in one table
+  (`src/lib/auth/roles.ts`) with the matrix asserted by tests rather than discovered in production.
+- Guarded: model providers, MCP keys, connected servers, source grants, agent definitions, import
+  approval and rollback, change-set delivery, graph deletion and merges, the meta-model, the board
+  `PUT` and the live channel's patches.
+- **People** under Settings: the roster, a role picker, add a colleague, reset a password, and what
+  each role means written where the role is chosen. Anybody can change their own password.
+- The last owner cannot be demoted or removed; a reset revokes that person's sessions; removing
+  somebody takes their membership and leaves everything they made.
+- `mcp_tokens`, `model_providers` and `mcp_servers` gained `created_by_id` — with a hand-written
+  SQLite migration, because `ALTER TABLE … ADD COLUMN … REFERENCES` silently drops the delete
+  action there and would have left the two dialects behaving differently.
+
 ### Running it somewhere real (v0.2)
 - **Self-hosted typeface**: IBM Plex committed under `public/fonts` with its OFL licence, faces
   imported with the stylesheet, refreshed by `pnpm fonts:vendor`. No request leaves for a font
@@ -2646,6 +2699,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The history folds a run of edits into the one change they add up to. | Autosave means one rename is four saves; four rows saying "renamed" bury the one fact that matters, and an edit that was undone leaves two rows saying opposite things instead of the truth, which is that nothing happened. Folding is limited to one hand in one place inside two minutes — anybody else's edit ends the run, because "Maria changed it and Tobias changed it back" really is two facts. |
 | 2026-09-08 | An accepted proposal is attributed to the reviewer, not to the agent that proposed it. | An agent that proposes has not changed anything; the person who clicked Accept has, and pretending otherwise would let a fleet quietly own decisions people made. Which agent asked is already on the decision row, and it is in the context line, so nothing is lost. |
 | 2026-09-08 | A live board's saves are attributed to the board, not to a peer. | A room persists on a timer for everybody in it, so there is no one person whose save it is; naming whoever happened to type last would be a guess dressed as a fact. Single-tab saves still carry the person, because there the answer is known. |
+| 2026-09-08 | Authorisation is capabilities in one table, not role checks at the call sites. | Ninety server actions asking `role === "admin"` is ninety chances to be inconsistent, and nobody can answer "what may a member do?" by reading them. One matrix turns a role into sentences about the product, the actions ask the matrix, and a test argues with the matrix. |
+| 2026-09-08 | A member may edit the model but not delete from it, approve an import or deliver a plan. | The line is consequence outside the screen you are on. Editing an object is what the model is for; a merge cannot be undone by merging back, an approval rewrites what everybody else is reading, and a delivery moves the estate into the future. Those are the acts a workspace wants somebody accountable for. |
+| 2026-09-08 | A guest may join a live board and may not patch it. | Presence is the point of the feature and reading is what a guest is for, so shutting them out of the channel would remove something valuable to prevent nothing. The edit right is decided once when the stream opens and carried on the connection, which keeps the per-patch path free of a lookup. |
+| 2026-09-08 | The membership is read on every guarded call rather than cached on the session. | A demotion that only takes effect at the next sign-in means somebody keeps powers for as long as their cookie lasts, which is precisely what revocation exists to prevent. It costs one lookup on a two-column primary key. |
+| 2026-09-08 | Removing somebody deletes their membership, never their user row. | Boards, versions, change sets and the graph history all name them. Deleting the person would rewrite the record of what happened, which is the opposite of what rev 78 was for. |
+| 2026-09-08 | Still no sign-up and no forgotten-password email. | SSO is the intended answer to both, and building a mail transport to avoid it would add a moving part, a deliverability problem and a new attack surface to an architecture tool. What was actually missing — adding a colleague, and changing your own password — needs neither. |
 | 2026-09-08 | The fonts are committed to the repository rather than fetched at build time. | `next/font/google` self-hosts, but it downloads during the build — which means a build machine with no egress produces an image with no typeface, and the sovereign deployment story fails at exactly the step it was supposed to survive. Committing 270KB of woff2 makes the build hermetic and the licence auditable. |
 | 2026-09-08 | A transfer refuses a destination that already holds rows. | Merging two databases is a different problem: two objects called Maximo, two workspaces with the same slug, two people with one email. Every answer is a policy decision somebody has to make deliberately, and a script that picks one silently would be the worst possible way to make it. |
 | 2026-09-08 | The transfer order is a hand-written list with a test behind it, not a derived sort. | The model is small enough that an explicit, reviewable order is clearer than a topological sort over introspected foreign keys — and the part that actually matters is not the cleverness but the check: `orderGaps()` fails the suite the day somebody adds a table and forgets it, which is the only way the silent-data-loss failure gets caught. |
@@ -2666,6 +2725,24 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 81: who may do what.** `workspace_members.role` had been in the schema since
+  the first week and nothing read it: since rev 76 everybody signed in as themselves and then every
+  one of them could issue an MCP key, repoint the product at a different model, grant a system
+  access to the estate, approve an import, deliver a change set and delete an object from the graph.
+  Authorisation is now a capability matrix in one table rather than role checks at ninety call
+  sites, because ninety call sites are ninety chances to be inconsistent and nobody can answer "what
+  may a member do?" by reading them. The line the roles are drawn along is consequence outside the
+  screen you are on: a guest reads, a member draws and edits, an administrator approves, delivers,
+  deletes and configures, an owner also manages people. Hiding a button is a courtesy — the server
+  re-checks, including the board `PUT` and the live channel, where a guest is welcome to watch a
+  board with their cursor showing and may not change it. Two rules that the matrix cannot express
+  sit with the people actions: the last owner cannot be demoted or removed, and a password reset
+  ends that person's sessions. A **People** page under Settings does the roster, the roles, adding a
+  colleague and resetting a password, and says what each role means where the role is chosen.
+  Alongside it, keys, providers and connected servers now record who set them up, and anybody can
+  change their own password — sign-up and password-reset email stay deliberately unbuilt, because
+  SSO is the answer to both.
 
 - **2026-09-08 — Rev 80: closing the deployment gaps.** Three of the gaps the brief admitted to were
   about running this somewhere real rather than about what it does, so they are closed together. The

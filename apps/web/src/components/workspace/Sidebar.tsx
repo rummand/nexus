@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, Users, Waypoints } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, UserCog, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -45,6 +45,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarLink key="knowledge" href={`${base}/knowledge`} icon={<BookOpen size={17} />}>EA knowledge</SidebarLink>
         <SidebarLink key="models" href={`${base}/settings/models`} icon={<Cpu size={17} />}>Models</SidebarLink>
         <SidebarLink key="connections" href={`${base}/settings/connections`} icon={<Plug size={17} />}>Connections</SidebarLink>
+        <SidebarLink key="people" href={`${base}/settings/people`} icon={<UserCog size={17} />}>People</SidebarLink>
         <SidebarLink key="docs" href={`${base}/docs`} icon={<LifeBuoy size={17} />}>Documentation</SidebarLink>
       </nav>
 

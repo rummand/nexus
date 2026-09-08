@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { currentUser } from "@/lib/session";
 import { recordRelationEvent, recordSince, snapshotEntities } from "@/lib/history/record";
 import { currentActor } from "@/lib/history/current";
@@ -348,6 +349,12 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   if (batch.status === "approved") return { error: "This batch has already been approved." };
+  /*
+   * Approving is where a staged batch stops being a proposal and becomes the estate everybody
+   * else reads (§5.46). Staging, mapping and deciding lanes are ordinary work; this is not.
+   */
+  const notAllowed = await deny(batch.workspaceId, "import.approve");
+  if (notAllowed) return notAllowed;
 
   // Everything an approval writes is one act by one import, so the history is taken across the
   // whole workspace and attributed to the batch (§5.43).
@@ -492,6 +499,8 @@ export async function rollbackBatch(batchId: string): Promise<
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   if (batch.status !== "approved") return { error: "That batch was never approved, so there is nothing to undo." };
+  const notAllowed = await deny(batch.workspaceId, "import.approve");
+  if (notAllowed) return notAllowed;
 
   const history = { workspaceId: batch.workspaceId, actor: await currentActor(), context: `rolled back the import “${batch.name}”` };
   const before = await snapshotEntities(db, batch.workspaceId);

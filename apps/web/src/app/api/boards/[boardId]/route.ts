@@ -7,6 +7,7 @@ import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 import { saveBoardDocument } from "@/lib/board-save";
 import { currentUserOrNull } from "@/lib/session";
 import * as who from "@/lib/history/actor";
+import { can } from "@/lib/auth/guard";
 import { reconcileBoard } from "@/lib/import/sync";
 import { boardChangedElsewhere } from "@/lib/live/room";
 
@@ -47,6 +48,17 @@ export async function PUT(req: Request, { params }: Params) {
   }
   const doc = migrateDocument(body.document as Partial<CanvasDocument>);
   const db = await getDb();
+
+  /*
+   * A guest may open a board and may not save it (§5.46). The check is here rather than only in
+   * the client, because the client is a copy of the document and a POST is a POST.
+   */
+  const [board] = await db.select({ workspaceId: boards.workspaceId }).from(boards).where(eq(boards.id, boardId));
+  if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await can(board.workspaceId, "board.edit"))) {
+    return NextResponse.json({ error: "You may read this board but not change it." }, { status: 403 });
+  }
+
   const result = await saveBoardDocument(db, boardId, doc, typeof body.revision === "number" ? body.revision : null);
 
   if (result.status === "notFound") return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -417,6 +417,15 @@ export const modelProviders = pgTable(
     apiKey: text("api_key").notNull().default(""),
     keyEncrypted: boolean("key_encrypted").notNull().default(false),
     enabled: boolean("enabled").notNull().default(true),
+    /**
+     * Who set this up (§5.46).
+     *
+     * A workspace was the only tenant boundary there was, so a key, a provider and a batch each
+     * belonged to an organisation and to nobody in particular — there was no answer to "who issued
+     * this" or "whose account is this spending". `set null` rather than cascade: the row is a fact
+     * about the workspace and outlives the person who made it.
+     */
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     /** What a probe last found: unknown | ok | unauthorised | unreachable. */
     status: text("status").notNull().default("unknown"),
     statusDetail: text("status_detail").notNull().default(""),
@@ -558,6 +567,8 @@ export const mcpTokens = pgTable(
     scope: text("scope", { enum: ["read", "propose"] }).notNull().default("read"),
     /** The described agent (§5.32) outside proposals are attributed to, so they can be measured. */
     agentId: text("agent_id").references(() => agentDefinitions.id, { onDelete: "set null" }),
+    /** Who set this up (§5.46). Null once that person is gone; the row is the workspace's. */
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     lastUsedAt: text("last_used_at"),
     revokedAt: text("revoked_at"),
     createdAt: timestamp("created_at"),
@@ -590,6 +601,8 @@ export const mcpServers = pgTable(
     apiKey: text("api_key").notNull().default(""),
     keyEncrypted: boolean("key_encrypted").notNull().default(false),
     enabled: boolean("enabled").notNull().default(true),
+    /** Who connected it (§5.46). Null once that person is gone; the connection is the workspace's. */
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     /** unknown | ok | unauthorised | unreachable — what a real handshake last found. */
     status: text("status").notNull().default("unknown"),
     statusDetail: text("status_detail").notNull().default(""),

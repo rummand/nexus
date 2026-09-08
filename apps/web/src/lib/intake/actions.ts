@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import { vocabulary } from "./vocabulary";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { commitExtraction, type CommitSelection } from "./commit";
 import { providerById } from "../catalog/providers";
 import { runPipeline } from "./pipeline";
@@ -33,6 +34,8 @@ async function touched(workspaceId: string) {
 }
 
 export async function createSource(input: { workspaceId: string; name: string; text: string; connector: string }) {
+  const no = await deny(input.workspaceId, "graph.edit");
+  if (no) return no;
   const text = input.text.slice(0, MAX_SOURCE_CHARS);
   if (!text.trim()) return { error: "There is nothing to read in that source" };
   const connector = providerById(input.connector);

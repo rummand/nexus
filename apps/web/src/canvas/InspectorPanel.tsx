@@ -172,12 +172,16 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [missing, setMissing] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
 
   const merge = async (otherId: string) => {
     setMerging(true);
     try {
       const s = store.getState();
       const r = await mergeEntitiesAction(s.workspaceId, entityId, [otherId]);
+      // A merge can be refused (§5.46): a member may edit the model but not collapse two objects.
+      if ("error" in r) { setMergeError(r.error); return; }
+      setMergeError(null);
       // relink cards on this board that pointed at the merged entity
       const patch: Record<string, Partial<CanvasElement>> = {};
       for (const el of Object.values(s.elements)) {
@@ -212,6 +216,7 @@ function GraphBlock({ entityId, boardId }: { entityId: string; boardId: string }
               <button key={d.id} type="button" disabled={merging} onClick={() => void merge(d.id)}>Merge “{d.name}” into this</button>
             ))}
           </div>
+          {mergeError && <small className="graph-block-refused">{mergeError}</small>}
         </div>
       )}
     <div className="graph-block">

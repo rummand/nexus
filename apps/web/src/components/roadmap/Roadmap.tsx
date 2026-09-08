@@ -156,8 +156,9 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
           onCreate={(input) => {
             start(async () => {
               const r = await createChangeSet(input);
-              setOpenId(r.id);
               setCreating(false);
+              if ("error" in r) setMessage(r.error);
+              else setOpenId(r.id);
             });
           }}
         />

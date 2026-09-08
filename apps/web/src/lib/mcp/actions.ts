@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
+import { currentUserOrNull } from "@/lib/session";
 import { ensureTokenAgent } from "./agent";
 import { createToken, deleteToken, listTokens, revokeToken, SCOPES, type Scope, type TokenSummary } from "./tokens";
 
@@ -23,12 +25,23 @@ async function refresh(workspaceId: string) {
   revalidatePath(`/w/${ws.slug}/agents`);
 }
 
+/** A key is a door into this organisation's model; only an administrator may cut one (§5.46). */
+async function denyToken(tokenId: string) {
+  const db = await getDb();
+  const row = await db.query.mcpTokens.findFirst({ where: eq(s.mcpTokens.id, tokenId) });
+  if (!row) return { error: "That key is gone." };
+  return deny(row.workspaceId, "settings.manage");
+}
+
 export async function issueKey(workspaceId: string, name: string, scope: string): Promise<{ token: string; id: string } | { error: string }> {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   const label = name.trim().slice(0, 80);
   if (!label) return { error: "Give it a name — “Claude Code on my laptop”, “the platform team's assistant”. It is what the review queue will show." };
   const chosen: Scope = (SCOPES as readonly string[]).includes(scope) ? (scope as Scope) : "read";
-  const { id, token } = await createToken(db, workspaceId, label, chosen, null);
+  // A key is a door somebody cut; the row says who (§5.46).
+  const { id, token } = await createToken(db, workspaceId, label, chosen, null, (await currentUserOrNull())?.id ?? null);
   // A key that may propose speaks as an agent, so what it says can be measured like anything else.
   if (chosen === "propose") await ensureTokenAgent(db, workspaceId, id, label);
   await refresh(workspaceId);
@@ -36,6 +49,8 @@ export async function issueKey(workspaceId: string, name: string, scope: string)
 }
 
 export async function revokeKey(tokenId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyToken(tokenId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpTokens.findFirst({ where: eq(s.mcpTokens.id, tokenId) });
   if (!row) return { error: "That key is gone." };
@@ -46,6 +61,8 @@ export async function revokeKey(tokenId: string): Promise<{ ok: true } | { error
 
 /** Forgetting a revoked key entirely. Its agent's record stays, because that is not the key's. */
 export async function forgetKey(tokenId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyToken(tokenId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpTokens.findFirst({ where: eq(s.mcpTokens.id, tokenId) });
   if (!row) return { error: "That key is gone." };

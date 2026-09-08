@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
@@ -16,6 +17,27 @@ import { allBlockers, blocking, wouldCycle } from "./order";
 import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload } from "./types";
 
 const now = () => new Date().toISOString();
+
+/**
+ * Planning and delivering are different powers (§5.46).
+ *
+ * Writing a change set down is ordinary architecture work — it is deliberately *not* applied to the
+ * graph, which is the whole design (§5.21), so a member may draft, argue and abandon plans freely.
+ * Delivering one moves the estate everybody else is reading, and that is administrative.
+ */
+async function denySet(changeSetId: string, capability: "graph.edit" | "plan.deliver") {
+  const db = await getDb();
+  const set = await getChangeSet(db, changeSetId);
+  if (!set) return { error: "That change set is gone." };
+  return deny(set.workspaceId, capability);
+}
+
+async function denyPlateau(plateauId: string, capability: "graph.edit" | "plan.deliver") {
+  const db = await getDb();
+  const [row] = await db.select({ workspaceId: s.plateaus.workspaceId }).from(s.plateaus).where(eq(s.plateaus.id, plateauId));
+  if (!row) return { error: "That plateau is gone." };
+  return deny(row.workspaceId, capability);
+}
 
 /**
  * One shape for every write here.
@@ -44,6 +66,8 @@ async function touch(workspaceId: string, changeSetId?: string) {
 }
 
 export async function createChangeSet(input: { workspaceId: string; name: string; description?: string; targetDate?: string }) {
+  const no = await deny(input.workspaceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const id = `chg_${nanoid(10)}`;
@@ -69,6 +93,12 @@ function normaliseDate(value: string | undefined): string {
 }
 
 export async function updateChangeSet(changeSetId: string, patch: { name?: string; description?: string; targetDate?: string; status?: ChangeSetStatus }): Promise<ChangeResult> {
+  /*
+   * Marking a plan delivered by editing its status would be delivery without the delivering, so
+   * that one field asks for the delivery power rather than the planning one.
+   */
+  const no = await denySet(changeSetId, patch.status === "delivered" ? "plan.deliver" : "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const set = await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, changeSetId) });
   if (!set) return { error: "That change set is gone." };
@@ -95,6 +125,8 @@ export async function updateChangeSet(changeSetId: string, patch: { name?: strin
 }
 
 export async function deleteChangeSet(changeSetId: string): Promise<ChangeResult> {
+  const no = await denySet(changeSetId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const set = await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, changeSetId) });
   if (!set) return { ok: true };
@@ -188,6 +220,8 @@ export async function removeDependency(changeSetId: string, dependsOnId: string)
 // ---- plateaus ---------------------------------------------------------------
 
 export async function createPlateau(input: { workspaceId: string; name: string; description?: string; targetDate?: string }) {
+  const no = await deny(input.workspaceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const id = `plt_${nanoid(10)}`;
@@ -206,6 +240,8 @@ export async function createPlateau(input: { workspaceId: string; name: string; 
 }
 
 export async function updatePlateau(plateauId: string, patch: { name?: string; description?: string; targetDate?: string }): Promise<ChangeResult> {
+  const no = await denyPlateau(plateauId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
   if (!plateau) return { error: "That state is gone." };
@@ -223,6 +259,8 @@ export async function updatePlateau(plateauId: string, patch: { name?: string; d
 }
 
 export async function deletePlateau(plateauId: string): Promise<ChangeResult> {
+  const no = await denyPlateau(plateauId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
   if (!plateau) return { ok: true };
@@ -291,6 +329,8 @@ export async function excludeFromPlateau(plateauId: string, changeSetId: string)
  * genuinely want it gone, deleting an entity is still a separate, deliberate act.
  */
 export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true; introduced: number; retired: number; altered: number; connected: number; severed: number } | { error: string }> {
+  const no = await denySet(changeSetId, "plan.deliver");
+  if (no) return no;
   const db = await getDb();
   const set = await getChangeSet(db, changeSetId);
   if (!set) return { error: "That change set is gone." };

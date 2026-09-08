@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { currentUser } from "./session";
 import { emptyDocument, migrateDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
@@ -18,6 +19,21 @@ import { currentActor } from "./history/current";
 import * as who from "./history/actor";
 
 const now = () => new Date().toISOString();
+
+/**
+ * Deleting from the model is not editing it (§5.46).
+ *
+ * A merge and a delete are the two things here that cannot be undone by doing the opposite: the
+ * other object is gone, and every card that showed it is unlinked on every board. So they ask for
+ * `graph.delete`, which a member does not have, while renaming and re-attributing ask for
+ * `graph.edit`, which they do.
+ */
+async function denyEntity(entityId: string, capability: "graph.edit" | "graph.delete") {
+  const db = await getDb();
+  const [row] = await db.select({ workspaceId: s.entities.workspaceId }).from(s.entities).where(eq(s.entities.id, entityId));
+  if (!row) return { error: "That object is gone." };
+  return deny(row.workspaceId, capability);
+}
 
 /** The name to put in the history for one end of a relation, from rows already in hand. */
 function pick(rows: Array<{ id: string; name: string }>, id: string) {
@@ -231,6 +247,9 @@ export async function deleteTeam(teamId: string) {
 // ---- knowledge graph ---------------------------------------------------------
 
 export async function importGraphText(workspaceId: string, text: string, sourceName?: string): Promise<ImportResult | { error: string }> {
+  // A paste that writes straight into the model is an import in everything but name.
+  const no = await deny(workspaceId, "import.approve");
+  if (no) return no;
   const db = await getDb();
   let payload;
   try {
@@ -248,6 +267,7 @@ export async function importGraphText(workspaceId: string, text: string, sourceN
 }
 
 export async function renameKind(workspaceId: string, from: string, to: string) {
+  if (await deny(workspaceId, "graph.edit")) return;
   const db = await getDb();
   const target = to.trim();
   if (!target) return;
@@ -258,6 +278,7 @@ export async function renameKind(workspaceId: string, from: string, to: string) 
 }
 
 export async function updateEntity(entityId: string, patch: { kind?: string; name?: string; description?: string }) {
+  if (await denyEntity(entityId, "graph.edit")) return;
   const db = await getDb();
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return;
@@ -349,6 +370,11 @@ export async function bulkSetKind(entityIds: string[], kind: string) {
 export async function bulkDeleteEntities(entityIds: string[]) {
   const db = await getDb();
   if (entityIds.length === 0) return { error: "Nothing selected" };
+  const first = entityIds[0];
+  if (first) {
+    const no = await denyEntity(first, "graph.delete");
+    if (no) return no;
+  }
   const [any] = await db.select({ workspaceId: s.entities.workspaceId }).from(s.entities).where(inArray(s.entities.id, entityIds));
   if (!any) return { deleted: 0 };
   const rows = await remembering(db, { workspaceId: any.workspaceId, actor: await currentActor(), context: `a bulk delete of ${entityIds.length} entities` }, { ids: entityIds }, () =>
@@ -369,6 +395,8 @@ export async function renameAttributeKeyAction(workspaceId: string, from: string
 
 /** Set (or, with an empty value, remove) one attribute on one entity — the table view's cell editor. */
 export async function setEntityAttributeAction(entityId: string, key: string, value: string) {
+  const no = await denyEntity(entityId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const k = key.trim();
   if (!k) return { error: "An attribute key is required" };
@@ -386,6 +414,7 @@ export async function setEntityAttributeAction(entityId: string, key: string, va
 }
 
 export async function deleteEntity(entityId: string) {
+  if (await denyEntity(entityId, "graph.delete")) return;
   const db = await getDb();
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return;
@@ -445,6 +474,13 @@ export async function acceptProposals(workspaceId: string, proposals: Proposal[]
 }
 
 export async function acceptProposal(workspaceId: string, proposal: Proposal, override?: string) {
+  /*
+   * Accepting is the moment a suggestion becomes the model, and a merge or a delete among them is
+   * irreversible — so the power asked for is the strongest the proposal could exercise.
+   */
+  const kind = proposal.action.kind;
+  const no = await deny(workspaceId, kind === "merge" || kind === "deleteEntity" ? "graph.delete" : "agent.run");
+  if (no) return no;
   const db = await getDb();
   const a = proposal.action;
   /*
@@ -523,6 +559,8 @@ export async function acceptProposal(workspaceId: string, proposal: Proposal, ov
 }
 
 export async function dismissProposal(workspaceId: string, key: string) {
+  const no = await deny(workspaceId, "agent.run");
+  if (no) return no;
   const db = await getDb();
   await recordDecision(db, workspaceId, key, "dismissed");
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
@@ -530,6 +568,8 @@ export async function dismissProposal(workspaceId: string, key: string) {
 
 /** Merge from a board: returns the id mapping so the open canvas can relink its cards. */
 export async function mergeEntitiesAction(workspaceId: string, survivorId: string, otherIds: string[]) {
+  const no = await deny(workspaceId, "graph.delete");
+  if (no) return no;
   const db = await getDb();
   const result = await remembering(db, { workspaceId, actor: await currentActor(), context: "a merge" }, { workspace: true }, () =>
     mergeEntities(db, workspaceId, survivorId, otherIds),

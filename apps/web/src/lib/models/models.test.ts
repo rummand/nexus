@@ -140,7 +140,7 @@ describe("which model answers this job", () => {
   const row = (over: Partial<s.ModelProviderRow> = {}): s.ModelProviderRow => ({
     id: "p1", workspaceId: "ws", name: "Anthropic", dialect: "anthropic", baseUrl: "", model: "claude-sonnet-4-5",
     apiKey: "sk-test", keyEncrypted: false, enabled: true, status: "unknown", statusDetail: "", checkedAt: null,
-    createdAt: "2026-01-01", updatedAt: "2026-01-01", ...over,
+    createdById: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", ...over,
   });
   const config = (tasks: Configured["tasks"] = {}): Configured => ({ providers: [], tasks });
 

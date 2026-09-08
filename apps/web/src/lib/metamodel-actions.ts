@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { remembering } from "./history/record";
 import { currentActor } from "./history/current";
 
@@ -25,7 +26,24 @@ async function touched(workspaceId: string) {
 
 // ---- node types --------------------------------------------------------------------------
 
+/** Which workspace a declaration belongs to, for the guard (§5.46). */
+async function denyNodeType(id: string) {
+  const db = await getDb();
+  const row = await db.query.nodeTypes.findFirst({ where: eq(s.nodeTypes.id, id) });
+  if (!row) return { error: "That type is gone." };
+  return deny(row.workspaceId, "graph.edit");
+}
+
+async function denyRelationType(id: string) {
+  const db = await getDb();
+  const row = await db.query.relationTypes.findFirst({ where: eq(s.relationTypes.id, id) });
+  if (!row) return { error: "That relation type is gone." };
+  return deny(row.workspaceId, "graph.edit");
+}
+
 export async function createNodeType(workspaceId: string, name: string, description = "", color = "") {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const trimmed = name.trim();
   if (!trimmed) return { error: "A name is required" };
   const db = await getDb();
@@ -39,10 +57,14 @@ export async function createNodeType(workspaceId: string, name: string, descript
 
 /** Declare a kind that so far only exists in the data — the "promote" action. */
 export async function declareNodeType(workspaceId: string, name: string) {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   return createNodeType(workspaceId, name);
 }
 
 export async function updateNodeType(id: string, patch: { name?: string; description?: string; color?: string; parentId?: string | null }) {
+  const no = await denyNodeType(id);
+  if (no) return no;
   const db = await getDb();
   const [row] = await db.select().from(s.nodeTypes).where(eq(s.nodeTypes.id, id));
   if (!row) return { error: "Type not found" };
@@ -77,6 +99,8 @@ export async function updateNodeType(id: string, patch: { name?: string; descrip
 
 /** Removes the declaration only. Entities keep their kind — the type simply becomes undeclared again. */
 export async function deleteNodeType(id: string) {
+  const no = await denyNodeType(id);
+  if (no) return no;
   const db = await getDb();
   const [row] = await db.delete(s.nodeTypes).where(eq(s.nodeTypes.id, id)).returning();
   if (row) {
@@ -156,6 +180,8 @@ export async function deleteField(id: string) {
 // ---- relation types ----------------------------------------------------------------------
 
 export async function createRelationType(workspaceId: string, name: string, description = "") {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const trimmed = name.trim();
   if (!trimmed) return { error: "A name is required" };
   const db = await getDb();
@@ -168,6 +194,8 @@ export async function createRelationType(workspaceId: string, name: string, desc
 }
 
 export async function updateRelationType(id: string, patch: { name?: string; description?: string }) {
+  const no = await denyRelationType(id);
+  if (no) return no;
   const db = await getDb();
   const [row] = await db.select().from(s.relationTypes).where(eq(s.relationTypes.id, id));
   if (!row) return { error: "Type not found" };
@@ -184,6 +212,8 @@ export async function updateRelationType(id: string, patch: { name?: string; des
 }
 
 export async function deleteRelationType(id: string) {
+  const no = await denyRelationType(id);
+  if (no) return no;
   const db = await getDb();
   const [row] = await db.delete(s.relationTypes).where(eq(s.relationTypes.id, id)).returning();
   if (row) await touched(row.workspaceId);
@@ -193,6 +223,8 @@ export async function deleteRelationType(id: string) {
 // ---- rules -------------------------------------------------------------------------------
 
 export async function addRule(relationTypeId: string, fromType: string, toType: string, cardinality = "many-to-many") {
+  const no = await denyRelationType(relationTypeId);
+  if (no) return no;
   if (!fromType.trim() || !toType.trim()) return { error: "Both ends are required" };
   const db = await getDb();
   const [type] = await db.select().from(s.relationTypes).where(eq(s.relationTypes.id, relationTypeId));

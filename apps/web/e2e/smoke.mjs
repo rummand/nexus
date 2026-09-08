@@ -1345,6 +1345,54 @@ try {
   assert.deepEqual(problems, [], "no browser errors");
 
   /*
+   * People and roles (§5.46). The seeded owner can see the roster, change somebody's role and
+   * change their own password; and the capability check is real — a member is refused where an
+   * administrator is not, on the server, whatever the page chose to render.
+   */
+  await page.goto(`${base}/w/acme-energy/settings/people`, { waitUntil: "load" });
+  await page.waitForSelector("[data-people] li");
+  assert.ok((await page.locator("[data-people] li").count()) >= 4, "the workspace lists its people");
+  assert.ok(await page.locator("[data-add-person]").isVisible(), "an owner is offered the add-somebody control");
+
+  const maria = page.locator('[data-people] li:has-text("Maria Lund")');
+  await maria.locator("select.people-role").selectOption("guest");
+  await page.waitForTimeout(700);
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("[data-people] li");
+  assert.equal(
+    await page.locator('[data-people] li:has-text("Maria Lund") select.people-role').inputValue(),
+    "guest",
+    "a role change sticks",
+  );
+
+  // Now be Maria, who is a guest, and find the door shut.
+  const guestContext = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const guest = await guestContext.newPage();
+  try {
+    await signIn(guest, "maria@acme-energy.example");
+    await guest.goto(`${base}/w/acme-energy/settings/people`, { waitUntil: "load" });
+    await guest.waitForSelector("[data-people] li");
+    assert.equal(await guest.locator("[data-add-person]").count(), 0, "a guest is not offered the controls they cannot use");
+
+    // The enforcement, not the rendering: a board save is refused for somebody who may only read.
+    const refused = await guest.evaluate(async () => {
+      const res = await fetch("/api/boards/brd_capabilities", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ document: { version: 2, elements: {} } }),
+      });
+      return res.status;
+    });
+    assert.equal(refused, 403, "a guest's board save is refused by the server");
+  } finally {
+    await guestContext.close();
+  }
+
+  // Put her back, so the suite leaves the workspace as it found it.
+  await page.locator('[data-people] li:has-text("Maria Lund") select.people-role').selectOption("member");
+  await page.waitForTimeout(700);
+
+  /*
    * The typeface is served from this deployment (§5.45): no request to Google, and IBM Plex Sans
    * actually resolved rather than quietly falling back to the system stack.
    */

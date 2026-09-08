@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUserOrNull } from "@/lib/session";
+import { can, workspaceOfBoard } from "@/lib/auth/guard";
 import { join, type Joined } from "@/lib/live/room";
 import type { Down, Up } from "@/lib/live/protocol";
 
@@ -21,8 +22,15 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ boardId: string }> };
 
-/** Every open stream, so a POST can find the room the sender is already joined to. */
-const connections: Map<string, Joined> = ((globalThis as { __nexusLive?: Map<string, Joined> }).__nexusLive ??= new Map());
+/**
+ * Every open stream, so a POST can find the room the sender is already joined to.
+ *
+ * `mayEdit` is decided once, when the stream opens, and carried here: a guest is welcome to watch a
+ * board live — presence and cursors are the point of the feature — and may not change it (§5.46).
+ * Deciding it at join time rather than per patch keeps the hot path free of a database lookup.
+ */
+interface Connection { joined: Joined; mayEdit: boolean }
+const connections: Map<string, Connection> = ((globalThis as { __nexusLive?: Map<string, Connection> }).__nexusLive ??= new Map());
 
 /** Something has to cross a proxy every so often, or an idle stream is closed as dead. */
 const KEEPALIVE_MS = 25_000;
@@ -31,6 +39,9 @@ export async function GET(req: Request, { params }: Params) {
   const { boardId } = await params;
   const user = await currentUserOrNull();
   if (!user) return NextResponse.json({ error: "No user" }, { status: 401 });
+  // Decided once, here, and carried on the connection for every patch that follows (§5.46).
+  const workspaceId = await workspaceOfBoard(boardId);
+  const mayEdit = workspaceId ? await can(workspaceId, "board.edit") : false;
 
   const encoder = new TextEncoder();
   let joined: Joined | null = null;
@@ -66,7 +77,7 @@ export async function GET(req: Request, { params }: Params) {
         controller.close();
         return;
       }
-      connections.set(joined.peerId, joined);
+      connections.set(joined.peerId, { joined, mayEdit });
 
       // The peer id goes in its own event so the client can identify itself before any data.
       write(`event: peer\ndata: ${JSON.stringify({ peerId: joined.peerId })}\n\n`);
@@ -111,8 +122,9 @@ export async function GET(req: Request, { params }: Params) {
 export async function POST(req: Request, { params }: Params) {
   await params;
   const peerId = req.headers.get("x-nexus-peer") ?? "";
-  const joined = connections.get(peerId);
-  if (!joined) return NextResponse.json({ error: "Not connected", reconnect: true }, { status: 409 });
+  const connection = connections.get(peerId);
+  if (!connection) return NextResponse.json({ error: "Not connected", reconnect: true }, { status: 409 });
+  const { joined } = connection;
 
   let body: Up;
   try {
@@ -122,6 +134,7 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   if (body.kind === "patch") {
+    if (!connection.mayEdit) return NextResponse.json({ error: "You may read this board but not change it." }, { status: 403 });
     if (!body.patch || typeof body.patch !== "object") return NextResponse.json({ error: "patch is required" }, { status: 400 });
     joined.patch(body.patch);
   } else if (body.kind === "doc") {

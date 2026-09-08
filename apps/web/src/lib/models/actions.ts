@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
+import { currentUserOrNull } from "@/lib/session";
 import { probe } from "./call";
 import { configured, toProvider } from "./resolve";
 import { open, seal, secretConfigured } from "./secret";
@@ -19,6 +21,18 @@ import { DEFAULT_BASE, TASKS, type Dialect, type Provider, type Task } from "./t
  */
 
 const now = () => new Date().toISOString();
+
+/**
+ * Every action here is administrative (§5.46): a model provider decides what this organisation's
+ * architecture is sent to, and its key is spent on somebody's account. Actions that take a
+ * provider id rather than a workspace resolve the workspace from the row first.
+ */
+async function denyProvider(providerId: string) {
+  const db = await getDb();
+  const row = await db.query.modelProviders.findFirst({ where: eq(s.modelProviders.id, providerId) });
+  if (!row) return { error: "That provider is gone." };
+  return deny(row.workspaceId, "settings.manage");
+}
 
 async function slugOf(workspaceId: string) {
   const db = await getDb();
@@ -46,6 +60,8 @@ export interface ProviderInput {
 }
 
 export async function addProvider(workspaceId: string, input: ProviderInput): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   const name = input.name.trim();
   if (!name) return { error: "Give it a name — “Anthropic”, “Our gateway”, “Ollama on the OT network”." };
@@ -55,6 +71,8 @@ export async function addProvider(workspaceId: string, input: ProviderInput): Pr
   await db.insert(s.modelProviders).values({
     id,
     workspaceId,
+    // Whose provider this is (§5.46): its key is spent on somebody's account, so the row says whose.
+    createdById: (await currentUserOrNull())?.id ?? null,
     name,
     dialect: input.dialect,
     baseUrl: input.baseUrl.trim(),
@@ -70,6 +88,8 @@ export async function addProvider(workspaceId: string, input: ProviderInput): Pr
 }
 
 export async function updateProvider(providerId: string, input: Partial<ProviderInput>): Promise<{ ok: true } | { error: string }> {
+  const no = await denyProvider(providerId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.modelProviders.findFirst({ where: eq(s.modelProviders.id, providerId) });
   if (!row) return { error: "That provider is gone." };
@@ -95,6 +115,8 @@ export async function updateProvider(providerId: string, input: Partial<Provider
 }
 
 export async function removeProvider(providerId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyProvider(providerId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.modelProviders.findFirst({ where: eq(s.modelProviders.id, providerId) });
   if (!row) return { error: "That provider is gone." };
@@ -105,6 +127,8 @@ export async function removeProvider(providerId: string): Promise<{ ok: true } |
 
 /** Which provider does which job. A null provider means "whichever is first". */
 export async function assignTask(workspaceId: string, task: Task, providerId: string | null, model = ""): Promise<{ ok: true } | { error: string }> {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   if (!TASKS.includes(task)) return { error: "That is not a job a model does here." };
   const db = await getDb();
   await db
@@ -123,6 +147,9 @@ export async function assignTask(workspaceId: string, task: Task, providerId: st
  * without asking again on every render.
  */
 export async function checkProvider(providerId: string): Promise<{ status: string; detail: string } | { error: string }> {
+  // Checking spends a real call on somebody's key, so it is administrative like the rest.
+  const no = await denyProvider(providerId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.modelProviders.findFirst({ where: eq(s.modelProviders.id, providerId) });
   if (!row) return { error: "That provider is gone." };

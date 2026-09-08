@@ -2981,3 +2981,54 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 /* The drawer shows the same timeline, tighter. */
 [data-drawer-history] .hx-timeline > li { padding-left: 10px; }
 [data-drawer-history] .hx-line { font-size: 12px; }
+
+/* A refusal on the canvas (§5.46): quiet, in place, and it says what to do about it. */
+.graph-block-refused { color: #b45309 !important; font-weight: 700; }
+
+/* ---- people and roles (§5.46) --------------------------------------------- */
+
+.people-list { display: grid; gap: 8px; list-style: none; margin: 0 0 22px; padding: 0; }
+.people-list > li {
+  align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 13px;
+  display: grid; gap: 12px; grid-template-columns: 34px 1fr auto auto; padding: 11px 14px;
+}
+.people-list > li:hover { border-color: #c9dcf3; }
+.people-avatar { align-items: center; border-radius: 50%; color: #fff; display: flex; font-size: 12px; font-weight: 800; height: 34px; justify-content: center; width: 34px; }
+.people-who { display: grid; gap: 1px; min-width: 0; }
+.people-who b { color: var(--ink); font-size: 13.5px; }
+.people-who b em { color: var(--quiet); font-style: normal; font-weight: 600; }
+.people-who small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.people-role { background: #fff; border: 1px solid var(--line); border-radius: 8px; color: #46536a; font-size: 12.5px; min-height: 30px; padding: 0 8px; }
+.people-role-chip { background: #f2f5f9; border-radius: 999px; color: #4d5c74; font-size: 11.5px; font-weight: 800; padding: 4px 10px; }
+.people-role-chip.owner { background: #eef6ff; color: #1d5fa8; }
+.people-role-chip.admin { background: #f3eefe; color: #6b3fc4; }
+.people-actions { display: flex; gap: 4px; }
+.people-actions button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 8px; color: #7f8b9e; display: flex; height: 28px; justify-content: center; width: 28px; }
+.people-actions button:hover { background: #f2f7fd; border-color: var(--line); color: var(--blue); }
+.people-actions button.danger:hover { background: #fff5f5; border-color: #f6c9c5; color: #c0453c; }
+.people-reset { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; padding-top: 4px; }
+.people-reset input { background: #fff; border: 1px solid var(--line); border-radius: 8px; flex: 1; font-size: 12.5px; min-height: 30px; min-width: 220px; padding: 0 10px; }
+.people-reset small { color: var(--quiet); font-size: 11.5px; }
+
+.people-add { background: #f8fafc; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-bottom: 16px; padding: 14px 16px; }
+.people-add label { display: grid; gap: 3px; }
+.people-add label span { color: var(--muted); font-size: 11.5px; font-weight: 700; }
+.people-add input, .people-add select { background: #fff; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; min-height: 32px; padding: 0 10px; }
+.people-add-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; grid-column: 1 / -1; }
+.people-add-actions small { color: var(--quiet); font-size: 11.5px; }
+
+/* The roles explained where they are chosen: nobody reads the documentation to find out what
+   "Member" means in this particular product. */
+.people-roles { border-top: 1px solid #e9eef5; margin-top: 4px; padding-top: 16px; }
+.people-roles h2, .people-mine h2 { align-items: center; color: #2b3648; display: flex; font-size: 12.5px; font-weight: 800; gap: 7px; margin: 0 0 10px; }
+.people-roles h2 svg, .people-mine h2 svg { color: #93a3ba; }
+.people-roles dl { display: grid; gap: 6px; margin: 0 0 12px; }
+.people-roles dl > div { display: grid; gap: 2px; grid-template-columns: 150px 1fr; }
+.people-roles dt { color: var(--ink); font-size: 12.5px; font-weight: 800; }
+.people-roles dd { color: var(--muted); font-size: 12.5px; margin: 0; }
+.people-roles .muted { font-size: 12.5px; max-width: 68ch; }
+
+.people-mine { border-top: 1px solid #e9eef5; margin-top: 18px; padding-top: 16px; }
+.people-mine form { display: flex; flex-wrap: wrap; gap: 8px; }
+.people-mine input { background: #fff; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; min-height: 32px; min-width: 240px; padding: 0 10px; }
+.people-note { color: var(--muted); display: block; font-size: 12px; margin-top: 8px; }

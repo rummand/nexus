@@ -61,10 +61,10 @@ export async function listTokens(db: Db, workspaceId: string): Promise<TokenSumm
   return rows.map(toSummary).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function createToken(db: Db, workspaceId: string, name: string, scope: Scope, agentId: string | null): Promise<{ id: string; token: string }> {
+export async function createToken(db: Db, workspaceId: string, name: string, scope: Scope, agentId: string | null, createdById: string | null = null): Promise<{ id: string; token: string }> {
   const { token, prefix, hash } = mintToken();
   const id = `mcp_${nanoid(10)}`;
-  await db.insert(s.mcpTokens).values({ id, workspaceId, name, prefix, hash, scope, agentId, createdAt: new Date().toISOString() });
+  await db.insert(s.mcpTokens).values({ id, workspaceId, name, prefix, hash, scope, agentId, createdById, createdAt: new Date().toISOString() });
   return { id, token };
 }
 

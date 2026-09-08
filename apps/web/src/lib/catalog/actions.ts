@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { providerById } from "./providers";
 import { flattenScopes } from "./types";
 
@@ -56,6 +57,9 @@ async function upsertConnection(workspaceId: string, providerId: string, patch: 
  * saving is a revocation — there is no separate "remove one scope" path to forget to call.
  */
 export async function grantScopes(input: { workspaceId: string; providerId: string; paths: string[]; note?: string; reason?: string; evidence?: unknown }) {
+  // Granting a system read access to this estate is the most consequential setting there is.
+  const no = await deny(input.workspaceId, "settings.manage");
+  if (no) return no;
   const provider = providerById(input.providerId);
   if (!provider) return { error: "That is not a source in the catalogue" };
   const valid = new Set(flattenScopes(provider.scopes).map((n) => n.path));
@@ -77,6 +81,8 @@ export async function grantScopes(input: { workspaceId: string; providerId: stri
 
 /** Say no, and remember it: a declined proposal is not raised again. */
 export async function declineProvider(input: { workspaceId: string; providerId: string; note?: string; reason?: string; evidence?: unknown }) {
+  const no = await deny(input.workspaceId, "settings.manage");
+  if (no) return no;
   if (!providerById(input.providerId)) return { error: "That is not a source in the catalogue" };
   const db = await getDb();
   const id = await upsertConnection(input.workspaceId, input.providerId, {
@@ -92,6 +98,8 @@ export async function declineProvider(input: { workspaceId: string; providerId: 
 
 /** Withdraw everything. The connection stays, as the record that it was once granted. */
 export async function revokeProvider(workspaceId: string, providerId: string) {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   const [existing] = await db
     .select()
@@ -106,6 +114,8 @@ export async function revokeProvider(workspaceId: string, providerId: string) {
 
 /** Put a declined or revoked source back in front of the agent. */
 export async function reopenProvider(workspaceId: string, providerId: string) {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   const [existing] = await db
     .select()
@@ -134,6 +144,8 @@ export async function registerSource(input: {
   summary?: string;
   signals: string[];
 }) {
+  const no = await deny(input.workspaceId, "settings.manage");
+  if (no) return no;
   const name = input.name.trim();
   if (!name) return { error: "Give it a name" };
   const db = await getDb();
@@ -159,6 +171,8 @@ export async function registerSource(input: {
 
 /** Remove a registered entry. The scan will list its hosts as unknown again. */
 export async function unregisterSource(workspaceId: string, id: string) {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   await db.delete(s.catalogEntries).where(eq(s.catalogEntries.id, id));
   await touched(workspaceId);

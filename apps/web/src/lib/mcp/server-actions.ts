@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
+import { currentUserOrNull } from "@/lib/session";
 import { open, seal } from "@/lib/models/secret";
 import { createSource } from "@/lib/intake/actions";
 import { callTool, listTools, type RemoteTool } from "./client";
@@ -69,7 +71,17 @@ export async function listServers(workspaceId: string): Promise<ServerSummary[]>
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Which workspace a connected server belongs to, for the guard (§5.46). */
+async function denyServer(serverId: string) {
+  const db = await getDb();
+  const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
+  if (!row) return { error: "That server is gone." };
+  return deny(row.workspaceId, "settings.manage");
+}
+
 export async function addServer(workspaceId: string, input: { name: string; url: string; apiKey?: string }): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "settings.manage");
+  if (no) return no;
   const name = input.name.trim().slice(0, 80);
   const url = input.url.trim();
   if (!name) return { error: "Give it a name — the system it is, not the URL." };
@@ -78,13 +90,17 @@ export async function addServer(workspaceId: string, input: { name: string; url:
   const key = seal(input.apiKey?.trim() ?? "");
   const id = `mcs_${nanoid(10)}`;
   await db.insert(s.mcpServers).values({
-    id, workspaceId, name, url, apiKey: key.stored, keyEncrypted: key.encrypted, enabled: true, createdAt: now(), updatedAt: now(),
+    id, workspaceId, name, url, apiKey: key.stored, keyEncrypted: key.encrypted, enabled: true,
+    createdById: (await currentUserOrNull())?.id ?? null,
+    createdAt: now(), updatedAt: now(),
   });
   await refresh(workspaceId);
   return { id };
 }
 
 export async function updateServer(serverId: string, input: { name?: string; url?: string; apiKey?: string; enabled?: boolean }): Promise<{ ok: true } | { error: string }> {
+  const no = await denyServer(serverId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
   if (!row) return { error: "That server is gone." };
@@ -107,6 +123,8 @@ export async function updateServer(serverId: string, input: { name?: string; url
 }
 
 export async function removeServer(serverId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyServer(serverId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
   if (!row) return { error: "That server is gone." };
@@ -117,6 +135,8 @@ export async function removeServer(serverId: string): Promise<{ ok: true } | { e
 
 /** Shake hands and ask what it can do. The answer is stored, so the page need not ask again. */
 export async function checkServer(serverId: string): Promise<{ status: string; detail: string; tools: number } | { error: string }> {
+  const no = await denyServer(serverId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
   if (!row) return { error: "That server is gone." };
@@ -145,6 +165,9 @@ export async function checkServer(serverId: string): Promise<{ status: string; d
  * has looked at is worth more than evidence that arrived.
  */
 export async function askServer(serverId: string, tool: string, values: Record<string, string>): Promise<{ text: string } | { error: string }> {
+  // Calling somebody else's system on this workspace's behalf is a settings-level act.
+  const no = await denyServer(serverId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
   if (!row) return { error: "That server is gone." };
@@ -161,6 +184,8 @@ export async function askServer(serverId: string, tool: string, values: Record<s
 
 /** What a tool said becomes a source, and the intake pipeline takes it from there. */
 export async function keepAsSource(workspaceId: string, serverId: string, tool: string, text: string): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.mcpServers.findFirst({ where: eq(s.mcpServers.id, serverId) });
   if (!row) return { error: "That server is gone." };

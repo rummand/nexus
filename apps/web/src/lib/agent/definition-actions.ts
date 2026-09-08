@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { deny } from "@/lib/auth/guard";
 import { runQuery } from "@/lib/query";
 import { choose, configured, whyNoModel } from "@/lib/models/resolve";
 import { checkDefinition, type DefinitionInput, type Verb } from "./definition";
@@ -43,7 +44,23 @@ async function context(workspaceId: string) {
   return { teamIds: new Set(teams.map((t) => t.id)), providerIds: new Set(providers.map((p) => p.id)) };
 }
 
+/**
+ * The guard for the actions that take an agent id (§5.46).
+ *
+ * Writing an agent is administrative and running one is not: a fleet is a standing capability
+ * somebody has granted, while asking an existing agent to look again is ordinary work. That split
+ * is why `runAgent` below asks for `agent.run` and everything else here asks for `agent.manage`.
+ */
+async function denyAgent(agentId: string, capability: "agent.manage" | "agent.run") {
+  const db = await getDb();
+  const current = await getDefinition(db, agentId);
+  if (!current) return { error: "That agent is gone." };
+  return deny(current.workspaceId, capability);
+}
+
 export async function createAgent(workspaceId: string, input: DefinitionInput): Promise<{ id: string; warnings: string[] } | { error: string }> {
+  const no = await deny(workspaceId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const check = checkDefinition(input, await context(workspaceId));
   if (!check.ok) return { error: check.errors.join(" ") };
@@ -55,6 +72,8 @@ export async function createAgent(workspaceId: string, input: DefinitionInput): 
 }
 
 export async function updateAgent(agentId: string, input: DefinitionInput): Promise<{ ok: true; warnings: string[] } | { error: string }> {
+  const no = await denyAgent(agentId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const current = await getDefinition(db, agentId);
   if (!current) return { error: "That agent is gone." };
@@ -67,6 +86,8 @@ export async function updateAgent(agentId: string, input: DefinitionInput): Prom
 
 /** Draft → active is the moment an agent is given a voice, so it is its own action. */
 export async function setAgentStatus(agentId: string, status: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyAgent(agentId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const current = await getDefinition(db, agentId);
   if (!current) return { error: "That agent is gone." };
@@ -81,6 +102,8 @@ export async function setAgentStatus(agentId: string, status: string): Promise<{
 }
 
 export async function removeAgent(agentId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyAgent(agentId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const current = await getDefinition(db, agentId);
   if (!current) return { error: "That agent is gone." };
@@ -90,6 +113,8 @@ export async function removeAgent(agentId: string): Promise<{ ok: true } | { err
 }
 
 export async function runAgent(agentId: string) {
+  const no = await denyAgent(agentId, "agent.run");
+  if (no) return no;
   const db = await getDb();
   const current = await getDefinition(db, agentId);
   if (!current) return { error: "That agent is gone." };
@@ -124,6 +149,8 @@ export type { Verb };
 export async function suggestAgents(workspaceId: string, parentId?: string): Promise<
   { suggested: number; rejected: string[]; note: string } | { error: string }
 > {
+  const no = await deny(workspaceId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const parent = parentId ? await getDefinition(db, parentId) : await ensureReviewer(db, workspaceId);
   if (!parent || parent.workspaceId !== workspaceId) return { error: "That agent is gone." };
@@ -174,6 +201,8 @@ export async function suggestAgents(workspaceId: string, parentId?: string): Pro
 
 /** A person's yes: a proposed agent becomes an ordinary draft, and does a dry run before it speaks. */
 export async function approveAgent(agentId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyAgent(agentId, "agent.manage");
+  if (no) return no;
   const db = await getDb();
   const current = await getDefinition(db, agentId);
   if (!current) return { error: "That agent is gone." };
