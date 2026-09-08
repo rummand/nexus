@@ -4,10 +4,20 @@ import * as s from "./schema";
 import { serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { capabilityMap, integration, landscape, note, roadmap } from "@/canvas/templates";
 import { syncBoardToGraph } from "@/lib/graph";
+import { hashPassword } from "@/lib/auth/password";
 
-/** The demo identity used while authentication is not yet part of the product. */
+/** The person the seed makes first, and the one the demo sign-in hint names (§5.41). */
 export const DEMO_USER_ID = "usr_demo";
 export const DEMO_WORKSPACE_SLUG = "acme-energy";
+/**
+ * The password the seed gives all four of its people (§5.41).
+ *
+ * Public by design: it protects a database of invented energy companies, and the point of the
+ * demo is to be two of those people at once and watch the board be shared. It lives here rather
+ * than with the sign-in code because it is a property of the seed — a real deployment changes it
+ * and the sign-in page stops advertising it.
+ */
+export const DEMO_PASSWORD = "acme-energy";
 
 export async function seedIfEmpty(db: Db) {
   const [row] = await db.select({ n: count() }).from(s.workspaces);
@@ -44,7 +54,13 @@ export async function seed(db: Db) {
     { id: "usr_tobias", name: "Tobias Kjær", email: "tobias@acme-energy.example", color: "#10b981" },
     { id: "usr_anna", name: "Anna Holm", email: "anna@acme-energy.example", color: "#f59e0b" },
   ];
-  await db.insert(s.users).values(users);
+  /*
+   * The seeded people can sign in (§5.41). One known password for all four, because the point of
+   * the demo is to be two of them at once and see the board shared — and because a password that
+   * protects a database of invented energy companies is theatre.
+   */
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  await db.insert(s.users).values(users.map((u) => ({ ...u, passwordHash })));
 
   const workspaceId = "ws_acme";
   await db.insert(s.workspaces).values({ id: workspaceId, slug: DEMO_WORKSPACE_SLUG, name: "Acme Energy" });

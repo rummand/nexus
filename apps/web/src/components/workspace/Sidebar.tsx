@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, Home, Inbox, LifeBuoy, Plug, Plus, Star, Users, Waypoints } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -70,11 +70,19 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
       </div>
 
       <footer>
-        <span className="avatar">{initials(user.name)}</span>
+        {/* The avatar takes the person's own colour — the same one their cursor wears on a
+            shared board (§5.40), so "who is that" has one answer everywhere. */}
+        <span className="avatar" style={{ background: user.color }}>{initials(user.name)}</span>
         <div>
           <strong>{user.name}</strong>
           <span>{user.email}</span>
         </div>
+        {/* A form, not a link: a GET that ends a session can be fired by any page on the web. */}
+        <form action="/signout" method="post">
+          <button type="submit" title={`Sign out of ${user.email}`} aria-label="Sign out" data-signout>
+            <LogOut size={15} />
+          </button>
+        </form>
       </footer>
     </aside>
   );

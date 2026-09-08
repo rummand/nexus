@@ -29,7 +29,49 @@ page.on("request", (r) => r.method() === "PUT" && r.url().includes("/api/boards/
 const count = () => page.locator("[data-element-id]").count();
 const zoom = () => page.locator(".zoom-card strong").innerText();
 
+/**
+ * Sign a browser in as one of the seeded people (§5.41).
+ *
+ * Every page in this suite is behind the gate now, so this runs first — and it is the one place
+ * that knows the demo password, which the seed sets and the sign-in page advertises in
+ * development. Taking an email means the multiplayer section can be two different people.
+ */
+const signIn = async (p, email = "jes@acme-energy.example") => {
+  await p.goto(`${base}/signin`, { waitUntil: "load" });
+  await p.fill('input[name="email"]', email);
+  await p.fill('input[name="password"]', "acme-energy");
+  await p.click('button[type="submit"]');
+  await p.waitForURL((u) => !u.pathname.startsWith("/signin"), { timeout: 30000 });
+};
+
+/**
+ * A fetch from *this process* that carries the browser's session (§5.41).
+ *
+ * The browser APIs are behind the same gate as the pages, so a bare `fetch` from the test gets
+ * the sign-in page and a confusing "Unexpected token '<'". `/api/mcp` is deliberately left to a
+ * plain fetch below: it carries a bearer key instead of a cookie, and proving that still works
+ * without one is part of the point.
+ */
+const apiFetch = async (url, init = {}) => {
+  const jar = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
+  return fetch(url, { ...init, headers: { ...(init.headers ?? {}), cookie: jar } });
+};
+
 try {
+  // Signed out, every page is the sign-in page — the assertion that the gate is actually on.
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  assert.equal(new URL(page.url()).pathname, "/signin", "a signed-out visitor is sent to sign in");
+  assert.ok(await page.locator("[data-demo-hint]").isVisible(), "a demo instance says how to get in");
+
+  // A wrong password is refused, and says nothing about whether the account exists.
+  await page.fill('input[name="email"]', "jes@acme-energy.example");
+  await page.fill('input[name="password"]', "not-the-password");
+  await page.click('button[type="submit"]');
+  await page.waitForSelector(".form-error");
+  assert.match(await page.locator(".form-error").innerText(), /do not match/, "a wrong password is refused without saying which half was wrong");
+
+  await signIn(page);
+
   // workspace pages
   await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
   assert.ok(await page.locator(".studio-starters").isVisible(), "home renders starters");
@@ -644,7 +686,7 @@ try {
   await page.waitForSelector(".fact-card.planned", { timeout: 20000 });
   // …and a planned card is a drawing of an intention: it must not create the system
   await page.waitForTimeout(2000); // let the autosave land
-  const graph = await (await fetch(`${base}/api/graph/query`, {
+  const graph = await (await apiFetch(`${base}/api/graph/query`, {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ workspaceId: "ws_acme", q: "SAP PM" }),
   })).json();
@@ -686,7 +728,7 @@ try {
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   await page.waitForSelector("[data-health]");
   const countEntities = async () => {
-    const r = await fetch(`${base}/api/graph/query`, {
+    const r = await apiFetch(`${base}/api/graph/query`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ workspaceId: "ws_acme", q: "kind:Application" }),
     });
@@ -1111,6 +1153,8 @@ try {
     const other = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const second = await other.newPage();
     try {
+      // A different person, not a second tab: the point of presence is telling people apart.
+      await signIn(second, "maria@acme-energy.example");
       const board = `${base}/b/brd_landscape`;
       await page.goto(board, { waitUntil: "load" });
       await page.waitForSelector("[data-element-id]");
@@ -1120,6 +1164,9 @@ try {
       // The stream is up on both, and each can see that somebody else is here.
       await page.waitForSelector(".peer-chip", { timeout: 15000 });
       await second.waitForSelector(".peer-chip", { timeout: 15000 });
+      // Since rev 76 presence is about people, not connections: Jes sees Maria and Maria sees Jes.
+      assert.equal((await page.locator(".peer-chip").first().innerText()).trim(), "ML", "the other person is named, not merely counted");
+      assert.equal((await second.locator(".peer-chip").first().innerText()).trim(), "JO", "and it is mutual");
       assert.match(await page.locator(".sync-pill").first().innerText(), /Shared/,
         "a live board says it is shared rather than saved — the room is the writer now");
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, LogOut, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
 import { documentToSvg } from "./export";
 import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
@@ -132,7 +132,15 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
           )}
         </span>
         <button className="ghost-button" type="button" onClick={() => void share()}><Share2 size={16} /> {copied ? "Link copied" : "Share"}</button>
-        <span className="avatar" title={user.name}>{initials(user.name)}</span>
+        {/*
+          Who you are, in the colour your cursor wears on everybody else's screen (§5.40) — the
+          question "which one of these is me" has to have an answer on a shared board. Sign out is
+          a form rather than a link, because a GET that ends a session can be fired by any page.
+        */}
+        <span className="avatar" style={{ background: user.color }} title={`Signed in as ${user.name}`} data-me>{initials(user.name)}</span>
+        <form action="/signout" method="post" className="topbar-signout">
+          <button type="submit" className="ghost-button" title={`Sign out of ${user.name}`} aria-label="Sign out" data-signout><LogOut size={16} /></button>
+        </form>
       </div>
     </header>
   );

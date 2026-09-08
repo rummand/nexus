@@ -117,6 +117,19 @@ try {
     const { chromium } = await import("playwright");
     const warm = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
     const page = await warm.newPage({ viewport: { width: 1600, height: 1000 } });
+
+    /*
+     * Sign in before warming anything (§5.41), or every route below redirects to /signin, its
+     * `ready` selector never appears, and the warm-up spends a two-minute timeout per route
+     * discovering that. That is exactly what it did the first time this gate went in: 13 routes,
+     * 343 seconds, and a suite that looked hung rather than misconfigured.
+     */
+    await page.goto(`${base}/signin`, { waitUntil: "load", timeout: 120_000 });
+    await page.fill('input[name="email"]', "jes@acme-energy.example");
+    await page.fill('input[name="password"]', "acme-energy");
+    await page.click('button[type="submit"]');
+    await page.waitForURL((u) => !u.pathname.startsWith("/signin"), { timeout: 120_000 });
+
     for (const route of routes) {
       await page.goto(`${base}${route.path}`, { waitUntil: "load", timeout: 120_000 }).catch(() => undefined);
       // Waiting for something the page only shows once it works is the whole point: "load" fires

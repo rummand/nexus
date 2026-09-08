@@ -51,6 +51,12 @@ follows the LeanFlow Studio reference design.
   highlights results on the board.
 - **Documentation in the product** — 27 pages with 40 screenshots captured from the running app,
   searchable, tested as data.
+- **Shared boards** — open one somebody else has open and you are both on it: their cursor in
+  board coordinates, an outline round what they have hold of, their initials in the topbar.
+  Per-element last-writer-wins ordered by the server; text is locked to whoever is typing in it
+  rather than merged, because merging characters loses them.
+- **Sign-in** — email and password (scrypt, revocable sessions), each person their own colour.
+  An optional shared password can sit in front of the whole instance as a second door.
 - **EA knowledge base** — a standalone corpus (`packages/ea-knowledge`) with lexical retrieval
   and doctrine, which imports nothing from Nexus.
 
@@ -62,8 +68,10 @@ pnpm dev          # http://localhost:3000
 ```
 
 The app runs against a local SQLite file with a seeded demo workspace (Acme Energy).
-No configuration needed. A model is optional: without one, Compose falls back to a rule
-compiler, intake and import fall back to rules, and every screen says so.
+No configuration needed. Sign in as `jes@acme-energy.example` with `acme-energy` — the sign-in
+page prints the seeded credentials in development, and there are four people so you can be two of
+them at once and watch a board be shared. A model is optional: without one, Compose falls back to
+a rule compiler, intake and import fall back to rules, and every screen says so.
 
 ## Scripts
 
@@ -92,6 +100,8 @@ apps/web/              Next.js 16 app — routes, canvas engine, database
   src/lib/import       reading, staging, reconciling and approving a batch
   src/lib/intake       prose → checked, quotable claims
   src/lib/agent        proposals, board agents, described agents, the fleet
+  src/lib/auth         passwords, sessions
+  src/lib/live         the shared-board protocol and the per-board room
   src/lib/mcp          Nexus as an MCP server, and the client that asks other servers
   src/lib/docs         the in-product documentation (pages + shots.json)
   src/db               Drizzle schema, client, migrations, seed

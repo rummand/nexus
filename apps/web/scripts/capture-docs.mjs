@@ -143,6 +143,21 @@ try {
   };
   const w = "/w/acme-energy";
 
+  /**
+   * Sign in first (§5.41): every page below is behind the gate now.
+   *
+   * The seeded password, which is public by design — this server and this database exist for the
+   * length of one capture.
+   */
+  const signIn = async (p, email = "jes@acme-energy.example") => {
+    await p.goto(`${base}/signin`, { waitUntil: "load", timeout: 180_000 });
+    await p.fill('input[name="email"]', email);
+    await p.fill('input[name="password"]', "acme-energy");
+    await p.click('button[type="submit"]');
+    await p.waitForURL((u) => !u.pathname.startsWith("/signin"), { timeout: 180_000 });
+  };
+  await signIn(page);
+
   // ---- the shell ----------------------------------------------------------
   // The one page where the navigation is the subject, so it keeps the whole window.
   await shot("home", () => goto(w, ".studio-home-nav"), { full: true });
@@ -190,6 +205,8 @@ try {
      * when the page being photographed joins: its own `hello` carries the peer list, and the
      * picture does not depend on a broadcast arriving at a stream that is already open.
      */
+    // Somebody else, so the picture shows a name and a colour that are not the reader's own.
+    await signIn(guest, "maria@acme-energy.example");
     await guest.goto(`${base}/b/brd_landscape`, { waitUntil: "load", timeout: 180_000 });
     await guest.waitForSelector("[data-element-id]", { timeout: 180_000 });
     await guest.waitForTimeout(1500);

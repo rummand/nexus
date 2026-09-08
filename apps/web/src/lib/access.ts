@@ -1,10 +1,11 @@
 /**
  * Optional shared-password gate for a deployed instance.
  *
- * Brief 1 has no per-user authentication (see docs/BRIEF.md §7); until it does, a public
- * deployment is world-editable. Setting NEXUS_ACCESS_PASSWORD puts a single shared password in
- * front of the whole app. Leaving it unset changes nothing — local development and the seeded
- * demo keep working with no login.
+ * Since rev 76 every person signs in as themselves (§5.41), so this is no longer what keeps a
+ * deployment private — it is a second door in front of the first. It still earns its place: an
+ * instance on the open internet with a shared password in front of it is not enumerable at all,
+ * which is a different and useful property from "you need an account". Setting
+ * NEXUS_ACCESS_PASSWORD turns it on; leaving it unset changes nothing.
  *
  * The cookie holds an HMAC of a fixed message keyed by the password, so it can be verified
  * without any session storage, and the password itself never leaves the server.
@@ -32,6 +33,8 @@ export function safeEqual(a: string, b: string): boolean {
 export function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/login" ||
+    pathname === "/signin" ||
+    pathname === "/signout" ||
     pathname === "/api/health" || // the platform health check must never be redirected
     /*
      * The MCP endpoint carries its own key (§5.33) and is called by machines, which cannot follow
@@ -40,6 +43,18 @@ export function isPublicPath(pathname: string): boolean {
      */
     pathname === "/api/mcp" ||
     pathname.startsWith("/_next/") ||
-    pathname === "/favicon.ico"
+    /*
+     * Static files under `public/`.
+     *
+     * Not a convenience — a correctness fix. Next's image optimiser fetches the *source* image
+     * over HTTP, so with `/docs/board.png` behind the gate the optimiser's own request was
+     * redirected to the sign-in page and every screenshot in the documentation failed to render.
+     * Static files are files: they carry no user data, they are baked into the image, and they
+     * are exactly what `public/` means. Pages and API routes have no extension, so this cannot
+     * open one by accident.
+     */
+    STATIC_FILE.test(pathname)
   );
 }
+
+const STATIC_FILE = /\.(png|jpe?g|gif|svg|webp|avif|ico|txt|xml|webmanifest|woff2?|ttf|otf|map)$/i;

@@ -1700,6 +1700,67 @@ a remote change never lands on your undo stack, because Ctrl+Z quietly reverting
 is the single worst thing a shared canvas can do.
 
 
+### 5.41 Signing in as yourself (v0.2)
+
+Rev 75 made a board shared and then had to admit, in its own known gaps, that the cursors were
+honest about *how many* people were on it and not about *who*: everybody was the seeded demo user,
+so two colleagues got the same initials in the same colour. Presence that cannot tell people apart
+is half a feature, and the half that was missing was authentication.
+
+**The data model was already right.** `users` has had a name, an email and a colour since the first
+week; `workspace_members` has had a role (owner / admin / member / guest); boards, versions, change
+sets and agent runs have all recorded a `createdById`. Every one of those columns held the same
+value, because `currentUser()` returned the demo user. So this was not a new model — it was one
+function, a sign-in page, and a session.
+
+**Sessions are a table, not a signed cookie.** A self-describing token cannot be taken back, and
+"sign out", "sign out everywhere" and "that laptop was stolen" all have to end a session before it
+expires. The cookie holds 32 random bytes; the row holds their SHA-256, so a leaked backup contains
+no usable session. An active session has its expiry pushed forward on use — being signed out
+mid-sentence because thirty days elapsed is not security, it is rudeness.
+
+**Passwords are scrypt, written by hand.** It is in Node's standard library, it is memory-hard, and
+the whole job fits in forty lines; argon2 or bcrypt would mean a native module in the image and a
+supply-chain surface in exchange for a difference nobody here can measure. The stored form carries
+its own cost parameters, so raising them later does not invalidate anybody — an old hash still says
+how to check itself, and a successful sign-in quietly rewrites it. The one rule on what people may
+choose is length: composition rules push people towards `Password1!` and away from the only thing
+that reliably helps.
+
+**The form answers as little as possible.** It never says which half was wrong, because "no account
+with that address" tells you who works at an organisation. It costs the same either way — an
+unknown address is still put through a hash — so the timing does not answer the question the
+wording refuses to.
+
+**Two gates, in order.** The optional shared password (§5.12) is still there and still useful: an
+instance behind it is not enumerable at all, which is a different property from "you need an
+account". Behind it, the proxy checks that a session cookie is *present*. It cannot check that it
+is valid — no database at the edge — and that is not a hole: a forged cookie gets past the proxy
+and fails at `currentUser()`. The cheap check exists so the ordinary signed-out visitor is
+redirected once rather than rendering a page that immediately redirects. `/api/mcp` is excluded
+because it carries its own bearer key, and `/api/health` because a platform probe has no cookies.
+
+**A demo instance still opens in one step.** `pnpm dev` used to need no configuration at all, and
+trading that away would have bought nothing on a machine whose database is invented. The seed gives
+its four people one known password and the sign-in page prints it — in development always, in
+production only with `NEXUS_DEMO_SIGNIN=1`, and never once the seeded password has been changed.
+Being able to sign in as two of them is also how anybody sees multiplayer work at all.
+
+**Three things the browser suite found before a person could.** Putting a gate in front of
+everything has consequences a unit test cannot see. The e2e warm-up, which visits thirteen routes
+so the dev server compiles them, was redirected to the sign-in page thirteen times and spent a
+two-minute timeout on each — 343 seconds of a suite that looked hung rather than misconfigured.
+The suite's own out-of-band `fetch` calls to the graph API got the sign-in page and a baffling
+`Unexpected token '<'`. And the real one: **static files under `public/` were behind the gate**, so
+Next's image optimiser — which fetches the source image over HTTP — was redirected, and every
+screenshot in the in-product documentation failed to render. Files in `public/` carry no user data
+and are baked into the image; they are now public, and because pages and API routes have no file
+extension the rule cannot open one by accident.
+
+And presence stopped inventing a colour. A person already had one; the cursor, the topbar avatar
+and the sidebar now all use it, so "which one is Maria" has the same answer everywhere.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1713,7 +1774,9 @@ is the single worst thing a shared canvas can do.
   Not a CRDT in the end: the document is a map of flat objects, so per-element last-writer-wins
   ordered by the server is the whole merge, and text is locked rather than merged. Next: comments,
   and following somebody's viewport.
-- Authentication and enterprise SSO; roles and permissions per team/space/board.
+- ~~Authentication~~ **Done (v0.2)** — see §5.41: email and password, scrypt, revocable sessions.
+  Next: enterprise SSO (the sign-in seam is one function and one page), and roles enforced per
+  team/space/board — `workspace_members.role` has always been there and nothing reads it yet.
 - ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
   *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
 - ~~Entity resolution proposals (same name / kind across boards → merge)~~ **Done (v0.2)**
@@ -1735,7 +1798,7 @@ is the single worst thing a shared canvas can do.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-08 — rev 75)
+## 6a. What exists today (v0.2, 2026-09-08 — rev 76)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2044,6 +2107,23 @@ is the single worst thing a shared canvas can do.
   document. Nothing a remote server says reaches the graph without that.
 - "Any MCP server" is now an available connector in the catalogue.
 
+### Signing in as yourself (v0.2)
+- Email and password, hashed with **scrypt** from Node's standard library — no native module, cost
+  parameters stored with each hash so they can be raised without invalidating anybody, and a
+  successful sign-in quietly rehashes an old one.
+- **Sessions are a table**, so they can be revoked: the cookie is 32 random bytes, the row is their
+  SHA-256, and an active session has its expiry pushed forward rather than lapsing mid-sentence.
+- The sign-in form never says which half was wrong and takes the same time either way.
+- Two gates in order: the optional shared password (§5.12), then a session. The proxy checks only
+  that a cookie is present — a forged one fails at `currentUser()` — and machine endpoints
+  (`/api/mcp`, `/api/health`) are excluded because they carry their own key or no cookies at all.
+- Sign out from the sidebar or the board topbar; the row is deleted, not just the cookie cleared.
+- A seeded demo still opens in one step: the four seeded people share a known password, printed on
+  the sign-in page in development and in production only with `NEXUS_DEMO_SIGNIN=1` — and never
+  once that password has been changed.
+- Presence stopped inventing colours: a cursor, a topbar avatar and a sidebar avatar all use the
+  person's own `users.color`.
+
 ### Two people on one board (v0.2)
 - A live channel per board: **server-sent events down, POSTs up** — plain HTTP, no upgrade, no
   custom server, so a corporate proxy that breaks WebSockets does not break the canvas.
@@ -2132,11 +2212,15 @@ is the single worst thing a shared canvas can do.
   rejected and a correct one must land on the originally requested page.
 
 ### Known gaps (intentional for brief 1)
-- No per-user authentication or authorisation; everyone is the seeded demo user. A deployed
-  instance can be closed off with a single shared password (§5.12) until real auth lands.
-- Single workspace; no comments. Multiplayer exists (§5.40) but everybody is still the seeded demo
-  user, so the cursors are honest about *how many* people are here and not yet about *who*: real
-  names and colours per person arrive with authentication.
+- Authorisation, as opposed to authentication: everybody signs in as themselves (§5.41), and then
+  every signed-in person has the same powers.
+- Single workspace; no comments.
+- People sign in (§5.41) but nothing yet reads `workspace_members.role`: everybody who can sign in
+  can do everything, including issuing an MCP key and approving an import. The column has always
+  been there; enforcing it is the next piece.
+- No self-service account management: no sign-up, no password reset, no invitations. An
+  administrator adds a row and sets a password. Enterprise SSO is the intended answer rather than
+  building a forgotten-password flow with an email service behind it.
 - The live session lives in one server's memory. Behind a load balancer spreading people across
   replicas, two people could land in different sessions and not see each other — the same limit
   that makes one SQLite file work today, liftable by carrying patches on Postgres LISTEN/NOTIFY.
@@ -2351,6 +2435,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | Server-sent events and POSTs, not WebSockets. | The customers are enterprises; corporate proxies and TLS gateways break WebSocket upgrades silently and the failure lands on one team behind one proxy. SSE is a `GET` that does not end — plain HTTP/1.1, nothing added to the Dockerfile or the health check, and no custom server. One extra request per edit is a price a canvas does not notice. |
 | 2026-09-08 | While a board is live the server writes it, not the clients. | Several tabs each PUTing a whole document is N races, N graph syncs and a 409 for people who have in fact converged. One room, one document, one debounce down the ordinary save path means a board edited by three people becomes exactly the graph a board edited by one would. The client's autosave stays underneath and comes back the instant the stream drops. |
 | 2026-09-08 | A remote change never touches your undo stack. | Ctrl+Z means "undo what I did" everywhere else, and a shared canvas where it silently reverts a colleague's work is worse than one with no undo at all. It is the reason remote changes come in through their own door in the store rather than through the mutation everything else uses. |
+| 2026-09-08 | Sessions are rows in a table, not self-describing signed cookies. | A stateless token cannot be taken back, and "sign out", "sign out everywhere" and "that laptop was stolen" all have to end a session before it expires. The cost is one indexed lookup per request, which this product does not notice; the alternative costs the ability to revoke, which is the whole point. |
+| 2026-09-08 | The session token is hashed before it is stored, even though it is already random. | Not about guessing — 32 random bytes are not guessable — but about blast radius: a leaked backup or a careless log then contains no usable cookie. It is one line and it turns a database disclosure into something less than a full account takeover. |
+| 2026-09-08 | scrypt from the standard library rather than argon2 or bcrypt. | Memory-hard, in Node already, and the whole job is forty lines with the cost parameters stored alongside each hash so they can be raised later. A native module in the image and another supply-chain dependency would buy a difference nobody in this product can measure. |
+| 2026-09-08 | The sign-in page refuses to say whether an account exists, and takes the same time either way. | "No account with that address" is an enumeration oracle, and this product knows who works at an organisation. Saying nothing is worth little if the response time says it instead, which is why the unknown-address path still runs a hash. |
+| 2026-09-08 | The edge gate checks only that a session cookie is present. | There is no database at the edge, so it cannot do more; pretending otherwise would be the hole. A forged cookie gets past it and fails at `currentUser()`, which does look the session up. The cheap check exists so an ordinary signed-out visitor is redirected once instead of rendering a page that redirects. |
+| 2026-09-08 | The seeded demo keeps a published password, shown only where saying it is harmless. | Zero-configuration start was a real property of this product and worth keeping for a database full of invented energy companies. Development shows the hint; production needs `NEXUS_DEMO_SIGNIN=1`; and the hint disappears the moment the seeded password is changed, so a real deployment cannot keep advertising one by accident. |
 
 ## 8. Open questions for the product owner
 
@@ -2365,6 +2455,34 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 76: signing in as yourself.** Rev 75 shared a board and then had to admit, in
+  its own known gaps, that the cursors were honest about *how many* people were on it and not about
+  *who* — everybody was the seeded demo user, so two colleagues got the same initials in the same
+  colour. Presence that cannot tell people apart is half a feature. The data model turned out to be
+  ready: `users` has had a name, an email and a colour since the first week, `workspace_members`
+  has had a role, and boards, versions, change sets and agent runs have all recorded a
+  `createdById` — every one of them holding the same value, because `currentUser()` returned the
+  demo user. So this was one function, a sign-in page and a session, not a new model. Passwords are
+  **scrypt** from Node's standard library, with the cost stored alongside each hash so it can be
+  raised later and a successful sign-in quietly rewrites an old one; the only rule on what people
+  may choose is length, because composition rules push people towards `Password1!`. Sessions are a
+  **table** rather than a signed cookie, because "sign out everywhere" has to be able to end one
+  early — the cookie is 32 random bytes and the row is their SHA-256, so a leaked backup holds no
+  usable session. The form never says which half was wrong and takes the same time either way, since
+  "no account with that address" is a way to find out who works somewhere. Two gates now sit in
+  order: the optional shared password, then a session; the proxy checks only that a cookie is
+  present, because there is no database at the edge, and a forged one fails at `currentUser()`.
+  A demo instance still opens in one step — the four seeded people share a published password,
+  printed on the sign-in page in development, in production only with `NEXUS_DEMO_SIGNIN=1`, and
+  never once it has been changed. Writing the tests turned up a real hole in the hashing before it
+  shipped: a stored hash with an empty digest verified *any* password, because comparing two
+  zero-length buffers trivially succeeds. And presence stopped inventing colours — a person already
+  had one, so the cursor, the topbar avatar and the sidebar now agree. Three more came from the
+  browser suite rather than from reading: a warm-up that spent 343 seconds being redirected, test
+  fetches that had no session, and — the one that would have shipped — every documentation
+  screenshot failing to render, because the image optimiser fetches its source over HTTP and
+  `public/` was behind the gate.
 
 - **2026-09-08 — Rev 75: two people on one board.** The honest answer to "we both opened it" used
   to be to refuse the second save — *Changed elsewhere — reload*. Right answer, wrong question: an

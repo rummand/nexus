@@ -29,10 +29,21 @@ must live on a **persistent volume**; without one every redeploy starts from the
    - `NEXUS_MODEL_BASE_URL` — optional, for an enterprise gateway or proxy in front of the
      Messages API. It is a distinct name on purpose, so the application never inherits an
      `ANTHROPIC_BASE_URL` that belongs to some other tool on the host.
-   - `NEXUS_ACCESS_PASSWORD` — optional; when set, every page sits behind a shared password.
+   - `NEXUS_ACCESS_PASSWORD` — optional; when set, every page sits behind one shared password
+     *in front of* the per-person sign-in (§5.41). Two doors rather than one: useful on the open
+     internet, because an instance behind it cannot be enumerated at all.
+   - `NEXUS_DEMO_SIGNIN` — optional. `1` prints the seeded demo credentials on the sign-in page,
+     which is what makes a public demo usable; leave it unset on a real deployment. It has no
+     effect once the seeded password has been changed.
 4. **Networking** → *Generate domain*. Open `https://<domain>/api/health` — the first call runs
    the migrations and seeds the demo workspace, then returns `{"ok":true,...}`. The app then
-   redirects `/` to the demo workspace.
+   redirects `/` to the demo workspace, or to `/signin` first.
+5. **Sign in.** Every page is behind a per-person sign-in since rev 76. A freshly seeded instance
+   has four people who all share the password `acme-energy` — fine for a demo, and the first thing
+   to change on anything real. There is no sign-up page and no password reset by design: an
+   administrator writes the row and sets the hash (`hashPassword` in
+   `src/lib/auth/password.ts`), and enterprise SSO is the intended answer rather than an email
+   service behind a forgotten-password flow.
 
 Redeploys reuse the volume, so boards, entities and versions persist. To start over, delete
 `nexus.db*` on the volume (or wipe the volume) and redeploy.
@@ -73,14 +84,19 @@ docker run -p 3000:3000 -v nexus-data:/data nexus
   TLS is negotiated unless the URL says `sslmode=disable` or `DATABASE_SSL=false` is set;
   `DATABASE_POOL_MAX` sizes the pool (default 10). `GET /api/health` reports which dialect is live.
   Nothing migrates the data across for you — a switch starts from the seed.
-- No authentication yet (brief 1): anyone with the URL can edit. Put the service behind Railway's
-  private networking, an access proxy or basic auth until auth lands.
+- People sign in, but everybody who can sign in can do everything: nothing yet reads
+  `workspace_members.role` (§5.41). Do not put a workspace in front of people who should only be
+  able to read it.
+- Real-time collaboration keeps its session in one server's memory (§5.40), so it works when
+  everybody talks to the same instance — which is what this deployment is. Scaling to several
+  replicas needs the patches carried between them.
 - Fonts load from Google Fonts at runtime; the app falls back to system fonts when blocked.
 
 ## Closing off a public instance
 
-There is no per-user login yet, so a deployed instance is editable by anyone with the URL. To put
-one shared password in front of it, set a variable on the service:
+People sign in as themselves (§5.41), so a deployed instance is not open. A shared password can be
+added *in front of* that, which is worth doing on the open internet: it makes the instance opaque
+rather than merely locked, so nobody can tell what it is or who has an account.
 
 ```
 NEXUS_ACCESS_PASSWORD=<something long>

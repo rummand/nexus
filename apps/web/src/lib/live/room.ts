@@ -200,14 +200,14 @@ export interface Joined {
 /** Join a board. Returns null when there is no such board. */
 export async function join(
   boardId: string,
-  user: { id: string; name: string },
+  user: { id: string; name: string; color?: string | null },
   send: (message: Down) => void,
 ): Promise<Joined | null> {
   const room = await openRoom(boardId);
   if (!room) return null;
 
   const peerId = `p${++peerCounter}-${Math.random().toString(36).slice(2, 8)}`;
-  const peer: Peer = { id: peerId, userId: user.id, name: user.name, color: peerColor(user.id), cursor: null, selection: [], editing: null };
+  const peer: Peer = { id: peerId, userId: user.id, name: user.name, color: peerColor(user.id, user.color), cursor: null, selection: [], editing: null };
   room.subscribers.set(peerId, { peer, send });
 
   const hello: Down = { kind: "hello", peerId, seq: room.seq, elements: room.elements, peers: peers(room), parts: docParts(room) };

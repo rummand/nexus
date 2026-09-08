@@ -1,15 +1,34 @@
-import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
-import { users } from "@/db/schema";
-import { DEMO_USER_ID } from "@/db/seed";
+import { readSession } from "@/lib/auth/session-store";
 
 /**
- * Current user. Authentication is not part of brief 1 (see docs/BRIEF.md §5.4), so this
- * resolves to the seeded demo user. When auth lands, this is the single place to change.
+ * Who is asking.
+ *
+ * Since rev 76 this is a real person: the session cookie names a row in `sessions`, which names a
+ * row in `users`. Before that it always returned the seeded demo user, and the whole product was
+ * written against that one function — which is why turning authentication on was a change to this
+ * file and a sign-in page, rather than to the twenty-five places that ask.
+ *
+ * `currentUser()` **redirects** rather than returning null. Every caller is a page or an action
+ * behind the gate, and each one having to invent its own answer to "there is nobody here" is how
+ * a product ends up with five different ways of being logged out. Route handlers, which cannot
+ * usefully redirect a machine, use `currentUserOrNull()`.
  */
-export async function currentUser() {
+
+export const SESSION_COOKIE = "nexus_session";
+
+export async function currentUserOrNull() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
+  if (!token) return null;
   const db = await getDb();
-  const user = await db.query.users.findFirst({ where: eq(users.id, DEMO_USER_ID) });
-  if (!user) throw new Error("Demo user missing — database not seeded");
+  return (await readSession(db, token))?.user ?? null;
+}
+
+export async function currentUser() {
+  const user = await currentUserOrNull();
+  // A cookie that does not resolve is as good as none: expired, revoked, or forged.
+  if (!user) redirect("/signin");
   return user;
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/session";
+import { currentUserOrNull } from "@/lib/session";
 import { join, type Joined } from "@/lib/live/room";
 import type { Down, Up } from "@/lib/live/protocol";
 
@@ -29,7 +29,7 @@ const KEEPALIVE_MS = 25_000;
 
 export async function GET(req: Request, { params }: Params) {
   const { boardId } = await params;
-  const user = await currentUser();
+  const user = await currentUserOrNull();
   if (!user) return NextResponse.json({ error: "No user" }, { status: 401 });
 
   const encoder = new TextEncoder();
@@ -60,7 +60,7 @@ export async function GET(req: Request, { params }: Params) {
       };
       const send = (message: Down) => write(`data: ${JSON.stringify(message)}\n\n`);
 
-      joined = await join(boardId, { id: user.id, name: user.name }, send);
+      joined = await join(boardId, { id: user.id, name: user.name, color: user.color }, send);
       if (!joined) {
         send({ kind: "presence", peers: [] });
         controller.close();

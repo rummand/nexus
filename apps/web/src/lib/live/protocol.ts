@@ -115,9 +115,9 @@ export function diffElements(
 }
 
 /**
- * The colours peers are given, in order.
+ * The colours peers fall back to, in order.
  *
- * The same seven the canvas already uses for notes and frames, so a cursor in a board looks like
+ * The same seven the canvas already uses for notes and frames, so a cursor on a board looks like
  * it belongs to this product rather than to a collaboration library bolted onto it.
  */
 export const PEER_COLORS = ["#1376d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#ef4444", "#0ea5e9"] as const;
@@ -125,11 +125,16 @@ export const PEER_COLORS = ["#1376d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6
 /**
  * A stable colour for a person.
  *
- * By user, not by connection: somebody who reloads should come back the colour their colleague has
- * already learned to associate with them. Two tabs of one person are therefore the same colour,
- * which is right — it is one person.
+ * A person already *has* a colour — `users.color`, which the sidebar and the avatars have shown
+ * since the first week — so presence uses that and hashes the id only when a row somehow has
+ * none. Inventing a second colour for the same person was a small thing that would have quietly
+ * made the product inconsistent with itself.
+ *
+ * By user, never by connection: somebody who reloads comes back the colour their colleague has
+ * learned to look for, and two tabs of one person are the same colour, because it is one person.
  */
-export function peerColor(userId: string): string {
+export function peerColor(userId: string, own?: string | null): string {
+  if (own && /^#[0-9a-fA-F]{6}$/.test(own)) return own;
   let hash = 0;
   for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
   return PEER_COLORS[hash % PEER_COLORS.length]!;

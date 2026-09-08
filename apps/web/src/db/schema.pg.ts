@@ -21,8 +21,38 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   color: text("color").notNull().default("#6366f1"),
+  /**
+   * Nullable on purpose (§5.41): a person who will arrive through an identity provider, or one
+   * who has been invited but has not chosen a password yet, is a real row with no way to sign in
+   * by password. `verifyPassword` treats null as "no".
+   */
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at"),
 });
+
+/**
+ * Signed-in sessions (§5.41).
+ *
+ * A table rather than a self-describing signed cookie, for one reason: revocation. "Sign out
+ * everywhere" and "that laptop was stolen" both have to be able to end a session before it
+ * expires, and a stateless token cannot be taken back. The id *is* the secret — a long random
+ * string, stored hashed, so a leaked database does not hand somebody a working cookie.
+ */
+export const sessions = pgTable(
+  "sessions",
+  {
+    /** SHA-256 of the token in the cookie. The token itself is never written down. */
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at"),
+    expiresAt: text("expires_at").notNull(),
+    /** Enough to recognise a session in a list, never enough to identify a person elsewhere. */
+    userAgent: text("user_agent"),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
 
 export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey(),

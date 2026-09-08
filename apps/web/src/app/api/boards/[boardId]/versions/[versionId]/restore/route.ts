@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { boards } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { currentUser } from "@/lib/session";
+import { currentUserOrNull } from "@/lib/session";
 import { restoreVersion, listVersions } from "@/lib/versions";
 import { syncBoardToGraph } from "@/lib/graph";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ boardId: string; versionId: string }> }) {
   const { boardId, versionId } = await params;
   const db = await getDb();
-  const user = await currentUser();
+  const user = await currentUserOrNull();
+  // A route handler answers a fetch, so it says no rather than redirecting to a form.
+  if (!user) return NextResponse.json({ error: "Sign in first" }, { status: 401 });
   const doc = await restoreVersion(db, boardId, versionId, user.id);
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const board = await db.query.boards.findFirst({ where: eq(boards.id, boardId) });
