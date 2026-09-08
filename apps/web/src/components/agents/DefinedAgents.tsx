@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Bot, Coins, Eye, Plus, ScrollText } from "lucide-react";
+import { Bot, Clock3, Coins, Eye, Plus, ScrollText } from "lucide-react";
 import { acceptance, verdict } from "@/lib/agent/fleet";
-import { describeScope, type AgentStatus } from "@/lib/agent/definition";
+import { describeScope, TRIGGER_LABEL, type AgentStatus, type Trigger } from "@/lib/agent/definition";
+import { nextDue } from "@/lib/agent/schedule";
 import type { DefinitionSummary } from "@/lib/agent/definitions";
 import type { RunSummary } from "@/lib/agent/fleet-types";
 import { ProposedAgents } from "./ProposedAgents";
@@ -21,6 +22,25 @@ const when = (iso: string | null) => {
   if (!iso) return "never run";
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   return days <= 0 ? "ran today" : days === 1 ? "ran yesterday" : `ran ${days} days ago`;
+};
+
+/**
+ * The same idea pointing forwards. `when` phrases the past, and "next ran today" is nonsense.
+ *
+ * The clock lives in here rather than in the JSX: calling `Date.now()` during render is impure,
+ * the React Compiler says so, and it is right — a row that renders differently on every pass is a
+ * row that cannot be memoised.
+ */
+const soon = (agent: { trigger: Trigger; status: string; lastRunAt: string | null }) => {
+  const iso = nextDue({ id: "", workspaceId: "", name: "", ...agent }, Date.now());
+  if (!iso) return "not scheduled";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 60_000) return "due now";
+  const hours = Math.round(ms / 3_600_000);
+  if (hours < 1) return `in ${Math.max(1, Math.round(ms / 60_000))} min`;
+  if (hours < 24) return `in ${hours}h`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "tomorrow" : `in ${days} days`;
 };
 
 export function DefinedAgents({ slug, workspaceId, agents, runs }: {
@@ -74,6 +94,18 @@ export function DefinedAgents({ slug, workspaceId, agents, runs }: {
                     <em>{a.ownerTeamName || "no owner"}</em>
                     {a.verbs.map((v) => <em key={v} className={v === "merge" ? "dismissed" : ""}>{v}</em>)}
                     <em className="muted"><Coins size={11} /> {a.budget.runsPerDay}/day · {a.budget.maxProposals} a run</em>
+                    {/*
+                      A schedule is the difference between an agent you remember to run and one
+                      that works while you are away (§5.42), so it says so on the row — and says
+                      when it goes next, because "daily" alone never answers the question people
+                      actually have.
+                    */}
+                    {a.trigger !== "manual" && (
+                      <em className="scheduled" data-schedule={a.trigger}>
+                        <Clock3 size={11} /> {TRIGGER_LABEL[a.trigger].toLowerCase()}
+                        {a.status === "active" ? <> · {soon(a)}</> : " · not while it is not active"}
+                      </em>
+                    )}
                     {a.open > 0 && <em className="open">{a.open} waiting</em>}
                   </div>
                 </div>

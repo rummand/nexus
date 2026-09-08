@@ -1143,6 +1143,50 @@ try {
   await page.waitForTimeout(1200);
   assert.equal((await rpc({ jsonrpc: "2.0", id: 5, method: "tools/list" })).status, 401, "a revoked key stops being answered");
 
+  // ---- agents that run themselves ------------------------------------------------------------
+  /*
+   * The whole loop without a model: a schedule can be set and read back, the clock can be asked
+   * to tick, and the digest tells the truth about what it found. With no provider configured the
+   * run refuses — which is exactly the case worth asserting, because a refusal appearing in the
+   * digest is the feature working, not failing.
+   */
+  await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
+  await page.waitForSelector(".studio-home-main");
+  {
+    const first = page.locator("[data-defined-agent]").first();
+    assert.ok(await first.count(), "there is an agent to put on a schedule");
+    await first.locator("a").first().click();
+    await page.waitForSelector("[data-trigger]");
+
+    /*
+     * The editor does the arithmetic out loud rather than letting somebody discover it a week
+     * later in a log full of refusals. The budget is set here rather than assumed: whatever the
+     * agent this suite made earlier happens to allow is not what this assertion is about.
+     */
+    await page.fill('input[aria-label="Runs a day"]', "4");
+    await page.selectOption("[data-trigger]", "hourly");
+    assert.ok(await page.locator("[data-budget-clash]").isVisible(),
+      "an hourly schedule against a smaller budget says so before it is saved");
+    await page.selectOption("[data-trigger]", "daily");
+    assert.equal(await page.locator("[data-budget-clash]").count(), 0,
+      "…and stops saying so once the schedule fits");
+    await page.click('button:has-text("Save")');
+    await page.waitForTimeout(1500);
+
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector("[data-trigger]");
+    assert.equal(await page.locator("[data-trigger]").inputValue(), "daily", "the schedule was written down");
+
+    // Ask the clock to run now rather than waiting five minutes for its own tick.
+    const ticked = await page.evaluate(async () => (await (await fetch("/api/agents/tick", { method: "POST" })).json()));
+    assert.ok(typeof ticked.due === "number", "the scheduler answers");
+    assert.equal(ticked.scheduler.running, true, "the clock is running, not merely callable");
+
+    await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
+    await page.waitForSelector("[data-defined-agent]");
+    assert.ok((await page.locator("[data-schedule]").count()) > 0, "the fleet shows which agents are on a schedule");
+  }
+
   // ---- two people on one board ---------------------------------------------------------------
   /*
    * The only check in this suite that needs a second browser, and the only way to test the

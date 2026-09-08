@@ -1761,6 +1761,48 @@ And presence stopped inventing a colour. A person already had one; the cursor, t
 and the sidebar now all use it, so "which one is Maria" has the same answer everywhere.
 
 
+### 5.42 Agents that run themselves, and the digest (v0.2)
+
+The agent framework note put this off in as many words — *"a schedule is a trigger, and a trigger
+needs a runtime; both come later"* — and everything it was waiting for now exists: definitions with
+a scope and an owner, budgets counted before the model is called, a run log, refusals that are
+written down. What was missing was a clock, and the reason to want one.
+
+**A schedule is not a privilege.** An unattended run goes through exactly the function a person's
+run goes through. It refuses a paused agent, refuses one over its budget, reads only its scope, and
+writes the refusal down. There is no second, looser path — which is the property that makes leaving
+an agent running overnight a reasonable thing to do rather than an act of faith.
+
+**Intervals, not times of day.** "Every night at 02:00" needs a timezone and this product does not
+have one: a workspace is an organisation, not a place. So a daily agent is one that has not run for
+a day. It drifts by minutes, which is the honest cost, and it never runs twice because the clocks
+went back. A brand-new scheduled agent is due immediately, because somebody who has just written a
+purpose wants to see what it does, not wait a day to find out they phrased it badly.
+
+**The clock is a nudge; the database is the schedule.** Due is computed from the last run row, so a
+restart, a redeploy or a container that slept loses and duplicates nothing. `instrumentation.ts`
+starts an interval when the server comes up, and `POST /api/agents/tick` does the same pass on
+demand — for a host that recycles idle containers and has no long-running timer, and for a person
+who does not want to wait five minutes to see whether their new schedule works.
+
+**And then somebody has to find out.** A fleet working all night whose only evidence is a number on
+a page nobody opens is not an agent doing something *for* you, it is an agent doing something *near*
+you. So the workspace home opens with **While you were away**: the unattended runs, what they
+proposed, what anybody has accepted or dismissed since — and first, because it is the fact people
+least expect, any agent that refused to run and why.
+
+Three rules keep it worth reading. It is **silent when nothing happened**, and most mornings nothing
+did; a panel that speaks every day gets skimmed, then skipped, and is invisible on the morning it
+matters. It counts **news, not work**: proposals that were already waiting when it was last
+dismissed are not "while you were away", which is what stops it reappearing the moment it is closed.
+And **dismissing is the only thing that moves the window** — reading is not dismissing, so a glance
+on a phone at the weekend does not cost somebody the digest they meant to read at a desk.
+
+The budget arithmetic is said out loud where the schedule is chosen: an hourly agent wants 24 runs a
+day and the default budget allows 12. Obvious in a table, invisible in a form, and otherwise
+discovered a week later from a run log full of refusals.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1798,7 +1840,7 @@ and the sidebar now all use it, so "which one is Maria" has the same answer ever
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-08 — rev 76)
+## 6a. What exists today (v0.2, 2026-09-08 — rev 77)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2106,6 +2148,20 @@ and the sidebar now all use it, so "which one is Maria" has the same answer ever
 - **Keep this as a source** puts it into intake, where it is read for claims and reviewed like any
   document. Nothing a remote server says reaches the graph without that.
 - "Any MCP server" is now an available connector in the catalogue.
+
+### Agents that run themselves (v0.2)
+- A schedule on any described agent — hourly, daily, weekly — enforced by an in-process clock
+  started from `instrumentation.ts`, plus `POST /api/agents/tick` for a platform cron or an
+  impatient person.
+- Due is computed from the last run in the database, never from a timer, so a restart loses and
+  duplicates nothing. One tick runs at most three agents, oldest first, serially.
+- An unattended run is the same run: the same status checks, the same budget, the same scope, the
+  same refusal written to the log.
+- **While you were away** on the workspace home: unattended runs, what they proposed, what has been
+  decided since, and refusals first. Silent when nothing happened; counts news rather than open
+  work; and only dismissing moves the window.
+- The fleet shows which agents are scheduled and when each goes next; the editor warns when a
+  schedule wants more runs a day than the budget allows.
 
 ### Signing in as yourself (v0.2)
 - Email and password, hashed with **scrypt** from Node's standard library — no native module, cost
@@ -2441,6 +2497,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The sign-in page refuses to say whether an account exists, and takes the same time either way. | "No account with that address" is an enumeration oracle, and this product knows who works at an organisation. Saying nothing is worth little if the response time says it instead, which is why the unknown-address path still runs a hash. |
 | 2026-09-08 | The edge gate checks only that a session cookie is present. | There is no database at the edge, so it cannot do more; pretending otherwise would be the hole. A forged cookie gets past it and fails at `currentUser()`, which does look the session up. The cheap check exists so an ordinary signed-out visitor is redirected once instead of rendering a page that redirects. |
 | 2026-09-08 | The seeded demo keeps a published password, shown only where saying it is harmless. | Zero-configuration start was a real property of this product and worth keeping for a database full of invented energy companies. Development shows the hint; production needs `NEXUS_DEMO_SIGNIN=1`; and the hint disappears the moment the seeded password is changed, so a real deployment cannot keep advertising one by accident. |
+| 2026-09-08 | An agent's schedule is an interval, not a time of day. | A time needs a timezone, and a workspace is an organisation rather than a place — an EA team at a grid operator is not all in one country, and picking one country's midnight for everybody is a decision disguised as a default. An interval drifts by minutes and never fires twice when the clocks change. |
+| 2026-09-08 | Due is computed from the last run row, never held in a timer. | The timer is a nudge that any restart is allowed to lose. Making the database the schedule means a redeploy, a crash or a container that slept costs nothing — and it is what lets a platform cron hitting `/api/agents/tick` be exactly equivalent to the in-process clock rather than a second implementation. |
+| 2026-09-08 | An unattended run goes through the same function as a run somebody asked for. | The temptation is a leaner path for the scheduler; the consequence would be two sets of budget checks and, eventually, one of them missing a case. Leaving an agent running overnight is only reasonable if "nobody is watching" changes who is watching and nothing else. |
+| 2026-09-08 | The digest is silent when nothing happened. | Most mornings nothing did. A panel that speaks every day is skimmed, then skipped, and is invisible on the one morning it has something to say — so the discipline is that it earns its appearance, and refuses to pad an empty night into three bullet points. |
+| 2026-09-08 | The digest counts news, not open work, and only dismissing moves the window. | Two small rules that decide whether it is trusted. Counting everything open means it reappears the instant it is closed, which teaches people it is noise. Moving the window on *reading* means a glance on a phone silently spends the digest somebody meant to read properly. |
 
 ## 8. Open questions for the product owner
 
@@ -2455,6 +2516,27 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 77: agents that run themselves, and a digest.** `definition.ts` had carried a
+  line for two revisions saying *"a schedule is a trigger, and a trigger needs a runtime; both come
+  later"*. Later arrived. Any described agent can now be hourly, daily or weekly, and an in-process
+  clock — started from `instrumentation.ts`, mirrored by `POST /api/agents/tick` for hosts that
+  recycle containers — runs the ones that are due. Intervals rather than times of day, because a
+  time needs a timezone and a workspace is an organisation rather than a place; due computed from
+  the last run row rather than from a timer, so a restart loses nothing; at most three agents a
+  tick, oldest first, serially, because unattended work that fans out is how you discover a bill.
+  An unattended run is emphatically not a privileged one — it goes through the same function, the
+  same status checks, the same budget and the same refusal log as a run somebody asked for.
+  The other half is that a person coming back finds out, so the workspace home now opens with
+  **While you were away**: the runs nobody asked for, what they proposed, what has been decided
+  since, and refusals first because that is the fact people least expect. It is silent when nothing
+  happened — most mornings nothing did, and a panel that speaks every day is invisible on the
+  morning it matters. Building it turned up its own bug: counting *every* open proposal made the
+  panel reappear the instant it was dismissed, because something already seen was still open, so it
+  now counts news rather than work. The fleet shows which agents are scheduled and when each goes
+  next, and the editor says out loud that an hourly agent wants 24 runs a day against a budget of
+  12 — obvious in a table, invisible in a form, and otherwise discovered a week later from a log
+  full of refusals.
 
 - **2026-09-08 — Rev 76: signing in as yourself.** Rev 75 shared a board and then had to admit, in
   its own known gaps, that the cursors were honest about *how many* people were on it and not about

@@ -68,9 +68,13 @@ export const GROUNDING_LABEL: Record<Grounding, string> = {
 
 export const isGrounding = (v: string): v is Grounding => (GROUNDINGS as readonly string[]).includes(v);
 
-/** Manual for now. A schedule is a trigger, and a trigger needs a runtime; both come later. */
-export const TRIGGERS = ["manual"] as const;
-export type Trigger = (typeof TRIGGERS)[number];
+/*
+ * The schedule lives in `schedule.ts` (§5.42) — it is pure arithmetic over a clock, and keeping it
+ * out of here is what lets the awkward cases be tested rather than reasoned about. Re-exported so
+ * a definition is still one import for everything that describes an agent.
+ */
+export { TRIGGERS, TRIGGER_LABEL, isTrigger, runsPerDayFor, type Trigger } from "./schedule";
+import { isTrigger, type Trigger } from "./schedule";
 
 export interface AgentDefinition {
   id: string;
@@ -120,6 +124,8 @@ export interface DefinitionInput {
   providerId?: string | null;
   model?: string;
   budget?: Partial<Budget>;
+  /** How often it runs unattended (§5.42). Anything unrecognised falls back to manual. */
+  trigger?: string;
   status?: string;
 }
 
@@ -228,7 +234,12 @@ export function checkDefinition(input: DefinitionInput, ctx: DefinitionContext):
       grounding: isGrounding((input.grounding ?? "").trim()) ? ((input.grounding ?? "").trim() as Grounding) : "",
       providerId,
       model: (input.model ?? "").trim().slice(0, 80),
-      trigger: "manual",
+      /*
+       * Validated like everything else rather than trusted: this arrives from a form, and an
+       * unrecognised value must become "manual" — the choice that costs nothing — rather than
+       * a row the scheduler cannot read.
+       */
+      trigger: isTrigger((input.trigger ?? "").trim()) ? ((input.trigger ?? "").trim() as Trigger) : "manual",
       budget,
       status,
     },

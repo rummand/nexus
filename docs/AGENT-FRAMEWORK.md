@@ -1,10 +1,10 @@
 # The agent framework — a design note
 
-**Status:** built, revs 65–69, and applied since (the import reviewer, rev 73). Written 2026-09-06
+**Status:** built, revs 65–69, and extended since (the import reviewer, rev 73; schedules, rev 77). Written 2026-09-06
 in answer to "we need an agentic OS: a framework of agents, described, alive, controlled, and able
 to build new agents with a human in the loop", and kept here as the reasoning behind what now
 exists. What was decided differently in the building is noted inline; the current behaviour is in
-`BRIEF.md` §5.31–§5.35 and §5.39.
+`BRIEF.md` §5.31–§5.35, §5.39 and §5.42.
 
 Read `BRIEF.md` first: it is the record of what the product does. This note is the reasoning
 that got there, kept because the arguments outlive the revisions.
@@ -250,9 +250,16 @@ and is fine; it belongs with authentication, not here.
    object" was the right shape — a special-purpose import agent would have needed its own remarks,
    its own review loop and its own measure of whether it helps.
 
-**Still open, and deliberately:** triggers and schedules (an agent runs when asked), spend in money
-rather than in runs, and Temporal-style durable execution — all of which the note argues are
-premature until a run lasts longer than a few seconds.
+8. ✅ **Triggers and schedules** — rev 77, brief §5.42. The note called these premature; two
+   revisions of a run log, a budget and a refusal path later they were the opposite, because
+   everything a schedule needs to be safe already existed and the only thing missing was a clock.
+   Intervals rather than cron times — a workspace is an organisation, not a timezone — and due
+   computed from the database rather than a timer, so the runtime the note worried about turned out
+   to be twenty lines and a `setInterval`.
+
+**Still open, and deliberately:** spend in money rather than in runs, and Temporal-style durable
+execution — both of which the note argues are premature until a run lasts longer than a few
+seconds, and both of which are still true.
 
 ## 6. Open questions for the product owner
 

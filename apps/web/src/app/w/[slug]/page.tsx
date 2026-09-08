@@ -5,13 +5,21 @@ import { currentUser } from "@/lib/session";
 import { getDb } from "@/db/client";
 import { graphSnapshot } from "@/lib/graph";
 import { computeProposals } from "@/lib/proposals";
+import { digestFor } from "@/lib/agent/digest";
+import { WhileYouWereAway } from "@/components/agents/WhileYouWereAway";
 
 export default async function WorkspaceHome({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ q?: string }> }) {
   const [{ slug }, { q }] = await Promise.all([params, searchParams]);
   const [workspace, user] = await Promise.all([getWorkspaceBySlug(slug), currentUser()]);
   if (!workspace) notFound();
   const db = await getDb();
-  const [{ teams, spaces }, boards, snapshot, proposals] = await Promise.all([getWorkspaceShell(workspace.id, user.id), getBoardsForWorkspace(workspace.id, user.id), graphSnapshot(db, workspace.id), computeProposals(db, workspace.id)]);
+  const [{ teams, spaces }, boards, snapshot, proposals, digest] = await Promise.all([
+    getWorkspaceShell(workspace.id, user.id),
+    getBoardsForWorkspace(workspace.id, user.id),
+    graphSnapshot(db, workspace.id),
+    computeProposals(db, workspace.id),
+    digestFor(db, workspace.id, user),
+  ]);
   const lastOpened = boards.filter((b) => b.lastOpenedAt).sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? ""))[0] ?? null;
   return (
     <HomeMain
@@ -23,6 +31,7 @@ export default async function WorkspaceHome({ params, searchParams }: { params: 
       mode="home"
       lastOpened={lastOpened}
       initialQuery={q ?? ""}
+      digest={<WhileYouWereAway digest={digest} slug={slug} />}
       graph={{
         entities: snapshot.entities.length,
         kinds: snapshot.kinds.length,

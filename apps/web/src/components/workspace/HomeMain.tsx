@@ -34,6 +34,8 @@ export interface HomeMainProps {
   lastOpened?: BoardCard | null;
   initialQuery?: string;
   headerExtra?: ReactNode;
+  /** What happened while this person was away (§5.42). Rendered above everything else. */
+  digest?: ReactNode;
   /** Knowledge-graph summary for the home strip. */
   graph?: { entities: number; kinds: number; relations: number; proposals: number; slug: string; recent?: Array<{ id: string; name: string; kind: string; updatedAt: string; color: string }> };
 }
@@ -47,7 +49,7 @@ const STARTERS: Array<{ id: TemplateId; icon: ReactNode; title: string; hint: st
   { id: "integration", icon: <FileText size={32} />, title: "Integration flows", hint: "Systems and the data that moves between them." },
 ];
 
-export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, meta, boards, spaces, mode, spaceId, lastOpened, initialQuery = "", headerExtra, graph }: HomeMainProps) {
+export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, meta, boards, spaces, mode, spaceId, lastOpened, initialQuery = "", headerExtra, digest, graph }: HomeMainProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [entityHits, setEntityHits] = useState<{ q: string; entities: QueryResponse["entities"]; total: number } | null>(null);
@@ -114,6 +116,10 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
           </button>
         </div>
       </header>
+
+      {/* Same reason as headerExtra above: React 19 validates keys on an RSC element handed to a
+          client component, and `display: contents` adds no box of its own. */}
+      {digest && <span className="contents">{digest}</span>}
 
       {(mode === "home" || mode === "space") && (
         <>

@@ -2809,3 +2809,67 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .topbar-signout { display: inline-flex; }
 .topbar-signout .ghost-button { padding: 7px 9px; }
 .studio-topbar .avatar[data-me] { color: #fff; }
+
+/* ---------------------------------------------------------------------------
+   While you were away (§5.42)
+
+   The fleet works on a schedule; this is how a person finds out. It sits above
+   everything on the home page and disappears entirely when nothing happened —
+   a panel that says "nothing" every morning is a panel nobody reads on the one
+   morning it says something.
+   --------------------------------------------------------------------------- */
+.away-panel {
+  background: linear-gradient(180deg, #fbfdff, #f6f9fd);
+  border: 1px solid #dbe8f6;
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px 16px 12px;
+}
+.away-panel > header { align-items: center; display: flex; gap: 10px; }
+.away-panel > header > div { display: grid; flex: 1; gap: 1px; }
+.away-panel > header b { color: #1f2a3d; font-size: 13.5px; }
+.away-panel > header span { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+.away-panel > header button {
+  background: transparent; border: 1px solid transparent; border-radius: 8px; color: #9aa6b8;
+  cursor: pointer; display: flex; height: 26px; align-items: center; justify-content: center; width: 26px;
+}
+.away-panel > header button:hover { background: #fff; border-color: var(--line); color: #53627a; }
+.away-mark {
+  align-items: center; background: #e8f1fd; border-radius: 9px; color: var(--blue);
+  display: flex; height: 28px; justify-content: center; width: 28px;
+}
+
+.away-panel ul, .away-panel ol { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.away-panel li { align-items: center; color: #46536a; display: flex; font-size: 12.5px; gap: 7px; }
+.away-panel li b { color: #2b3648; font-weight: 700; }
+.away-panel li svg { color: #7f97b8; flex: 0 0 auto; }
+
+/* Refusals go first and read as a warning: an agent stopped by its budget is the
+   thing somebody most needs to know and least expects to see. */
+.away-refusals li { color: #b45309; }
+.away-refusals li svg { color: #f59e0b; }
+.away-refusals li b { color: #92400e; }
+
+.away-runs li em { background: #eef3fa; border-radius: 5px; color: #64748b; font-size: 10.5px; font-style: normal; padding: 1px 5px; }
+.away-runs li span { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+.away-bad { color: #b45309 !important; }
+
+.away-proposals { border-top: 1px solid #e6eef8; margin-top: 2px; padding-top: 8px !important; }
+.away-proposals li small { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
+.away-dot { border-radius: 50%; flex: 0 0 auto; height: 7px; width: 7px; }
+.away-dot.high { background: #10b981; }
+.away-dot.medium { background: #f59e0b; }
+.away-dot.low { background: #cbd5e1; }
+
+.away-panel > footer { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; padding-top: 2px; }
+.away-decided { align-items: center; color: var(--muted); display: flex; font-size: 11.5px; gap: 5px; }
+.away-decided svg { color: #2ab567; }
+.away-fleet { color: var(--blue); font-size: 12px; font-weight: 600; margin-left: auto; text-decoration: none; }
+.away-fleet:hover { text-decoration: underline; }
+
+/* The budget clash the schedule picker warns about. */
+.agent-warn { color: #b45309; }
+/* A scheduled agent says so on its fleet row, and says when it goes next. */
+.agent-fleet-chips em.scheduled { background: #eef6ff; border-color: #cfe2f7; color: #1d5fa8; }

@@ -11,11 +11,15 @@ import {
   GROUNDING_LABEL,
   STATUSES,
   STATUS_NOTE,
+  TRIGGERS,
+  TRIGGER_LABEL,
   VERBS,
   VERB_LABEL,
+  runsPerDayFor,
   type AgentDefinition,
   type AgentStatus,
   type Grounding,
+  type Trigger,
   type Verb,
 } from "@/lib/agent/definition";
 import type { RunSummary } from "@/lib/agent/fleet-types";
@@ -52,6 +56,7 @@ export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }
   const [grounding, setGrounding] = useState<Grounding>(agent?.grounding ?? "modelling");
   const [providerId, setProviderId] = useState(agent?.providerId ?? "");
   const [model, setModel] = useState(agent?.model ?? "");
+  const [trigger, setTrigger] = useState<Trigger>(agent?.trigger ?? "manual");
   const [runsPerDay, setRunsPerDay] = useState(agent?.budget.runsPerDay ?? 12);
   const [maxProposals, setMaxProposals] = useState(agent?.budget.maxProposals ?? 15);
   const [message, setMessage] = useState<string | null>(null);
@@ -67,6 +72,7 @@ export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }
     grounding,
     providerId: providerId || null,
     model,
+    trigger,
     budget: { runsPerDay, maxProposals },
     status: agent?.status ?? "draft",
   };
@@ -242,6 +248,25 @@ export function AgentEditor({ slug, workspaceId, teams, providers, agent, runs }
         </div>
 
         <div className="agent-field-row">
+          <label className="agent-field">
+            <span>When it runs</span>
+            <select value={trigger} onChange={(e) => setTrigger(e.target.value as Trigger)} aria-label="When it runs" data-trigger>
+              {TRIGGERS.map((t) => <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>)}
+            </select>
+            {/*
+              The arithmetic, said out loud. An hourly agent wants 24 runs a day and the default
+              budget allows 12 — obvious in a table, invisible in a form, and the sort of thing
+              somebody discovers a week later from a run log full of refusals.
+            */}
+            {trigger !== "manual" && runsPerDay < runsPerDayFor(trigger) && (
+              <small className="agent-warn" data-budget-clash>
+                That wants {runsPerDayFor(trigger)} runs a day and its budget allows {runsPerDay}. It will refuse the rest.
+              </small>
+            )}
+            {trigger !== "manual" && agent?.status !== "active" && (
+              <small>A schedule only runs an <b>active</b> agent. A draft still runs when you ask.</small>
+            )}
+          </label>
           <label className="agent-field">
             <span>Runs a day</span>
             <input type="number" min={1} max={96} value={runsPerDay} onChange={(e) => setRunsPerDay(Number(e.target.value))} aria-label="Runs a day" />

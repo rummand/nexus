@@ -267,3 +267,58 @@ export const DESCRIBED: DocPage = {
     { kind: "try", href: "/w/:slug/agents", label: "See your agents" },
   ],
 };
+
+/**
+ * Agents on a schedule, and the digest that makes them worth having.
+ *
+ * The page a person opens when they notice something ran without them, so it leads with the rules
+ * rather than the feature: what runs unattended, what stops it, and where the evidence is.
+ */
+export const UNATTENDED: DocPage = {
+  slug: "while-you-were-away",
+  title: "Agents that run themselves",
+  summary: "Putting an agent on a schedule, what stops it, and the digest of what happened while you were away.",
+  keywords: ["schedule", "scheduled", "unattended", "overnight", "digest", "cron", "automatic", "ambient", "budget", "trigger", "while you were away"],
+  blocks: [
+    { kind: "prose", text: "An agent you have to remember to run is a tool. An agent that has already looked, and is waiting to tell you what it found, is the reason to have agents at all. Any **active** agent can be given a schedule, and everything it produces still waits for a person — a scheduled agent is not a more powerful agent, it is the same agent with nobody watching." },
+    { kind: "heading", text: "Giving one a schedule", id: "schedule" },
+    {
+      kind: "table",
+      columns: ["Choice", "What it means"],
+      rows: [
+        ["Only when asked", "The default, and right for most. It runs when you press the button."],
+        ["About once an hour", "For something watching a fast-moving corner of the estate. Wants 24 runs a day of budget."],
+        ["About once a day", "The usual choice. One run, most mornings."],
+        ["About once a week", "For a review that would be noise more often than that."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why “about”, and not 02:00", text: "A fixed time needs a timezone, and a workspace is an organisation rather than a place — an EA team at an energy operator is not all in one country. So a daily agent is one that runs when it has not run for a day. It drifts by a few minutes, which is the honest cost, and it never runs twice because the clocks went back." },
+    { kind: "note", tone: "tip", text: "A schedule only moves an **active** agent. A draft still runs when you ask — that is what a draft is for — but nothing unattended happens until somebody has read what it does and made it active." },
+    { kind: "heading", text: "What stops it", id: "limits" },
+    {
+      kind: "list",
+      items: [
+        "**Its budget.** Runs a day is counted before the model is called, so an hourly agent with a budget of 12 does twelve runs and refuses the rest — and the refusals are written down, which is how you find out rather than guessing.",
+        "**Its status.** Paused, retired or not yet approved, and it does not run. Nothing about a schedule overrides that.",
+        "**Its scope.** Unchanged: it reads the objects its query matches and nothing else, whoever started it.",
+        "**Nothing else.** There is no separate, looser path for unattended work. It is the same run.",
+      ],
+    },
+    { kind: "heading", text: "While you were away", id: "digest" },
+    { kind: "prose", text: "When something has happened, the workspace home opens with a short panel: which agents ran without being asked, what they proposed, what anybody accepted or dismissed since, and — first, because it is the thing people least expect — any agent that refused to run and why." },
+    { kind: "note", tone: "why", title: "Why it is usually not there", text: "Most mornings nothing happened, and on those mornings the panel does not appear at all. A digest that speaks every day gets skimmed, and then skipped, and then the one morning it has something to say it is already invisible. Silence is what keeps the rest of it worth reading." },
+    { kind: "note", tone: "tip", text: "Dismissing it is the only thing that moves the window — reading is not dismissing, so a glance on a phone does not cost you the digest you meant to read properly. Proposals that were already waiting when you dismissed it will not bring it back; only new ones will." },
+    { kind: "heading", text: "If nothing ever runs", id: "trouble" },
+    {
+      kind: "table",
+      columns: ["What you see", "Usually"],
+      rows: [
+        ["The agent says “not while it is not active”", "It is a draft. Make it active."],
+        ["Runs appear, all refused", "Its budget is smaller than its schedule wants. The editor warns about this when you pick one."],
+        ["Nothing at all in the run log", "No model is configured for the graph-agent job — see *What Nexus thinks with*."],
+        ["It ran, and proposed nothing", "Often the right answer. An agent that finds nothing wrong should say nothing."],
+      ],
+    },
+    { kind: "try", href: "/w/:slug/agents", label: "Open the fleet" },
+  ],
+};

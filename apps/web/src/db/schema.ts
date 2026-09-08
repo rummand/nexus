@@ -25,6 +25,13 @@ export const users = sqliteTable("users", {
    * by password. `verifyPassword` treats null as "no".
    */
   passwordHash: text("password_hash"),
+  /**
+   * When this person last read the digest of what happened while they were away (§5.42).
+   *
+   * Not "last signed in": the question the digest answers is "what have I not seen yet", and
+   * somebody who signs in on a phone at the weekend without reading it has not seen it.
+   */
+  lastDigestAt: text("last_digest_at"),
   createdAt: timestamp("created_at"),
 });
 

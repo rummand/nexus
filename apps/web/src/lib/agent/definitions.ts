@@ -5,11 +5,13 @@ import * as s from "@/db/schema";
 import {
   DEFAULT_BUDGET,
   isGrounding,
+  isTrigger,
   parseBudget,
   parseVerbs,
   STATUSES,
   VERBS,
   type Grounding,
+  type Trigger,
   type AgentDefinition,
   type AgentStatus,
   type Budget,
@@ -51,7 +53,8 @@ export function toDefinition(row: s.AgentDefinitionRow, ownerTeamName = ""): Age
     grounding: isGrounding(row.grounding) ? row.grounding : "",
     providerId: row.providerId,
     model: row.model,
-    trigger: "manual",
+    // Real since rev 77 (§5.42); rows written before it all say "manual", which is right.
+    trigger: isTrigger(row.trigger) ? row.trigger : "manual",
     budget: parseBudget(row.budget),
     status: ((STATUSES as readonly string[]).includes(row.status) ? row.status : "draft") as AgentStatus,
     parentId: row.parentId,
@@ -108,6 +111,8 @@ export interface StoredDefinition {
   grounding: Grounding;
   providerId: string | null;
   model: string;
+  /** How often it runs without being asked (§5.42). Absent means manual, as everything was. */
+  trigger?: Trigger;
   budget: Budget;
   status: AgentStatus;
 }
@@ -126,7 +131,7 @@ export async function insertDefinition(db: Db, workspaceId: string, value: Store
     grounding: value.grounding,
     providerId: value.providerId,
     model: value.model,
-    trigger: "manual",
+    trigger: value.trigger ?? "manual",
     budget: JSON.stringify(value.budget),
     status: value.status,
     parentId,
@@ -148,6 +153,7 @@ export async function writeDefinition(db: Db, agentId: string, value: StoredDefi
       grounding: value.grounding,
       providerId: value.providerId,
       model: value.model,
+      trigger: value.trigger ?? "manual",
       budget: JSON.stringify(value.budget),
       status: value.status,
       updatedAt: new Date().toISOString(),

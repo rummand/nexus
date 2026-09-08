@@ -113,12 +113,22 @@ async function modelFor(db: Db, workspaceId: string, agent: AgentDefinition): Pr
   return { dialect: row.dialect, baseUrl: row.baseUrl.trim() || DEFAULT_BASE[row.dialect], apiKey, model, from: "provider", providerName: row.name };
 }
 
-export async function runDefinition(db: Db, workspaceId: string, agentId: string): Promise<RunOutcome | { error: string }> {
+export async function runDefinition(
+  db: Db,
+  workspaceId: string,
+  agentId: string,
+  /*
+   * How this run was started (§5.42). Only the run log cares — every rule below applies exactly
+   * the same to a scheduled run as to one a person asked for, which is the whole point: an
+   * unattended run must not be a second, looser code path.
+   */
+  trigger = "manual",
+): Promise<RunOutcome | { error: string }> {
   const agent = await getDefinition(db, agentId);
   if (!agent || agent.workspaceId !== workspaceId) return { error: "That agent is gone." };
 
   const refuse = async (why: string): Promise<RunOutcome> => {
-    const runId = await record(db, workspaceId, agent, { outcome: "refused", detail: JSON.stringify([why]), note: why });
+    const runId = await record(db, workspaceId, agent, { trigger, outcome: "refused", detail: JSON.stringify([why]), note: why });
     return { runId, outcome: "refused", dryRun: agent.status === "draft", proposed: 0, rejected: [why], grounded: [], note: why, objectsRead: 0, sampled: false };
   };
 
@@ -158,6 +168,7 @@ export async function runDefinition(db: Db, workspaceId: string, agentId: string
   } catch (error) {
     const message = error instanceof Error ? error.message : "the model could not be reached";
     const runId = await record(db, workspaceId, agent, {
+      trigger,
       outcome: "failed",
       objectsRead: graph.entities.length,
       error: message,
@@ -174,6 +185,7 @@ export async function runDefinition(db: Db, workspaceId: string, agentId: string
   if (!dryRun) await saveRun(db, workspaceId, run, { agentId: agent.id, runId });
 
   await record(db, workspaceId, agent, {
+    trigger,
     outcome: "ok",
     dryRun,
     objectsRead: graph.entities.length,
