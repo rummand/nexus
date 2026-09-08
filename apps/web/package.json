@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -12,6 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "node scripts/reset-db.mjs",
+    "db:transfer": "tsx src/db/transfer-cli.ts",
+    "fonts:vendor": "node scripts/vendor-fonts.mjs",
     "e2e": "node e2e/run.mjs",
     "e2e:attach": "BASE_URL=${BASE_URL:-http://localhost:3000} node e2e/smoke.mjs",
     "db:pg:schema": "node scripts/generate-pg-schema.mjs",

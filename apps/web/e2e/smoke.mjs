@@ -25,6 +25,13 @@ page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
 page.on("console", (m) => m.type() === "error" && !/ERR_CONNECTION|Failed to load resource/.test(m.text()) && problems.push(`console: ${m.text()}`));
 let saves = 0;
 page.on("request", (r) => r.method() === "PUT" && r.url().includes("/api/boards/") && saves++);
+/*
+ * Nothing may be fetched from a font host (§5.45). An air-gapped deployment that silently falls
+ * back to the system stack is the failure this guards, and it is invisible from inside the page —
+ * so it is watched from out here, for the whole run.
+ */
+const offsite = [];
+page.on("request", (r) => /fonts\.(googleapis|gstatic)\.com/.test(r.url()) && offsite.push(r.url()));
 
 const count = () => page.locator("[data-element-id]").count();
 const zoom = () => page.locator(".zoom-card strong").innerText();
@@ -1336,6 +1343,17 @@ try {
     "a “try it” link opens the reader's own workspace");
 
   assert.deepEqual(problems, [], "no browser errors");
+
+  /*
+   * The typeface is served from this deployment (§5.45): no request to Google, and IBM Plex Sans
+   * actually resolved rather than quietly falling back to the system stack.
+   */
+  assert.deepEqual(offsite, [], "nothing is fetched from a font host");
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.waitForSelector(".studio-home-nav");
+  await page.evaluate(() => document.fonts.ready);
+  assert.ok(await page.evaluate(() => document.fonts.check('14px "IBM Plex Sans"')), "the self-hosted IBM Plex Sans loaded");
+
   console.log("smoke: all checks passed");
 } catch (error) {
   // A failing assertion in a headless browser is a mystery without a picture. Leave one.

@@ -1872,6 +1872,35 @@ One consequence worth recording: the drop no longer special-cases a single objec
 card centred on the pointer, so there is one code path, and a test asserts the two agree.
 
 
+### 5.45 Closing the deployment gaps (v0.2)
+
+Three of the gaps §6a admitted to were about running this thing somewhere real rather than about
+what it does. They are closed together because they are the same subject.
+
+**The typeface is served from the deployment.** IBM Plex was fetched from `fonts.googleapis.com` at
+runtime, so an air-gapped or egress-restricted installation — the sovereign case this product is
+aimed at — silently fell back to the system stack and did not look like itself in the environment it
+is most meant for. It also put a third-party request on every page load of a tool holding an
+organisation's architecture. The files are committed under `public/fonts` with their OFL licence,
+`pnpm fonts:vendor` refreshes them, and the `@font-face` rules are imported with the stylesheet
+rather than linked from the document, so there is no round trip before text can be painted. The
+browser suite now fails if anything asks a font host for anything.
+
+**A database can move between dialects.** Both have worked since §5.19, but adopting Postgres meant
+starting from the seed: everything a pilot had built stayed in the old file. `pnpm db:transfer
+--from file:./data/nexus.db --to postgres://…` copies every table, parents before children, in
+batches. Two properties make it safe enough to point at a real deployment: it **refuses a
+destination that is not empty**, because merging two estates is a different problem with different
+answers and doing it silently would be the worst of them; and the order it writes in is checked
+against the schema by a test, so a table added next year cannot be quietly left behind — the failure
+mode there is a move that reports success while an organisation's change sets are gone. Ids are text
+in every table, chosen for exactly this in the first week, so nothing is remapped.
+
+**The Turbopack panic is a workaround, not a fix.** Next 16.3.4 is the latest release and still
+occasionally panics compiling a route for the first time in `next dev`. There is nothing to fix
+here; what there is, is `pnpm dev:clean`, which clears `.next` and starts again, and an honest note
+that says so.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2293,6 +2322,15 @@ card centred on the pointer, so there is one code path, and a test asserts the t
 - A custom drag image — the object in its kind's colour — instead of a snapshot of the list row.
 - The full-window dashed border and blue wash are gone; what is left is a hairline.
 
+### Running it somewhere real (v0.2)
+- **Self-hosted typeface**: IBM Plex committed under `public/fonts` with its OFL licence, faces
+  imported with the stylesheet, refreshed by `pnpm fonts:vendor`. No request leaves for a font
+  host, and the browser suite fails if one does.
+- **`pnpm db:transfer`** moves a database between SQLite and Postgres in either direction: every
+  table, parents before children, batched, refusing a destination that is not empty. A test checks
+  the order against the schema, so a new table cannot be silently skipped.
+- **`pnpm dev:clean`** for the Turbopack first-compile panic, which is upstream and unfixed here.
+
 ### Documentation (v0.2)
 - Twenty-nine in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
   importing data, models and connections, with a glossary, a keyboard reference and the questions
@@ -2608,6 +2646,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The history folds a run of edits into the one change they add up to. | Autosave means one rename is four saves; four rows saying "renamed" bury the one fact that matters, and an edit that was undone leaves two rows saying opposite things instead of the truth, which is that nothing happened. Folding is limited to one hand in one place inside two minutes — anybody else's edit ends the run, because "Maria changed it and Tobias changed it back" really is two facts. |
 | 2026-09-08 | An accepted proposal is attributed to the reviewer, not to the agent that proposed it. | An agent that proposes has not changed anything; the person who clicked Accept has, and pretending otherwise would let a fleet quietly own decisions people made. Which agent asked is already on the decision row, and it is in the context line, so nothing is lost. |
 | 2026-09-08 | A live board's saves are attributed to the board, not to a peer. | A room persists on a timer for everybody in it, so there is no one person whose save it is; naming whoever happened to type last would be a guess dressed as a fact. Single-tab saves still carry the person, because there the answer is known. |
+| 2026-09-08 | The fonts are committed to the repository rather than fetched at build time. | `next/font/google` self-hosts, but it downloads during the build — which means a build machine with no egress produces an image with no typeface, and the sovereign deployment story fails at exactly the step it was supposed to survive. Committing 270KB of woff2 makes the build hermetic and the licence auditable. |
+| 2026-09-08 | A transfer refuses a destination that already holds rows. | Merging two databases is a different problem: two objects called Maximo, two workspaces with the same slug, two people with one email. Every answer is a policy decision somebody has to make deliberately, and a script that picks one silently would be the worst possible way to make it. |
+| 2026-09-08 | The transfer order is a hand-written list with a test behind it, not a derived sort. | The model is small enough that an explicit, reviewable order is clearer than a topological sort over introspected foreign keys — and the part that actually matters is not the cleverness but the check: `orderGaps()` fails the suite the day somebody adds a table and forgets it, which is the only way the silent-data-loss failure gets caught. |
 | 2026-09-08 | The drop affordance is the cards themselves, not a border round the window. | A dashed rectangle answers "may I drop", which the person dragging already knows. Drawing the actual cards where they would land answers "where will it go and will it fit", which is the question — and because the preview and the drop share one layout function, the answer cannot drift from the truth. |
 | 2026-09-08 | A drop onto a floating panel is refused rather than passed through to the board. | The panels are children of the canvas element, so the old behaviour created the card underneath one: in the model, invisible on the board, and impossible to find without moving the panel. Refusing it costs one gesture; the alternative costs somebody ten minutes wondering where their object went. |
 | 2026-09-08 | Board-only edits — moving, resizing, recolouring — are not graph history. | They are changes to a picture, not to the estate, and boards already keep version history for them. Mixing the two would bury the six changes that mattered under six hundred that did not, which is how an audit trail becomes something nobody opens. |
@@ -2625,6 +2666,20 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 80: closing the deployment gaps.** Three of the gaps the brief admitted to were
+  about running this somewhere real rather than about what it does, so they are closed together. The
+  typeface is now served from the deployment: IBM Plex committed under `public/fonts` with its OFL
+  licence and its faces imported with the stylesheet, because fetching it from Google at runtime
+  meant an air-gapped installation silently fell back to the system stack and did not look like
+  itself in the environment this product is most aimed at — the browser suite now fails if anything
+  asks a font host for anything. A database can move between dialects: `pnpm db:transfer` copies
+  every table parents-first in batches, in either direction, and refuses a destination that is not
+  empty, because merging two estates is a different problem whose every answer is somebody's policy
+  decision. The order it writes in is checked against the schema by a test — a table added next year
+  and left out would make a move that reports success while an organisation's change sets are gone.
+  And the Turbopack first-compile panic got the only honest treatment available: 16.3.4 is the
+  latest release and still does it, so there is `pnpm dev:clean` and a note that says as much.
 
 - **2026-09-08 — Rev 79: dropping an object onto the board.** Dragging a system out of the Graph
   inventory worked and looked wrong, in three ways that are the same mistake three times: the
