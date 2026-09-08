@@ -1388,6 +1388,38 @@ try {
     await guestContext.close();
   }
 
+  /*
+   * More than one workspace (§5.48): the switcher lists what you are in, creating one lands you in
+   * it, and — the part that matters — a workspace you are not a member of is not reachable by
+   * knowing its address.
+   */
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.click("[data-workspace-switcher] .ws-switcher-current");
+  await page.waitForSelector("[data-new-workspace]");
+  await page.click("[data-new-workspace]");
+  await page.fill('[data-workspace-switcher] input[name="name"]', `Smoke Holdings ${Date.now()}`);
+  await page.press('[data-workspace-switcher] input[name="name"]', "Enter");
+  await page.waitForURL((u) => /\/w\/smoke-holdings/.test(u.pathname), { timeout: 30000 });
+  await page.waitForSelector(".studio-home-nav");
+  const secondSlug = new URL(page.url()).pathname.split("/")[2];
+  await page.click("[data-workspace-switcher] .ws-switcher-current");
+  assert.ok((await page.locator("[data-workspace-switcher] .ws-switcher-menu a").count()) >= 2, "the switcher lists both workspaces");
+  await page.keyboard.press("Escape");
+
+  {
+    const outsider = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const other = await outsider.newPage();
+    try {
+      await signIn(other, "tobias@acme-energy.example");
+      const res = await other.goto(`${base}/w/${secondSlug}`, { waitUntil: "load" });
+      assert.equal(res.status(), 404, "a workspace you are not in is not reachable by its address");
+    } finally {
+      await outsider.close();
+    }
+  }
+  await page.goto(`${base}/w/acme-energy/settings/people`, { waitUntil: "load" });
+  await page.waitForSelector("[data-people] li");
+
   // Put her back, so the suite leaves the workspace as it found it.
   await page.locator('[data-people] li:has-text("Maria Lund") select.people-role').selectOption("member");
   await page.waitForTimeout(700);

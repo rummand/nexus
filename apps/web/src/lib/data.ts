@@ -76,6 +76,24 @@ export async function getTeam(teamId: string) {
   });
 }
 
+/**
+ * The workspaces somebody belongs to (§5.48).
+ *
+ * Membership, not existence: the schema has been workspace-scoped since the first week, but every
+ * page resolved a workspace by slug and showed it to anybody who was signed in. A second workspace
+ * makes that a hole rather than a curiosity, so this is also what the layout checks.
+ */
+export async function getWorkspacesFor(userId: string) {
+  const db = await getDb();
+  const rows = await db.query.workspaceMembers.findMany({
+    where: eq(s.workspaceMembers.userId, userId),
+    with: { workspace: true },
+  });
+  return rows
+    .map((r) => ({ id: r.workspaceId, slug: r.workspace.slug, name: r.workspace.name, role: r.role }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function getWorkspaceMembers(workspaceId: string) {
   const db = await getDb();
   return db.query.workspaceMembers.findMany({ where: eq(s.workspaceMembers.workspaceId, workspaceId), with: { user: true } });

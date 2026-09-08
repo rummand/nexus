@@ -1940,6 +1940,48 @@ knowing it, and an owner can add a colleague and reset a password. There is stil
 forgotten-password email, on purpose — SSO is the intended answer to both, and a mail transport in
 the middle of an architecture tool is a moving part nobody asked for.
 
+### 5.47 A live board across more than one server (v0.2)
+
+Rooms lived in one process's heap, so a second replica was a second set of rooms: two people on the
+same board could land in different ones, see an empty presence list, and take turns overwriting each
+other's document. §5.40 wrote that down as a known gap and named the fix — Postgres
+`LISTEN`/`NOTIFY` — and this is it.
+
+**The bus decides the order, not the sender.** The one real change to the room is that a patch is
+*published before it is applied*, and applied when it comes back. Every replica therefore applies in
+the order Postgres delivered, which is the same order everywhere, and last-writer-wins is one rule
+rather than a race between two servers' clocks. With a single process the bus is a synchronous
+function call, so the behaviour and the cost are exactly what they were.
+
+**One replica writes the board down.** All of them converge on the same elements, so any could — but
+three replicas would then do three saves, three graph syncs and three import reconciles per settle,
+which is the waste the room exists to remove. The lowest process id present wins: no election, no
+lock, no coordination beyond the presence everybody is already publishing, and when that replica
+dies its peers age out and the next takes over on the following settle.
+
+**Presence is the union, and it forgets.** Each replica publishes its own peers on every change and
+on a heartbeat; a replica nobody has heard from for forty-five seconds stops having people, so a
+crash does not leave ghosts in the list.
+
+**A payload that will not fit is a fact, not a crash.** `NOTIFY` allows 8000 bytes. Almost every
+patch is a fraction of that; a card with a very long description might not be, so the sender writes
+the board down and asks the others to read it again. Rare, correct, and much simpler than a chunking
+protocol for a case that mostly does not happen.
+
+### 5.48 More than one workspace (v0.2)
+
+Everything below the workspace row has been scoped to one since the first week — entities, boards,
+agents, keys, providers, batches — and the product only ever showed a single one, chosen by slug and
+rendered for anybody signed in. That was a curiosity with one workspace and a hole with two.
+
+So: a **switcher** where the workspace name already was, because that line was already answering the
+question and simply could not answer it a second way; **creating** one, which makes you its owner
+(the only sensible answer, and the rule that keeps §5.46 true — a workspace with no owner is one
+nobody can add anybody to) and gives it a space so the first board has somewhere to go; and, the
+part that matters, the workspace layout now checks **membership**. Somebody who is not a member gets
+`notFound` rather than a refusal, because "this exists and you may not see it" is itself something
+they should not learn from a URL. The front door sends a person to a workspace they are actually in.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1977,7 +2019,7 @@ the middle of an architecture tool is a moving part nobody asked for.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-08 — rev 78)
+## 6a. What exists today (v0.2, 2026-09-08 — rev 82)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2361,6 +2403,25 @@ the middle of an architecture tool is a moving part nobody asked for.
 - A custom drag image — the object in its kind's colour — instead of a snapshot of the list row.
 - The full-window dashed border and blue wash are gone; what is left is a hairline.
 
+### Live boards across replicas (v0.2)
+- A bus between server processes: Postgres `LISTEN`/`NOTIFY` when the store is Postgres, a
+  synchronous function call when it is not, chosen by the same connection string that picks the
+  driver.
+- A patch is published before it is applied, so every replica applies in the bus's order and
+  last-writer-wins means the same thing on all of them.
+- Exactly one replica persists per settle — the lowest process id present — so a board with three
+  replicas on it still does one save, one graph sync and one import reconcile.
+- Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
+  forty-five seconds, so a crashed replica leaves no ghosts.
+- A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### More than one workspace (v0.2)
+- A switcher in the sidebar, in place of the static workspace name; creating one makes you its
+  owner and gives it a space to start in.
+- The workspace layout checks membership: a workspace you are not in answers `notFound`, not a
+  refusal, so its existence is not something a URL can teach you.
+- The front door sends you to a workspace you belong to.
+
 ### Who may do what (v0.2)
 - Four roles — owner, administrator, member, guest — over nine capabilities, in one table
   (`src/lib/auth/roles.ts`) with the matrix asserted by tests rather than discovered in production.
@@ -2399,8 +2460,8 @@ the middle of an architecture tool is a moving part nobody asked for.
   sentence stays where the author put it.
 
 ### Quality gates
-- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, **599 tests** —
-  572 in the app over 54 files, 27 in the knowledge package):
+- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, **641 tests** —
+  614 in the app over 60 files, 27 in the knowledge package):
   - *Canvas*: camera math, panel-aware fit, align/distribute, box/resize/connector geometry,
     store history, frame behaviour and frame→board extraction, centre-inside containment,
     lenses (impact / attribute / relation / query), document diff and migration, SVG export and
@@ -2425,6 +2486,12 @@ the middle of an architecture tool is a moving part nobody asked for.
     folding a burst into a moment, coalescing a run of saves into the one change they add up to and
     dropping an edit that was undone — and, against a real database, that the events outlive the
     entity they describe and that recording cannot take an edit down with it.
+  - *Access*: the capability matrix role by role, who may hand out which role, what a refusal says,
+    and what a signed-out request may still fetch; the last-owner rule, that a reset ends the
+    sessions, and that removing somebody keeps what they made.
+  - *Deployment*: that the transfer order names every table in the schema and puts parents first,
+    that a move keeps ids and booleans and refuses a non-empty destination; which replica writes a
+    live board down, and what happens to a message too big for the wire.
   - *Documentation*: twelve tests over the docs as data (see above).
   - Everything that touches the database runs against an in-memory SQLite.
 - **CI** (`.github/workflows/gates.yml`) runs typecheck, lint and the unit tests on one job and the
@@ -2459,28 +2526,30 @@ the middle of an architecture tool is a moving part nobody asked for.
   `/api/health` must stay open, protected paths must redirect, a wrong password must be
   rejected and a correct one must land on the originally requested page.
 
-### Known gaps (intentional for brief 1)
-- Authorisation, as opposed to authentication: everybody signs in as themselves (§5.41), and then
-  every signed-in person has the same powers.
-- Single workspace; no comments.
-- People sign in (§5.41) but nothing yet reads `workspace_members.role`: everybody who can sign in
-  can do everything, including issuing an MCP key and approving an import. The column has always
-  been there; enforcing it is the next piece.
-- No self-service account management: no sign-up, no password reset, no invitations. An
-  administrator adds a row and sets a password. Enterprise SSO is the intended answer rather than
-  building a forgotten-password flow with an email service behind it.
-- The live session lives in one server's memory. Behind a load balancer spreading people across
-  replicas, two people could land in different sessions and not see each other — the same limit
-  that makes one SQLite file work today, liftable by carrying patches on Postgres LISTEN/NOTIFY.
-- Google Fonts (IBM Plex) are loaded at runtime; offline environments fall back to the
-  system stack.
-- Postgres works (one schema, generated, drift caught by a test; the browser suite has been run
-  against Postgres 16) but nothing migrates data across from SQLite — a switch starts from the
-  seed.
-- Nothing in the product is multi-tenant beyond the workspace row: an MCP key, a model provider
-  and an import batch all belong to a workspace, but there is no user behind any of them.
-- Next.js 16 dev server (Turbopack) occasionally panics on first compile of a route;
-  `rm -rf apps/web/.next` and restart fixes it. Not seen in production builds.
+### Known gaps
+
+Every gap this section carried through brief 1 has now been closed (§5.45–§5.48). What is left is
+what is honestly still missing, and why.
+
+- **No comments.** A board is a thing two people stand in front of (§5.40) and the one thing they
+  cannot do on it is talk. The open question is whether a comment is a board object — versioned and
+  exported with the drawing, like an agent remark — or a row beside it that survives the object it
+  is about. A human conversation probably wants the row.
+- **No sign-up and no password-reset email**, by choice. Somebody can change their own password and
+  an owner can add a colleague and reset one (§5.46); enterprise SSO is the intended answer to the
+  rest, and a mail transport in the middle of an architecture tool is a moving part, a
+  deliverability problem and an attack surface nobody asked for.
+- **No connector fetches for real.** Seventeen sources are modelled with scope trees down to named
+  tables and the grants are enforced (§5.14), but the three doors that actually bring data in are
+  files, paste and outbound MCP (§5.37). Which source is built first is a question for the product
+  owner.
+- **Postgres is exercised, not operated.** One generated schema with drift caught by a test, the
+  browser suite run against Postgres 16, and a transfer that moves a database across (§5.45) — but
+  nobody has run this under load, and the live bus's ordering guarantee has been reasoned about and
+  unit-tested rather than watched under two real replicas.
+- **Next.js 16 dev server (Turbopack) occasionally panics** on first compile of a route. 16.3.4 is
+  the latest release and still does it; `pnpm dev:clean` clears `.next` and starts again. Not seen
+  in production builds.
 
 ## 6b. Running it
 
@@ -2699,6 +2768,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The history folds a run of edits into the one change they add up to. | Autosave means one rename is four saves; four rows saying "renamed" bury the one fact that matters, and an edit that was undone leaves two rows saying opposite things instead of the truth, which is that nothing happened. Folding is limited to one hand in one place inside two minutes — anybody else's edit ends the run, because "Maria changed it and Tobias changed it back" really is two facts. |
 | 2026-09-08 | An accepted proposal is attributed to the reviewer, not to the agent that proposed it. | An agent that proposes has not changed anything; the person who clicked Accept has, and pretending otherwise would let a fleet quietly own decisions people made. Which agent asked is already on the decision row, and it is in the context line, so nothing is lost. |
 | 2026-09-08 | A live board's saves are attributed to the board, not to a peer. | A room persists on a timer for everybody in it, so there is no one person whose save it is; naming whoever happened to type last would be a guess dressed as a fact. Single-tab saves still carry the person, because there the answer is known. |
+| 2026-09-08 | A live patch is published to the bus before it is applied locally. | The obvious implementation — apply, then tell the others — makes each replica apply its own edits first and everybody else's second, so two servers reach different documents for the same pair of edits. Publishing first costs a round trip the origin never notices (its own client already drew the change) and buys one total order for every replica. |
+| 2026-09-08 | The lowest process id present writes the board down. | Any replica could, since they converge — but then a settle costs one save per replica. This needs no election, no lock and no new state: presence is already being published, so every replica can compute the same answer, and a dead writer's peers age out and hand it over. |
+| 2026-09-08 | A live message too big for NOTIFY persists and asks for a re-read. | 8000 bytes covers essentially every patch. Chunking would be a protocol, with ordering and reassembly and a partial-delivery case, to serve the card with a thousand-word description. Writing the board down and saying "read it again" is three lines and always correct. |
+| 2026-09-08 | A workspace you are not a member of answers 404, not 403. | A refusal confirms the workspace exists, and slugs are guessable — an organisation's name is not a secret but the fact that it uses this product might be. Not-found is the same answer a made-up slug gets. |
 | 2026-09-08 | Authorisation is capabilities in one table, not role checks at the call sites. | Ninety server actions asking `role === "admin"` is ninety chances to be inconsistent, and nobody can answer "what may a member do?" by reading them. One matrix turns a role into sentences about the product, the actions ask the matrix, and a test argues with the matrix. |
 | 2026-09-08 | A member may edit the model but not delete from it, approve an import or deliver a plan. | The line is consequence outside the screen you are on. Editing an object is what the model is for; a merge cannot be undone by merging back, an approval rewrites what everybody else is reading, and a delivery moves the estate into the future. Those are the acts a workspace wants somebody accountable for. |
 | 2026-09-08 | A guest may join a live board and may not patch it. | Presence is the point of the feature and reading is what a guest is for, so shutting them out of the channel would remove something valuable to prevent nothing. The edit right is decided once when the stream opens and carried on the connection, which keeps the per-patch path free of a lookup. |
@@ -2725,6 +2798,23 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 82: the last two gaps.** A live board now works across more than one server
+  process, and there can be more than one workspace. Rooms lived in one heap, so a second replica
+  was a second set of rooms — two people on one board could land in different ones and take turns
+  overwriting each other. The fix is the one rev 75 named: a bus, Postgres `LISTEN`/`NOTIFY` where
+  the store is Postgres and a synchronous function call where it is not. The one real change to the
+  room is that a patch is *published before it is applied* and applied when it comes back, so every
+  replica applies in the bus's order and last-writer-wins is one rule rather than a race between two
+  servers' clocks. Exactly one replica writes the board down — the lowest process id present, which
+  needs no election and no lock because presence is already being published — and presence itself is
+  the union of every replica's peers, forgotten after forty-five seconds so a crash leaves no
+  ghosts. A message too large for `NOTIFY` persists and asks the others to re-read, which is three
+  lines against a chunking protocol for the card with a thousand-word description. Alongside it,
+  more than one workspace: a switcher where the workspace name already was, creating one makes you
+  its owner and gives it a space, and — the part that matters — the layout now checks membership. A
+  workspace you are not in answers `notFound` rather than a refusal, because a refusal confirms it
+  exists and slugs are guessable.
 
 - **2026-09-08 — Rev 81: who may do what.** `workspace_members.role` had been in the schema since
   the first week and nothing read it: since rev 76 everybody signed in as themselves and then every

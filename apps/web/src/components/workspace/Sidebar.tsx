@@ -3,13 +3,14 @@ import { Suspense } from "react";
 import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, UserCog, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
+import { WorkspaceSwitcher, type WorkspaceChoice } from "./WorkspaceSwitcher";
 import { SidebarLink } from "./SidebarLink";
 import { SidebarSearch } from "./SidebarSearch";
 import { SpaceListItem } from "./SpaceListItem";
 import { NewSpaceDialog } from "./NewSpaceDialog";
 import { NewTeamDialog } from "./NewTeamDialog";
 
-export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[] }) {
+export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces = [] }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[]; workspaces?: WorkspaceChoice[] }) {
   const base = `/w/${workspace.slug}`;
   return (
     <aside className="studio-home-sidebar">
@@ -17,7 +18,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <Link href={base} className="brand-mark" aria-label="Nexus home"><NexusMark /></Link>
         <div>
           <strong>Nexus</strong>
-          <span>{workspace.name} · architecture workspace</span>
+          <WorkspaceSwitcher current={workspace} workspaces={workspaces.length ? workspaces : [{ id: workspace.id, slug: workspace.slug, name: workspace.name, role: "member" }]} />
         </div>
       </div>
 
