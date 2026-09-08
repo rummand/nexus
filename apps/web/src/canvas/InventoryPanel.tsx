@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, type RefObject } from "react";
 import { ChevronDown, ChevronRight, Database, Plus, Search } from "lucide-react";
 import { cardColorForKind } from "./document";
-import { cardsInGrid, ENTITY_DRAG_TYPE } from "./entityCard";
+import { beginEntityDrag, cardsInGrid, endEntityDrag, ENTITY_DRAG_TYPE } from "./entityCard";
+import { setEntityDragImage } from "./dragImage";
 import { useDraggablePanel } from "./hooks/useDraggablePanel";
 import { useCanvas, useCanvasStore } from "./store";
 import type { EntitySummary, GraphSnapshot } from "@/lib/graph-types";
@@ -60,13 +61,20 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
     s.addElements(cardsInGrid(list, centre), { select: true });
   };
 
-  /** Hand the entities to the canvas as a drag payload; the drop decides where they land. */
+  /**
+   * Hand the entities to the canvas as a drag payload; the drop decides where they land.
+   *
+   * Three things travel: the payload itself, a plain-text fallback for a drop outside the canvas,
+   * and — separately, because `dataTransfer` cannot be read during a `dragover` — a hint the board
+   * uses to draw the cards under the cursor before you let go.
+   */
   const startDrag = (e: React.DragEvent, list: EntitySummary[]) => {
     const payload = list.map((x) => ({ id: x.id, kind: x.kind, name: x.name, description: x.description, attributes: x.attributes }));
     e.dataTransfer.setData(ENTITY_DRAG_TYPE, JSON.stringify(payload));
-    // a plain-text fallback keeps the drag meaningful if it lands outside the canvas
     e.dataTransfer.setData("text/plain", payload.map((x) => x.name).join(", "));
     e.dataTransfer.effectAllowed = "copy";
+    setEntityDragImage(e.dataTransfer, payload);
+    beginEntityDrag(payload);
   };
 
   const total = snapshot?.entities.length ?? 0;
@@ -123,6 +131,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
                       title={`Drag onto the canvas, or click to place all ${kind} not yet on this board`}
                       draggable={placed !== list.length}
                       onDragStart={(ev) => startDrag(ev, list.filter((e) => !onBoard.has(e.id)))}
+                      onDragEnd={endEntityDrag}
                       onClick={() => place(list.filter((e) => !onBoard.has(e.id)))}
                       disabled={placed === list.length}
                     ><Plus size={14} /></button>
@@ -135,6 +144,7 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
                           className={onBoard.has(e.id) ? "on-board draggable" : "draggable"}
                           draggable={!onBoard.has(e.id)}
                           onDragStart={(ev) => startDrag(ev, [e])}
+                          onDragEnd={endEntityDrag}
                           title={onBoard.has(e.id) ? undefined : "Drag onto the canvas, or use + to place it"}
                         >
                           <span title={e.description || e.name}>{e.name || "(unnamed)"}</span>

@@ -1790,7 +1790,51 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .inventory-group li.draggable:active { cursor: grabbing; }
 .inventory-group li.on-board.draggable { cursor: default; }
 .inventory-place[draggable="true"] { cursor: grab; }
-.canvas-viewport.is-drop-target::after { border: 2px dashed var(--blue); border-radius: 12px; background: rgba(19, 118, 212, 0.045); content: ""; inset: 8px; pointer-events: none; position: absolute; z-index: 4; }
+/*
+ * The affordance is the preview, not a border round the window (§5.44). The old rule tinted the
+ * whole board and drew a dashed rectangle behind every panel — loud, and it answered "may I drop"
+ * when the question is "where will it land". What is left is a hairline that says the canvas is
+ * listening, and the ghost cards below say the rest.
+ */
+.canvas-viewport.is-drop-target::after { border: 1px solid rgba(19, 118, 212, 0.35); border-radius: 10px; content: ""; inset: 4px; pointer-events: none; position: absolute; z-index: 4; }
+
+/* the cards you are about to create, drawn where they will be */
+/* Above every card on the board: a preview hidden behind the thing it is about to sit next to
+   is not a preview. It is inside the world layer, so this only competes with board objects. */
+.drop-preview { left: 0; position: absolute; top: 0; pointer-events: none; z-index: 900; }
+.drop-ghost {
+  /* Tinted rather than white: at 40% zoom a pale outline on a pale board is invisible, and the
+     whole point is that you can see where it lands without letting go. */
+  background: color-mix(in srgb, var(--card-color) 10%, rgba(255, 255, 255, 0.92));
+  border: 2px dashed color-mix(in srgb, var(--card-color) 85%, #6b7a90);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--card-color) 20%, rgba(31, 45, 70, 0.12));
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow: hidden;
+  padding: 13px 15px;
+  position: absolute;
+}
+.drop-ghost-kind { align-items: center; color: #7b8699; display: flex; font-size: 12px; font-weight: 900; gap: 9px; }
+.drop-ghost-kind i { background: var(--card-color); border-radius: 3px; flex: 0 0 auto; height: 15px; opacity: 0.75; width: 15px; }
+.drop-ghost strong { color: #46536a; font-size: 16px; font-weight: 700; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A group says how many, once, rather than making somebody count outlines. */
+.drop-ghost-count {
+  background: var(--blue); border-radius: 999px; color: #fff; font-size: 12px; font-weight: 800;
+  left: 0; padding: 4px 10px; position: absolute; transform: translate(-50%, -100%); white-space: nowrap;
+}
+
+/* what follows the cursor: the object, not the row you grabbed it by */
+.entity-drag-chip {
+  align-items: center; background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--card-color);
+  border-radius: 9px; box-shadow: 0 10px 22px rgba(23, 32, 51, 0.18); display: flex; gap: 8px;
+  font: 700 13px/1.2 var(--font-sans, system-ui, sans-serif); left: -9999px; padding: 8px 12px 8px 10px;
+  position: fixed; top: -9999px; white-space: nowrap;
+}
+.entity-drag-chip i { background: var(--card-color); border-radius: 3px; flex: 0 0 auto; height: 12px; width: 12px; }
+.entity-drag-chip b { color: #1c2637; font-weight: 700; }
+.entity-drag-chip small { color: #8a95a8; font-size: 11px; font-weight: 700; }
 
 /* ---- meta-model builder -------------------------------------------------------------------- */
 .meta-shell { background: #f6f8fb; display: grid; grid-template-rows: 46px 1fr; height: 100%; min-width: 960px; }

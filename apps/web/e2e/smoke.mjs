@@ -240,6 +240,24 @@ try {
       "the dropped card lands where it was dropped",
     );
     await page.keyboard.press("Escape");
+
+    /*
+     * The preview, and the panels refusing the drop (§5.44). A ghost is drawn where the card would
+     * land; dragging over the Graph panel draws nothing, because a card dropped there would be
+     * created underneath it where nobody can see it.
+     */
+    const dt = await page.evaluateHandle(() => new DataTransfer());
+    const canvas = page.locator("main.canvas-viewport");
+    await dragRow.dispatchEvent("dragstart", { dataTransfer: dt });
+    await canvas.dispatchEvent("dragover", { dataTransfer: dt, clientX: Math.round(cbox.x + cbox.width * 0.6), clientY: Math.round(cbox.y + cbox.height * 0.5) });
+    await page.waitForSelector("[data-drop-preview] .drop-ghost", { timeout: 10000 });
+    const pbox = await page.locator(".inventory-panel").boundingBox();
+    await canvas.dispatchEvent("dragover", { dataTransfer: dt, clientX: Math.round(pbox.x + pbox.width / 2), clientY: Math.round(pbox.y + 140) });
+    await page.waitForFunction(() => {
+      const el = document.querySelector("[data-drop-preview]");
+      return !el || el.style.display === "none";
+    }, null, { timeout: 10000 });
+    await canvas.dispatchEvent("dragend", { dataTransfer: dt });
   }
 
   // viewpoint tab: show relations between cards on the board (idempotent), kind lens toggles

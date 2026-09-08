@@ -1843,6 +1843,35 @@ picture, not to the estate, and boards keep their own version history for it. Mi
 bury the six changes that mattered under six hundred that did not.
 
 
+### 5.44 Dropping an object onto the board (v0.2)
+
+Dragging a system out of the Graph inventory worked and looked wrong. Three things were wrong with
+it, and they are the same mistake three times: the interface answered a question nobody was asking.
+
+**The affordance was the window.** A two-pixel dashed border inset round the entire viewport, plus
+a blue wash over the whole board — drawn *behind* every floating panel, so it framed the sidebar and
+the inspector as though they were part of the drop. It said "you may drop something somewhere",
+which the person already knew. What they want to know is *where it will land and how big it is*.
+
+So the affordance is now the cards themselves. While you drag, the board draws the object where it
+would be created, in world space, at its real size and in its kind's colour — drag over a gap
+between two frames and you can see whether it fits before you let go. Drag a whole kind by its **+**
+and you get the grid, with a count above it. The preview is laid out by the same function the drop
+uses (`cardLayout`), because a preview computed a second way is a preview that eventually lies.
+
+**The panels were drop targets.** They are children of the canvas element, so dropping onto the
+Graph panel created a card underneath it, where nobody could see it — the object was in the model
+and invisible on the board. A drop over any floating chrome is now refused, and the cursor says so.
+
+**The thing following the cursor was the row you grabbed.** The browser's default drag image is a
+snapshot of the list item, complete with its "+" button: a picture of the control rather than of the
+object. It is now a small chip naming the object in its kind's colour, or "8 Applications" for a
+group.
+
+One consequence worth recording: the drop no longer special-cases a single object. A 1×1 grid *is* a
+card centred on the pointer, so there is one code path, and a test asserts the two agree.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2255,6 +2284,15 @@ bury the six changes that mattered under six hundred that did not.
   agent, a CMDB import — because the page is about the last two weeks and a workspace created a
   minute ago has nothing to show on it.
 
+### Dropping onto the board (v0.2)
+- A live preview while you drag: ghost cards in world space, at the size, position and colour the
+  real cards will have, laid out by the same function the drop uses.
+- A group carries a count; a drop that is entirely already on the board draws nothing.
+- Floating panels refuse the drop instead of swallowing the card underneath themselves; new chrome
+  opts in with `data-canvas-chrome`.
+- A custom drag image — the object in its kind's colour — instead of a snapshot of the list row.
+- The full-window dashed border and blue wash are gone; what is left is a hairline.
+
 ### Documentation (v0.2)
 - Twenty-nine in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
   importing data, models and connections, with a glossary, a keyboard reference and the questions
@@ -2570,6 +2608,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The history folds a run of edits into the one change they add up to. | Autosave means one rename is four saves; four rows saying "renamed" bury the one fact that matters, and an edit that was undone leaves two rows saying opposite things instead of the truth, which is that nothing happened. Folding is limited to one hand in one place inside two minutes — anybody else's edit ends the run, because "Maria changed it and Tobias changed it back" really is two facts. |
 | 2026-09-08 | An accepted proposal is attributed to the reviewer, not to the agent that proposed it. | An agent that proposes has not changed anything; the person who clicked Accept has, and pretending otherwise would let a fleet quietly own decisions people made. Which agent asked is already on the decision row, and it is in the context line, so nothing is lost. |
 | 2026-09-08 | A live board's saves are attributed to the board, not to a peer. | A room persists on a timer for everybody in it, so there is no one person whose save it is; naming whoever happened to type last would be a guess dressed as a fact. Single-tab saves still carry the person, because there the answer is known. |
+| 2026-09-08 | The drop affordance is the cards themselves, not a border round the window. | A dashed rectangle answers "may I drop", which the person dragging already knows. Drawing the actual cards where they would land answers "where will it go and will it fit", which is the question — and because the preview and the drop share one layout function, the answer cannot drift from the truth. |
+| 2026-09-08 | A drop onto a floating panel is refused rather than passed through to the board. | The panels are children of the canvas element, so the old behaviour created the card underneath one: in the model, invisible on the board, and impossible to find without moving the panel. Refusing it costs one gesture; the alternative costs somebody ten minutes wondering where their object went. |
 | 2026-09-08 | Board-only edits — moving, resizing, recolouring — are not graph history. | They are changes to a picture, not to the estate, and boards already keep version history for them. Mixing the two would bury the six changes that mattered under six hundred that did not, which is how an audit trail becomes something nobody opens. |
 
 ## 8. Open questions for the product owner
@@ -2585,6 +2625,20 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 79: dropping an object onto the board.** Dragging a system out of the Graph
+  inventory worked and looked wrong, in three ways that are the same mistake three times: the
+  interface kept answering a question nobody was asking. The affordance was a dashed border round
+  the whole viewport with a blue wash behind every panel — it said "you may drop something
+  somewhere", when the question is where it lands and how big it is. So the affordance is now the
+  cards themselves, drawn in world space at their real size and colour, laid out by the same
+  function the drop uses; a group shows the grid with a count above it. The floating panels were
+  silently drop targets, because they are children of the canvas element — dropping on the Graph
+  panel created a card underneath it, in the model and invisible on the board — so a drop over
+  chrome is now refused and the cursor says so. And the thing following the cursor was a snapshot of
+  the list row, "+" button and all; it is now a chip naming the object in its kind's colour. On the
+  way the drop stopped special-casing a single object: a 1×1 grid is a card centred on the pointer,
+  so there is one path, with a test that the preview and the drop agree.
 
 - **2026-09-08 — Rev 78: the graph remembers.** Boards have had version history since rev 9; the
   graph, which is the product, had none — and since rev 77 agents write to it overnight with nobody

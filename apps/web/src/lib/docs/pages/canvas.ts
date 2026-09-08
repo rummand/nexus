@@ -66,6 +66,7 @@ export const BOARDS_AND_GRAPH: DocPage = {
   blocks: [
     { kind: "prose", text: "A card carries a hidden id that points at a graph object. Two cards on two boards with the same id are two views of one system, and editing either edits the system. That is why renaming something on a board renames it everywhere." },
     { kind: "shot", src: "board-graph-panel", alt: "The Graph panel's Inventory tab, listing objects by kind", caption: "The Inventory tab lists every object in the workspace. Drag one onto the canvas to place it, or click the + button." },
+    { kind: "note", tone: "tip", text: "While you drag, the board draws the card where it would land, at the size it will be — so you can see whether it fits before you let go. Drag a whole kind by its **+** and you get the grid, with a count above it. A drop onto one of the floating panels is refused rather than putting the card underneath one." },
     { kind: "heading", text: "Attributes", id: "attributes" },
     { kind: "prose", text: "Attributes are free-form key/value pairs on an object: owner, lifecycle, criticality, vendor, cost. There is no fixed list, because every organisation records something different — the set of keys you actually use becomes your emergent attribute schema, visible on the Meta-model page." },
     {

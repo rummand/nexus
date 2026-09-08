@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useCanvas, useCanvasStore } from "./store";
 import { screenToWorld } from "./geometry";
-import { cardCentredAt, cardsInGrid, ENTITY_DRAG_TYPE, parseEntityDrag } from "./entityCard";
+import { cardsInGrid, dropGhosts, endEntityDrag, entityDragInFlight, ENTITY_DRAG_TYPE, parseEntityDrag, type DropGhost, type EntityLike } from "./entityCard";
+import { DropPreview } from "./DropPreview";
 import { useCanvasInteraction } from "./hooks/useCanvasInteraction";
 import { useWheel } from "./hooks/useWheel";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -31,6 +32,19 @@ import { ContextMenu } from "./ContextMenu";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { GridCanvas } from "./GridCanvas";
 
+/**
+ * The chrome that floats over the board. Every one of these is a child of the canvas element, so a
+ * drop landing on one has to be refused explicitly — see `onDragOver`. New chrome can opt in with
+ * `data-canvas-chrome` instead of being added to this list.
+ */
+const CHROME = "[data-canvas-chrome], .floating-panel, .canvas-toolbar, .command-bar, .shape-inspector-bar, .lens-legend, .time-scrubber, .compose-panel, .present-bar";
+
+/** Is the pointer over the board itself, rather than over something floating above it? */
+function overCanvas(e: React.DragEvent): boolean {
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  return !hit || !hit.closest(CHROME);
+}
+
 export function Canvas() {
   const store = useCanvasStore();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -40,32 +54,98 @@ export function Canvas() {
   const dragging = useCanvas((s) => s.isDragging);
   const panels = useCanvas((s) => s.panels);
   const presenting = useCanvas((s) => s.presenting);
-  const [dropActive, setDropActive] = useState(false);
+  const [preview, setPreview] = useState<{ key: string; ghosts: DropGhost[] } | null>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  /* Where the pointer was on the last dragover, so the preview can be placed the moment it mounts
+     rather than waiting for the next event to arrive and land at the world origin in between. */
+  const ghostAt = useRef<{ x: number; y: number } | null>(null);
+
+  /** The world point a drop at this screen position lands on. */
+  const worldAt = (e: React.DragEvent) => {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top }, store.getState().camera);
+  };
+
+  /** Entities in the payload that are not already on this board. */
+  const notYetPlaced = (entities: EntityLike[]) => {
+    const already = new Set(Object.values(store.getState().elements).map((el) => (el.type === "card" ? el.meta?.entityId : undefined)));
+    return entities.filter((x) => !already.has(x.id));
+  };
+
+  const clearPreview = () => {
+    if (ghostRef.current) ghostRef.current.style.display = "none";
+    ghostAt.current = null;
+    setPreview(null);
+  };
 
   /** Entities dragged out of the Graph inventory land where they are dropped. */
   const onDrop = (e: React.DragEvent) => {
-    setDropActive(false);
+    clearPreview();
+    endEntityDrag();
+    if (!overCanvas(e)) return;
     const raw = e.dataTransfer.getData(ENTITY_DRAG_TYPE);
     if (!raw) return;
     const entities = parseEntityDrag(raw);
     if (!entities) return;
     e.preventDefault();
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const s = store.getState();
-    const world = screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top }, s.camera);
-    const already = new Set(Object.values(s.elements).map((el) => (el.type === "card" ? el.meta?.entityId : undefined)));
-    const fresh = entities.filter((x) => !already.has(x.id));
+    const world = worldAt(e);
+    if (!world) return;
+    const fresh = notYetPlaced(entities);
     if (fresh.length === 0) return;
-    s.addElements(fresh.length === 1 ? [cardCentredAt(fresh[0]!, world.x, world.y)] : cardsInGrid(fresh, world), { select: true });
+    store.getState().addElements(cardsInGrid(fresh, world), { select: true });
   };
 
   const onDragOver = (e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes(ENTITY_DRAG_TYPE)) return;
+    /*
+     * A drop onto a floating panel is not a drop onto the board: the panels are children of this
+     * element, so without this the card would be created underneath one, where nobody can see it.
+     * Refusing it makes the cursor say no rather than the board quietly swallowing the object.
+     */
+    if (!overCanvas(e)) {
+      e.dataTransfer.dropEffect = "none";
+      if (ghostRef.current) ghostRef.current.style.display = "none";
+      return;
+    }
     e.preventDefault(); // required, or the browser refuses the drop
     e.dataTransfer.dropEffect = "copy";
-    if (!dropActive) setDropActive(true);
+
+    /*
+     * Keyed on what is actually in the hand, not on whether a preview happens to be showing: a
+     * second drag started before the first one's ghosts were cleared would otherwise draw the
+     * previous object, which is worse than drawing nothing.
+     */
+    const inFlight = entityDragInFlight();
+    const key = inFlight ? inFlight.map((x) => x.id).join("|") : "";
+    if (inFlight && preview?.key !== key) {
+      const fresh = notYetPlaced(inFlight);
+      setPreview(fresh.length ? { key, ghosts: dropGhosts(fresh) } : null);
+    }
+    ghostAt.current = worldAt(e);
+    placeGhosts();
   };
+
+  const placeGhosts = () => {
+    const node = ghostRef.current;
+    const at = ghostAt.current;
+    if (!node || !at) return;
+    node.style.display = "block";
+    node.style.transform = `translate(${at.x}px, ${at.y}px)`;
+  };
+
+  // The preview is mounted by the first dragover and positioned here, in the same frame.
+  useEffect(placeGhosts, [preview]);
+
+  /*
+   * A drag abandoned outside the window never reaches drop or dragleave, so the ghosts would sit
+   * on the board until the next drag. `dragend` always fires on the source, which is on this page.
+   */
+  useEffect(() => {
+    const done = () => { endEntityDrag(); clearPreview(); };
+    window.addEventListener("dragend", done);
+    return () => window.removeEventListener("dragend", done);
+  }, []);
   const presentIndex = useCanvas((s) => s.presentIndex);
   const frameCount = useCanvas((s) => { let n = 0; for (const el of Object.values(s.elements)) if (el.type === "frame") n++; return n; });
   useProposals();
@@ -111,7 +191,7 @@ export function Canvas() {
   return (
     <main
       ref={rootRef}
-      className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""} ${dropActive ? "is-drop-target" : ""}`}
+      className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""} ${preview ? "is-drop-target" : ""}`}
       aria-label="Nexus canvas"
       onMouseDown={(e) => {
         const t = e.target as HTMLElement;
@@ -127,7 +207,7 @@ export function Canvas() {
       onDoubleClick={interaction.onDoubleClick}
       onContextMenu={interaction.onContextMenu}
       onDragOver={onDragOver}
-      onDragLeave={(e) => { if (e.currentTarget === e.target) setDropActive(false); }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) clearPreview(); }}
       onDrop={onDrop}
     >
       <GridCanvas />
@@ -135,6 +215,7 @@ export function Canvas() {
       <div ref={worldRef} className="absolute left-0 top-0" data-canvas-world style={{ transformOrigin: "0 0", width: 0, height: 0, willChange: "transform" }}>
         <ElementLayer />
         <ConnectorLayer />
+        {preview && <DropPreview ghosts={preview.ghosts} nodeRef={ghostRef} />}
       </div>
 
       {isEmpty && (
