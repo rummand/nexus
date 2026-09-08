@@ -2873,3 +2873,66 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .agent-warn { color: #b45309; }
 /* A scheduled agent says so on its fleet row, and says when it goes next. */
 .agent-fleet-chips em.scheduled { background: #eef6ff; border-color: #cfe2f7; color: #1d5fa8; }
+
+/* ---- the graph remembers (§5.43) ------------------------------------------ */
+
+.hx-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.hx-chip {
+  align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  color: #46536a; cursor: pointer; display: inline-flex; font-size: 12.5px; font-weight: 600; gap: 6px;
+  min-height: 30px; padding: 0 12px;
+}
+.hx-chip:hover:not(:disabled) { border-color: #b8d7ff; color: var(--blue); }
+.hx-chip.on { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
+.hx-chip small { color: var(--quiet); font-family: var(--mono); font-size: 11px; }
+.hx-chip:disabled { color: #b3bcca; cursor: default; opacity: 0.65; }
+
+.hx-search { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 999px; color: var(--quiet); display: flex; gap: 7px; margin-left: auto; min-height: 30px; padding: 0 12px; }
+.hx-search input { border: 0; color: var(--ink); font-size: 12.5px; outline: none; width: 230px; }
+.hx-search:focus-within { border-color: #b8d7ff; }
+
+.hx-summary { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+.hx-footnote { border-top: 1px solid #e9eef5; color: var(--quiet); font-size: 12px; margin-top: 18px; padding-top: 12px; }
+.hx-footnote a { color: var(--blue); }
+
+.hx-day { margin-bottom: 18px; }
+.hx-day > h2 { align-items: center; color: #2b3648; display: flex; font-size: 12.5px; font-weight: 800; gap: 7px; letter-spacing: 0.01em; margin: 0 0 8px; }
+.hx-day > h2 svg { color: #93a3ba; }
+.hx-day > h2 small { color: var(--quiet); font-family: var(--mono); font-size: 11px; font-weight: 600; }
+
+/* The timeline itself: one entry per moment, with a rail down the left so a burst of
+   edits reads as one act rather than as unrelated lines. */
+.hx-timeline { display: grid; gap: 2px; list-style: none; margin: 0; padding: 0; }
+.hx-timeline > li { border-left: 2px solid #e6eef8; display: grid; gap: 3px; padding: 6px 0 8px 12px; }
+.hx-timeline > li:hover { border-left-color: #b8d7ff; }
+.hx-timeline > li > header { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.hx-timeline > li > header time { color: var(--quiet); font-size: 11.5px; }
+.hx-timeline > li > header small { color: var(--quiet); font-size: 11.5px; }
+.hx-timeline > li > header small::before { color: #c3ccda; content: "· "; }
+.hx-timeline > li > ul { display: grid; gap: 2px; list-style: none; margin: 0; padding: 0; }
+
+.hx-actor { align-items: center; border-radius: 999px; display: inline-flex; font-size: 11.5px; gap: 5px; padding: 2px 9px 2px 7px; }
+.hx-actor b { font-weight: 700; }
+.hx-actor.person { background: #eef6ff; color: #1d5fa8; }
+.hx-actor.agent { background: #f3eefe; color: #6b3fc4; }
+.hx-actor.import { background: #eefaf3; color: #24734a; }
+.hx-actor.board { background: #f2f5f9; color: #4d5c74; }
+.hx-actor.rules { background: #fff7ed; color: #b45309; }
+.hx-actor.system { background: #f2f5f9; color: #6b7789; }
+
+.hx-line { align-items: baseline; color: #46536a; display: flex; font-size: 12.5px; gap: 8px; line-height: 1.45; }
+.hx-line > i { background: #cbd5e1; border-radius: 50%; flex: 0 0 auto; height: 5px; position: relative; top: -2px; width: 5px; }
+.hx-line > span { flex: 0 1 auto; min-width: 0; }
+.hx-line b { color: #2b3648; font-weight: 700; margin-right: 6px; }
+.hx-line.created > i { background: #2ab567; }
+.hx-line.deleted > i, .hx-line.merged > i { background: #e0554d; }
+.hx-line.deleted > span { color: #a04a44; }
+.hx-line.relationAdded > i, .hx-line.relationRemoved > i { background: var(--blue); }
+.hx-line.absorbed > i { background: #f59e0b; }
+.hx-open { color: var(--quiet); flex: 0 0 auto; font-size: 11px; opacity: 0; text-decoration: none; }
+.hx-line:hover .hx-open { opacity: 1; }
+.hx-open:hover { color: var(--blue); text-decoration: underline; }
+
+/* The drawer shows the same timeline, tighter. */
+[data-drawer-history] .hx-timeline > li { padding-left: 10px; }
+[data-drawer-history] .hx-line { font-size: 12px; }

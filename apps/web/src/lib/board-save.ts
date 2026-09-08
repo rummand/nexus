@@ -12,7 +12,7 @@ import { autoCheckpoint } from "./versions";
  * honest answer is to refuse and say so.
  */
 export type SaveResult =
-  | { status: "saved"; revision: number; workspaceId: string; updatedAt: string }
+  | { status: "saved"; revision: number; workspaceId: string; boardName: string; updatedAt: string }
   | { status: "notFound" }
   | { status: "conflict"; revision: number };
 
@@ -25,7 +25,7 @@ export type SaveResult =
 export async function saveBoardDocument(db: Db, boardId: string, doc: CanvasDocument, expected: number | null): Promise<SaveResult> {
   const previous = await db.query.boards.findFirst({
     where: eq(s.boards.id, boardId),
-    columns: { document: true, revision: true },
+    columns: { document: true, revision: true, name: true },
   });
   if (!previous) return { status: "notFound" };
   // time-based checkpoint of the state we are about to overwrite
@@ -37,8 +37,8 @@ export async function saveBoardDocument(db: Db, boardId: string, doc: CanvasDocu
     .update(s.boards)
     .set({ document: serializeDocument(doc), updatedAt, revision: next })
     .where(expected === null ? eq(s.boards.id, boardId) : and(eq(s.boards.id, boardId), eq(s.boards.revision, expected)))
-    .returning({ id: s.boards.id, workspaceId: s.boards.workspaceId });
+    .returning({ id: s.boards.id, workspaceId: s.boards.workspaceId, name: s.boards.name });
 
   if (!row) return { status: "conflict", revision: previous.revision };
-  return { status: "saved", revision: next, workspaceId: row.workspaceId, updatedAt };
+  return { status: "saved", revision: next, workspaceId: row.workspaceId, boardName: row.name, updatedAt };
 }

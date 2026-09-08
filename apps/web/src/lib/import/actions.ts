@@ -7,6 +7,9 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
+import { recordRelationEvent, recordSince, snapshotEntities } from "@/lib/history/record";
+import { currentActor } from "@/lib/history/current";
+import * as who from "@/lib/history/actor";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
 import { boardChangedElsewhere } from "@/lib/live/room";
@@ -346,6 +349,11 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
   if (!batch) return { error: "That batch is gone." };
   if (batch.status === "approved") return { error: "This batch has already been approved." };
 
+  // Everything an approval writes is one act by one import, so the history is taken across the
+  // whole workspace and attributed to the batch (§5.43).
+  const history = { workspaceId: batch.workspaceId, actor: who.importer(batch.name, batchId), context: `import: ${batch.name}` };
+  const before = await snapshotEntities(db, batch.workspaceId);
+
   const stored = parseReview(batch.review);
   const { targets, kinds } = await targetsFor(batch.workspaceId);
   /*
@@ -407,6 +415,9 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
   for (const row of taking) byName.set(norm(row.record.name), idOf.get(row.record.id) ?? byName.get(norm(row.record.name)) ?? "");
   const existing = await db.select().from(s.relations_).where(eq(s.relations_.workspaceId, batch.workspaceId));
   const wired = new Set(existing.map((r) => `${r.fromEntityId}|${norm(r.kind)}|${r.toEntityId}`));
+  // For the history: an entity id back to the name a person would recognise.
+  const nameFor = (entityId: string) =>
+    taking.find((r) => idOf.get(r.record.id) === entityId)?.record.name ?? targets.find((t) => t.id === entityId)?.name ?? "";
 
   /*
    * Relations somebody drew between two cards on the board. They are named by record rather than
@@ -444,9 +455,16 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
       });
       wired.add(signature);
       written.relations.push(id);
+      await recordRelationEvent(db, history, {
+        kind: "relationAdded",
+        label: relation.kind,
+        from: { id: from, name: nameFor(from) },
+        to: { id: to, name: nameFor(to) },
+      });
     }
   }
 
+  await recordSince(db, history, { workspace: true }, before);
   const user = await currentUser();
   await db.update(s.importBatches).set({
     status: "approved",
@@ -474,6 +492,9 @@ export async function rollbackBatch(batchId: string): Promise<
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   if (batch.status !== "approved") return { error: "That batch was never approved, so there is nothing to undo." };
+
+  const history = { workspaceId: batch.workspaceId, actor: await currentActor(), context: `rolled back the import “${batch.name}”` };
+  const before = await snapshotEntities(db, batch.workspaceId);
 
   const written = parseWritten(batch.written);
   const notes: string[] = [];
@@ -535,6 +556,7 @@ export async function rollbackBatch(batchId: string): Promise<
     }
   }
 
+  await recordSince(db, history, { workspace: true }, before);
   await db.update(s.importBatches).set({ status: "rolled back", updatedAt: now() }).where(eq(s.importBatches.id, batchId));
   await refresh(batch.workspaceId, batchId);
   return { ok: true, deleted, restored, kept, notes: notes.slice(0, 20) };

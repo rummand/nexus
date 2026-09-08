@@ -13,8 +13,16 @@ import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, p
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 import { createRelation, deleteRelation } from "./relations";
+import { recordRelationEvent, remembering } from "./history/record";
+import { currentActor } from "./history/current";
+import * as who from "./history/actor";
 
 const now = () => new Date().toISOString();
+
+/** The name to put in the history for one end of a relation, from rows already in hand. */
+function pick(rows: Array<{ id: string; name: string }>, id: string) {
+  return { id, name: rows.find((r) => r.id === id)?.name ?? "" };
+}
 
 function slugify(input: string) {
   return input
@@ -231,7 +239,10 @@ export async function importGraphText(workspaceId: string, text: string, sourceN
     return { error: e instanceof Error ? e.message : "Could not parse input" };
   }
   if (payload.entities.length === 0 && payload.relations.length === 0) return { error: "Nothing to import — expected kind,name[,description] rows or JSON." };
-  const result = await importGraph(db, workspaceId, payload, sourceName ? `import:${sourceName}` : "import");
+  const source = sourceName ? `import:${sourceName}` : "import";
+  const result = await remembering(db, { workspaceId, actor: who.importer(source), context: sourceName ? `import: ${sourceName}` : "an import" }, { workspace: true }, () =>
+    importGraph(db, workspaceId, payload, source),
+  );
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
   return result;
 }
@@ -240,21 +251,27 @@ export async function renameKind(workspaceId: string, from: string, to: string) 
   const db = await getDb();
   const target = to.trim();
   if (!target) return;
-  await db.update(s.entities).set({ kind: target, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, from)));
+  await remembering(db, { workspaceId, actor: await currentActor(), context: `renamed the kind “${from}”` }, { workspace: true }, async () => {
+    await db.update(s.entities).set({ kind: target, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, from)));
+  });
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
 }
 
 export async function updateEntity(entityId: string, patch: { kind?: string; name?: string; description?: string }) {
   const db = await getDb();
-  const [row] = await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId)).returning();
-  if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+  const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
+  if (!row) return;
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+    await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId));
+  });
+  revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
 }
 
 /** Entity drawer: add a relation between two entities (deduped by ends + kind). */
 export async function createRelationAction(workspaceId: string, fromEntityId: string, kind: string, toEntityId: string) {
   const db = await getDb();
   try {
-    const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId);
+    const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId, "graph", { workspaceId, actor: await currentActor(), context: "the entity drawer" });
     revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
     return r;
   } catch (e) {
@@ -265,7 +282,7 @@ export async function createRelationAction(workspaceId: string, fromEntityId: st
 /** Entity drawer: delete a relation (and the connectors drawing it on boards). */
 export async function deleteRelationAction(workspaceId: string, relationId: string) {
   const db = await getDb();
-  const r = await deleteRelation(db, relationId);
+  const r = await deleteRelation(db, relationId, { workspaceId, actor: await currentActor(), context: "the entity drawer" });
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
   return r;
 }
@@ -301,11 +318,16 @@ export async function bulkSetAttribute(entityIds: string[], key: string, value: 
   if (!k || entityIds.length === 0) return { error: "An attribute key and at least one entity are required" };
   const rows = await db.select().from(s.entities).where(inArray(s.entities.id, entityIds));
   const ts = now();
-  for (const row of rows) {
-    const attrs = parseAttributes(row.attributes);
-    if (value.trim()) attrs[k] = value.trim();
-    else delete attrs[k];
-    await db.update(s.entities).set({ attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, row.id));
+  const first = rows[0];
+  if (first) {
+    await remembering(db, { workspaceId: first.workspaceId, actor: await currentActor(), context: `a bulk edit of ${rows.length} entities` }, { ids: rows.map((r) => r.id) }, async () => {
+      for (const row of rows) {
+        const attrs = parseAttributes(row.attributes);
+        if (value.trim()) attrs[k] = value.trim();
+        else delete attrs[k];
+        await db.update(s.entities).set({ attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, row.id));
+      }
+    });
   }
   if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
   return { updated: rows.length };
@@ -315,7 +337,11 @@ export async function bulkSetKind(entityIds: string[], kind: string) {
   const db = await getDb();
   const k = kind.trim();
   if (!k || entityIds.length === 0) return { error: "A kind and at least one entity are required" };
-  const rows = await db.update(s.entities).set({ kind: k, updatedAt: now() }).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId });
+  const [any] = await db.select({ workspaceId: s.entities.workspaceId }).from(s.entities).where(inArray(s.entities.id, entityIds));
+  if (!any) return { updated: 0 };
+  const rows = await remembering(db, { workspaceId: any.workspaceId, actor: await currentActor(), context: `a bulk edit of ${entityIds.length} entities` }, { ids: entityIds }, () =>
+    db.update(s.entities).set({ kind: k, updatedAt: now() }).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId }),
+  );
   if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
   return { updated: rows.length };
 }
@@ -323,7 +349,11 @@ export async function bulkSetKind(entityIds: string[], kind: string) {
 export async function bulkDeleteEntities(entityIds: string[]) {
   const db = await getDb();
   if (entityIds.length === 0) return { error: "Nothing selected" };
-  const rows = await db.delete(s.entities).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId });
+  const [any] = await db.select({ workspaceId: s.entities.workspaceId }).from(s.entities).where(inArray(s.entities.id, entityIds));
+  if (!any) return { deleted: 0 };
+  const rows = await remembering(db, { workspaceId: any.workspaceId, actor: await currentActor(), context: `a bulk delete of ${entityIds.length} entities` }, { ids: entityIds }, () =>
+    db.delete(s.entities).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId }),
+  );
   if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
   return { deleted: rows.length };
 }
@@ -333,7 +363,7 @@ export async function renameAttributeKeyAction(workspaceId: string, from: string
   const db = await getDb();
   const target = to.trim();
   if (!target || target === from) return;
-  await renameAttributeKey(db, workspaceId, from, target);
+  await remembering(db, { workspaceId, actor: await currentActor(), context: `renamed the attribute “${from}”` }, { workspace: true }, () => renameAttributeKey(db, workspaceId, from, target));
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
 }
 
@@ -344,19 +374,25 @@ export async function setEntityAttributeAction(entityId: string, key: string, va
   if (!k) return { error: "An attribute key is required" };
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return { error: "Entity not found" };
-  if (value.trim()) await setEntityAttribute(db, entityId, k, value.trim());
-  else {
-    const { [k]: _removed, ...rest } = parseAttributes(row.attributes);
-    void _removed;
-    await db.update(s.entities).set({ attributes: JSON.stringify(rest), updatedAt: now() }).where(eq(s.entities.id, entityId));
-  }
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+    if (value.trim()) await setEntityAttribute(db, entityId, k, value.trim());
+    else {
+      const { [k]: _removed, ...rest } = parseAttributes(row.attributes);
+      void _removed;
+      await db.update(s.entities).set({ attributes: JSON.stringify(rest), updatedAt: now() }).where(eq(s.entities.id, entityId));
+    }
+  });
   revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
 }
 
 export async function deleteEntity(entityId: string) {
   const db = await getDb();
-  const [row] = await db.delete(s.entities).where(eq(s.entities.id, entityId)).returning();
-  if (row) revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+  const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
+  if (!row) return;
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+    await db.delete(s.entities).where(eq(s.entities.id, entityId));
+  });
+  revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
 }
 
 /** Lay the (optionally kind-filtered) graph out on a new board in the given space. */
@@ -411,61 +447,77 @@ export async function acceptProposals(workspaceId: string, proposals: Proposal[]
 export async function acceptProposal(workspaceId: string, proposal: Proposal, override?: string) {
   const db = await getDb();
   const a = proposal.action;
-  switch (a.kind) {
-    case "merge":
-      await mergeEntities(db, workspaceId, a.survivorId, a.otherIds);
-      break;
-    case "renameKind":
-      await db.update(s.entities).set({ kind: override ?? a.to, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, a.from)));
-      break;
-    case "setKind": {
-      const to = (override ?? a.to).trim();
-      if (!to) return { error: "A kind is required" };
-      await db.update(s.entities).set({ kind: to, updatedAt: now() }).where(eq(s.entities.id, a.entityId));
-      break;
+  /*
+   * The actor is the reviewer, not the agent. An agent that proposes has not changed anything; the
+   * person who clicked Accept has. Which agent asked is on the decision row already, and it is in
+   * the context line here, so the history reads "Maria accepted 'Give Maximo an owner'".
+   */
+  const ctx = { workspaceId, actor: await currentActor(), context: `accepted “${proposal.title}”` };
+  const outcome = await remembering(db, ctx, { workspace: true }, async (): Promise<{ error: string } | undefined> => {
+    switch (a.kind) {
+      case "merge":
+        await mergeEntities(db, workspaceId, a.survivorId, a.otherIds);
+        break;
+      case "renameKind":
+        await db.update(s.entities).set({ kind: override ?? a.to, updatedAt: now() }).where(and(eq(s.entities.workspaceId, workspaceId), eq(s.entities.kind, a.from)));
+        break;
+      case "setKind": {
+        const to = (override ?? a.to).trim();
+        if (!to) return { error: "A kind is required" };
+        await db.update(s.entities).set({ kind: to, updatedAt: now() }).where(eq(s.entities.id, a.entityId));
+        break;
+      }
+      case "setRelationKind": {
+        const to = (override ?? a.to).trim();
+        if (!to) return { error: "A label is required" };
+        await db.update(s.relations_).set({ kind: to, updatedAt: now() }).where(eq(s.relations_.id, a.relationId));
+        break;
+      }
+      case "deleteEntity":
+        await db.delete(s.entities).where(eq(s.entities.id, a.entityId));
+        break;
+      case "renameAttributeKey":
+        await renameAttributeKey(db, workspaceId, a.from, (override ?? a.to).trim() || a.to);
+        break;
+      case "renameAttributeValue":
+        await renameAttributeValue(db, workspaceId, a.key, a.from, (override ?? a.to).trim() || a.to);
+        break;
+      case "setAttribute": {
+        const to = (override ?? a.to).trim();
+        if (!to) return { error: "A value is required" };
+        await setEntityAttribute(db, a.entityId, a.key, to);
+        break;
+      }
+      case "addRelation": {
+        // The reviewer may relabel it on the way in; an unlabelled relation is one the next set of
+        // proposals would only ask about again.
+        const kind = (override ?? a.to).trim();
+        if (!kind) return { error: "A relation type is required" };
+        const ends = await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, workspaceId), inArray(s.entities.id, [a.fromEntityId, a.toEntityId])));
+        if (ends.length < 2) return { error: "One of those objects is no longer in the graph" };
+        await db.insert(s.relations_).values({
+          id: `rel_${nanoid(10)}`,
+          workspaceId,
+          fromEntityId: a.fromEntityId,
+          toEntityId: a.toEntityId,
+          kind,
+          attributes: "{}",
+          source: "agent",
+          createdAt: now(),
+          updatedAt: now(),
+        });
+        await recordRelationEvent(db, ctx, {
+          kind: "relationAdded",
+          label: kind,
+          from: pick(ends, a.fromEntityId),
+          to: pick(ends, a.toEntityId),
+        });
+        break;
+      }
     }
-    case "setRelationKind": {
-      const to = (override ?? a.to).trim();
-      if (!to) return { error: "A label is required" };
-      await db.update(s.relations_).set({ kind: to, updatedAt: now() }).where(eq(s.relations_.id, a.relationId));
-      break;
-    }
-    case "deleteEntity":
-      await db.delete(s.entities).where(eq(s.entities.id, a.entityId));
-      break;
-    case "renameAttributeKey":
-      await renameAttributeKey(db, workspaceId, a.from, (override ?? a.to).trim() || a.to);
-      break;
-    case "renameAttributeValue":
-      await renameAttributeValue(db, workspaceId, a.key, a.from, (override ?? a.to).trim() || a.to);
-      break;
-    case "setAttribute": {
-      const to = (override ?? a.to).trim();
-      if (!to) return { error: "A value is required" };
-      await setEntityAttribute(db, a.entityId, a.key, to);
-      break;
-    }
-    case "addRelation": {
-      // The reviewer may relabel it on the way in; an unlabelled relation is one the next set of
-      // proposals would only ask about again.
-      const kind = (override ?? a.to).trim();
-      if (!kind) return { error: "A relation type is required" };
-      const ends = await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, workspaceId), inArray(s.entities.id, [a.fromEntityId, a.toEntityId])));
-      if (ends.length < 2) return { error: "One of those objects is no longer in the graph" };
-      await db.insert(s.relations_).values({
-        id: `rel_${nanoid(10)}`,
-        workspaceId,
-        fromEntityId: a.fromEntityId,
-        toEntityId: a.toEntityId,
-        kind,
-        attributes: "{}",
-        source: "agent",
-        createdAt: now(),
-        updatedAt: now(),
-      });
-      break;
-    }
-  }
+    return undefined;
+  });
+  if (outcome?.error) return outcome;
   await recordDecision(db, workspaceId, proposal.key, "accepted");
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
 }
@@ -479,7 +531,9 @@ export async function dismissProposal(workspaceId: string, key: string) {
 /** Merge from a board: returns the id mapping so the open canvas can relink its cards. */
 export async function mergeEntitiesAction(workspaceId: string, survivorId: string, otherIds: string[]) {
   const db = await getDb();
-  const result = await mergeEntities(db, workspaceId, survivorId, otherIds);
+  const result = await remembering(db, { workspaceId, actor: await currentActor(), context: "a merge" }, { workspace: true }, () =>
+    mergeEntities(db, workspaceId, survivorId, otherIds),
+  );
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
   return { ...result, survivorId, otherIds };
 }

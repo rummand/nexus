@@ -273,6 +273,9 @@ try {
 
   await shot("explorer", () => goto(`${w}/explore`, ".explorer-canvas"), { settle: 3000 });
 
+  // ---- the graph's own history --------------------------------------------
+  await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });
+
   // ---- the meta-model -----------------------------------------------------
   await shot("meta", () => goto(`${w}/meta`, ".meta-tree"), { settle: 1200 });
   await shot("meta-diagram", async () => {

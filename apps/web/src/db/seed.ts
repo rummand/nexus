@@ -104,9 +104,72 @@ export async function seed(db: Db) {
   );
   await db.insert(s.boardFavorites).values([{ userId: DEMO_USER_ID, boardId: "brd_capabilities" }]);
   // index the seeded boards into the knowledge graph
-  for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId }, b.document);
+  for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId, name: b.name }, b.document);
 
   await seedRoadmap(db, workspaceId);
+  await seedHistory(db, workspaceId);
+}
+
+/**
+ * A fortnight of the demo estate's past (§5.43).
+ *
+ * Invented, like the rest of the seed. "What changed" is a page about the last two weeks, and a
+ * workspace created ninety seconds ago has nothing to show on it — so the demo gets a plausible
+ * fortnight: a colleague setting owners, an overnight agent proposing a criticality somebody
+ * accepted, an import that arrived from a CMDB. Every row here is the same shape a real change
+ * writes; nothing about this table is special-cased for the demo.
+ */
+async function seedHistory(db: Db, workspaceId: string) {
+  const rows = await db.select({ id: s.entities.id, name: s.entities.name, kind: s.entities.kind }).from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
+  const pick = (name: string) => rows.find((r) => r.name.toLowerCase().includes(name.toLowerCase()));
+  const days = (n: number) => new Date(Date.now() - n * 86_400_000 + 9 * 3_600_000).toISOString();
+
+  /*
+   * Everything recorded so far is the seeded boards being indexed into the graph, a minute ago.
+   * The demo estate is meant to look like one that has existed for a while, so its birth is dated
+   * a month back — otherwise "what changed" opens on sixty objects appearing at once, and the
+   * fortnight below it, which is the part worth looking at, is off the bottom of the screen.
+   */
+  await db.update(s.entityEvents).set({ at: days(30) }).where(eq(s.entityEvents.workspaceId, workspaceId));
+
+  const maria = { kind: "person" as const, id: "usr_maria", name: "Maria Lund" };
+  const tobias = { kind: "person" as const, id: "usr_tobias", name: "Tobias Kjær" };
+  const nightWatch = { kind: "agent" as const, id: null, name: "Night watch" };
+  const cmdb = { kind: "import" as const, id: null, name: "cmdb-export.csv" };
+
+  const script: Array<{ target: string; at: string; actor: { kind: "person" | "agent" | "import"; id: string | null; name: string }; context: string; kind: string; field: string; from: string; to: string }> = [
+    { target: "SCADA", at: days(11), actor: cmdb, context: "import: cmdb-export.csv", kind: "attributeSet", field: "owner", from: "", to: "Control Room" },
+    { target: "SCADA", at: days(11), actor: cmdb, context: "import: cmdb-export.csv", kind: "attributeSet", field: "criticality", from: "", to: "high" },
+    { target: "SAP", at: days(9), actor: maria, context: "the entity drawer", kind: "attributeSet", field: "owner", from: "", to: "Finance" },
+    { target: "SAP", at: days(9), actor: maria, context: "the entity drawer", kind: "described", field: "", from: "", to: "Finance and procurement, on-premise." },
+    { target: "Maximo", at: days(6), actor: tobias, context: "board: Application landscape", kind: "renamed", field: "", from: "Maximo (IBM)", to: "" },
+    { target: "Maximo", at: days(6), actor: tobias, context: "board: Application landscape", kind: "attributeSet", field: "owner", from: "", to: "Asset Management" },
+    { target: "GIS", at: days(3), actor: nightWatch, context: "accepted “Give GIS a criticality”", kind: "attributeSet", field: "criticality", from: "", to: "medium" },
+    { target: "CRM", at: days(1), actor: maria, context: "the entity drawer", kind: "attributeSet", field: "owner", from: "", to: "Customer Service" },
+  ];
+
+  const values = script.flatMap((line, i) => {
+    const target = pick(line.target);
+    if (!target) return [];
+    return [{
+      id: `evt_seed_${i}`,
+      workspaceId,
+      entityId: target.id,
+      entityName: target.name,
+      kind: line.kind,
+      field: line.field,
+      fromValue: line.from,
+      // A rename has to end at the name the object actually has, or the demo's own history
+      // contradicts the demo.
+      toValue: line.kind === "renamed" ? target.name : line.to,
+      actorKind: line.actor.kind,
+      actorId: line.actor.id,
+      actorName: line.actor.name,
+      context: line.context,
+      at: line.at,
+    }];
+  });
+  if (values.length) await db.insert(s.entityEvents).values(values);
 }
 
 /**

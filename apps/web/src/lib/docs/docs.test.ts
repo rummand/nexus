@@ -42,7 +42,7 @@ describe("the documentation", () => {
   it("only links to routes that exist", () => {
     // Every "try it" link is a workspace route; the slug is filled in at render time.
     const known = [
-      "", "/graph", "/explore", "/meta", "/intake", "/intake?view=catalog", "/knowledge", "/roadmap",
+      "", "/graph", "/explore", "/history", "/meta", "/intake", "/intake?view=catalog", "/knowledge", "/roadmap",
       "/roadmap/plateaus", "/agents", "/import", "/docs", "/settings/models", "/settings/connections",
     ];
     for (const t of tries) {

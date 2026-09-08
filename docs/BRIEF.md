@@ -1803,6 +1803,46 @@ day and the default budget allows 12. Obvious in a table, invisible in a form, a
 discovered a week later from a run log full of refusals.
 
 
+### 5.43 The graph remembers (v0.2)
+
+Boards have had version history since §5.9. The **graph** — the thing this product is actually
+about — had none. "Who changed Maximo's owner, when, and from what" was a question with no answer,
+and since §5.42 agents write to the model overnight with nobody watching. A system of record that
+changes itself while you sleep and cannot say how it got here is not one.
+
+So every change to an entity is now written down, field by field, with its before and after, the
+hand that made it and where it happened: a person in the drawer, a board save, a scheduled agent, an
+import, a rollback. Two places read it — a timeline inside the entity drawer, and **What changed**,
+a workspace-wide page grouped by day and filterable by hand.
+
+**History is observed, not declared.** Twenty-odd places in the codebase write to the graph. Asking
+each of them to also describe what it did is twenty places to forget and twenty descriptions that
+can drift from the truth. Instead `remembering()` snapshots the rows in scope, runs the write, and
+diffs — so what is recorded is what happened to the database, and a merge that also inherits a
+description is in the history whether or not its author thought about it. The cost is one extra read
+per write over a bounded set of rows, which is the right price for a system of record.
+
+**The event outlives its subject.** `entity_id` is deliberately not a foreign key and the name is
+copied onto the row. A deletion is the single most interesting thing that can happen to an object,
+and a cascade would erase exactly that.
+
+**It does not record your typing.** Renaming a card is eleven keystrokes and four autosaves. A
+change that continues the one before it — same field, same hand, same place, within two minutes — is
+folded into it, so `A → B` then `B → C` becomes `A → C` and `A → B` then `B → A` becomes nothing at
+all, because nothing happened. Anybody else's edit ends the run: "Maria changed it and Tobias
+changed it back" is two facts, not zero.
+
+**The actor is recorded, never inferred.** There is no default actor and no guessing after the
+fact. A board save carries the person who saved it; a live room, which persists on a timer for
+everybody in it, carries the board, honestly, because there is no one person whose save it is. An
+accepted proposal is attributed to the reviewer rather than the agent — an agent that proposes has
+not changed anything — with the proposal's title as the context line.
+
+What is *not* here is as deliberate: moving, resizing or recolouring a card is a change to a
+picture, not to the estate, and boards keep their own version history for it. Mixing the two would
+bury the six changes that mattered under six hundred that did not.
+
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -1840,7 +1880,7 @@ discovered a week later from a run log full of refusals.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-08 — rev 77)
+## 6a. What exists today (v0.2, 2026-09-08 — rev 78)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -1905,7 +1945,7 @@ discovered a week later from a run log full of refusals.
 ### Entity drawer (v0.2)
 - Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
   relations, add / delete relations (board connectors cleaned up), jump to boards, merge
-  duplicates, delete.
+  duplicates, delete — and, since rev 78, a timeline of everything that has happened to it.
 
 ### Link to existing (v0.2)
 - Title matches an existing entity → one click links the card to it (dedupe at creation).
@@ -2196,11 +2236,30 @@ discovered a week later from a run log full of refusals.
   live room the new document, so a board rewritten from outside simply arrives.
 - Undo stays personal: a remote change never lands on your undo stack.
 
+### The graph remembers (v0.2)
+- **`entity_events`**: one row per field that moved, with its before and after, the actor (person /
+  agent / import / board / rules / system), the context in words, and the time. `entity_id` is not
+  a foreign key, so the history of a deleted object survives it, under the name it had.
+- **Observed, not declared**: `remembering(db, ctx, scope, write)` snapshots the rows in scope, runs
+  the write and diffs. Wrapped round the drawer edits, bulk edits, kind and attribute renames,
+  merges, accepted proposals, board saves, meta-model renames, and import approval and rollback.
+- **Coalescing**: a change continuing the one before it — same field, same hand, same place, inside
+  two minutes — extends that row instead of adding one, and an edit undone within the window leaves
+  no row at all. Another person's edit always ends the run.
+- Relations are recorded on **both** ends, so either object's own timeline is complete; the
+  workspace view drops the second copy so its counts mean something.
+- **What changed** in the sidebar: the last 300 changes, grouped by day, folded into moments, with
+  filter chips by hand and a text filter over objects, people and fields.
+- The same timeline inside the **entity drawer**, for one object.
+- The seeded demo ships a fortnight of invented history — a colleague setting owners, an overnight
+  agent, a CMDB import — because the page is about the last two weeks and a workspace created a
+  minute ago has nothing to show on it.
+
 ### Documentation (v0.2)
-- Twenty-eight in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
+- Twenty-nine in-app pages, with the three agent surfaces gathered into one **Agents** section under **Documentation**, from a first board through to plateaus, by way of
   importing data, models and connections, with a glossary, a keyboard reference and the questions
   people ask.
-- Forty-one screenshots captured from the seeded demo by `pnpm docs:capture` and committed; the run
+- Forty-two screenshots captured from the seeded demo by `pnpm docs:capture` and committed; the run
   takes a name to re-capture only the shots a change made stale. One of them drives **two** browser
   contexts, because a picture of multiplayer with nobody else on the board is a picture of a board.
 - Twelve tests over the docs as data: missing screenshots, unrecorded image sizes, missing alt
@@ -2211,8 +2270,8 @@ discovered a week later from a run log full of refusals.
   sentence stays where the author put it.
 
 ### Quality gates
-- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, **503 tests** —
-  476 in the app over 46 files, 27 in the knowledge package):
+- `pnpm typecheck`, `pnpm lint` (Next + TypeScript ESLint), `pnpm test` (Vitest, **599 tests** —
+  572 in the app over 54 files, 27 in the knowledge package):
   - *Canvas*: camera math, panel-aware fit, align/distribute, box/resize/connector geometry,
     store history, frame behaviour and frame→board extraction, centre-inside containment,
     lenses (impact / attribute / relation / query), document diff and migration, SVG export and
@@ -2233,6 +2292,10 @@ discovered a week later from a run log full of refusals.
     described-agent refusals and monotonicity, agents suggesting agents, the fleet's numbers,
     provider translation between the two dialects and key encryption, and the MCP server's
     JSON-RPC dispatch, scopes and tool list.
+  - *History*: what a diff of two entity snapshots says happened, the sentence each change makes,
+    folding a burst into a moment, coalescing a run of saves into the one change they add up to and
+    dropping an edit that was undone — and, against a real database, that the events outlive the
+    entity they describe and that recording cannot take an edit down with it.
   - *Documentation*: twelve tests over the docs as data (see above).
   - Everything that touches the database runs against an in-memory SQLite.
 - **CI** (`.github/workflows/gates.yml`) runs typecheck, lint and the unit tests on one job and the
@@ -2502,6 +2565,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | An unattended run goes through the same function as a run somebody asked for. | The temptation is a leaner path for the scheduler; the consequence would be two sets of budget checks and, eventually, one of them missing a case. Leaving an agent running overnight is only reasonable if "nobody is watching" changes who is watching and nothing else. |
 | 2026-09-08 | The digest is silent when nothing happened. | Most mornings nothing did. A panel that speaks every day is skimmed, then skipped, and is invisible on the one morning it has something to say — so the discipline is that it earns its appearance, and refuses to pad an empty night into three bullet points. |
 | 2026-09-08 | The digest counts news, not open work, and only dismissing moves the window. | Two small rules that decide whether it is trusted. Counting everything open means it reappears the instant it is closed, which teaches people it is noise. Moving the window on *reading* means a glance on a phone silently spends the digest somebody meant to read properly. |
+| 2026-09-08 | The graph's history is observed from the rows, not declared by the code that writes them. | Twenty-odd call sites write to the graph. Asking each to describe what it did is twenty places to forget and twenty descriptions that can be wrong; diffing a before-and-after snapshot records what actually happened to the database instead. One extra bounded read per write is the right price for a log that agrees with the data rather than with somebody's intentions. |
+| 2026-09-08 | `entity_events.entity_id` is not a foreign key. | A deletion is the most interesting thing that can happen to an object, and a cascade would erase exactly the history that makes it worth having. The name is copied onto the row for the same reason: a deleted object still needs to be recognisable in a list. |
+| 2026-09-08 | The history folds a run of edits into the one change they add up to. | Autosave means one rename is four saves; four rows saying "renamed" bury the one fact that matters, and an edit that was undone leaves two rows saying opposite things instead of the truth, which is that nothing happened. Folding is limited to one hand in one place inside two minutes — anybody else's edit ends the run, because "Maria changed it and Tobias changed it back" really is two facts. |
+| 2026-09-08 | An accepted proposal is attributed to the reviewer, not to the agent that proposed it. | An agent that proposes has not changed anything; the person who clicked Accept has, and pretending otherwise would let a fleet quietly own decisions people made. Which agent asked is already on the decision row, and it is in the context line, so nothing is lost. |
+| 2026-09-08 | A live board's saves are attributed to the board, not to a peer. | A room persists on a timer for everybody in it, so there is no one person whose save it is; naming whoever happened to type last would be a guess dressed as a fact. Single-tab saves still carry the person, because there the answer is known. |
+| 2026-09-08 | Board-only edits — moving, resizing, recolouring — are not graph history. | They are changes to a picture, not to the estate, and boards already keep version history for them. Mixing the two would bury the six changes that mattered under six hundred that did not, which is how an audit trail becomes something nobody opens. |
 
 ## 8. Open questions for the product owner
 
@@ -2516,6 +2585,26 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-08 — Rev 78: the graph remembers.** Boards have had version history since rev 9; the
+  graph, which is the product, had none — and since rev 77 agents write to it overnight with nobody
+  watching. Every change to an entity is now a row: the field, its before and after, the hand that
+  made it, and where. The design decision worth the log is that history is **observed rather than
+  declared** — `remembering()` snapshots the rows in scope, runs the write and diffs, so what is
+  recorded is what happened to the database rather than what the calling code believed it was
+  doing; a merge that also inherits a description turns up in the history whether or not anybody
+  thought about it. `entity_id` is deliberately not a foreign key, because a deletion is the single
+  most interesting thing that can happen to an object and a cascade would erase exactly that. The
+  history also refuses to record typing: a change continuing the one before it, by the same hand in
+  the same place inside two minutes, extends that row, and an edit undone inside the window leaves
+  nothing at all — while anybody else's edit always ends the run. Two places read it: a timeline in
+  the entity drawer, and **What changed** in the sidebar, grouped by day and filterable by hand,
+  because "show me only what the agents did" is the question people actually ask the morning after
+  turning a fleet on. Instrumented at the real seams — drawer edits, bulk edits, kind and attribute
+  renames, merges, accepted proposals, board saves, meta-model renames, import approval and
+  rollback — with relations recorded on both ends. Thirty-one new tests, an in-product
+  documentation page, and a fortnight of invented history in the seed so the demo has something to
+  show.
 
 - **2026-09-08 — Rev 77: agents that run themselves, and a digest.** `definition.ts` had carried a
   line for two revisions saying *"a schedule is a trigger, and a trigger needs a runtime; both come

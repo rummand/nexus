@@ -322,3 +322,41 @@ export const UNATTENDED: DocPage = {
     { kind: "try", href: "/w/:slug/agents", label: "Open the fleet" },
   ],
 };
+
+export const WHAT_CHANGED: DocPage = {
+  slug: "what-changed",
+  title: "What changed, and who changed it",
+  summary: "The knowledge graph's own history: every change to an object, whose it was, and where it happened.",
+  keywords: ["history", "audit", "audit trail", "changed", "who", "provenance", "timeline", "log", "accountability", "what changed", "undo"],
+  blocks: [
+    { kind: "prose", text: "Boards have had version history for a long time. The **graph** — the model itself — now has one too. Every change to an object is written down with its before and after, the hand that made it, and where it happened: a person in the drawer, a board save, an overnight agent, an import." },
+    { kind: "shot", src: "history", alt: "The What changed page, grouped by day, with coloured chips naming the person, agent or import behind each change", caption: "What changed. Filter by hand — “only what the agents did” is the question people actually ask." },
+    { kind: "heading", text: "Where to read it", id: "where" },
+    {
+      kind: "list",
+      items: [
+        "**What changed**, in the sidebar: everything in the workspace, newest first, grouped by day. Filter by people, agents, imports or boards, or type an object's name.",
+        "**The entity drawer**: the same timeline, for one object. Open anything from the knowledge graph and scroll to *History*.",
+      ],
+    },
+    { kind: "heading", text: "What counts as a change", id: "what" },
+    {
+      kind: "table",
+      columns: ["Recorded", "Not recorded"],
+      rows: [
+        ["A name, a kind, a description", "Cards moved, resized or recoloured on a board"],
+        ["An attribute set, changed or removed", "A board renamed, a space created"],
+        ["An object created, deleted or merged away", "A proposal you dismissed without accepting"],
+        ["A relation drawn or removed, on both ends", "A change set you have written but not delivered"],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why the board's own edits are elsewhere", text: "Moving a card is a change to a picture, not to the estate. Boards keep their own version history for that, and mixing the two would bury the six changes that mattered under six hundred that did not. A card edit appears here only when it reaches the model — because then it *is* the model." },
+    { kind: "heading", text: "It does not record your typing", id: "coalescing" },
+    { kind: "prose", text: "Renaming a card takes eleven keystrokes and four autosaves. The history folds those into the one change they add up to: *renamed it from “Maximo” to “Maximo EAM”*. Change something and change it straight back, and nothing is written at all — because nothing happened." },
+    { kind: "note", tone: "tip", text: "Folding only applies within a couple of minutes, to the same person, in the same place. If somebody else edits the same field in between, both changes stand: “Maria changed it and Tobias changed it back” is two facts, not zero." },
+    { kind: "heading", text: "Deleted objects keep their history", id: "deleted" },
+    { kind: "prose", text: "A deletion is the most interesting thing that can happen to an object, so the history of a deleted object survives it — with the name it had. That is the difference between an audit trail and a list of things that currently exist." },
+    { kind: "note", tone: "why", title: "Why an agent's work says whose it is", text: "Since agents can run on a schedule, the model can change while nobody is watching. A system of record that cannot tell an overnight agent's work from a colleague's is not one. The actor is recorded at the moment of the write and never guessed afterwards — where nothing can be established, it says so." },
+    { kind: "try", href: "/w/:slug/history", label: "See what changed" },
+  ],
+};

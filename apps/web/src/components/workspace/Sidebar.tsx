@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, Users, Waypoints } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, Users, Waypoints } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { SidebarLink } from "./SidebarLink";
@@ -36,6 +36,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites }: { workspa
         <SidebarLink key="teams" href={`${base}/teams`} icon={<Users size={17} />} trailing={teams.length}>Teams</SidebarLink>
         <SidebarLink key="graph" href={`${base}/graph`} icon={<Database size={17} />}>Knowledge graph</SidebarLink>
         <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={17} />}>Graph explorer</SidebarLink>
+        <SidebarLink key="history" href={`${base}/history`} icon={<History size={17} />}>What changed</SidebarLink>
         <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={17} />}>Meta-model</SidebarLink>
         <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={17} />}>Intake</SidebarLink>
         <SidebarLink key="import" href={`${base}/import`} icon={<DownloadCloud size={17} />}>Import</SidebarLink>

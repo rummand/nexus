@@ -149,7 +149,12 @@ async function persist(room: Room) {
     const result = await saveBoardDocument(db, room.boardId, doc, null);
     if (result.status !== "saved") return;
     room.document = doc;
-    await syncBoardToGraph(db, { id: room.boardId, workspaceId: result.workspaceId }, doc);
+    /*
+     * A live room persists on a timer for everyone in it, so there is no one person whose save
+     * this is (§5.43). The board is the actor, honestly, rather than whichever peer happened to
+     * type last.
+     */
+    await syncBoardToGraph(db, { id: room.boardId, workspaceId: result.workspaceId, name: result.boardName }, doc);
     if (doc.meta?.importBatch) await reconcileBoard(db, doc.meta.importBatch, doc);
   } catch {
     /*

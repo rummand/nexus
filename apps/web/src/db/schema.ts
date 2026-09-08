@@ -1014,3 +1014,54 @@ export const plateauChangeSets = sqliteTable(
 );
 
 export type PlateauRow = typeof plateaus.$inferSelect;
+
+// ---- the graph remembers (§5.43) --------------------------------------------
+
+/**
+ * What happened to the graph, and who did it.
+ *
+ * Boards have had version history since §5.9, but the graph — the thing the product is actually
+ * about — has had none. "Who changed Maximo's owner, when, and from what" was unanswerable, and
+ * since §5.42 agents write to the graph overnight without anybody watching. A model that changes
+ * itself while you sleep and cannot say how it got here is not a system of record.
+ *
+ * Three properties this table is shaped by:
+ *
+ * - **The event outlives its subject.** `entity_id` is deliberately *not* a foreign key, and the
+ *   name is copied in. A deletion is the single most interesting thing that can happen to an
+ *   entity, and a cascade would erase exactly that.
+ * - **Field-level, not row-level.** One row per field that moved, with its before and after, so
+ *   the history reads as sentences rather than as JSON blobs a person has to diff by eye.
+ * - **The actor is recorded, never inferred.** A person, an agent, an import, a board save. The
+ *   whole point is being able to tell an overnight agent's work from a colleague's.
+ */
+export const entityEvents = sqliteTable(
+  "entity_events",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** No FK on purpose: the history of a deleted entity is the history worth keeping. */
+    entityId: text("entity_id").notNull(),
+    /** Copied at write time, so a deleted entity still has a name in the list. */
+    entityName: text("entity_name").notNull().default(""),
+    /** created | renamed | retyped | described | attributeSet | attributeRemoved | … */
+    kind: text("kind").notNull(),
+    /** The attribute key, or the relation's label — whatever `kind` says this is about. */
+    field: text("field").notNull().default(""),
+    fromValue: text("from_value").notNull().default(""),
+    toValue: text("to_value").notNull().default(""),
+    /** person | agent | import | board | rules | system */
+    actorKind: text("actor_kind").notNull().default("system"),
+    /** A user id, an agent definition id, an import batch id — or null when there is nothing to point at. */
+    actorId: text("actor_id"),
+    actorName: text("actor_name").notNull().default(""),
+    /** Where it happened, in words: "board: Application landscape", "import: cmdb.csv". */
+    context: text("context").notNull().default(""),
+    at: timestamp("at"),
+  },
+  (t) => [index("entity_events_workspace_idx").on(t.workspaceId, t.at), index("entity_events_entity_idx").on(t.entityId, t.at)],
+);
+
+export type EntityEventRow = typeof entityEvents.$inferSelect;

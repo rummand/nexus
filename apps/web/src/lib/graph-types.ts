@@ -1,3 +1,5 @@
+import type { GraphEvent } from "./history/events";
+
 /** Client-safe shapes for the knowledge graph API. */
 
 export interface EntitySummary {
@@ -40,6 +42,8 @@ export interface EntityDetail {
   relations: Array<{ id: string; kind: string; direction: "out" | "in"; other: { id: string; name: string; kind: string } }>;
   /** Other entities with the same name — candidates for a merge. */
   duplicates: Array<{ id: string; kind: string; name: string; description: string }>;
+  /** What has happened to it, newest first (§5.43). */
+  history: GraphEvent[];
 }
 
 export type ProposalType = "merge" | "kind" | "untyped" | "relation" | "newRelation" | "orphan" | "attributeKey" | "attributeValue" | "attributeMissing";

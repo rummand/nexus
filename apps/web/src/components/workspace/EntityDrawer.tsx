@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowLeft, GitMerge, Plus, Trash2, X } from "lucide-react";
 import type { EntityDetail } from "@/lib/graph-types";
 import { attributeIsRisk } from "@/canvas/document";
+import { Timeline } from "@/components/history/Timeline";
 import { createRelationAction, deleteEntity, deleteRelationAction, mergeEntitiesAction, setEntityAttributeAction, updateEntity } from "@/lib/actions";
 
 /**
@@ -143,6 +144,11 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
               <ul>
                 {detail!.boards.map((b) => <li key={b.id}><Link href={`/b/${b.id}`}>{b.name}</Link><small> · {b.spaceName}</small></li>)}
               </ul>
+            </section>
+
+            <section className="entity-drawer-section" data-drawer-history>
+              <span>History <small>{detail!.history.length}</small></span>
+              <Timeline events={detail!.history} empty="Nothing has happened to this since the graph started remembering." />
             </section>
 
             {detail!.duplicates.length > 0 && (

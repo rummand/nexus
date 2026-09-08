@@ -39,6 +39,10 @@ follows the LeanFlow Studio reference design.
   suggest agents; one fleet page for all of them, with an acceptance rate.
 - **Time** — change sets, to-be boards, dependencies, plateaus, a roadmap page, a timeline
   layout, and a scrubber that drags a board through the plan.
+- **History** — every change to the graph is written down with its before and after, whose hand it
+  was, and where: a timeline on each object and a **What changed** page for the workspace. It folds
+  a run of autosaves into the one change they add up to, and keeps the history of things that have
+  been deleted.
 - **Compose** — write what you want on a board in plain English; a model plans it and a typed
   validator decides what executes.
 - **Models** — providers configured in the app (Anthropic-style and OpenAI-compatible,

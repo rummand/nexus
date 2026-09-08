@@ -318,7 +318,35 @@ try {
   await page.goto(`${base}/e/${firstEntityId}`, { waitUntil: "load" });
   await page.waitForSelector("[data-entity-drawer] .entity-drawer-body", { timeout: 15000 });
   assert.ok(page.url().includes(`/graph?entity=${firstEntityId}`), "deep link lands on the graph page");
-  await page.keyboard.press("Escape");
+
+  /*
+   * The graph remembers (§5.43). Two facts, on one object, without leaving anything behind: an
+   * attribute set shows up in that object's timeline, and taking it straight off again leaves no
+   * trace at all — because nothing happened, and a history that says otherwise is noise.
+   */
+  await page.waitForSelector("[data-drawer-history]");
+  await page.fill('[aria-label="New attribute key"]', "smoke-check");
+  await page.fill('[aria-label="New attribute value"]', "yes");
+  await page.click('[aria-label="Add attribute"]');
+  await page.waitForSelector('[data-drawer-history] .hx-line:has-text("smoke-check")', { timeout: 15000 });
+  await page.click('[aria-label="Remove smoke-check"]');
+  await page.waitForFunction(() => {
+    const panel = document.querySelector("[data-drawer-history]");
+    return panel !== null && !panel.textContent.includes("smoke-check");
+  }, null, { timeout: 15000 });
+
+  // and the workspace-wide view of the same thing
+  await page.goto(`${base}/w/acme-energy/history`, { waitUntil: "load" });
+  await page.waitForSelector("[data-history-summary]");
+  const allChanges = await page.locator(".hx-line").count();
+  assert.ok(allChanges > 0, "the history page lists changes");
+  assert.ok((await page.locator(".hx-actor.agent").count()) > 0, "an agent's work is named as an agent's");
+  await page.click('[data-history-filter="agent"]');
+  await page.waitForFunction((before) => document.querySelectorAll(".hx-line").length < before, allChanges, { timeout: 10000 });
+  await page.fill("[data-history-search]", "nothing called this");
+  await page.waitForSelector("text=Nothing matches that");
+
+  await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   await page.click("text=Import data");
   await page.click("text=Use sample");
   await page.click('.modal-card button:text-is("Import")');

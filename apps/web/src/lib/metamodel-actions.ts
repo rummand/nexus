@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
+import { remembering } from "./history/record";
+import { currentActor } from "./history/current";
 
 
 /**
@@ -63,7 +65,9 @@ export async function updateNodeType(id: string, patch: { name?: string; descrip
 
   // keep the instances in step, or the declaration stops describing its own data
   if (rename) {
-    await db.update(s.entities).set({ kind: nextName, updatedAt: now() }).where(and(eq(s.entities.workspaceId, row.workspaceId), eq(s.entities.kind, row.name)));
+    await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: `renamed the type “${row.name}”` }, { workspace: true }, async () => {
+      await db.update(s.entities).set({ kind: nextName, updatedAt: now() }).where(and(eq(s.entities.workspaceId, row.workspaceId), eq(s.entities.kind, row.name)));
+    });
     await db.update(s.relationRules).set({ fromType: nextName }).where(eq(s.relationRules.fromType, row.name));
     await db.update(s.relationRules).set({ toType: nextName }).where(eq(s.relationRules.toType, row.name));
   }
@@ -124,13 +128,15 @@ export async function updateField(id: string, patch: { key?: string; dataType?: 
   // renaming a field renames the attribute on every instance of the type
   if (rename) {
     const rows = await db.select().from(s.entities).where(and(eq(s.entities.workspaceId, type.workspaceId), eq(s.entities.kind, type.name)));
-    for (const e of rows) {
-      const attrs = JSON.parse(e.attributes || "{}") as Record<string, string>;
-      if (!(field.key in attrs)) continue;
-      const next: Record<string, string> = {};
-      for (const [k, v] of Object.entries(attrs)) next[k === field.key ? nextKey : k] = v;
-      await db.update(s.entities).set({ attributes: JSON.stringify(next), updatedAt: now() }).where(eq(s.entities.id, e.id));
-    }
+    await remembering(db, { workspaceId: type.workspaceId, actor: await currentActor(), context: `renamed the field “${field.key}”` }, { ids: rows.map((r) => r.id) }, async () => {
+      for (const e of rows) {
+        const attrs = JSON.parse(e.attributes || "{}") as Record<string, string>;
+        if (!(field.key in attrs)) continue;
+        const next: Record<string, string> = {};
+        for (const [k, v] of Object.entries(attrs)) next[k === field.key ? nextKey : k] = v;
+        await db.update(s.entities).set({ attributes: JSON.stringify(next), updatedAt: now() }).where(eq(s.entities.id, e.id));
+      }
+    });
   }
   await touched(type.workspaceId);
   return { ok: true };

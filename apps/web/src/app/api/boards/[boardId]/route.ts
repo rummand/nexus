@@ -5,6 +5,8 @@ import { boards } from "@/db/schema";
 import { migrateDocument, parseDocument, type CanvasDocument } from "@/canvas/document";
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 import { saveBoardDocument } from "@/lib/board-save";
+import { currentUserOrNull } from "@/lib/session";
+import * as who from "@/lib/history/actor";
 import { reconcileBoard } from "@/lib/import/sync";
 import { boardChangedElsewhere } from "@/lib/live/room";
 
@@ -55,7 +57,9 @@ export async function PUT(req: Request, { params }: Params) {
       { status: 409 },
     );
   }
-  await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId }, doc);
+  // Whose save this is, so the graph's history names a person rather than a board (§5.43).
+  const saver = await currentUserOrNull();
+  await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId, name: result.boardName }, doc, saver ? who.person(saver) : undefined);
   /*
    * A staged import board is a working surface, not a drawing (§5.36): its lanes are decisions and
    * its cards are claims, so saving it writes those decisions back to the batch. Staged cards are

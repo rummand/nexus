@@ -5,6 +5,13 @@ import * as s from "@/db/schema";
 import { cardColorForKind, isBoxElement, type CanvasDocument, type CanvasElement, type CardElement } from "@/canvas/document";
 import { card, connect, frame, textBlock } from "@/canvas/templates";
 import { ENTITY_ID_PREFIX, isEntityId, isRelationId, RELATION_ID_PREFIX, type EntityDetail, type GraphSnapshot, type ImportPayload, type ImportResult } from "./graph-types";
+import { parseAttributes } from "./attributes";
+import { entityHistory, recordRelationEvent, remembering } from "./history/record";
+import * as who from "./history/actor";
+import type { Actor } from "./history/events";
+
+// Re-exported so the many callers that reach for it through the graph module keep working.
+export { parseAttributes };
 
 /**
  * Knowledge graph ↔ board synchronisation.
@@ -18,18 +25,6 @@ import { ENTITY_ID_PREFIX, isEntityId, isRelationId, RELATION_ID_PREFIX, type En
 
 const now = () => new Date().toISOString();
 
-export function parseAttributes(raw: string | null | undefined): Record<string, string> {
-  if (!raw) return {};
-  try {
-    const v = JSON.parse(raw) as unknown;
-    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
-    const out: Record<string, string> = {};
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) if (k.trim() && val !== null && val !== undefined && String(val).trim()) out[k.trim()] = String(val).trim();
-    return out;
-  } catch {
-    return {};
-  }
-}
 
 function cleanAttributes(attrs: Record<string, string> | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -62,22 +57,33 @@ function entityCards(elements: Elements): Array<CardElement & { entityId: string
   return out;
 }
 
-export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string }, doc: CanvasDocument) {
+/**
+ * Board → graph, with the history the save makes (§5.43).
+ *
+ * `actor` is the person whose save this is, when the caller knows — a board save is the commonest
+ * way the graph changes, and "the board changed it" is a much poorer answer than "Maria changed it
+ * on the Application landscape". Callers that genuinely cannot say (a restore, a scheduled
+ * persist) leave it out and the board itself is named as the actor.
+ */
+export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, actor?: Actor) {
   const cards = entityCards(doc.elements);
   const ids = cards.map((c) => c.entityId);
   const existing = ids.length ? await db.select().from(s.entities).where(inArray(s.entities.id, ids)) : [];
   const byId = new Map(existing.map((e) => [e.id, e]));
   const ts = now();
+  const history = { workspaceId: board.workspaceId, actor: actor ?? who.board(board.name ?? "A board", board.id), context: board.name ? `board: ${board.name}` : "a board" };
 
-  for (const c of cards) {
-    const cur = byId.get(c.entityId);
-    const attrs = cleanAttributes(c.attributes);
-    if (!cur) {
-      await db.insert(s.entities).values({ id: c.entityId, workspaceId: board.workspaceId, kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), source: "canvas", createdAt: ts, updatedAt: ts });
-    } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim() || !sameAttributes(parseAttributes(cur.attributes), attrs))) {
-      await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
+  await remembering(db, history, { ids }, async () => {
+    for (const c of cards) {
+      const cur = byId.get(c.entityId);
+      const attrs = cleanAttributes(c.attributes);
+      if (!cur) {
+        await db.insert(s.entities).values({ id: c.entityId, workspaceId: board.workspaceId, kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), source: "canvas", createdAt: ts, updatedAt: ts });
+      } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim() || !sameAttributes(parseAttributes(cur.attributes), attrs))) {
+        await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
+      }
     }
-  }
+  });
 
   // relations from connectors between entity-backed cards
   const cardEntity = new Map(cards.map((c) => [c.id, c.entityId]));
@@ -93,10 +99,15 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
   if (relRows.length) {
     const existingRels = await db.select().from(s.relations_).where(inArray(s.relations_.id, relRows.map((r) => r.id)));
     const relById = new Map(existingRels.map((r) => [r.id, r]));
+    const nameOf = (entityId: string) => cards.find((c) => c.entityId === entityId)?.title.trim() ?? byId.get(entityId)?.name ?? "";
     for (const r of relRows) {
       const cur = relById.get(r.id);
-      if (!cur) await db.insert(s.relations_).values({ id: r.id, workspaceId: board.workspaceId, fromEntityId: r.from, toEntityId: r.to, kind: r.kind, source: "canvas", createdAt: ts, updatedAt: ts });
-      else if (cur.kind !== r.kind || cur.fromEntityId !== r.from || cur.toEntityId !== r.to) await db.update(s.relations_).set({ kind: r.kind, fromEntityId: r.from, toEntityId: r.to, updatedAt: ts }).where(eq(s.relations_.id, r.id));
+      if (!cur) {
+        await db.insert(s.relations_).values({ id: r.id, workspaceId: board.workspaceId, fromEntityId: r.from, toEntityId: r.to, kind: r.kind, source: "canvas", createdAt: ts, updatedAt: ts });
+        await recordRelationEvent(db, history, { kind: "relationAdded", label: r.kind, from: { id: r.from, name: nameOf(r.from) }, to: { id: r.to, name: nameOf(r.to) } });
+      } else if (cur.kind !== r.kind || cur.fromEntityId !== r.from || cur.toEntityId !== r.to) {
+        await db.update(s.relations_).set({ kind: r.kind, fromEntityId: r.from, toEntityId: r.to, updatedAt: ts }).where(eq(s.relations_.id, r.id));
+      }
     }
   }
 
@@ -269,6 +280,7 @@ export async function entityDetail(db: Db, entityId: string): Promise<EntityDeta
       const other = otherById.get(out ? r.toEntityId : r.fromEntityId);
       return { id: r.id, kind: r.kind, direction: out ? "out" : "in", other: { id: other?.id ?? "", name: other?.name ?? "(missing)", kind: other?.kind ?? "" } };
     }),
+    history: await entityHistory(db, entityId),
   };
 }
 
