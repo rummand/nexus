@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useTransition, type CSSProperties } from "react";
+import { useMemo, useState, useTransition, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { nanoid } from "nanoid";
-import { Bot, Frame as FrameIcon, Globe, Link2, Play, Trash2 } from "lucide-react";
+import { Bot, Frame as FrameIcon, Globe, Link2, Play, Search, Trash2 } from "lucide-react";
 import type { AgentElement } from "../document";
 import { useCanvas, useCanvasStore } from "../store";
 import { LiveField } from "./LiveField";
 import { scopeOf } from "@/lib/agent/remarks";
+import { ago, runLine, scopeLine } from "../agentReport";
 import { recordRemarkOutcome, wakeBoardAgent } from "@/lib/agent/board-actions";
 
 /**
@@ -35,6 +36,24 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
   const patch = (p: Partial<AgentElement>) => store.getState().updateElements({ [el.id]: p as never });
   const remarks = el.remarks?.length ?? 0;
 
+  /*
+   * What it would read if you woke it now (§5.52). Computed from the live document rather than
+   * from the last run, so moving the agent into a frame or joining it to a card changes the
+   * sentence before you have spent anything.
+   */
+  const elements = useCanvas((s) => s.elements);
+  const scope = useMemo(() => scopeOf(el, elements), [el, elements]);
+
+  /** Walk what it said: fly to each object it spoke about, one press at a time. */
+  const [step, setStep] = useState(0);
+  const visit = () => {
+    const about = (el.remarks ?? []).map((r) => r.about).filter((id) => elements[id]);
+    if (!about.length) return;
+    const next = step % about.length;
+    setStep(next + 1);
+    store.getState().focusElement(about[next]!);
+  };
+
   const wake = () => {
     setError(null);
     patch({ thinking: true });
@@ -55,7 +74,13 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
         remarks: result.remarks,
         note: result.note || (result.remarks.length ? "" : "Nothing worth saying about this."),
         lastRunAt: new Date().toISOString(),
+        // What it did, kept rather than discarded: "read fourteen and had nothing to say" and
+        // "could not see anything" are different answers and used to look the same (§5.52).
+        read: result.read,
+        discarded: result.rejected.length,
+        grounded: result.grounded,
       });
+      setStep(0);
     });
   };
 
@@ -65,7 +90,18 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
       <header className="board-agent-head">
         <span className="board-agent-face" aria-hidden><Bot size={15} /></span>
         <LiveField elementId={el.id} active={selected} value={el.name} placeholder="Name this agent" ariaLabel="Agent name" autoFocus={fresh} onChange={(name) => patch({ name })} />
-        {remarks > 0 && <i className="board-agent-count" title={`${remarks} remark${remarks === 1 ? "" : "s"} on this board`}>{remarks}</i>}
+        {remarks > 0 && (
+          <button
+            type="button"
+            className="board-agent-count"
+            title={`${remarks} remark${remarks === 1 ? "" : "s"} — press to go to each in turn`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={visit}
+            data-agent-visit
+          >
+            <Search size={9} /> {remarks}
+          </button>
+        )}
       </header>
 
       <LiveField
@@ -87,7 +123,7 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
             </button>
           ))}
         </div>
-        <button type="button" className="board-agent-wake" disabled={pending || el.thinking} onClick={wake} data-wake-agent>
+        <button type="button" className="board-agent-wake" disabled={pending || el.thinking || scope.items.length === 0} onClick={wake} data-wake-agent>
           <Play size={12} /> {el.thinking || pending ? "Reading…" : remarks ? "Look again" : "Wake"}
         </button>
         {remarks > 0 && (
@@ -96,6 +132,16 @@ export function AgentView({ el, selected, fresh }: { el: AgentElement; selected:
           </button>
         )}
       </footer>
+
+      <p className="board-agent-scope-line" title={scope.frame ? `Watching the frame “${scope.frame}”` : undefined}>
+        {scopeLine(scope, el.scope)}
+      </p>
+
+      {el.lastRunAt && !el.thinking && (
+        <p className="board-agent-run" title={el.grounded?.length ? `Practice it was given: ${el.grounded.join(", ")}` : undefined}>
+          {runLine(el)} · {ago(el.lastRunAt)}
+        </p>
+      )}
 
       {(error || el.note) && (
         <p className={error ? "board-agent-said error" : "board-agent-said"} title={error ?? el.note}>{error ?? el.note}</p>

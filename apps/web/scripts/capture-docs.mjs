@@ -283,6 +283,30 @@ try {
     await page.waitForTimeout(800);
   }, { settle: 800 });
 
+  /*
+   * What an agent can read (§5.52). The board is seeded without agents, so the picture places one,
+   * joins it to two cards and selects it — which is exactly the sequence the page describes.
+   */
+  await shot("board-agent-scope", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1500);
+    await page.click('[aria-label="Agent — put one where the work is"]');
+    const box = await page.locator(".canvas-viewport").boundingBox();
+    await page.mouse.click(box.x + 1150, box.y + 640); // clear of the cards it will outline
+    await page.waitForSelector("[data-agent]", { timeout: 60_000 });
+    const agent = page.locator("[data-agent]").last();
+    await agent.locator('input[aria-label="Agent name"]').fill("Ownership watch");
+    await agent.locator('textarea[aria-label="What this agent is for"]')
+      .fill("Tell me where two systems that depend on each other are owned by different teams.");
+    // Leave the field before selecting, and click the face rather than the header: the header
+    // holds the name input, and an input is not a reliable thing to click "the object" on.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    await agent.locator(".board-agent-face").click();
+    await page.waitForSelector(".agent-scope-mark", { timeout: 30_000 });
+    await page.waitForTimeout(900);
+  }, { settle: 800 });
+
   await shot("board-lens-impact", async () => {
     await goto("/b/brd_integrations", "[data-element-id]");
     await page.waitForTimeout(1500);

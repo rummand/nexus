@@ -1198,7 +1198,9 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .board-agent-face { align-items: center; background: var(--agent-color, #4f46e5); border-radius: 9px; color: #fff; display: inline-flex; flex: 0 0 auto; height: 26px; justify-content: center; width: 26px; }
 .board-agent.thinking .board-agent-face { animation: agent-pulse 1.1s ease-in-out infinite; }
 @keyframes agent-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.5); } 50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); } }
-.board-agent-count { background: #eef2ff; border-radius: 999px; color: #4f46e5; font-size: 11px; font-style: normal; font-weight: 800; margin-left: auto; padding: 1px 8px; }
+/* A button now, not a tally: it walks you to each object the agent spoke about (§5.52). */
+.board-agent-count { align-items: center; background: #eef2ff; border: 0; border-radius: 999px; color: #4f46e5; display: inline-flex; font-size: 11px; font-style: normal; font-weight: 800; gap: 3px; margin-left: auto; padding: 2px 8px; }
+.board-agent-count:hover { background: #e0e7ff; }
 .board-agent-purpose { background: #f8fafc; border: 1px solid #e6ebf3; border-radius: 9px; color: #334155; flex: 1 1 auto; font-size: 12px; line-height: 1.45; min-height: 0; outline: 0; padding: 8px 10px; resize: none; width: 100%; }
 .board-agent-foot { align-items: center; display: flex; flex: 0 0 auto; gap: 6px; }
 .board-agent-scope { display: flex; gap: 3px; }
@@ -3130,3 +3132,14 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .follow-bar small { color: #b9c4d6; font-size: 11px; font-weight: 600; }
 .follow-bar button { background: rgba(255, 255, 255, 0.16); border: 0; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 11px; }
 .follow-bar button:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* ── An agent that accounts for itself (§5.52) ────────────────────────────── */
+/* What the selected agent can read, outlined in its own colour. */
+.agent-scope-mark { border: 1.5px dashed; border-radius: 8px; opacity: 0.75; position: absolute; }
+/* Two lines rather than one ellipsis: losing "· 24 min ago" off the end costs the sentence its
+   point, and an agent is only 268px wide. */
+.board-agent-scope-line,
+.board-agent-run { -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; font-size: 10.5px; line-height: 1.35; margin: 0; overflow: hidden; padding: 0 10px; }
+.board-agent-scope-line { color: #6f7b8e; }
+.board-agent-run { color: #53627a; font-weight: 700; }
+.board-agent-wake:disabled { cursor: default; opacity: 0.5; }

@@ -40,6 +40,15 @@ export interface BoardScope {
   links: Array<{ from: string; to: string; label: string }>;
   /** The frame the agent sits in, when that is what scoped it. */
   frame: string | null;
+  /**
+   * How many readable objects the scope actually held, before the cap (§5.52).
+   *
+   * `items` is capped at `MAX_ITEMS`, and it used to be capped silently: an agent pointed at a
+   * four-hundred-object board read the first hundred and twenty and said nothing about the rest,
+   * which reads exactly like "there was nothing to say". A number the interface can compare
+   * against `items.length` turns that into something a person can see.
+   */
+  total: number;
 }
 
 const MAX_ITEMS = 120;
@@ -143,11 +152,11 @@ function gather(chosen: CanvasElement[], all: CanvasElement[]): Omit<BoardScope,
     return frame && frame.type === "frame" ? frame.title.trim() || undefined : undefined;
   };
 
-  const items = chosen
+  const readable = chosen
     .filter((el) => READABLE.has(el.type))
     .map((el) => ({ id: el.id, label: labelOf(el), kind: kindOf(el), text: wordsOf(el), group: groupOf(el) }))
-    .filter((item) => item.text.length > 0)
-    .slice(0, MAX_ITEMS);
+    .filter((item) => item.text.length > 0);
+  const items = readable.slice(0, MAX_ITEMS);
 
   const inScope = new Set(items.map((i) => i.id));
   const byId = new Map(all.map((el) => [el.id, el]));
@@ -162,7 +171,7 @@ function gather(chosen: CanvasElement[], all: CanvasElement[]): Omit<BoardScope,
       label: el.label || "—",
     });
   }
-  return { items, links };
+  return { items, links, total: readable.length };
 }
 
 function contains(outer: BoxElement, inner: BoxElement): boolean {
@@ -174,6 +183,11 @@ export function digestOf(scope: BoardScope): string {
   const lines = scope.items.map((i) => `${i.id} [${i.kind}]${i.group ? ` (in “${i.group}”)` : ""} ${i.text}`);
   return [
     scope.frame ? `You are watching the frame “${scope.frame}”.` : "",
+    // An agent that has been handed part of a board should know that, or it will generalise from a
+    // sample as if it were the whole thing.
+    scope.total > scope.items.length
+      ? `There are ${scope.total} objects in your scope and you are being shown the first ${scope.items.length} of them. Do not draw conclusions about the ones you cannot see.`
+      : "",
     `What you can see (${scope.items.length}). Point at things by the id at the start of the line:`,
     ...lines,
     scope.links.length ? `\nHow they are joined on the board:` : "",

@@ -913,11 +913,36 @@ try {
   assert.equal(await placed.locator(".board-agent-scope button.on").innerText(), "frame",
     "an agent is scoped by where you put it, not by a query somebody has to write");
   await placed.locator('input[aria-label="Agent name"]').fill("Succession watch");
+
+  /*
+   * What it can see, before a model call is spent finding out (§5.52). Dropped outside any frame,
+   * a frame-scoped agent can read nothing — and the board says so, and names the fix, rather than
+   * waiting to be asked and answering with an error.
+   */
+  const scopeSays = await placed.locator(".board-agent-scope-line").innerText();
+  assert.match(scopeSays, /drag it into one/, `an agent with an empty scope names the fix — got "${scopeSays}"`);
+  assert.equal(await placed.locator("[data-wake-agent]").isDisabled(), true,
+    "there is nothing to wake it for, so it cannot be woken");
+
+  // Point it at the whole board and the same sentence counts what it would read.
+  await placed.locator(".board-agent-scope button", { hasText: "board" }).click();
+  await page.waitForTimeout(300);
+  assert.match(await placed.locator(".board-agent-scope-line").innerText(), /Reads \d+ objects/,
+    "a scope with something in it is counted");
+  assert.equal(await placed.locator("[data-wake-agent]").isDisabled(), false, "and now it can be woken");
+
+  // Selecting it outlines every object it would read, in its own colour.
+  await placed.locator(".board-agent-head").click();
+  await page.waitForTimeout(400);
+  assert.ok((await page.locator(".agent-scope-mark").count()) > 3,
+    "selecting an agent draws what it can read on the board itself");
+
   await placed.locator("[data-wake-agent]").click();
   await page.waitForSelector("[data-agent] .board-agent-said", { timeout: 30000 });
   const said = await placed.locator(".board-agent-said").innerText();
   assert.ok(/ANTHROPIC_API_KEY|NEXUS_MODEL|No model|nothing in this agent/i.test(said),
     `an agent that cannot run says why on the board — got "${said}"`);
+
 
   // ask about a selection: the agent that needs no placing. Selecting is scope.
   await page.keyboard.press("Escape");

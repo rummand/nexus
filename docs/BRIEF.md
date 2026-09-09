@@ -2127,6 +2127,63 @@ Eased rather than snapped: the wire carries a rectangle about eight times a seco
 eases towards it each frame, zoom geometrically — halfway between 20% and 80% is 40%, not 50%, or a
 long zoom appears to accelerate into its target.
 
+### 5.52 An agent that accounts for itself (v0.2)
+
+§5.27 put agents on the board and §5.28 gave them a fleet page. Using one for an afternoon shows
+what was missing: an agent on a canvas was a **black box with a Wake button**. You wrote a purpose,
+chose a scope, pressed Wake, and hoped.
+
+Four things were wrong, and all four were already known to the code and thrown away by the screen.
+
+**You could not see what it could see.** Scope is a place — the board, the frame it was dragged into,
+the objects a line joins it to — and that is the good idea in §5.27. What was missing is that
+nowhere did the board say what the place resolved to. Selecting an agent now outlines every object
+it would read, in the agent's colour, and the agent counts them in a sentence: *Reads 8 objects*,
+*Reads 6 objects in "OT estate"*, or the reason there are none — *Joined to nothing — draw a line
+from it to what it should watch*. It is drawn from `scopeOf`, the same function the run uses, so it
+is not an approximation of what the agent sees; it *is* what the agent sees — an object with no
+words on it is left out of both, so the outlines answer "why does it say six when I can count
+nine" without anybody having to ask. On a canvas the filter is a position, so the match is a set of
+objects, and objects can simply be drawn on.
+
+The cost is that `scopeOf` now runs for every agent on every document change, which during a drag
+means once a frame. That is deliberate: it is what makes the outlines follow an agent live as it is
+dragged into a frame, and the alternative — a cheaper function that only counts — is a second
+definition of scope to keep in step with the first, which is exactly the drift this avoids. Agents
+are few; boards are large; the arithmetic is small.
+
+**You could not see what it had done.** The server has always returned how many objects it read, how
+many remarks the validator threw away, and which doctrine the run was given — and the view kept the
+remarks and discarded the rest. So *"I read fourteen objects and none of them needed saying about"*
+and *"I could not see anything at all"* rendered identically, as silence. The agent now carries
+`read`, `discarded` and `grounded`, and says: **Read 14 · said 3 · discarded 1 · 4 min ago**.
+`discarded` is the uncomfortable one and the reason to show it: an agent that keeps quoting words
+that are not there is one somebody should rewrite or delete, and that only becomes visible if the
+number is on the screen.
+
+**Finding what it said meant hunting.** The remark tally is now a button that flies you to each
+object the agent spoke about, one press at a time.
+
+**An agent could get stuck reading for ever.** `thinking` is written into the document on purpose,
+so a live board shows everybody that somebody has woken an agent (§5.40). Nothing ever cleared it:
+a tab closed mid-run left the flag true, the agent said *Reading…* with its Wake button disabled,
+and the only way out was to delete it and write it again. A run cannot outlive the page that
+started it, so `migrateDocument` clears the flag — which, because that function runs on the board
+`PUT` as well as on every read, makes the flag in-memory and broadcast-only in practice and the
+stuck state unreachable in two independent places rather than one.
+
+**One silence made honest.** `BoardScope` gained `total`: `items` is capped at 120, and the cap used
+to be silent, so an agent pointed at a four-hundred-object board read the first hundred and twenty
+and said nothing about the rest — which reads exactly like having nothing to say. The interface now
+says *Reads 120 of 400 objects — the rest are out of reach*, and the digest tells the model the same
+thing, so it does not generalise from a sample as though it were the whole picture.
+
+Waking an agent whose scope is empty is refused before the round trip, since the screen already says
+why and pressing a button to be told what is written under it is not an interaction.
+
+The wording is the feature here, so the wording is tested (`canvas/agentReport.ts`): the property
+under all of it is that two different outcomes must never produce the same sentence.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2164,7 +2221,7 @@ long zoom appears to accelerate into its target.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 85)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 86)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2559,6 +2616,16 @@ long zoom appears to accelerate into its target.
 - Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### An agent that accounts for itself (v0.2)
+- Selecting an agent outlines every object it would read, in its colour, and it counts them —
+  *Reads 6 objects in "OT estate"* — so a scope costs nothing to check.
+- After a run it says **Read 14 · said 3 · discarded 1 · 4 min ago**; hovering shows the doctrine
+  that run was given. "Read fourteen and said nothing" no longer looks like "saw nothing".
+- The remark tally is a button that flies to each object it spoke about, one press at a time.
+- Waking an agent with an empty scope is refused before the round trip, and the sentence under the
+  button names the fix rather than the symptom.
+- An agent can no longer be left *Reading…* for ever by a closed tab.
 
 ### Following somebody's viewport (v0.2)
 - Click a peer's initials in the topbar and your camera tracks theirs; click again, press Escape,
@@ -2968,6 +3035,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | Following somebody who is already following you is refused. | The fit leaves a 6% margin so their edges sit inside yours; two cameras each fitting the other's rectangle would widen by that margin every round and drift the pair off the board. Presence carries `following` so the loop can be refused at the point of the click rather than discovered as a mystery. |
 | 2026-09-09 | A simultaneous mutual follow is broken by peer id, not by refusing both. | The click-time check cannot see a decision still in flight, so both sides can get through it. Dropping both would be safe but leaves nobody following after two people asked to; comparing ids is something both compute identically with nothing to negotiate, so exactly one follow survives — which is what either of them wanted. |
 
+| 2026-09-09 | An agent's scope is drawn on the board rather than described. | Scope is a place, which is the whole reason agents are objects; but the place was never resolved on screen, so the only way to find out what a run would read was to spend one. Outlining the objects is the canvas-native answer, and drawing it from `scopeOf` means it cannot drift from what the run actually sees. |
+| 2026-09-09 | The agent shows how many remarks the validator discarded. | It is the unflattering number and that is the argument for it: an agent that keeps quoting words which are not on the object is one to rewrite or delete, and nobody can notice a pattern that is never displayed. Hiding it would make the feature look better and the agent harder to judge. |
+| 2026-09-09 | `thinking` is cleared by `migrateDocument` rather than by a timeout or a heartbeat. | A run cannot outlive the page that started it, so loading the document is a moment when the flag is *known* false — no clock to tune and nothing to get wrong. Because the same function runs on the board `PUT`, the flag also stops reaching the database at all, which closes the stuck state twice over. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2981,6 +3052,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 86: an agent that accounts for itself.** Using a board agent for an afternoon
+  shows what §5.27 and §5.28 left out: it was a black box with a Wake button, and everything missing
+  was already known to the code and thrown away by the screen. Selecting an agent now outlines every
+  object it would read, in its colour, and counts them in a sentence — drawn from `scopeOf`, the
+  same function the run uses, so it is what the agent sees rather than an approximation of it. After
+  a run the agent says **Read 14 · said 3 · discarded 1 · 4 min ago**: the server always computed
+  those and the view kept only the remarks, so "I read fourteen and none needed saying about" and "I
+  could not see anything" rendered identically as silence. `discarded` is deliberately included
+  because it is the unflattering one — an agent that keeps quoting words that are not there is one
+  to rewrite, and nobody notices a pattern that is never shown. The remark tally became a button
+  that flies to each object it spoke about. `BoardScope` gained `total`, so the 120-object cap stops
+  being a silent truncation that reads like having nothing to say — both on screen and in the digest
+  the model is given. And an agent can no longer be stuck *Reading…* for ever by a closed tab:
+  `migrateDocument` clears the flag, and since that runs on the board `PUT` as well as on every
+  read, the flag never reaches the database at all.
 
 - **2026-09-09 — Rev 85: following somebody's viewport.** The smallest missing thing on a shared
   board: *look at this corner*. Click somebody's initials and your camera tracks theirs. What

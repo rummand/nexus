@@ -31,6 +31,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { ComposePanel } from "./ComposePanel";
 import { CommentsPanel } from "./comments/CommentsPanel";
 import { CommentBadges } from "./comments/CommentBadges";
+import { AgentScopeOverlay } from "./AgentScopeOverlay";
 import { ContextMenu } from "./ContextMenu";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { GridCanvas } from "./GridCanvas";
@@ -245,6 +246,7 @@ export function Canvas() {
       {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
       {!presenting && panels.compose && <ComposePanel rootRef={rootRef} />}
       {!presenting && panels.comments && <CommentsPanel rootRef={rootRef} />}
+      {!presenting && <AgentScopeOverlay />}
       {!presenting && <CommentBadges />}
       {!presenting && <FollowBar />}
       {!presenting && <ZoomCard />}

@@ -99,12 +99,27 @@ export interface AgentElement extends BaseElement {
   /** What it may look at: what it is joined to, whatever frame it sits in, or the whole board. */
   scope: "connected" | "frame" | "board";
   color: string;
-  /** Set while a run is in flight, so the board shows the agent thinking. */
+  /**
+   * Set while a run is in flight, so the board shows the agent thinking — including to everybody
+   * else on it. Deliberately cleared when a document is parsed: see `migrateDocument`.
+   */
   thinking?: boolean;
   lastRunAt?: string;
   /** Its own sentence about what it saw, shown on the agent itself. */
   note?: string;
   remarks?: AgentRemark[];
+  /**
+   * What the last run actually did (§5.52), so the agent can account for itself.
+   *
+   * The server has always computed these and the board threw them away, which left the two very
+   * different outcomes — "I read fourteen objects and none of them needed saying about" and "I
+   * could not see anything at all" — looking identical on screen.
+   */
+  read?: number;
+  /** Remarks the validator threw away because they quoted words that were not there. */
+  discarded?: number;
+  /** The doctrine from the knowledge base this run was given (§5.20). */
+  grounded?: string[];
 }
 
 export interface AgentRemark {
@@ -237,6 +252,19 @@ export function migrateDocument(doc: Partial<CanvasDocument> & { version?: numbe
         elements[id] = { ...(el as StickyElement), title: "" };
         continue;
       }
+    }
+    /*
+     * An agent is never thinking at the moment a document is read.
+     *
+     * `thinking` is in the document on purpose — a live board should show everybody that somebody
+     * has woken an agent. The cost is that a tab closed mid-run wrote `thinking: true` down and
+     * nothing ever cleared it: the agent said "Reading…" for ever, with its Wake button disabled,
+     * and the only way out was to delete it. A run cannot outlive the page that started it, so
+     * loading the document is exactly the moment the flag is known to be false.
+     */
+    if (el.type === "agent" && (el as AgentElement).thinking) {
+      elements[id] = { ...(el as AgentElement), thinking: false };
+      continue;
     }
     elements[id] = el as CanvasElement;
   }

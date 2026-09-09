@@ -234,7 +234,7 @@ export const BOARD_AGENTS: DocPage = {
   slug: "agents-on-the-board",
   title: "Agents on the board",
   summary: "Put an agent where the work is, tell it what to watch in your own words, and read what it says on the objects it is talking about.",
-  keywords: ["agent", "board agent", "remark", "watch", "scope", "wake", "ai", "assistant", "annotation"],
+  keywords: ["agent", "board agent", "remark", "watch", "scope", "wake", "ai", "assistant", "annotation", "read", "discarded", "grounded", "what it can see", "reading"],
   blocks: [
     { kind: "prose", text: "An agent in Nexus is an object on a board, not a feature of a page. You place it where the work is — beside the systems it should watch, inside the frame that scopes it, on the board the conversation is happening on. It has a name you give it, a purpose you write in your own words, and a scope decided by where you put it." },
     { kind: "prose", text: "What it produces is a **remark**: a short note pinned to one object, quoting the words on that object which prompted it. An agent on a board changes nothing by speaking. That is what makes it safe to have several of them, always there, in the middle of your thinking." },
@@ -259,6 +259,22 @@ export const BOARD_AGENTS: DocPage = {
       ],
     },
     { kind: "note", tone: "why", title: "Why scope is a place, not a query", text: "Every other tool would make you write a filter. On a canvas, where a thing sits already means something: this frame is the OT estate, these three cards are the ones under discussion. Dragging an agent into a frame is a faster and more honest way of saying what it should watch than any query language, and anyone looking at the board can see what it is watching without being told." },
+    { kind: "prose", text: "**Select an agent and it shows you.** Every object it would read is outlined in the agent\u2019s colour, and the agent counts them: *Reads 8 objects*, or *Reads 6 objects in \u201cOT estate\u201d*, or the reason there is nothing \u2014 *Joined to nothing \u2014 draw a line from it to what it should watch*. You never have to spend a run to find out what a run would look at." },
+    { kind: "shot", src: "board-agent-scope", alt: "An agent on a board, selected, with dashed outlines in its colour around every card, note and section on the board, and a line under it reading \u201cReads 8 objects\u201d", caption: "The selected agent outlines what it can read \u2014 here the whole board, which comes to eight objects with words on them. Scope is a place, so the answer is a set of objects, and objects can simply be drawn on." },
+    { kind: "note", tone: "tip", text: "Objects with no words on them are quietly left out, because there is nothing to read. If your agent says it reads fewer objects than you can see, that is usually why \u2014 the outlines show exactly which ones count." },
+    { kind: "heading", text: "What it did", id: "run" },
+    { kind: "prose", text: "After a run the agent says what happened, in one line: **Read 14 · said 3 · discarded 1 · 4 min ago**. Those are four different facts and each of them can change what you do next." },
+    {
+      kind: "table",
+      columns: ["", "What it tells you"],
+      rows: [
+        ["**Read**", "How many objects it actually looked at. *Read 14 · said nothing* and *Read 0 · said nothing* are very different answers and used to look identical."],
+        ["**Said**", "How many remarks survived. Press the number to fly to each object it spoke about, one press at a time."],
+        ["**Discarded**", "Remarks thrown away because they quoted words that were not on the object. Usually zero. An agent that keeps making things up is one to rewrite or delete, and you can only know that if the number is on the screen."],
+        ["**When**", "An agent that has not run since Tuesday is describing a board that has changed since."],
+      ],
+    },
+    { kind: "note", tone: "tip", text: "Hover the line to see which practice from the knowledge base this run was given \u2014 two agents with different purposes get different doctrine, which is the point of writing the purpose yourself." },
     { kind: "heading", text: "Reading what it said", id: "remarks" },
     {
       kind: "list",
