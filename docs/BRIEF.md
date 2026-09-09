@@ -2264,6 +2264,58 @@ if any two pieces of chrome overlap or if the property bar is standing on its ow
 these three bugs is visible to a unit test and all three are obvious in a window; the suite is the
 only place that can see them.
 
+### 5.55 Say it once, and give the canvas edges (v0.2)
+
+§5.54 stopped the chrome landing on itself. This asks the harder question: how much of it should be
+there at all. Measured on the same board at 1280×800, again rather than judged by eye.
+
+**The same facts were on screen three times.** The object count appeared in the topbar, in the map
+card and in a status line along the bottom. The zoom appeared in the topbar, in the map card and in
+the zoom control. "Autosaved" appeared in the status line and, in more detail and in real time, in
+the topbar's save pill. None of it was wrong; all of it was noise, and the reason it accumulated is
+that each piece was added by somebody looking at that piece rather than at the screen.
+
+So each thing is now said once, by whichever piece owns it: the **topbar** counts the objects, the
+**zoom control** owns the zoom because it is the one you can press, and the **map** keeps what only
+it knows — the composition, and how much of the board is in view. The status line is gone entirely.
+
+**Three right-hand cards, three left edges.** The Selection panel, the map and the zoom control were
+234, 174 and 231 wide at margins of 12, 10 and 10 — left edges scattered across sixty pixels. Each
+was individually reasonable, which is exactly why it survived; together they read as three cards
+somebody had dropped rather than as one rail. They now share `--canvas-rail` and
+`--canvas-rail-gap`, and the right side reads as an edge.
+
+**The search bar was 720×53 of the best space on the canvas, empty.** Dead centre at the top, over
+the board, permanently — for a box that advertised **⌘ K** on its own right-hand end. It rests as a
+pill now and opens on ⌘K or a click, in the same place with the same shadow and the same keycap, so
+it reads as the thing that was there rather than as something removed. The documentation already
+told people to press ⌘K; the bar is now what the documentation always said it was.
+
+**The map starts folded away.** It was the largest permanently-open thing on the canvas — 234×268,
+six and a half per cent of a laptop screen — for a view of the board you want occasionally and can
+otherwise get by zooming out. Its toggle is in the tool rail with an on/off badge, so it is one
+press back and visibly off rather than missing. Inventory and Selection stay open: those are the
+product, not a convenience.
+
+Because the reserve a top-anchored panel keeps for the map should not be kept for a map that is not
+there, the canvas carries `data-map` and the custom property follows it. With the map away the
+Selection panel is 600px tall instead of 344 and shows an object's attributes without scrolling —
+the declutter gave the remaining panel its content back, which is the part worth having.
+
+One bug came out of building it, caught by the browser suite rather than by review. The blur that
+folds the bar away is deferred 150ms so that clicking a suggestion lands before the list disappears;
+press Escape and then ⌘K straight away and that *stale* timer fired afterwards, folding the bar up
+under whatever had just been typed. It is cancelled when the bar opens now. Reproduced three times
+out of three before the fix and none out of three after — the second time this session that a
+browser test has caught something no unit test could see.
+
+| At 1280×800, with a card selected | Before §5.54 | Now |
+|---|---|---|
+| Chrome over the canvas | 43% | **32%** |
+| Pieces of chrome | 9 | **7** |
+| Board objects hidden behind the property bar | 5 | **1** |
+| Chrome overlapping other chrome | 3 collisions | **none** |
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2301,7 +2353,7 @@ only place that can see them.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 88)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 89)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2696,6 +2748,16 @@ only place that can see them.
 - Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### A canvas with edges (v0.2)
+- Each fact is on screen once: the topbar counts objects, the zoom control owns zoom, the map keeps
+  the composition and how much is in view. The bottom status line is gone.
+- The Selection panel, the map and the zoom control share one width and one margin — a right rail
+  rather than three scattered cards.
+- The search bar rests as a **⌘ K** pill and opens on the shortcut its keycap always advertised.
+- The map starts folded away; its toggle is in the tool rail with an on/off badge. With it away the
+  Selection panel is 600px rather than 344 and shows an object's attributes without scrolling.
+- Chrome over the canvas at 1280×800: 43% → 32%, across seven pieces instead of nine.
 
 ### Chrome that keeps out of its own way (v0.2)
 - The property bar sits in the band between the side panels, wrapping rather than sliding under one.
@@ -3141,6 +3203,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | The property bar is anchored by the edge that faces the selection, not by its top. | Positioning it above by `top` needs its height, and that height changes with what is selected — which is how it came to stand on the object it belongs to. Anchoring the bottom edge means the bar grows away from the object and there is no measurement to get wrong. |
 | 2026-09-09 | Overlap is checked in the browser suite rather than reviewed. | Three collisions shipped, all present at every window size, none visible to a unit test and all obvious in a window. This is the same argument as the guard-coverage test in §5.49: a class of mistake that review keeps missing wants a machine, not more care. |
 
+| 2026-09-09 | Each fact on the canvas is shown by exactly one piece of chrome. | The object count was on screen three times and the zoom three times, because each piece was added by somebody looking at that piece rather than at the screen. Choosing an owner for each fact — the control you can press owns the number it changes — is a rule that keeps working as more chrome arrives. |
+| 2026-09-09 | The search bar rests as a pill and opens on ⌘K. | It held 720×53 of the middle of the board, permanently, while displaying the keyboard shortcut that makes it unnecessary. The documentation already said "press ⌘K"; the bar now matches the documentation rather than the other way round. |
+| 2026-09-09 | The map overview starts folded away rather than open. | It was the largest permanently-open thing on the canvas for something you want occasionally and can otherwise get by zooming out. It is one press back from the tool rail, which shows it as off — a default, not a removal. Inventory and Selection stay open because they are the product rather than a convenience. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3154,6 +3220,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 89: say it once, and give the canvas edges.** Where rev 88 stopped the chrome
+  landing on itself, this asks how much of it should be there at all — measured again rather than
+  judged. The object count was on screen three times, the zoom three times, and "autosaved" twice;
+  each fact now has one owner, the control that can change it, and the bottom status line is gone.
+  The three right-hand cards were 234, 174 and 231 wide at margins of 12, 10 and 10 — individually
+  reasonable, together three scattered cards rather than a rail; they now share one width and one
+  margin. The search bar held 720×53 of the middle of the board while displaying the ⌘K shortcut
+  that makes it unnecessary, so it rests as a pill in the same place with the same keycap and opens
+  on the shortcut its own documentation already told people to press. And the map — the largest
+  permanently-open thing on the canvas, for a view you can otherwise get by zooming out — starts
+  folded, one press from the tool rail which shows it as off. The reserve a panel keeps for the map
+  follows whether the map is there, so with it away the Selection panel is 600px instead of 344 and
+  shows an object's attributes without scrolling: the declutter gave the remaining panel its content
+  back. At 1280×800 with a card selected, chrome over the canvas went from 43% to 32%, across seven
+  pieces instead of nine.
 
 - **2026-09-09 — Rev 88: the chrome stops landing on itself.** Measuring the canvas at 1280×800
   rather than looking at it turned up three overlapping pieces of floating chrome — all present at

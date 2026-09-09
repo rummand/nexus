@@ -32,7 +32,6 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   /* On a live board the room is the writer, so "Saved" would be describing somebody else's work. */
   const live = useCanvas((s) => s.live);
   const count = useCanvas((s) => Object.keys(s.elements).length);
-  const zoom = useCanvas((s) => s.camera.zoom);
   const helpOpen = useCanvas((s) => s.panels.help);
   const historyOpen = useCanvas((s) => s.panels.history);
   const composeOpen = useCanvas((s) => s.panels.compose);
@@ -103,7 +102,7 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
       </div>
       <div className="topbar-meta">
         <PeerChips />
-        <span className="canvas-chip">Canvas: {count} objects / Zoom: {Math.round(zoom * 100)}%</span>
+        <span className="canvas-chip">{count} objects</span>
         {saveState === "conflict" ? (
           <button
             type="button"

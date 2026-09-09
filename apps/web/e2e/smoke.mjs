@@ -194,18 +194,25 @@ try {
   await page.keyboard.press("Control+z");
   await page.locator(`[data-element-id="${noteId}"].impact-note`).waitFor({ timeout: 5000 });
 
-  // command bar: structured graph query with placement
+  /*
+   * The command bar is a pill until it is wanted (§5.55), so each of these opens it first — which
+   * is also the check that ⌘K still does what its keycap has always claimed.
+   */
   await page.keyboard.press("Escape");
+  assert.equal(await page.locator("[data-command-pill]").count(), 1, "the command bar rests as a pill");
   await page.keyboard.press("Control+k");
+  await page.waitForSelector(".command-bar input", { timeout: 10000 });
   await page.fill(".command-bar input", "kind:Application criticality:high");
   await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
   assert.ok((await page.locator(".search-suggestions .graph-hit").count()) > 0, "graph query returns entities");
-  await page.keyboard.press("Escape");
+  // Escape folds it away again, and an emptied bar does not hold the middle of the board.
   await page.fill(".command-bar input", "");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("[data-command-pill]", { timeout: 10000 });
 
   // command bar finds the note
-  await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
+  await page.waitForSelector(".command-bar input", { timeout: 10000 });
   await page.keyboard.type(TEXT);
   await page.waitForSelector(".search-suggestions button");
   assert.ok((await page.locator(".search-suggestions button", { hasText: TEXT }).count()) >= 1, "command bar finds the note");

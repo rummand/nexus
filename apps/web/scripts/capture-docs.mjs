@@ -174,7 +174,9 @@ try {
 
   await shot("board-command-bar", async () => {
     await page.keyboard.press("Escape");
-    await page.click(".command-bar input");
+    // It rests as a pill now (§5.55); the picture is of it in use.
+    await page.click("[data-command-pill]");
+    await page.waitForSelector(".command-bar input", { timeout: 30_000 });
     await page.fill(".command-bar input", "kind:Application criticality:high");
     await page.waitForTimeout(1200);
   });

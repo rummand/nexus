@@ -7,8 +7,9 @@ import { contentBounds, unionBoxes, visibleWorldRect } from "./geometry";
 import { useCanvas, useCanvasStore } from "./store";
 import { documentStats } from "@/components/workspace/BoardThumbnail";
 
-const W = 182;
-const H = 100;
+/* The map fills the right rail's width (§5.55): 234 less the card's 9px padding either side. */
+const W = 216;
+const H = 118;
 
 /**
  * "Map overview" card: minimap drawn on a <canvas> straight from the store (at most one redraw
@@ -21,8 +22,6 @@ export function MapCard() {
   const world = useRef<{ box: Box; scale: number; ox: number; oy: number } | null>(null);
   const dragging = useRef(false);
   // light subscriptions for the text readout only
-  const zoom = useCanvas((s) => s.camera.zoom);
-  const elementCount = useCanvas((s) => Object.keys(s.elements).length);
   const stats = useCanvas(useShallow((s) => documentStats({ version: 2, elements: s.elements })));
   const hasSelection = useCanvas((s) => s.selection.length > 0);
   const coverage = useCanvas((s) => {
@@ -105,7 +104,9 @@ export function MapCard() {
       />
       <div className="map-readout" aria-label="Map overview status">
         <span>{stats.cards} cards · {stats.notes} notes · {stats.frames} frames</span>
-        <span>{stats.connectors} links · {Math.round(zoom * 100)}% zoom · {coverage}% view · {elementCount} objects</span>
+        {/* Zoom belongs to the zoom card below and the object count to the topbar; what only this
+            card can say is how much of the board is on screen (§5.55). */}
+        <span>{stats.connectors} links · {coverage}% of the board in view</span>
       </div>
       <button className="map-fit-button" type="button" onClick={() => store.getState().zoomToFit()}>Fit visible board</button>
       {hasSelection && <button className="map-fit-button secondary" type="button" onClick={() => store.getState().zoomToSelection()}>Fit selection</button>}

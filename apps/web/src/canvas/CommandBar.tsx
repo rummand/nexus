@@ -45,6 +45,22 @@ export function CommandBar() {
   const workspaceId = useCanvas((s) => s.workspaceId);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  /*
+   * Collapsed until it is wanted (§5.55).
+   *
+   * Expanded, this is 720×53 of the most valuable space on the canvas — dead centre at the top,
+   * over the board — held permanently for an empty box that advertises its own keyboard shortcut
+   * on its right-hand end. It is now a pill until ⌘K or a click, which is what the keycap was
+   * telling everybody all along.
+   */
+  const [wide, setWide] = useState(false);
+  /*
+   * The blur that folds the bar away is deferred 150ms, so a click on a suggestion lands before the
+   * list disappears. That timer has to be cancellable: press Escape and then ⌘K straight away, and
+   * the *previous* blur would fire a moment later and fold the bar up again under whatever you had
+   * started typing.
+   */
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [graph, setGraph] = useState<QueryResponse | null>(null);
   const [vocab, setVocab] = useState<GraphSnapshot | null>(null);
   // vocabulary for autocomplete, loaded the first time the bar opens
@@ -58,12 +74,18 @@ export function CommandBar() {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /** Open the bar, cancelling any fold that the last blur had scheduled. */
+  const openWide = () => {
+    if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
+    setWide(true);
+    setOpen(true);
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        inputRef.current?.focus();
-        setOpen(true);
+        openWide();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -135,15 +157,40 @@ export function CommandBar() {
   const highlightable = graphHits.filter((e) => onBoard.has(e.id));
   const structured = graphForQuery?.query.structured ?? false;
 
+  /** Fold away when there is nothing in it — an empty box is not worth the middle of the board. */
+  const shrink = () => { if (!query.trim()) { setWide(false); setOpen(false); } };
+
+  if (!wide) {
+    return (
+      <button
+        type="button"
+        className="command-pill"
+        aria-label="Search this board and query the graph"
+        data-command-pill
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={openWide}
+      >
+        <Search size={15} /> Search this board <span className="keycap">⌘ K</span>
+      </button>
+    );
+  }
+
   return (
     <section className="command-bar" aria-label="Board search and graph query" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
       <Search size={24} />
       <input
         ref={inputRef}
+        /* The input is mounted by the pill opening, so mounting is exactly when it should take the
+           caret. `autoFocus` does that in the same commit; focusing from an effect or a frame later
+           is a race against whatever the person types next. */
+        autoFocus
         value={query}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => {
+          if (blurTimer.current) clearTimeout(blurTimer.current);
+          blurTimer.current = setTimeout(() => { blurTimer.current = null; setOpen(false); shrink(); }, 150);
+        }}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === "Enter") {
@@ -151,7 +198,7 @@ export function CommandBar() {
             else if (boardMatches[0]) go(boardMatches[0].el);
             else if (placeable.length) place(placeable);
           }
-          if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+          if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); setWide(false); }
         }}
         placeholder="Search this board or query the graph — kind:Application criticality:high · related:Maximo"
         spellCheck={false}
