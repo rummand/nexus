@@ -1,68 +1,23 @@
-import type { MetaModel } from "./metamodel";
+import type { Framework } from "./types";
 
 /**
- * Standard metamodels to start from (§5.56).
+ * The estate itself: what we own, what it costs, what it supports (§5.56, §5.57).
  *
- * Until now a workspace's model could only grow from whatever happened to get imported, which is
- * the right default and a poor starting point: the first hundred objects arrive from a spreadsheet
- * somebody else designed, and the vocabulary of the estate ends up being that spreadsheet's column
- * headings. Tools like Ardoq answer this with best-practice models you apply on day one, and it is
- * a good answer — an architect starting an application portfolio does not need to rediscover that
- * an application has a lifecycle and an owner.
- *
- * Three rules kept these honest:
- *
- * - **Small.** Each of these is the smallest model that is still useful, not the largest that is
- *   still defensible. A forty-type starter model is somebody else's opinion imposed as work.
- * - **Additive.** Applying one never renames, never deletes and never touches an entity. It adds
- *   what is missing and leaves alone everything already declared — so it can be applied to a
- *   workspace that has been running for a year, and applied twice with no effect the second time.
- * - **Attributable.** Each says where its practice comes from. A starter model with no provenance
- *   is a set of assertions, and this product's habit everywhere else is to say where a claim came
- *   from.
+ * These three shipped in §5.56 as "standard models", before the idea had a name. They are
+ * frameworks like the others — smaller and less opinionated than C4 or SAFe, because a portfolio
+ * model is mostly a vocabulary rather than a method, and because these are the three an EA team
+ * reaches for in its first week.
  */
-
-export interface StandardField {
-  key: string;
-  dataType: "text" | "number" | "date" | "boolean" | "enum" | "url";
-  description: string;
-  required?: boolean;
-  options?: string[];
-}
-
-export interface StandardNodeType {
-  name: string;
-  description: string;
-  color: string;
-  /** Name of another type in the same standard model. */
-  parent?: string;
-  fields: StandardField[];
-}
-
-export interface StandardRelationType {
-  name: string;
-  description: string;
-  rules: Array<{ from: string; to: string; cardinality: "one-to-one" | "one-to-many" | "many-to-many" }>;
-}
-
-export interface StandardModel {
-  id: string;
-  name: string;
-  blurb: string;
-  /** The question this model exists to answer, so somebody can tell whether it is theirs. */
-  answers: string;
-  grounding: string;
-  nodeTypes: StandardNodeType[];
-  relationTypes: StandardRelationType[];
-}
 
 const LIFECYCLE = ["proposed", "active", "sunset", "retired"];
 const CRITICALITY = ["low", "medium", "high", "critical"];
 
-export const STANDARD_MODELS: StandardModel[] = [
+export const PORTFOLIO_FRAMEWORKS: Framework[] = [
   {
     id: "application-portfolio",
     name: "Application portfolio",
+    family: "portfolio",
+    levels: [],
     blurb: "Applications, who owns them, what they run on and what they cost — the model behind a rationalisation.",
     answers: "Which applications do we have, who is accountable for each, and which ones should we stop paying for?",
     grounding:
@@ -117,6 +72,8 @@ export const STANDARD_MODELS: StandardModel[] = [
   {
     id: "business-capability",
     name: "Business capability model",
+    family: "portfolio",
+    levels: [],
     blurb: "What the organisation is able to do, and what supports each ability — the map executives argue over.",
     answers: "What are we able to do as an organisation, how well, and what is holding each ability up?",
     grounding:
@@ -157,6 +114,8 @@ export const STANDARD_MODELS: StandardModel[] = [
   {
     id: "integration",
     name: "Integration and data flow",
+    family: "portfolio",
+    levels: [],
     blurb: "Systems, the interfaces between them and the data that moves — the model behind an integration review.",
     answers: "What talks to what, over which interface, carrying which data, and what breaks if one end goes away?",
     grounding:
@@ -193,77 +152,3 @@ export const STANDARD_MODELS: StandardModel[] = [
     ],
   },
 ];
-
-export function standardModel(id: string): StandardModel | null {
-  return STANDARD_MODELS.find((m) => m.id === id) ?? null;
-}
-
-export interface ApplyPlan {
-  nodeTypes: { add: string[]; already: string[] };
-  fields: { add: Array<{ type: string; key: string }>; already: Array<{ type: string; key: string }> };
-  relationTypes: { add: string[]; already: string[] };
-  rules: { add: Array<{ type: string; from: string; to: string }>; already: Array<{ type: string; from: string; to: string }> };
-  /** Nothing at all to do — the model is already in place. */
-  noop: boolean;
-}
-
-const key = (v: string) => v.trim().toLowerCase();
-
-/**
- * What applying this standard would change, worked out before anything is written.
- *
- * Additive by construction: a name that already exists is left exactly as it is, including its
- * description and its fields, because the workspace's own words beat a template's. That is what
- * makes this safe to offer to a workspace that already has a model rather than only to an empty one.
- */
-export function planApply(std: StandardModel, existing: MetaModel): ApplyPlan {
-  const haveNode = new Map(existing.nodeTypes.filter((t) => t.id).map((t) => [key(t.name), t]));
-  const haveRel = new Map(existing.relationTypes.filter((t) => t.id).map((t) => [key(t.name), t]));
-
-  const plan: ApplyPlan = {
-    nodeTypes: { add: [], already: [] },
-    fields: { add: [], already: [] },
-    relationTypes: { add: [], already: [] },
-    rules: { add: [], already: [] },
-    noop: false,
-  };
-
-  for (const t of std.nodeTypes) {
-    const found = haveNode.get(key(t.name));
-    if (found) plan.nodeTypes.already.push(t.name);
-    else plan.nodeTypes.add.push(t.name);
-    const declaredKeys = new Set((found?.fields ?? []).filter((f) => f.id).map((f) => key(f.key)));
-    for (const f of t.fields) {
-      (declaredKeys.has(key(f.key)) ? plan.fields.already : plan.fields.add).push({ type: t.name, key: f.key });
-    }
-  }
-
-  for (const t of std.relationTypes) {
-    const found = haveRel.get(key(t.name));
-    if (found) plan.relationTypes.already.push(t.name);
-    else plan.relationTypes.add.push(t.name);
-    const declaredRules = new Set((found?.rules ?? []).map((r) => `${key(r.fromType)}>${key(r.toType)}`));
-    for (const r of t.rules) {
-      const where = declaredRules.has(`${key(r.from)}>${key(r.to)}`) ? plan.rules.already : plan.rules.add;
-      where.push({ type: t.name, from: r.from, to: r.to });
-    }
-  }
-
-  plan.noop = plan.nodeTypes.add.length === 0 && plan.fields.add.length === 0
-    && plan.relationTypes.add.length === 0 && plan.rules.add.length === 0;
-  return plan;
-}
-
-/** One sentence describing what pressing the button will do. */
-export function planSummary(plan: ApplyPlan): string {
-  if (plan.noop) return "Everything in this standard is already declared here.";
-  const parts: string[] = [];
-  const say = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  if (plan.nodeTypes.add.length) parts.push(say(plan.nodeTypes.add.length, "object type", "object types"));
-  if (plan.fields.add.length) parts.push(say(plan.fields.add.length, "field", "fields"));
-  if (plan.relationTypes.add.length) parts.push(say(plan.relationTypes.add.length, "relation type", "relation types"));
-  if (plan.rules.add.length) parts.push(say(plan.rules.add.length, "rule", "rules"));
-  const kept = plan.nodeTypes.already.length + plan.relationTypes.already.length;
-  const tail = kept ? `, leaving the ${kept} you already have untouched` : "";
-  return `Adds ${parts.join(", ")}${tail}.`;
-}

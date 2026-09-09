@@ -143,6 +143,31 @@ and UX were replicated on 2026-09-04 and Nexus must keep following it:
 
 When the reference evolves, port the change here and note it in the changelog.
 
+## 4b. Five directions for a tighter look (proposal, 2026-09-09)
+
+The owner's note: *"we are still too Miro cartoonish"*. It is a fair reading of what is on screen.
+The visual language Nexus inherited is a whiteboard's — 12–16px radii on everything, chunky pill
+chips for attributes, soft blue shadows, a pastel note, loose vertical rhythm. None of it is wrong
+for a drawing toy and all of it undersells a system of record that an enterprise architect is meant
+to defend in a governance forum.
+
+Five directions were drawn, as standalone HTML in **`docs/design/mocks`**, rendered by
+`apps/web/scripts/capture-mocks.mjs`. All five show the *same* board with the same six objects and
+the same five connections, so the difference between them is the argument and not the content.
+Nothing here is wired into the app — this is a proposal awaiting the owner's pick.
+
+| # | Direction | Thesis | What changes |
+|---|---|---|---|
+| 1 | **Blueprint** | Architecture is drafting, not sticky notes. | Hairlines and no shadows at all; 2px corners; `« stereotype »` headers and UML-ish compartments; mono for every machine-shaped value; colour reduced to a 3px rule on one edge; a drawing frame with a title block (sheet, notation, as-of, revision). |
+| 2 | **Console** | The people who live in this spend their day in Linear, Grafana and an IDE. | Graphite surfaces, one accent, 4px radii, 26px rows, chrome flush to the edges with no floating cards; attribute chips become `key value` in mono; the inspector is a property grid. |
+| 3 | **Ledger** | An EA repository's job is to be believed. | Tabular figures, hairline rules, every fact carrying its source underneath it; headline numbers in the topbar; the inspector is a property sheet; a footnote on the canvas saying how much of the board nothing explains. |
+| 4 | **Notation-aware** | The reason it looks like a whiteboard is that every object is the same rounded rectangle. | The shape follows the framework: a C4 container with its technology line, a UML class with three compartments, a DDD aggregate inside a dashed consistency boundary. This is the visual half of §5.57. |
+| 5 | **Focus** | Rev 89 took chrome from 43% to 32%; go further. | One 44px rail and one command strip are the whole of the permanent chrome. The title sits on the canvas. Panels become sheets that slide in and are gone again. Hidden panels advertise their key. |
+
+They are not mutually exclusive: 1 and 3 share a palette, 4 is a capability rather than a skin and
+belongs under whichever of the others is chosen, and 5 is a layout decision that any of the four
+could wear. A reasonable outcome is one skin plus 4 plus 5.
+
 ## 5. Architecture
 
 ### 5.1 Stack
@@ -2389,6 +2414,78 @@ spelt — a leading acronym is read letter by letter (an IT Component, an API, a
 System), and a leading "u" is "yoo" in the words people use for types (a User, a Utility). "is a
 Interface" in a compliance report is the sentence that makes a reader stop trusting the tool.
 
+### 5.57 Modelling frameworks: C4, UML, DDD, MBSE, IT4IT, SAFe (v0.2)
+
+§5.56 shipped three "standard models" — an application portfolio and two neighbours — as somewhere
+to start. Building them made the smaller idea visible: an organisation does not only choose *which
+types* it wants, it chooses **a way of describing things**, and those ways have names people already
+argue about. Ardoq's insight is that such a notation is not a feature of the drawing tool but *a
+metamodel you adopt*. So the three standard models are gone as a separate concept and are three of
+nine **frameworks**, in four families:
+
+| Family | Frameworks |
+|---|---|
+| **Notations** | C4 model · UML class model |
+| **Domain and engineering methods** | Domain-driven design · Model-based systems engineering |
+| **Operating models** | IT4IT · SAFe |
+| **Portfolio models** | Application portfolio · Business capability model · Integration and data flow |
+
+A framework carries what a standard model carried — object types with fields and data types,
+relation types with rules — plus the two things that make it a framework rather than a bag of types:
+
+- **Levels.** Most of these are layered, and a type without its level is half a type. C4's four
+  zoom levels; DDD's strategic and tactical halves; MBSE's requirement / functional / physical /
+  verification spine; IT4IT's four value streams; SAFe's portfolio-to-team. The levels are the
+  first thing the panel shows, because they are how somebody recognises their own framework.
+- **Provenance, carried down.** `node_types.framework`, `node_types.level` and
+  `relation_types.framework` (migration 0026 / pg 0019) mean a year later the model can still answer
+  *who said an Aggregate was a thing here* — us, or Eric Evans. Every type in the tree wears a small
+  tag; the detail pane says "declared by C4 model · Container".
+
+**More than one at a time**, which is the whole reason for adopting rather than choosing:
+`framework_adoptions` is a row per workspace per framework, not a column on the workspace. The
+software in C4, the domain in DDD, the funding in SAFe. Where two frameworks want the same type
+name it is declared once and keeps whatever provenance it already had — a framework does not get to
+claim something the organisation had invented for itself just because the names collide. The page
+says it in a sentence: *Models with C4 model and Domain-driven design.*
+
+**Free form is a real answer** and remains the default. A workspace that adopts nothing and lets the
+model grow out of the drawing is using the product exactly as §2.2 intends; the frameworks are for
+teams who already think in one and should not have to retype it.
+
+Adopting is additive by construction, as §5.56 established: nothing renamed, nothing deleted, no
+object touched, and the summary above the button is a plan computed against *this* workspace's live
+model and recomputed server-side at write time. Adopting the same framework twice does nothing.
+**Stopping** deletes the adoption row and nothing else: by then the types may hold hundreds of
+objects, and a modelling decision reversed must not take the estate with it.
+
+Writing nine templates needed rules, or the catalogue would rot the first time somebody added one in
+a hurry — so the rules are unit tests over the catalogue itself, not prose. Every framework must
+name the question it answers and where its practice comes from; must not constrain a relation
+between types it does not itself declare; must place every one of its types at one of its own
+declared levels, or declare no levels; must give every enum a vocabulary; must give every type a
+colour; and must not require more than two fields on any type. Two of those failed on the first run
+and the *templates* were wrong, not the tests:
+
+- **MBSE required three fields on a Requirement**, including `verification method`. True to the
+  discipline and wrong for the tool: the first import of somebody's requirements register never
+  carries it, so every requirement would arrive non-conformant, and a conformance report that is red
+  on arrival is one people learn to ignore (§5.56). It is a closed vocabulary of the standard four
+  and it is optional.
+- **The business capability model declared "levels" that were not levels.** A capability's depth is
+  a property of the *instance* — the `level` field on Business Capability already carries it — and a
+  framework level groups *types*. Two different ideas wearing one word; the model now declares none.
+
+The two failures are the argument for the whole test file: nobody reviewing nine templates by eye
+catches either.
+
+**What this does not do yet.** Adopting C4 gives you its types, its fields, its rules and its levels
+in the model; it does not yet change how a Container is *drawn*. The shape should follow the
+framework — a C4 container showing its technology, a UML class with three compartments, a DDD
+aggregate inside a dashed consistency boundary — and a board should be able to say which framework
+and which level it is drawn at. That is the next piece, and it is drawn in `docs/design/mocks`
+(direction 4).
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2426,7 +2523,7 @@ Interface" in a compliance report is the sentence that makes a reader stop trust
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 90)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 91)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2541,10 +2638,14 @@ Interface" in a compliance report is the sentence that makes a reader stop trust
   type, undeclared relation types and connections no rule allows. Two headline numbers (of what
   could be checked; of the estate that is typed at all), a plain-English verdict, breaches grouped
   by kind with every offender named and linked, and a by-type table. Nothing is ever blocked.
-- Standards tab: three additive starter meta-models (application portfolio, business capability
-  model, integration and data flow) with what each answers and where the practice comes from.
-  Applying one adds only what is missing — never renames, deletes or touches an object — and the
-  summary is a plan computed against this workspace's model, so a second apply is a no-op.
+- Frameworks tab: nine modelling frameworks in four families — C4 and UML class (notations),
+  domain-driven design and model-based systems engineering (domain and engineering methods), IT4IT
+  and SAFe (operating models), and the three portfolio models. Each carries object types with
+  fields, relation types with rules, ordered levels and its provenance. A workspace can adopt
+  several at once and says which in a sentence; every type it brought wears the tag of the
+  framework that declared it. Adopting adds only what is missing — never renames, deletes or
+  touches an object — and a second adopt is a no-op. Stopping removes the statement and leaves the
+  types, which may by then hold objects. Free form remains the default.
 
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
@@ -3297,6 +3398,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | The apply summary is a plan computed against the live model, and recomputed server-side at write time. | Describing the standard would be true of an empty workspace and misleading in every other one. Computing the difference means the sentence is about *this* workspace; recomputing it at write time means a page left open for an hour cannot double-declare. |
 | 2026-09-09 | The article in a generated sentence is chosen from how a type name is said, not how it is spelt. | Type names are the user's words and land mid-sentence in every breach. "is a Interface" in a compliance report is the sentence that makes a reader stop trusting the report, and two rules — a leading acronym is read letter by letter, a leading "u" is "yoo" — cover what an estate actually throws at it. |
 
+| 2026-09-09 | A notation (C4, UML) and an operating model (IT4IT, SAFe) are the same kind of thing as a starter type library, and all of them are "frameworks". | They are all answers to "how does this organisation describe things", they all reduce to types, fields, relation types and rules, and treating them separately would mean two panels, two data models and two vocabularies for one idea. Ardoq's framing — a notation is a metamodel you adopt, not a feature of the drawing tool — is the one that makes the product simpler rather than larger. |
+| 2026-09-09 | A workspace adopts frameworks (plural), recorded in a table, rather than choosing one. | Real organisations use several at once and mean it: the software in C4, the domain in DDD, the funding in SAFe. A single choice would force a false decision, and a boolean on the workspace could not carry when it was taken up or by whom. |
+| 2026-09-09 | A type carries the framework that declared it, and a type that already existed keeps its own provenance. | It answers "who said this was a thing here" a year later, which is the question that makes a model defensible. And a framework must not be able to claim a type the organisation invented for itself just because the names collide — provenance is a fact about history, not a land grab. |
+| 2026-09-09 | Stopping a framework deletes the adoption and nothing else. | By the time somebody changes their mind the types it brought may hold hundreds of objects. Deleting them would make an editorial decision destructive, which is the opposite of the additive contract that makes adopting safe in the first place. |
+| 2026-09-09 | Levels group *types*, never instances. | The business capability model's "levels" were the depth of a capability in a map — a property of the instance, already carried by its `level` field. Two different ideas wearing one word; the catalogue test caught it. A framework level is C4's Container or SAFe's Portfolio: a band the types themselves live in. |
+| 2026-09-09 | MBSE's `verification method` is a closed vocabulary but not required. | Requiring it is true to the discipline and wrong for the tool: no imported requirements register carries it, so every requirement would arrive non-conformant and the conformance report would be red on arrival — which is how a metric teaches people to ignore it (§5.56). |
+| 2026-09-09 | The rules a starter template must obey are unit tests over the catalogue, not review. | Nine templates is already more than anybody checks by eye, and two of them broke a rule on the first run. Grounding, no dangling rules, every type levelled, every enum given a vocabulary, no more than two required fields: each is mechanical, and each is exactly what gets skipped when a tenth framework is added in a hurry. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3310,6 +3419,29 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 91: modelling frameworks.** Rev 90's three "standard models" turn out to be a
+  small case of a bigger idea, and Ardoq names it: a notation is not a feature of the drawing tool,
+  it is *a metamodel you adopt*. So there are now nine frameworks in four families — C4 and UML class
+  as notations, domain-driven design and model-based systems engineering as domain and engineering
+  methods, IT4IT and SAFe as operating models, and the three portfolio models from rev 90 — each
+  with its object types, fields, relation types, rules, **ordered levels** and a note on where its
+  practice comes from. A workspace adopts as many as it likes, because real organisations use
+  several at once and mean it: the software in C4, the domain in DDD, the funding in SAFe. Every
+  type carries the framework that declared it, so a year later the model can still say who said an
+  Aggregate was a thing here; a type that already existed keeps its own provenance, because a
+  framework does not get to claim what the organisation invented for itself. Free form stays the
+  default and is a real answer. Adopting is additive as before — nothing renamed, nothing deleted,
+  no object touched, a second adopt a no-op — and stopping removes only the statement, never the
+  types, which by then may hold hundreds of objects. Nine templates needed rules rather than review,
+  so the rules are unit tests over the catalogue itself: grounding, no dangling relation rules, every
+  type at one of its own levels, every enum given a vocabulary, no more than two required fields.
+  Two failed on the first run and both times the template was wrong — MBSE required a verification
+  method no imported requirements register carries, and the business capability model declared
+  "levels" that were a property of instances rather than of types. Schema: `framework` and `level`
+  on node types, `framework` on relation types, and a `framework_adoptions` table (migration 0026,
+  pg 0019). What it does not do yet is change how a Container is *drawn* — that is the next piece,
+  and direction 4 of the design mocks shows it.
 
 - **2026-09-09 — Rev 90: the meta-model means something.** §5.14 let an organisation declare its
   types, fields, data types, required flags, enum vocabularies and relation rules — and then checked

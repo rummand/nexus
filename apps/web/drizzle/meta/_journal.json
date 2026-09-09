@@ -183,6 +183,13 @@
       "when": 1788936348666,
       "tag": "0025_wise_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1788990159763,
+      "tag": "0026_stormy_fenris",
+      "breakpoints": true
     }
   ]
 }

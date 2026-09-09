@@ -11,8 +11,9 @@ import {
 } from "@/lib/metamodel-actions";
 import { MetaModelDiagram } from "./MetaModelDiagram";
 import { Conformance } from "./Conformance";
-import { StandardModels } from "./StandardModels";
-import type { Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
+import { Frameworks } from "./Frameworks";
+import { framework } from "@/lib/frameworks";
+import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -29,13 +30,13 @@ type Selection = { kind: "node" | "relation"; name: string } | null;
 /** What the corpus says about a type name — precomputed on the server (§5.20). */
 export interface TypeNote { label: string; title: string; url: string; text: string }
 
-export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote>; report: ConformanceReport }) {
+export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report, adopted = [] }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote>; report: ConformanceReport; adopted?: string[] }) {
   const [selected, setSelected] = useState<Selection>(model.nodeTypes[0] ? { kind: "node", name: model.nodeTypes[0].name } : null);
   const [openNodes, setOpenNodes] = useState(true);
   const [openRels, setOpenRels] = useState(true);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"details" | "diagram" | "conformance" | "standards">("details");
+  const [view, setView] = useState<"details" | "diagram" | "conformance" | "frameworks">("details");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +94,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report 
                 <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "node", name: t.name })}>
                   <i style={{ background: t.color }} />
                   <b>{t.name}</b>
+                  <FrameworkChip id={t.framework} />
                   <PresenceDot presence={t.presence} />
                   <small>{t.instances}</small>
                 </button>
@@ -125,6 +127,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report 
                 <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "relation", name: t.name })}>
                   <i className="rel" />
                   <b>{t.name}</b>
+                  <FrameworkChip id={t.framework} />
                   <PresenceDot presence={t.presence} />
                   <small>{t.instances}</small>
                 </button>
@@ -158,7 +161,10 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report 
               <ShieldCheck size={13} /> Conformance
               {report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
             </button>
-            <button type="button" role="tab" className={view === "standards" ? "active" : ""} onClick={() => setView("standards")} data-tab-standards><BookOpen size={13} /> Standards</button>
+            <button type="button" role="tab" className={view === "frameworks" ? "active" : ""} onClick={() => setView("frameworks")} data-tab-frameworks>
+              <BookOpen size={13} /> Frameworks
+              {adopted.length > 0 && <i className="tab-count">{adopted.length}</i>}
+            </button>
           </div>
 
           {error && <p className="form-error">{error}</p>}
@@ -169,8 +175,8 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report 
 
           {view === "conformance" && <Conformance report={report} slug={slug} />}
 
-          {view === "standards" && (
-            <StandardModels model={model} workspaceId={workspaceId} onApplied={() => router.refresh()} />
+          {view === "frameworks" && (
+            <Frameworks model={model} workspaceId={workspaceId} adopted={adopted} onChanged={() => router.refresh()} />
           )}
 
           {view === "details" && !current && <p className="muted">Select a type on the left.</p>}
@@ -212,6 +218,24 @@ const PRESENCE_TITLE: Record<Presence, string> = {
 };
 
 /** Tree rows are narrow, so presence is a dot there rather than a word. */
+/**
+ * Which framework declared a type (§5.57).
+ *
+ * Provenance, not ownership: the chip says where the type came from, and the type is as editable
+ * as any other. Blank for a type this organisation invented or one that grew from the data, which
+ * is most of them in most workspaces and is not a deficiency.
+ */
+function FrameworkChip({ id }: { id: string }) {
+  if (!id) return null;
+  const fw = framework(id);
+  if (!fw) return null;
+  return <i className="meta-framework-chip" title={`Declared by ${fw.name}`}>{fw.id}</i>;
+}
+
+const frameworkName = (id: string) => framework(id)?.name ?? id;
+const levelName = (id: string, level: string) =>
+  framework(id)?.levels.find((l) => l.key === level)?.name ?? level;
+
 function PresenceDot({ presence }: { presence: Presence }) {
   return <i className={`meta-dot ${presence}`} title={PRESENCE_TITLE[presence]} aria-label={presence} />;
 }
@@ -238,7 +262,11 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
       <header>
         <i style={{ background: type.color }} />
         <div>
-          <small>Node type · {type.instances} instance{type.instances === 1 ? "" : "s"}</small>
+          <small>
+            Node type · {type.instances} instance{type.instances === 1 ? "" : "s"}
+            {type.framework && <> · declared by <b>{frameworkName(type.framework)}</b></>}
+            {type.framework && type.level && <> · {levelName(type.framework, type.level)}</>}
+          </small>
           <h2>{type.name}</h2>
         </div>
         <PresenceTag presence={type.presence} />
@@ -251,7 +279,7 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
       */}
       {note && (
         <details className="meta-literature" data-literature>
-          <summary><BookOpen size={12} /> What the literature calls a {type.name.toLowerCase()}</summary>
+          <summary><BookOpen size={12} /> What the literature calls {article(type.name)} {type.name.toLowerCase()}</summary>
           <blockquote>
             {note.text}
             <a href={note.url} target="_blank" rel="noreferrer noopener">{note.label}</a>

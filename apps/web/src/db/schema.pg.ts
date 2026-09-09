@@ -827,6 +827,13 @@ export const nodeTypes = pgTable(
     color: text("color").notNull().default(""),
     /** Optional parent type, so the modeller can build a hierarchy (Application ⊂ IT Component). */
     parentId: text("parent_id"),
+    /**
+     * Which modelling framework declared this type — "c4", "ddd", "safe" — or "" for a type this
+     * organisation invented (§5.57). Provenance, not ownership: the type is editable either way.
+     */
+    framework: text("framework").notNull().default(""),
+    /** The framework level this type belongs at, e.g. "container" in C4. Empty when unlevelled. */
+    level: text("level").notNull().default(""),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
@@ -863,10 +870,40 @@ export const relationTypes = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
+    /** Which framework declared it — see `nodeTypes.framework` (§5.57). */
+    framework: text("framework").notNull().default(""),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
   (t) => [index("relation_types_workspace_idx").on(t.workspaceId), uniqueIndex("relation_types_name_idx").on(t.workspaceId, t.name)],
+);
+
+/**
+ * Which modelling frameworks this workspace has said it models with (§5.57).
+ *
+ * A separate row rather than a flag on the workspace because a workspace can hold several at once
+ * — C4 for the software, DDD for the domain, SAFe for how the work is funded — and because the
+ * interesting facts are per framework: when it was taken up, and by whom. Abandoning one deletes
+ * this row and nothing else: the types it brought may hold data by then, and a modelling decision
+ * reversed should not take the estate with it.
+ */
+export const frameworkAdoptions = pgTable(
+  "framework_adoptions",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** The catalogue id: "c4", "uml-class", "ddd", "mbse", "it4it", "safe", … */
+    frameworkId: text("framework_id").notNull(),
+    adoptedBy: text("adopted_by"),
+    adoptedByName: text("adopted_by_name").notNull().default(""),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [
+    index("framework_adoptions_workspace_idx").on(t.workspaceId),
+    uniqueIndex("framework_adoptions_one_idx").on(t.workspaceId, t.frameworkId),
+  ],
 );
 
 /** "Application —depends on→ Application": which node types a relation type may join. */

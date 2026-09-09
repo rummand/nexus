@@ -53,6 +53,7 @@ export const TRANSFER_ORDER = [
   "node_type_fields",
   "relation_types",
   "relation_rules",
+  "framework_adoptions",
   "change_sets",
   "changes",
   "change_set_dependencies",

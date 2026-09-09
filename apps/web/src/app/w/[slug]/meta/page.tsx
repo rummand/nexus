@@ -21,9 +21,10 @@ export default async function MetaPage({ params }: { params: Promise<{ slug: str
    * the workspace, and shipping the estate to the client to divide it by a model the server already
    * has would be sending the whole graph to answer a question about it (§5.56).
    */
-  const [entities, relations] = await Promise.all([
+  const [entities, relations, adoptions] = await Promise.all([
     db.select().from(s.entities).where(eq(s.entities.workspaceId, workspace.id)),
     db.select().from(s.relations_).where(eq(s.relations_.workspaceId, workspace.id)),
+    db.select().from(s.frameworkAdoptions).where(eq(s.frameworkAdoptions.workspaceId, workspace.id)),
   ]);
   const byId = new Map(entities.map((e) => [e.id, e]));
   const report = conformance(
@@ -39,5 +40,14 @@ export default async function MetaPage({ params }: { params: Promise<{ slug: str
   );
   // The corpus is read on the server and only the matched passage crosses to the client: a
   // meta-model has a dozen types, and the corpus is megabytes.
-  return <MetaModelBuilder model={model} workspaceId={workspace.id} slug={slug} notes={typeNotes(model.nodeTypes.map((t) => t.name))} report={report} />;
+  return (
+    <MetaModelBuilder
+      model={model}
+      workspaceId={workspace.id}
+      slug={slug}
+      notes={typeNotes(model.nodeTypes.map((t) => t.name))}
+      report={report}
+      adopted={adoptions.map((a) => a.frameworkId)}
+    />
+  );
 }

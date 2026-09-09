@@ -13,10 +13,11 @@ const field = (over: Partial<MetaField> & { key: string }): MetaField => ({
   id: `f_${over.key}`, dataType: "text", description: "", required: false, options: [], usage: 0, presence: "declared", ...over,
 });
 const nodeType = (name: string, fields: MetaField[] = [], declared = true): MetaNodeType => ({
-  id: declared ? `nt_${name}` : null, name, description: "", color: "", parentId: null, instances: 0, fields, presence: declared ? "declared" : "undeclared",
+  id: declared ? `nt_${name}` : null, name, description: "", color: "", parentId: null, instances: 0, fields,
+  presence: declared ? "declared" : "undeclared", framework: "", level: "",
 });
 const relType = (name: string, rules: Array<[string, string]> = [], declared = true): MetaRelationType => ({
-  id: declared ? `rt_${name}` : null, name, description: "", instances: 0,
+  id: declared ? `rt_${name}` : null, name, description: "", instances: 0, framework: "",
   rules: rules.map(([fromType, toType], i) => ({ id: `r${i}`, fromType, toType, cardinality: "many-to-many" })),
   observedPairs: [], presence: declared ? "declared" : "undeclared",
 });

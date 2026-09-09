@@ -519,33 +519,53 @@ try {
   assert.ok((await page.locator(".conformance-verdict").innerText()).trim().length > 20,
     "the number is said in words as well, because a percentage is not a verdict");
 
-  // a standard metamodel: what applying it would add, worked out against this workspace
-  await page.click("[data-tab-standards]");
-  await page.waitForSelector("[data-standard-models]");
-  const std = page.locator('[data-standard="integration"]');
-  await std.locator("> button").click();
-  await page.waitForSelector('[data-apply-standard="integration"]');
-  const plan = await std.locator(".standard-apply span").innerText();
-  assert.match(plan, /Adds .*type/, `the plan says what applying would add, not just that it would: ${plan}`);
+  // a modelling framework: what adopting it would add, worked out against this workspace (§5.57)
+  await page.click("[data-tab-frameworks]");
+  await page.waitForSelector("[data-frameworks]");
+  assert.match(await page.locator("[data-adopted-line]").innerText(), /Free form/,
+    "a workspace that has adopted nothing says so, because free form is a real answer");
+  assert.ok((await page.locator("[data-family]").count()) >= 3,
+    "the catalogue is grouped by what kind of thing each framework is");
+  const fw = page.locator('[data-framework="c4"]');
+  await fw.locator("> button").click();
+  await page.waitForSelector('[data-adopt-framework="c4"]');
+  assert.ok((await fw.locator(".framework-levels li").count()) === 4, "C4 shows its four levels");
+  const plan = await fw.locator(".framework-apply span").innerText();
+  assert.match(plan, /Adds .*type/, `the plan says what adopting would add, not just that it would: ${plan}`);
   {
-    // The property that makes a starter model safe on a live workspace: it only ever adds.
+    // The property that makes a framework safe on a live workspace: it only ever adds.
     const before = await page.locator('.meta-tree-item[data-type-kind="node"]').count();
-    await page.click('[data-apply-standard="integration"]');
-    await page.waitForSelector(".standard-ok", { timeout: 60000 });
+    await page.click('[data-adopt-framework="c4"]');
+    await page.waitForSelector(".framework-ok", { timeout: 60000 });
     await page.waitForFunction((n) => document.querySelectorAll('.meta-tree-item[data-type-kind="node"]').length > n,
       before, { timeout: 30000 });
-    assert.ok((await page.locator('.meta-tree-item[data-type-kind="node"]').count()) > before,
-      "applying a standard adds the types it declares");
+    assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model/,
+      "the workspace now says what it models with");
   }
 
-  // …and applying it again does nothing, which is what "additive" has to mean in practice. The
-  // panel is still open on the standard that was just applied, so this is the same summary
-  // recomputing itself against the model it just changed — no second navigation to confuse it.
+  // …and adopting it again does nothing, which is what "additive" has to mean in practice. The
+  // panel is still open on the framework just adopted, so this is the same summary recomputing
+  // itself against the model it just changed — no second navigation to confuse it.
   await page.waitForFunction(
-    () => /already declared/.test(document.querySelector('[data-standard="integration"] .standard-apply span')?.textContent ?? ""),
+    () => /already declared/.test(document.querySelector('[data-framework="c4"] .framework-apply span')?.textContent ?? ""),
     null, { timeout: 30000 });
-  assert.ok(await page.locator('[data-apply-standard="integration"]').isDisabled(),
-    "the button for an already-applied standard is not clickable");
+  assert.ok(await page.locator('[data-abandon-framework="c4"]').count(),
+    "an adopted framework offers to be dropped rather than adopted twice");
+
+  // a second framework alongside the first: the whole point of adopting rather than choosing
+  await page.locator('[data-framework="ddd"] > button').click();
+  await page.waitForSelector('[data-adopt-framework="ddd"]');
+  await page.click('[data-adopt-framework="ddd"]');
+  await page.waitForSelector(".framework-ok", { timeout: 60000 });
+  await page.waitForFunction(
+    () => /and/.test(document.querySelector("[data-adopted-line]")?.textContent ?? ""),
+    null, { timeout: 30000 });
+  assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model and Domain-driven design/,
+    "a workspace can model with more than one framework at once");
+
+  // every type a framework brought says which one it came from
+  assert.ok((await page.locator(".meta-framework-chip").count()) > 8,
+    "types carry the provenance of the framework that declared them");
 
   // now that types are declared, conformance has something to check — and names the offenders
   await page.click("[data-tab-conformance]");

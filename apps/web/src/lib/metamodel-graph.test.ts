@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MetaModel } from "./metamodel";
 import { typeGraph, typeGraphSummary } from "./metamodel-graph";
 
-const node = (name: string, instances = 1) => ({ id: name, name, description: "", color: "#000", parentId: null, instances, fields: [], presence: "declared" as const });
+const node = (name: string, instances = 1) => ({ id: name, name, description: "", color: "#000", parentId: null, instances, fields: [], presence: "declared" as const, framework: "", level: "" });
 
 const model: MetaModel = {
   nodeTypes: [node("Application", 5), node("Server", 2), node("Capability", 0)],
@@ -14,19 +14,19 @@ const model: MetaModel = {
         { fromType: "Application", toType: "Application", count: 2, declared: true },
         { fromType: "Application", toType: "Server", count: 1, declared: false }, // breaks the rule
       ],
-      presence: "declared",
+      presence: "declared", framework: "",
     },
     {
       id: null, name: "runs on", description: "", instances: 4,
       rules: [], // no rules → nothing can violate
       observedPairs: [{ fromType: "Application", toType: "Server", count: 4, declared: false }],
-      presence: "undeclared",
+      presence: "undeclared", framework: "",
     },
     {
       id: "rt3", name: "realises", description: "", instances: 0,
       rules: [{ id: "r3", fromType: "Application", toType: "Capability", cardinality: "many-to-many" }],
       observedPairs: [], // declared but unused
-      presence: "unused",
+      presence: "unused", framework: "",
     },
   ],
   totals: { entities: 7, relations: 7, undeclaredNodeTypes: 0, undeclaredRelationTypes: 1, violations: 1 },
@@ -58,7 +58,7 @@ describe("typeGraph", () => {
     const withGhost: MetaModel = {
       ...model,
       nodeTypes: [node("Application")],
-      relationTypes: [{ id: "x", name: "hosts", description: "", instances: 0, rules: [{ id: "rx", fromType: "Application", toType: "Ghost", cardinality: "many-to-many" }], observedPairs: [], presence: "unused" }],
+      relationTypes: [{ id: "x", name: "hosts", description: "", instances: 0, rules: [{ id: "rx", fromType: "Application", toType: "Ghost", cardinality: "many-to-many" }], observedPairs: [], presence: "unused", framework: "" }],
     };
     const g = typeGraph(withGhost);
     expect(g.nodes.map((n) => n.name).sort()).toEqual(["Application", "Ghost"]);

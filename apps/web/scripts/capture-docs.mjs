@@ -367,16 +367,16 @@ try {
   });
   // Standards, then conformance — in that order, because a model nobody declared has nothing to
   // conform to, and a screenshot of "nothing to report" teaches nobody anything (§5.56).
-  await shot("meta-standards", async () => {
-    await page.click("[data-tab-standards]");
-    await page.waitForSelector("[data-standard-models]");
-    await page.click('[data-standard="application-portfolio"] > button');
-    await page.waitForSelector('[data-apply-standard="application-portfolio"]');
+  await shot("meta-frameworks", async () => {
+    await page.click("[data-tab-frameworks]");
+    await page.waitForSelector("[data-frameworks]");
+    await page.click('[data-framework="c4"] > button');
+    await page.waitForSelector('[data-adopt-framework="c4"]');
     await page.waitForTimeout(500);
   });
   await shot("meta-conformance", async () => {
-    await page.click('[data-apply-standard="application-portfolio"]');
-    await page.waitForSelector(".standard-ok", { timeout: 60_000 });
+    await page.click('[data-adopt-framework="c4"]');
+    await page.waitForSelector(".framework-ok", { timeout: 60_000 });
     await page.waitForTimeout(2500);
     await page.click("[data-tab-conformance]");
     await page.waitForSelector("[data-breach-group]", { timeout: 30_000 });

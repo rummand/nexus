@@ -1918,6 +1918,8 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-tree-label i.rel { background: transparent; border-top: 2px solid #94a3b8; border-radius: 0; height: 0; width: 12px; }
 .meta-tree-label b { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta-tree-label small { color: #8a95a8; font-variant-numeric: tabular-nums; font-weight: 800; min-width: 20px; text-align: right; }
+/* more specific than `.meta-tree-label i`, which sizes every icon in the row to a 10px swatch */
+.meta-tree-label i.meta-framework-chip { flex: 0 0 auto; height: auto; line-height: 1.5; width: auto; }
 /* more specific than `.meta-tree-label i`, which would otherwise square these off */
 .meta-tree-label i.meta-dot { border-radius: 50%; flex: 0 0 auto; height: 7px; width: 7px; }
 .meta-tree-label i.meta-dot.declared { background: #17794a; }
@@ -3238,27 +3240,59 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .conformance-foot { border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; line-height: 1.55; margin: 0; padding-top: 10px; }
 .tab-count { background: #fef3c7; border-radius: 999px; color: #92400e; font-size: 10px; font-style: normal; font-weight: 900; margin-left: 5px; padding: 1px 6px; }
 
-.standard-models { display: grid; gap: 10px; }
-.standard-models > .muted { font-size: 12.5px; line-height: 1.55; margin: 0; }
-.standard-model { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.standard-model.open { border-color: #b8d7ff; }
-.standard-model > button { align-items: center; background: #fff; border: 0; display: flex; gap: 10px; padding: 11px 12px; text-align: left; width: 100%; }
-.standard-model > button:hover { background: #f7f9fc; }
-.standard-model > button > svg { color: var(--blue); flex: 0 0 auto; }
-.standard-model > button > span { flex: 1; }
-.standard-model b { color: var(--ink); display: block; font-size: 13px; }
-.standard-model small { color: var(--muted); display: block; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
-.standard-done { align-items: center; background: #eaf7ee; border-radius: 999px; color: #15803d; display: inline-flex; font-size: 10.5px; font-style: normal; font-weight: 800; gap: 4px; padding: 3px 9px; }
-.standard-body { border-top: 1px solid var(--line); display: grid; gap: 10px; padding: 12px; }
-.standard-answers { color: var(--ink); font-size: 12.5px; line-height: 1.5; margin: 0; }
-.standard-grounding { background: #f7f9fc; border-left: 3px solid #dbe4ef; color: var(--muted); font-size: 11.5px; line-height: 1.5; margin: 0; padding: 7px 10px; }
-.standard-lists { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
-.standard-lists h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em; margin: 0 0 5px; text-transform: uppercase; }
-.standard-lists ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
-.standard-lists li { display: grid; grid-template-columns: auto 1fr; column-gap: 6px; }
-.standard-lists li > span { border-radius: 3px; grid-row: span 2; height: 11px; margin-top: 3px; width: 11px; }
-.standard-lists li b { font-size: 12px; }
-.standard-lists li small { font-size: 11px; grid-column: -2; }
-.standard-apply { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; padding-top: 10px; }
-.standard-apply span { color: var(--ink); font-size: 12px; font-weight: 700; }
-.standard-ok { color: #15803d; font-size: 12px; font-weight: 700; margin: 0; }
+/* ---- modelling frameworks (§5.57) --------------------------------------------------------
+   The Standards panel of §5.56 grown into a catalogue: families, levels and provenance. Names
+   changed with the concept rather than being kept out of nostalgia — a class called `standard-*`
+   describing a framework is the beginning of a codebase nobody can search. */
+.frameworks { display: grid; gap: 12px; }
+.frameworks > .muted { font-size: 12.5px; line-height: 1.55; margin: 0; }
+.framework-adopted { align-items: center; background: #f2f7fd; border: 1px solid #d6e6f9; border-radius: 10px;
+  color: var(--ink); display: flex; font-size: 12.5px; font-weight: 700; gap: 8px; margin: 0; padding: 9px 12px; }
+.framework-adopted > svg { color: var(--blue); flex: 0 0 auto; }
+.framework-family { display: grid; gap: 8px; }
+.framework-family > h4 { color: var(--ink); font-size: 12px; font-weight: 900; letter-spacing: 0.04em;
+  margin: 6px 0 0; text-transform: uppercase; }
+.framework-family > h4 small { color: var(--muted); display: block; font-size: 11.5px; font-weight: 500;
+  letter-spacing: 0; margin-top: 3px; text-transform: none; }
+.framework { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.framework.open { border-color: #b8d7ff; }
+.framework > button { align-items: center; background: #fff; border: 0; display: flex; gap: 10px;
+  padding: 11px 12px; text-align: left; width: 100%; }
+.framework > button:hover { background: #f7f9fc; }
+.framework > button > svg { color: var(--blue); flex: 0 0 auto; }
+.framework > button > span { flex: 1; }
+.framework b { color: var(--ink); display: block; font-size: 13px; }
+.framework small { color: var(--muted); display: block; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
+.framework-badge { align-items: center; background: #eaf7ee; border-radius: 999px; color: #15803d;
+  display: inline-flex; font-size: 10.5px; font-style: normal; font-weight: 800; gap: 4px; padding: 3px 9px; }
+.framework-body { border-top: 1px solid var(--line); display: grid; gap: 10px; padding: 12px; }
+.framework-answers { color: var(--ink); font-size: 12.5px; line-height: 1.5; margin: 0; }
+.framework-grounding { background: #f7f9fc; border-left: 3px solid #dbe4ef; color: var(--muted);
+  font-size: 11.5px; line-height: 1.5; margin: 0; padding: 7px 10px; }
+.framework-levels { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.framework-levels li { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; }
+.framework-levels i { align-items: center; background: #eef3fa; border-radius: 5px; color: var(--muted);
+  display: flex; font-size: 10px; font-style: normal; font-weight: 800; grid-row: span 2; height: 18px;
+  justify-content: center; margin-top: 2px; }
+.framework-levels b { font-size: 12px; }
+.framework-levels small { grid-column: -2; }
+.framework-lists { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+.framework-lists h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em;
+  margin: 0 0 5px; text-transform: uppercase; }
+.framework-lists ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
+.framework-lists li { display: grid; grid-template-columns: auto auto 1fr; column-gap: 6px; }
+.framework-lists li > span { border-radius: 3px; grid-row: span 2; height: 11px; margin-top: 3px; width: 11px; }
+.framework-lists li b { font-size: 12px; }
+.framework-lists li em { color: var(--quiet); font-size: 10px; font-style: normal; font-weight: 700;
+  letter-spacing: 0.03em; text-transform: uppercase; }
+.framework-lists li small { grid-column: -2; font-size: 11px; }
+.framework-apply { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap;
+  gap: 10px; justify-content: space-between; padding-top: 10px; }
+.framework-apply span { color: var(--ink); font-size: 12px; font-weight: 700; }
+.framework-apply .link-button { align-items: center; display: inline-flex; gap: 5px; }
+.framework-ok { color: #15803d; font-size: 12px; font-weight: 700; margin: 0; }
+.framework-foot { font-size: 11.5px; line-height: 1.5; margin: 0; }
+/* The provenance chip in the type tree: lower-case, quiet, and the id rather than the full name,
+   because the tree row is already carrying a colour, a name, a presence dot and a count. */
+.meta-framework-chip { background: #eef2f7; border-radius: 4px; color: #6f7b8e; font-size: 9.5px;
+  font-style: normal; font-weight: 800; letter-spacing: 0.04em; padding: 2px 5px; text-transform: uppercase; }

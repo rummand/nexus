@@ -9,7 +9,7 @@ import { deny } from "@/lib/auth/guard";
 import { remembering } from "./history/record";
 import { currentActor } from "./history/current";
 import { metaModel } from "./metamodel";
-import { planApply, standardModel, type ApplyPlan } from "./metamodel-standards";
+import { framework, planApply, type ApplyPlan } from "./frameworks";
 
 
 /**
@@ -274,44 +274,49 @@ export async function deleteRule(id: string) {
 }
 
 /**
- * Apply a standard metamodel (§5.56).
+ * Adopt a modelling framework (§5.57).
  *
  * Purely additive, by construction rather than by care: everything already declared is left exactly
  * as it is, including its description and its fields, because a workspace's own words beat a
  * template's. That is what makes this safe to offer to a workspace that has been running for a year
- * rather than only to an empty one — and it means applying the same standard twice is a no-op.
+ * rather than only to an empty one — and it means adopting the same framework twice is a no-op.
  *
  * The plan is worked out twice: once for the screen so somebody can read what will happen, and once
  * here against the model as it stands at the moment of the write, because the two can be minutes
  * apart and the second one is the one that must be true.
+ *
+ * Types that already exist keep whatever provenance they had. A framework does not get to claim
+ * something this organisation had already invented for itself just because the names collide.
  */
-export async function applyStandardModel(workspaceId: string, standardId: string): Promise<{ applied: ApplyPlan } | { error: string }> {
+export async function adoptFramework(workspaceId: string, frameworkId: string): Promise<{ applied: ApplyPlan } | { error: string }> {
   const no = await deny(workspaceId, "graph.edit");
   if (no) return no;
-  const std = standardModel(standardId);
-  if (!std) return { error: "That standard model is not one of the ones on offer." };
+  const fw = framework(frameworkId);
+  if (!fw) return { error: "That framework is not one of the ones on offer." };
 
   const db = await getDb();
   const before = await metaModel(db, workspaceId);
-  const plan = planApply(std, before);
-  if (plan.noop) return { applied: plan };
+  const plan = planApply(fw, before);
 
   const nodeTypeIds = new Map<string, string>();
   for (const t of before.nodeTypes) if (t.id) nodeTypeIds.set(t.name.trim().toLowerCase(), t.id);
   const relTypeIds = new Map<string, string>();
   for (const t of before.relationTypes) if (t.id) relTypeIds.set(t.name.trim().toLowerCase(), t.id);
 
-  for (const t of std.nodeTypes) {
+  for (const t of fw.nodeTypes) {
     const at = t.name.trim().toLowerCase();
     if (!nodeTypeIds.has(at)) {
       const id = `nt_${nanoid(10)}`;
-      await db.insert(s.nodeTypes).values({ id, workspaceId, name: t.name, description: t.description, color: t.color });
+      await db.insert(s.nodeTypes).values({
+        id, workspaceId, name: t.name, description: t.description, color: t.color,
+        framework: fw.id, level: t.level ?? "",
+      });
       nodeTypeIds.set(at, id);
     }
   }
 
-  /* Parents second: a type's parent may be a type this same standard has only just created. */
-  for (const t of std.nodeTypes) {
+  /* Parents second: a type's parent may be a type this same framework has only just created. */
+  for (const t of fw.nodeTypes) {
     if (!t.parent) continue;
     const id = nodeTypeIds.get(t.name.trim().toLowerCase());
     const parentId = nodeTypeIds.get(t.parent.trim().toLowerCase());
@@ -320,7 +325,7 @@ export async function applyStandardModel(workspaceId: string, standardId: string
     if (row && !row.parentId) await db.update(s.nodeTypes).set({ parentId, updatedAt: now() }).where(eq(s.nodeTypes.id, id));
   }
 
-  for (const t of std.nodeTypes) {
+  for (const t of fw.nodeTypes) {
     const typeId = nodeTypeIds.get(t.name.trim().toLowerCase());
     if (!typeId) continue;
     const have = await db.select().from(s.nodeTypeFields).where(eq(s.nodeTypeFields.nodeTypeId, typeId));
@@ -336,12 +341,12 @@ export async function applyStandardModel(workspaceId: string, standardId: string
     }
   }
 
-  for (const t of std.relationTypes) {
+  for (const t of fw.relationTypes) {
     const at = t.name.trim().toLowerCase();
     let typeId = relTypeIds.get(at);
     if (!typeId) {
       typeId = `rt_${nanoid(10)}`;
-      await db.insert(s.relationTypes).values({ id: typeId, workspaceId, name: t.name, description: t.description });
+      await db.insert(s.relationTypes).values({ id: typeId, workspaceId, name: t.name, description: t.description, framework: fw.id });
       relTypeIds.set(at, typeId);
     }
     const have = await db.select().from(s.relationRules).where(eq(s.relationRules.relationTypeId, typeId));
@@ -354,6 +359,39 @@ export async function applyStandardModel(workspaceId: string, standardId: string
     }
   }
 
+  /*
+   * The adoption is recorded even when the plan was a no-op: "we model with C4" is a statement
+   * about this organisation, and it can be true of a workspace that happened to have declared
+   * every one of those types by hand first.
+   */
+  const already = await db.select().from(s.frameworkAdoptions)
+    .where(and(eq(s.frameworkAdoptions.workspaceId, workspaceId), eq(s.frameworkAdoptions.frameworkId, fw.id)));
+  if (already.length === 0) {
+    const actor = await currentActor();
+    await db.insert(s.frameworkAdoptions).values({
+      id: `fwa_${nanoid(10)}`, workspaceId, frameworkId: fw.id,
+      adoptedBy: actor.id, adoptedByName: actor.name,
+    });
+  }
+
   await touched(workspaceId);
   return { applied: plan };
+}
+
+/**
+ * Stop saying this workspace models with a framework.
+ *
+ * Deletes the adoption and nothing else. By the time somebody changes their mind the types it
+ * brought may hold hundreds of objects, and a modelling decision reversed must not take the estate
+ * with it — so the types stay, still marked with where they came from, and can be deleted one at a
+ * time by somebody who has looked at what is in them.
+ */
+export async function abandonFramework(workspaceId: string, frameworkId: string) {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
+  const db = await getDb();
+  await db.delete(s.frameworkAdoptions)
+    .where(and(eq(s.frameworkAdoptions.workspaceId, workspaceId), eq(s.frameworkAdoptions.frameworkId, frameworkId)));
+  await touched(workspaceId);
+  return { ok: true };
 }
