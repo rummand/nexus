@@ -367,6 +367,17 @@ try {
   });
   // Standards, then conformance — in that order, because a model nobody declared has nothing to
   // conform to, and a screenshot of "nothing to report" teaches nobody anything (§5.56).
+  await shot("meta-layers", async () => {
+    await page.click("[data-tab-layers]");
+    await page.waitForSelector("[data-layers]");
+    await page.waitForTimeout(900);
+    // Adopt the reading first: a screenshot of an empty stack teaches nobody what a stack is.
+    if (await page.locator("[data-adopt-layering]").count()) {
+      await page.click("[data-adopt-layering]");
+      await page.waitForSelector("[data-layering-ok]", { timeout: 60_000 });
+      await page.waitForTimeout(2500);
+    }
+  });
   await shot("meta-frameworks", async () => {
     await page.click("[data-tab-frameworks]");
     await page.waitForSelector("[data-frameworks]");

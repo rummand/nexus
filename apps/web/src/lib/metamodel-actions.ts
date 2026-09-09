@@ -9,7 +9,7 @@ import { deny } from "@/lib/auth/guard";
 import { remembering } from "./history/record";
 import { currentActor } from "./history/current";
 import { metaModel } from "./metamodel";
-import { framework, planApply, type ApplyPlan } from "./frameworks";
+import { framework, planApply, type ApplyPlan, type Framework } from "./frameworks";
 
 
 /**
@@ -273,6 +273,13 @@ export async function deleteRule(id: string) {
   return { ok: true };
 }
 
+/** The workspace layer a framework's type belongs in, or null when the framework is unlayered. */
+function layerIdFor(fw: Framework, layerIds: Map<string, string>, layer: string | undefined): string | null {
+  if (!layer) return null;
+  const named = fw.layers.find((l) => l.key === layer);
+  return named ? layerIds.get(named.name.trim().toLowerCase()) ?? null : null;
+}
+
 /**
  * Adopt a modelling framework (§5.57).
  *
@@ -303,16 +310,51 @@ export async function adoptFramework(workspaceId: string, frameworkId: string): 
   const relTypeIds = new Map<string, string>();
   for (const t of before.relationTypes) if (t.id) relTypeIds.set(t.name.trim().toLowerCase(), t.id);
 
+  /*
+   * The framework's layers, first, because its types are placed in them (§5.58).
+   *
+   * A layer whose name the workspace already has is reused rather than duplicated: two frameworks
+   * that both call a band "Business" mean the same band, and the alternative is a stack with the
+   * same word in it twice. Position is appended, so an existing stack keeps its order and the new
+   * bands land underneath rather than shuffling what somebody already arranged.
+   */
+  const layerIds = new Map<string, string>();
+  for (const l of before.layers) layerIds.set(l.name.trim().toLowerCase(), l.id);
+  let nextPosition = before.layers.reduce((n, l) => Math.max(n, l.position + 1), 0);
+  for (const l of fw.layers) {
+    const at = l.name.trim().toLowerCase();
+    if (layerIds.has(at)) continue;
+    const id = `lyr_${nanoid(10)}`;
+    await db.insert(s.layers).values({
+      id, workspaceId, name: l.name, description: l.blurb, source: fw.id, position: nextPosition++,
+    });
+    layerIds.set(at, id);
+  }
+
   for (const t of fw.nodeTypes) {
     const at = t.name.trim().toLowerCase();
     if (!nodeTypeIds.has(at)) {
       const id = `nt_${nanoid(10)}`;
       await db.insert(s.nodeTypes).values({
         id, workspaceId, name: t.name, description: t.description, color: t.color,
-        framework: fw.id, level: t.level ?? "",
+        framework: fw.id, layerId: layerIdFor(fw, layerIds, t.layer),
       });
       nodeTypeIds.set(at, id);
     }
+  }
+
+  /*
+   * A type that already existed keeps its own name, description and fields — but if nobody has put
+   * it in a layer, the framework's opinion is better than none. Placing an unplaced type is as
+   * additive as adding a missing field; moving a placed one would not be.
+   */
+  for (const t of fw.nodeTypes) {
+    const layerId = layerIdFor(fw, layerIds, t.layer);
+    if (!layerId) continue;
+    const id = nodeTypeIds.get(t.name.trim().toLowerCase());
+    if (!id) continue;
+    const [row] = await db.select().from(s.nodeTypes).where(eq(s.nodeTypes.id, id));
+    if (row && !row.layerId) await db.update(s.nodeTypes).set({ layerId, updatedAt: now() }).where(eq(s.nodeTypes.id, id));
   }
 
   /* Parents second: a type's parent may be a type this same framework has only just created. */

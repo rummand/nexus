@@ -830,8 +830,8 @@ export const nodeTypes = sqliteTable(
      * organisation invented (§5.57). Provenance, not ownership: the type is editable either way.
      */
     framework: text("framework").notNull().default(""),
-    /** The framework level this type belongs at, e.g. "container" in C4. Empty when unlevelled. */
-    level: text("level").notNull().default(""),
+    /** Which band of the stack it sits in (§5.58). Null for a type nobody has placed. */
+    layerId: text("layer_id").references(() => layers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
@@ -870,10 +870,46 @@ export const relationTypes = sqliteTable(
     description: text("description").notNull().default(""),
     /** Which framework declared it — see `nodeTypes.framework` (§5.57). */
     framework: text("framework").notNull().default(""),
+    /**
+     * The band this relation type belongs to as vocabulary (§5.58). Optional and often empty: most
+     * relation types *cross* layers, and which two they cross is derivable from their rules.
+     */
+    layerId: text("layer_id").references(() => layers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
   (t) => [index("relation_types_workspace_idx").on(t.workspaceId), uniqueIndex("relation_types_name_idx").on(t.workspaceId, t.name)],
+);
+
+/**
+ * A band of the stack (§5.58).
+ *
+ * Layers group node types and relation types into an ordered pile — ArchiMate's Business over
+ * Application over Technology being the case everybody knows. Three things can create one and the
+ * row says which: a framework brought it, somebody drew it, or an agent read it out of the estate's
+ * own dependency directions (§2.2). The third is the one the product is actually about.
+ *
+ * `position` is 0 at the top. Kept as a plain integer rather than a linked list because a stack is
+ * re-ordered wholesale far more often than one band is moved.
+ */
+export const layers = sqliteTable(
+  "layers",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    color: text("color").notNull().default(""),
+    /** 0 is the top of the stack. */
+    position: integer("position").notNull().default(0),
+    /** "" drawn by hand · a framework id · "agent" when inferred from the data. */
+    source: text("source").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("layers_workspace_idx").on(t.workspaceId), uniqueIndex("layers_name_idx").on(t.workspaceId, t.name)],
 );
 
 /**
@@ -925,6 +961,8 @@ export type NodeType = typeof nodeTypes.$inferSelect;
 export type NodeTypeField = typeof nodeTypeFields.$inferSelect;
 export type RelationType = typeof relationTypes.$inferSelect;
 export type RelationRule = typeof relationRules.$inferSelect;
+export type LayerRow = typeof layers.$inferSelect;
+export type FrameworkAdoptionRow = typeof frameworkAdoptions.$inferSelect;
 
 // ---- change sets: the model in time ----------------------------------------
 // The graph is the estate as it is. A *change set* is a named, dated set of intentions about it —

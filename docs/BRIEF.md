@@ -2486,6 +2486,73 @@ aggregate inside a dashed consistency boundary — and a board should be able to
 and which level it is drawn at. That is the next piece, and it is drawn in `docs/design/mocks`
 (direction 4).
 
+### 5.58 Layers: a stack the data can propose (v0.2)
+
+A layering is the one part of an EA model everybody arrives already having an opinion about —
+business over application over technology — and the one most tools make you configure before you
+have any data to configure it from. **Layers** group node types and relation types into an ordered
+stack (`layers`, migration 0027–0028 / pg 0020–0021, with `layer_id` on both type tables).
+
+Three things can create a band, and the row says which:
+
+| Source | |
+|---|---|
+| **By hand** | Somebody typed it. |
+| **A framework** | §5.57's per-framework `levels` were always layers; they are the same idea and are now the same rows. Adopting ArchiMate, C4, IT4IT or SAFe brings its bands and places its types. |
+| **From the data** | The agent read the stack out of the estate. |
+
+The third is why this rev exists. §2.2 says the organisation's data describes its meta-model, and a
+layering is a place where that is unusually easy to mean literally: **direction of dependency is
+already in the graph**. If nineteen connections run Application → Server and none run back, Server
+is underneath — not a guess about names, a fact about edges. `src/lib/layers/infer.ts` sums the
+observed connections between every ordered pair of kinds, keeps the dominant direction, breaks any
+remaining cycle by dropping its weakest edge, and ranks by longest path from the kinds nothing
+points at. Equal rank is the same band.
+
+Every band carries the counts that put it there — *"3 of the 5 connections between this band and the
+one above run downward"* — and the reading reports what it had to decide for itself: a near-tie
+(*"6 connections against 5, close enough to be worth checking"*), an edge dropped to break a loop,
+and any kind nothing connects at all, which the data simply cannot place. Under six connections it
+declines to read a stack rather than doing arithmetic on noise.
+
+**Only the name is guessed, and only when the data agrees with it.** A small word list puts
+Business, Application or Technology on a band so it arrives readable. Two rules keep that from
+becoming a lookup table wearing the vision's clothes:
+
+- The list may never decide *what is in* a band. Naming a band "Technology" because it holds Server
+  and Database is a convenience; putting Server and Database in the same band is a finding.
+- Conventional names are accepted **all or nothing**, top to bottom. If the estate has put
+  infrastructure above the applications — and estates do — then "Technology" at the top would import
+  a claim the data does not make, and dropping only the offending name leaves a stack that still
+  *looks* conventional and is not. So either the whole reading agrees with the conventional order,
+  or every band is named after its own largest type: duller, and always true. On the seeded estate
+  it is the second case, and the bands come out IT Component / Application / Business Capability.
+
+Accepting the reading is additive like everything else that writes a model: a band the workspace
+already has is reused, and a type somebody placed by hand is left alone — an agent that overwrites a
+person's decision is one people turn off. A kind that has never been declared *is* declared as part
+of it, which is the honest consequence rather than a side effect to hide: a kind that is not a type
+cannot be in a layer, and the button says so.
+
+**The mirror is the more useful half.** Once a stack exists, `upwardFlows` lists every connection
+running up it, with counts: *"2 connections run Application → IT Component, which is Application
+reaching up into IT Component."* Either the connection is wrong or a type is in the wrong band. As
+with conformance (§5.56), nothing is blocked.
+
+And the type diagram becomes the stack: with layers present the force simulation decides *x* only
+and the band decides *y*, so an edge pointing upward looks like an edge pointing upward. Types in no
+layer sit below the stack in a dashed band rather than being quietly dropped to the bottom.
+
+**ArchiMate (core)** joins the catalogue with this — ten of its ~60 elements over four bands. It is
+the layered EA language and the reason this section exists; shipping layers without it would have
+been odd.
+
+Two bugs the browser found that no unit test had asked about, both now tests. The word list gave two
+different bands the same name, which a unique index refuses — the bigger band keeps the word and the
+other is named after its largest type. And accepting a reading placed nothing at all, because every
+kind in the seeded estate is undeclared and there was no row to put a `layer_id` on; that is what
+the declaring step above is for.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2523,7 +2590,7 @@ and which level it is drawn at. That is the next piece, and it is drawn in `docs
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 91)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 92)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2638,9 +2705,14 @@ and which level it is drawn at. That is the next piece, and it is drawn in `docs
   type, undeclared relation types and connections no rule allows. Two headline numbers (of what
   could be checked; of the estate that is typed at all), a plain-English verdict, breaches grouped
   by kind with every offender named and linked, and a by-type table. Nothing is ever blocked.
-- Frameworks tab: nine modelling frameworks in four families — C4 and UML class (notations),
-  domain-driven design and model-based systems engineering (domain and engineering methods), IT4IT
-  and SAFe (operating models), and the three portfolio models. Each carries object types with
+- Layers tab: an ordered stack grouping object types and relation types, brought by a framework,
+  drawn by hand, or **read out of the estate** — the agent ranks the kinds by the direction of the
+  connections that actually exist and shows the counts behind every band, the near-ties, the edges
+  it dropped to break a loop, and the kinds the data cannot place. Accepting it is additive.
+  Once a stack exists, every connection running up it is listed. The type diagram draws the bands.
+- Frameworks tab: ten modelling frameworks in four families — ArchiMate (core), C4 and UML class
+  (notations), domain-driven design and model-based systems engineering (domain and engineering
+  methods), IT4IT and SAFe (operating models), and the three portfolio models. Each carries object types with
   fields, relation types with rules, ordered levels and its provenance. A workspace can adopt
   several at once and says which in a sentence; every type it brought wears the tag of the
   framework that declared it. Adopting adds only what is missing — never renames, deletes or
@@ -3406,6 +3478,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | MBSE's `verification method` is a closed vocabulary but not required. | Requiring it is true to the discipline and wrong for the tool: no imported requirements register carries it, so every requirement would arrive non-conformant and the conformance report would be red on arrival — which is how a metric teaches people to ignore it (§5.56). |
 | 2026-09-09 | The rules a starter template must obey are unit tests over the catalogue, not review. | Nine templates is already more than anybody checks by eye, and two of them broke a rule on the first run. Grounding, no dangling rules, every type levelled, every enum given a vocabulary, no more than two required fields: each is mechanical, and each is exactly what gets skipped when a tenth framework is added in a hurry. |
 
+| 2026-09-09 | A framework's "levels" and a workspace's "layers" are one concept, so §5.57's levels became rows in the new `layers` table. | They were the same idea a week apart: C4's four zoom levels and ArchiMate's four bands are both an ordered grouping of types. Keeping both would have meant a type carrying two kinds of position, and the first person to ask which one the diagram used would have found the answer was "it depends". |
+| 2026-09-09 | The layering an agent proposes is derived from the direction of observed connections, never from type names. | It is the one place where §2.2 — the organisation's data describes its meta-model — can be meant completely literally, because dependency direction is already in the graph and nothing has to be guessed. A layering derived from names would be a lookup table with an agent's name on it. |
+| 2026-09-09 | A conventional layer name is accepted all-or-nothing, top to bottom. | Dropping only the name that contradicts the order leaves a stack that still reads as the conventional one and is not, which is worse than having no familiar names at all. Either the reading confirms the convention throughout — in which case the familiar words are evidence — or every band is named after its own largest type. |
+| 2026-09-09 | Accepting an inferred layering declares the kinds it places. | A kind that only grew from the data has no row to carry a `layer_id`, so placing it means declaring it. Hiding that would make one button do two things silently; saying it makes it the honest consequence of accepting a layering, and it is additive either way. |
+| 2026-09-09 | Deleting a layer unplaces its types rather than deleting them. | A layer is an opinion about the model, and withdrawing an opinion must not delete the things it was about — the same rule as abandoning a framework (§5.57). The foreign key does it with `on delete set null`. |
+| 2026-09-09 | The type diagram takes its vertical position from the layer and only its horizontal from the force simulation. | A layered model's whole claim is that dependencies run downward, and a scatter cannot show that claim being kept or broken. Once the bands are drawn, an upward edge is visible as an upward edge without anybody reading a list. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3419,6 +3498,28 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 92: layers, and a stack the data can propose.** Layers group object types and
+  relation types into an ordered pile — the business-over-application-over-technology idea everybody
+  arrives with. Three things can create a band and the row says which: somebody typed it, a
+  framework brought it (§5.57's per-framework levels were always layers, and are now the same rows),
+  or **the agent read it out of the estate**. The last is the point. Direction of dependency is
+  already in the graph, so if nineteen connections run Application → Server and none run back, Server
+  is underneath — a fact about edges rather than a guess about names. The engine sums the observed
+  connections between every ordered pair of kinds, keeps the dominant direction, breaks a cycle by
+  dropping its weakest edge, and ranks by longest path; every band shows the counts that put it
+  there, and it reports the near-ties, the edges it had to drop and the kinds nothing connects. Under
+  six connections it declines rather than doing arithmetic on noise. A small word list may put
+  Business or Technology on a band, but it can never decide what is *in* one, and the familiar names
+  are accepted only if the whole reading agrees with the conventional order — otherwise every band is
+  named after its own largest type, which is duller and always true. Accepting is additive: a band
+  you have is reused, a type you placed yourself stays put, and a kind that was never declared is
+  declared, because a kind that is not a type cannot be in a layer. The mirror is the more useful
+  half — once a stack exists, every connection running *up* it is listed with its count, and nothing
+  is blocked. The type diagram now draws the bands, so an upward edge looks upward. ArchiMate (core)
+  joins the framework catalogue as the tenth entry. Two bugs came out of the browser and are now
+  tests: two bands given the same name, which a unique index refuses, and an adoption that placed
+  nothing because every kind in the seed was undeclared.
 
 - **2026-09-09 — Rev 91: modelling frameworks.** Rev 90's three "standard models" turn out to be a
   small case of a bigger idea, and Ardoq names it: a notation is not a feature of the drawing tool,

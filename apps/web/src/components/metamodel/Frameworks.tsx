@@ -14,7 +14,7 @@ import { abandonFramework, adoptFramework } from "@/lib/metamodel-actions";
  * somebody else's spreadsheet. But the deeper thing an architect chooses is not a set of types —
  * it is a *way of describing systems*, and those have names: C4, UML, DDD, SysML, IT4IT, SAFe.
  *
- * So each entry says what question it answers, where the practice comes from, what its levels are,
+ * So each entry says what question it answers, where the practice comes from, what its layers are,
  * and exactly what adopting it would add — worked out against the model as it stands, so the answer
  * is true for *this* workspace rather than for an empty one. More than one can be adopted: the
  * software drawn in C4, the domain in DDD, the funding in SAFe.
@@ -67,9 +67,9 @@ export function Frameworks({
                       <p className="framework-answers"><b>Answers:</b> {fw.answers}</p>
                       <p className="framework-grounding">{fw.grounding}</p>
 
-                      {fw.levels.length > 0 && (
-                        <ol className="framework-levels">
-                          {fw.levels.map((l, i) => (
+                      {fw.layers.length > 0 && (
+                        <ol className="framework-layers">
+                          {fw.layers.map((l, i) => (
                             <li key={l.key}>
                               <i>{i + 1}</i>
                               <b>{l.name}</b>
@@ -87,7 +87,7 @@ export function Frameworks({
                               <li key={t.name}>
                                 <span style={{ background: t.color }} />
                                 <b>{t.name}</b>
-                                {t.level && <em>{fw.levels.find((l) => l.key === t.level)?.name ?? t.level}</em>}
+                                {t.layer && <em>{fw.layers.find((l) => l.key === t.layer)?.name ?? t.layer}</em>}
                                 <small>{t.fields.length ? t.fields.map((f) => f.key).join(" · ") : "no fields"}</small>
                               </li>
                             ))}

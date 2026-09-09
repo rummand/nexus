@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
-import type { MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
+import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
+import type { MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
   deleteField, deleteNodeType, deleteRelationType, deleteRule, updateField, updateNodeType, updateRelationType,
@@ -12,7 +12,9 @@ import {
 import { MetaModelDiagram } from "./MetaModelDiagram";
 import { Conformance } from "./Conformance";
 import { Frameworks } from "./Frameworks";
+import { Layers } from "./Layers";
 import { framework } from "@/lib/frameworks";
+import { placeNodeType } from "@/lib/layers/actions";
 import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
 
 /**
@@ -36,7 +38,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
   const [openRels, setOpenRels] = useState(true);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"details" | "diagram" | "conformance" | "frameworks">("details");
+  const [view, setView] = useState<"details" | "diagram" | "layers" | "conformance" | "frameworks">("details");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +159,10 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
           <div className="panel-tabs meta-view-tabs" role="tablist" aria-label="Meta-model view">
             <button type="button" role="tab" className={view === "details" ? "active" : ""} onClick={() => setView("details")}><Rows3 size={13} /> Details</button>
             <button type="button" role="tab" className={view === "diagram" ? "active" : ""} onClick={() => setView("diagram")}><Network size={13} /> Diagram</button>
+            <button type="button" role="tab" className={view === "layers" ? "active" : ""} onClick={() => setView("layers")} data-tab-layers>
+              <LayersIcon size={13} /> Layers
+              {model.layers.length > 0 && <i className="tab-count">{model.layers.length}</i>}
+            </button>
             <button type="button" role="tab" className={view === "conformance" ? "active" : ""} onClick={() => setView("conformance")} data-tab-conformance>
               <ShieldCheck size={13} /> Conformance
               {report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
@@ -173,6 +179,8 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
             <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
           )}
 
+          {view === "layers" && <Layers model={model} workspaceId={workspaceId} onChanged={() => router.refresh()} />}
+
           {view === "conformance" && <Conformance report={report} slug={slug} />}
 
           {view === "frameworks" && (
@@ -186,6 +194,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
               note={notes[(current as MetaNodeType).name.toLowerCase()]}
               type={current as MetaNodeType}
               allTypeNames={allTypeNames}
+              layers={model.layers}
               pending={pending}
               run={run}
               workspaceId={workspaceId}
@@ -233,8 +242,6 @@ function FrameworkChip({ id }: { id: string }) {
 }
 
 const frameworkName = (id: string) => framework(id)?.name ?? id;
-const levelName = (id: string, level: string) =>
-  framework(id)?.levels.find((l) => l.key === level)?.name ?? level;
 
 function PresenceDot({ presence }: { presence: Presence }) {
   return <i className={`meta-dot ${presence}`} title={PRESENCE_TITLE[presence]} aria-label={presence} />;
@@ -245,8 +252,8 @@ function PresenceTag({ presence }: { presence: Presence }) {
   return <i className={`meta-presence ${presence}`} title={PRESENCE_TITLE[presence]}>{label}</i>;
 }
 
-function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenamed, onDeleted, note }: {
-  type: MetaNodeType; allTypeNames: string[]; pending: boolean;
+function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId, onRenamed, onDeleted, note }: {
+  type: MetaNodeType; allTypeNames: string[]; layers: MetaLayer[]; pending: boolean;
   run: (fn: () => Promise<unknown>) => void; workspaceId: string;
   onRenamed: (name: string) => void; onDeleted: () => void;
   /** What the EA corpus says about a type with this name, if anything. */
@@ -265,7 +272,6 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
           <small>
             Node type · {type.instances} instance{type.instances === 1 ? "" : "s"}
             {type.framework && <> · declared by <b>{frameworkName(type.framework)}</b></>}
-            {type.framework && type.level && <> · {levelName(type.framework, type.level)}</>}
           </small>
           <h2>{type.name}</h2>
         </div>
@@ -285,6 +291,22 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
             <a href={note.url} target="_blank" rel="noreferrer noopener">{note.label}</a>
           </blockquote>
         </details>
+      )}
+
+      {/* Which band of the stack this type sits in (§5.58). */}
+      {type.id && layers.length > 0 && (
+        <label className="meta-layer-pick">
+          <span>Layer</span>
+          <select
+            value={type.layerId ?? ""}
+            disabled={pending}
+            data-layer-pick
+            onChange={(e) => run(() => placeNodeType(type.id!, e.target.value || null))}
+          >
+            <option value="">not in a layer</option>
+            {layers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </label>
       )}
 
       {/*

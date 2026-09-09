@@ -529,7 +529,7 @@ try {
   const fw = page.locator('[data-framework="c4"]');
   await fw.locator("> button").click();
   await page.waitForSelector('[data-adopt-framework="c4"]');
-  assert.ok((await fw.locator(".framework-levels li").count()) === 4, "C4 shows its four levels");
+  assert.equal(await fw.locator(".framework-layers li").count(), 4, "C4 brings its four layers with it");
   const plan = await fw.locator(".framework-apply span").innerText();
   assert.match(plan, /Adds .*type/, `the plan says what adopting would add, not just that it would: ${plan}`);
   {
@@ -566,6 +566,45 @@ try {
   // every type a framework brought says which one it came from
   assert.ok((await page.locator(".meta-framework-chip").count()) > 8,
     "types carry the provenance of the framework that declared them");
+
+  // layers: the stack, and the one the estate itself suggests (§5.58)
+  await page.click("[data-tab-layers]");
+  await page.waitForSelector("[data-layers]");
+  {
+    // The two frameworks adopted above brought their own bands, so there is a stack already.
+    const stack = await page.locator("[data-layer-stack]:not(.proposed) [data-layer]").count();
+    assert.ok(stack >= 4, `frameworks bring their layers with them, got ${stack}`);
+    assert.match(await page.locator("[data-layer-stack] .layer-source.fw").first().innerText(), /C4|Domain/,
+      "a layer says which framework put it there");
+  }
+  assert.ok((await page.locator(".layer-verdict").innerText()).trim().length > 10,
+    "the estate's own reading of the stack says what it found, or why it could not");
+
+  {
+    // The point of the whole feature: the stack is read out of the direction of real connections,
+    // and every band says which counts put it there.
+    const bands = await page.locator("[data-proposed-layer]").count();
+    assert.ok(bands >= 2, `the seeded estate has enough connections to read a stack from, got ${bands}`);
+    const why = await page.locator("[data-proposed-layer] .layer-why").first().innerText();
+    assert.match(why, /\d|Nothing in the estate/, `a band justifies itself with counts: ${why}`);
+
+    const before = await page.locator("[data-layer-stack]:not(.proposed) [data-layer]").count();
+    await page.click("[data-adopt-layering]");
+    await page.waitForSelector("[data-layering-ok]", { timeout: 60000 });
+    assert.match(await page.locator("[data-layering-ok]").innerText(), /placed \d+ type/,
+      "adopting the reading says what it did");
+    await page.waitForFunction((n) => document.querySelectorAll("[data-layer-stack]:not(.proposed) [data-layer]").length > n,
+      before, { timeout: 30000 });
+  }
+
+  // the diagram becomes the stack: bands behind the types, so an upward edge looks upward
+  await page.click('.meta-view-tabs button:has-text("Diagram")');
+  await page.waitForSelector("[data-meta-diagram]");
+  await page.waitForTimeout(1200);
+  assert.ok((await page.locator("[data-band]").count()) >= 2,
+    "a layered model is drawn as bands rather than scattered");
+  await page.click("[data-tab-layers]");
+  await page.waitForSelector("[data-layers]");
 
   // now that types are declared, conformance has something to check — and names the offenders
   await page.click("[data-tab-conformance]");

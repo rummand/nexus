@@ -16,6 +16,8 @@ import { initialLayout, layoutBounds, separateBoxes, tick, type ForceNode } from
  */
 
 const BOX_W = 128;
+/** Vertical distance between two bands of the stack (§5.58). */
+const BAND_H = 150;
 const BOX_H = 46;
 const SETTLE_TICKS = 320;
 /** Ideal gap between connected types. Generous, because boxes and fanned arcs need the room. */
@@ -99,6 +101,27 @@ export function MetaModelDiagram({ model, selected, onSelect }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on the structure only
   }, [signature]);
 
+  /**
+   * Which band each type sits in, when the model has been layered (§5.58).
+   *
+   * A layered model's whole claim is that dependencies run downward, and a force layout that
+   * scatters the types cannot show that — or show it being broken. So when layers exist the
+   * simulation decides *x* only and the band decides *y*: the diagram becomes the stack, and an
+   * edge pointing upward is visible as an edge pointing upward.
+   */
+  const bands = useMemo(() => {
+    if (model.layers.length === 0) return null;
+    const rank = new Map(model.layers.map((l, i) => [l.id, i]));
+    const of = new Map<string, number>();
+    for (const t of model.nodeTypes) {
+      const r = t.layerId ? rank.get(t.layerId) : undefined;
+      // Unplaced types go under the stack rather than into it: they are not in a band, and
+      // pretending they are at the bottom is a claim nobody made.
+      of.set(t.name, r ?? model.layers.length);
+    }
+    return { of, count: model.layers.length + 1, names: [...model.layers.map((l) => l.name), "Not in a layer"] };
+  }, [model.layers, model.nodeTypes]);
+
   const positions = useMemo(() => {
     const out: Record<string, { x: number; y: number }> = {};
     if (layoutInput.ids.length === 0) return out;
@@ -109,8 +132,19 @@ export function MetaModelDiagram({ model, selected, onSelect }: {
     // so push any pair that still overlaps apart
     separateBoxes(nodes, BOX_W + 96, BOX_H + 96);
     for (const n of nodes) out[n.id] = { x: n.x, y: n.y };
+    if (!bands) return out;
+
+    // Snap to bands: keep the horizontal arrangement the simulation found, take the vertical from
+    // the stack, then spread each band so its boxes do not sit on one another.
+    for (const n of nodes) out[n.id] = { x: out[n.id]!.x, y: (bands.of.get(n.id) ?? 0) * BAND_H };
+    for (let b = 0; b < bands.count; b++) {
+      const row = nodes.filter((n) => (bands.of.get(n.id) ?? 0) === b).sort((a, c) => out[a.id]!.x - out[c.id]!.x);
+      const step = BOX_W + 44;
+      const width = (row.length - 1) * step;
+      row.forEach((n, i) => { out[n.id] = { x: i * step - width / 2, y: out[n.id]!.y }; });
+    }
     return out;
-  }, [layoutInput, seed]);
+  }, [layoutInput, seed, bands]);
 
   const fit = useMemo(() => {
     const list = Object.entries(positions).map(([id, p]) => ({ id, x: p.x, y: p.y, vx: 0, vy: 0 }));
@@ -186,6 +220,16 @@ export function MetaModelDiagram({ model, selected, onSelect }: {
         role="img"
         aria-label="Meta-model diagram"
       >
+        {/* The bands themselves, behind the types: a stack you can see is a stack you can argue with. */}
+        {bands?.names.map((name, b) => (
+          <g key={name} className="meta-band" data-band={b}>
+            <rect
+              x={fit.x} y={b * BAND_H - BAND_H / 2} width={fit.w} height={BAND_H}
+              className={b === bands.names.length - 1 ? "meta-band-rect loose" : "meta-band-rect"}
+            />
+            <text x={fit.x + 14} y={b * BAND_H - BAND_H / 2 + 20} className="meta-band-label">{name}</text>
+          </g>
+        ))}
         <defs>
           {(["rule", "observed", "violation"] as const).map((kind) => (
             <marker key={kind} id={`arrow-${kind}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

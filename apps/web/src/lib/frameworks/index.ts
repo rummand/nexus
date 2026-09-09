@@ -1,5 +1,5 @@
 import type { Framework, FrameworkFamily } from "./types";
-import { C4, UML_CLASS } from "./notations";
+import { ARCHIMATE, C4, UML_CLASS } from "./notations";
 import { DDD, MBSE } from "./domain";
 import { IT4IT, SAFE } from "./operating";
 import { PORTFOLIO_FRAMEWORKS } from "./portfolio";
@@ -14,7 +14,7 @@ export * from "./types";
  * workspace that adopts none of it and lets the model grow from the work is using the product as
  * designed (§2.2).
  */
-export const FRAMEWORKS: Framework[] = [C4, UML_CLASS, DDD, MBSE, IT4IT, SAFE, ...PORTFOLIO_FRAMEWORKS];
+export const FRAMEWORKS: Framework[] = [ARCHIMATE, C4, UML_CLASS, DDD, MBSE, IT4IT, SAFE, ...PORTFOLIO_FRAMEWORKS];
 
 export function framework(id: string): Framework | null {
   return FRAMEWORKS.find((f) => f.id === id) ?? null;
@@ -28,10 +28,10 @@ export function byFamily(): Array<{ family: FrameworkFamily; frameworks: Framewo
     .filter((g) => g.frameworks.length > 0);
 }
 
-/** Which level of its own framework a type sits at, for the metamodel tree. */
-export function levelOf(fw: Framework, typeName: string): string {
+/** Which layer of its own framework a type sits in, for the metamodel tree. */
+export function layerOf(fw: Framework, typeName: string): string {
   const t = fw.nodeTypes.find((n) => n.name.trim().toLowerCase() === typeName.trim().toLowerCase());
-  return t?.level ?? "";
+  return t?.layer ?? "";
 }
 
 /**

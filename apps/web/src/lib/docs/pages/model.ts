@@ -59,8 +59,8 @@ export const EXPLORER: DocPage = {
 export const META_MODEL: DocPage = {
   slug: "meta-model",
   title: "The meta-model",
-  summary: "The types in your model: what grew from the data, what you have declared, whether the data obeys it, and where to start.",
-  keywords: ["types", "schema", "node type", "relation type", "fields", "rules", "declare", "diagram", "archimate", "conformance", "compliance", "standard", "starter model", "best practice", "framework", "c4", "uml", "ddd", "domain-driven", "sysml", "mbse", "it4it", "safe", "notation"],
+  summary: "The types in your model: what grew from the data, what you have declared, how they stack, whether the data obeys it, and where to start.",
+  keywords: ["types", "schema", "node type", "relation type", "fields", "rules", "declare", "diagram", "archimate", "conformance", "compliance", "standard", "starter model", "best practice", "framework", "c4", "uml", "ddd", "domain-driven", "sysml", "mbse", "it4it", "safe", "archimate", "notation", "layer", "layers", "stack", "business layer", "application layer", "technology layer"],
   blocks: [
     { kind: "prose", text: "Most tools make you adopt a meta-model before you can draw anything. Nexus works the other way round: you draw, types accumulate from what you actually called things, and the Meta-model page shows you what you have ended up with — then lets you make it deliberate." },
     { kind: "shot", src: "meta", alt: "The meta-model builder with node types, relation types and the detail of one type", caption: "Types on the left, the selected type on the right. The dot says whether a type was declared or simply appeared." },
@@ -103,6 +103,36 @@ export const META_MODEL: DocPage = {
     { kind: "prose", text: "The breaches are grouped by what kind of problem they are — an undeclared kind, a missing required field, a value outside its vocabulary, a value that is not the type it was declared as, an undeclared relation type, a connection no rule allows. Open a group and you get the objects themselves, each with a sentence: *“Maximo” has no owner, and Application requires one.*" },
     { kind: "note", tone: "why", title: "Why nothing is blocked", text: "The model grows out of the work here. A canvas that refused a card because a field was empty would stop the drawing that produces the model in the first place — so conformance reports and leaves the decision to a person. When the data and the model disagree, either can be the one that is wrong." },
     { kind: "note", tone: "tip", text: "Conformance is not estate health. Health asks whether your estate is in good shape by general EA standards — provenance, duplicates, orphans. Conformance asks the narrower question: does it obey the rules *you* wrote. An estate can be in poor health and perfectly conformant, or immaculate and conform to nothing." },
+
+    { kind: "heading", text: "Layers: the stack", id: "layers" },
+    { kind: "prose", text: "A layer groups object types and relation types into an ordered stack — business over application over technology being the one everybody arrives already having an opinion about. The claim a stack makes is that dependencies run **downward**, which is what makes it worth having and what lets the data be checked against it." },
+    { kind: "shot", src: "meta-layers", alt: "The Layers tab: the current stack, the layering read out of the estate with the counts behind each band, and the connections that run up the stack", caption: "The stack you have, the stack the data suggests, and where the two disagree — on one page." },
+    {
+      kind: "table",
+      columns: ["Where a layer came from", "What it means"],
+      rows: [
+        ["By hand", "Somebody typed it. Yours entirely."],
+        ["A framework", "Adopting C4, ArchiMate, IT4IT or SAFe brings that framework's own bands and puts its types in them."],
+        ["From the data", "The agent read it out of the estate — see below."],
+      ],
+    },
+    { kind: "heading", text: "Reading the stack out of the estate", id: "inferred-layers" },
+    { kind: "prose", text: "Most tools make you configure a layering before you have any data. Nexus can work the other way round, which is the whole premise: **your data already describes your meta-model**. If nineteen connections run Application → Server and none run back, Server is underneath — that is not a guess about names, it is what the graph says." },
+    {
+      kind: "list",
+      items: [
+        "Every band says what put it there: *“3 of the 5 connections between this band and the one above run downward.”*",
+        "A near-tie is reported rather than presented as a finding — a stack resting on 6 against 5 is something you should know about.",
+        "Connections dropped to break a loop are named, because a stack drawn out of a cyclic graph has had a decision taken for it.",
+        "A kind nothing connects is left out. The data cannot say where it belongs, so nothing pretends otherwise.",
+        "Familiar names — Business, Application, Technology — are used **only when the data agrees with the conventional order**. If your estate stacks differently, every band is named after its own largest type instead.",
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why the word list can never decide a grouping", text: "A layer name comes from a small vocabulary so the bands arrive with something readable on them. What is *in* a band is decided by the graph and nothing else. Naming a band “Technology” because it holds Server and Database is a convenience; putting Server and Database in the same band is a finding." },
+    { kind: "prose", text: "Accepting the reading is additive, like everything else that writes a model: a band you already have is reused, and a type you placed yourself stays where you put it. A kind that has never been declared is declared as part of it — a kind that is not a type cannot be in a layer." },
+    { kind: "heading", text: "Where the data disagrees with your stack", id: "upward" },
+    { kind: "prose", text: "Once a stack exists, every connection that runs *up* it is listed with its count. Either the connection is wrong or one of the two types is in the wrong band; as everywhere else, nothing is blocked and the decision is yours." },
+    { kind: "note", tone: "tip", text: "The Diagram tab draws the bands once your model is layered: types sit at the height of their layer, so an edge pointing upward looks like an edge pointing upward. Types not in any layer sit below the stack in a dashed band rather than being quietly placed at the bottom." },
 
     { kind: "heading", text: "Modelling frameworks", id: "frameworks" },
     { kind: "prose", text: "A model that grows only from what was imported first ends up with somebody else's spreadsheet column headings as its vocabulary. But the deeper thing an architect chooses is not a set of types — it is a **way of describing systems**, and those have names people already argue about. The Frameworks tab lets you adopt one, or several, or none." },

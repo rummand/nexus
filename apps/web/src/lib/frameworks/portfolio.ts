@@ -17,7 +17,7 @@ export const PORTFOLIO_FRAMEWORKS: Framework[] = [
     id: "application-portfolio",
     name: "Application portfolio",
     family: "portfolio",
-    levels: [],
+    layers: [],
     blurb: "Applications, who owns them, what they run on and what they cost — the model behind a rationalisation.",
     answers: "Which applications do we have, who is accountable for each, and which ones should we stop paying for?",
     grounding:
@@ -73,7 +73,7 @@ export const PORTFOLIO_FRAMEWORKS: Framework[] = [
     id: "business-capability",
     name: "Business capability model",
     family: "portfolio",
-    levels: [],
+    layers: [],
     blurb: "What the organisation is able to do, and what supports each ability — the map executives argue over.",
     answers: "What are we able to do as an organisation, how well, and what is holding each ability up?",
     grounding:
@@ -115,7 +115,7 @@ export const PORTFOLIO_FRAMEWORKS: Framework[] = [
     id: "integration",
     name: "Integration and data flow",
     family: "portfolio",
-    levels: [],
+    layers: [],
     blurb: "Systems, the interfaces between them and the data that moves — the model behind an integration review.",
     answers: "What talks to what, over which interface, carrying which data, and what breaks if one end goes away?",
     grounding:

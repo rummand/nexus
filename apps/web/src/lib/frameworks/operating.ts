@@ -18,7 +18,7 @@ export const IT4IT: Framework = {
   answers: "How does an idea become a running service, and can we follow one object all the way through?",
   grounding:
     "The Open Group IT4IT™ Standard. Its point is the data model, not the processes: the same Service object travels all four value streams under different names.",
-  levels: [
+  layers: [
     { key: "s2p", name: "Strategy to Portfolio", blurb: "Deciding what the portfolio should contain. Conceptual and logical services, demand." },
     { key: "r2d", name: "Requirement to Deploy", blurb: "Building and releasing it. Requirements, source, builds, releases." },
     { key: "r2f", name: "Request to Fulfil", blurb: "Letting people consume it. Offers, contracts, subscriptions." },
@@ -26,7 +26,7 @@ export const IT4IT: Framework = {
   ],
   nodeTypes: [
     {
-      name: "Conceptual Service", color: "#0ea5e9", level: "s2p",
+      name: "Conceptual Service", color: "#0ea5e9", layer: "s2p",
       description: "A service as the business asks for it, before anybody has decided how to build it.",
       fields: [
         { key: "owner", dataType: "text", description: "", required: true },
@@ -34,7 +34,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Logical Service", color: "#0284c7", level: "s2p",
+      name: "Logical Service", color: "#0284c7", layer: "s2p",
       description: "The same service as IT intends to deliver it: the architecture behind the promise.",
       fields: [
         { key: "architect", dataType: "text", description: "" },
@@ -42,7 +42,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Requirement", color: "#dc2626", level: "r2d",
+      name: "Requirement", color: "#dc2626", layer: "r2d",
       description: "Something the service must do, traceable forward to a release and back to a demand.",
       fields: [
         { key: "statement", dataType: "text", description: "", required: true },
@@ -50,7 +50,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Service Release", color: "#16a34a", level: "r2d",
+      name: "Service Release", color: "#16a34a", layer: "r2d",
       description: "A specific, versioned, deployable state of the service.",
       fields: [
         { key: "version", dataType: "text", description: "", required: true },
@@ -58,7 +58,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Service Offer", color: "#f59e0b", level: "r2f",
+      name: "Service Offer", color: "#f59e0b", layer: "r2f",
       description: "What a consumer actually sees in the catalogue, with a price and a promise.",
       fields: [
         { key: "price", dataType: "number", description: "" },
@@ -66,7 +66,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Service Contract", color: "#d97706", level: "r2f",
+      name: "Service Contract", color: "#d97706", layer: "r2f",
       description: "The agreed level of service for one consumer of one offer.",
       fields: [
         { key: "availability", dataType: "text", description: "The promised number, e.g. 99.9%." },
@@ -74,7 +74,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Configuration Item", color: "#64748b", level: "d2c",
+      name: "Configuration Item", color: "#64748b", layer: "d2c",
       description: "A thing under control that a change can break and an incident can be about.",
       fields: [
         { key: "environment", dataType: "enum", description: "", options: ["development", "test", "staging", "production"] },
@@ -82,7 +82,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Incident", color: "#ef4444", level: "d2c",
+      name: "Incident", color: "#ef4444", layer: "d2c",
       description: "A service not doing what it promised, raised by somebody who noticed.",
       fields: [
         { key: "severity", dataType: "enum", description: "", options: ["1", "2", "3", "4"] },
@@ -91,7 +91,7 @@ export const IT4IT: Framework = {
       ],
     },
     {
-      name: "Change", color: "#8b5cf6", level: "d2c",
+      name: "Change", color: "#8b5cf6", layer: "d2c",
       description: "A deliberate alteration to something under control, with somebody accountable for it.",
       fields: [
         { key: "risk", dataType: "enum", description: "", options: ["low", "medium", "high"] },
@@ -145,7 +145,7 @@ export const SAFE: Framework = {
   answers: "Which strategy is paying for this piece of work, who is delivering it, and where does architecture appear in the plan?",
   grounding:
     "Scaled Agile Framework 6.0 (Scaled Agile, Inc.). Modelled as funding and flow rather than as a delivery process: Nexus is not a work tracker.",
-  levels: [
+  layers: [
     { key: "portfolio", name: "Portfolio", blurb: "Strategy, funding and the epics that spend it." },
     { key: "solution", name: "Large solution", blurb: "Capabilities and the value streams that carry them." },
     { key: "essential", name: "Essential", blurb: "Features, enablers and the release train that delivers them." },
@@ -153,7 +153,7 @@ export const SAFE: Framework = {
   ],
   nodeTypes: [
     {
-      name: "Strategic Theme", color: "#be123c", level: "portfolio",
+      name: "Strategic Theme", color: "#be123c", layer: "portfolio",
       description: "A differentiator that connects the portfolio to the enterprise's strategy.",
       fields: [
         { key: "horizon", dataType: "text", description: "" },
@@ -161,7 +161,7 @@ export const SAFE: Framework = {
       ],
     },
     {
-      name: "Portfolio Epic", color: "#e11d48", level: "portfolio",
+      name: "Portfolio Epic", color: "#e11d48", layer: "portfolio",
       description: "A substantial initiative, big enough to need a business case and a hypothesis.",
       fields: [
         { key: "hypothesis", dataType: "text", description: "What we believe will be true if we build it.", required: true },
@@ -172,17 +172,17 @@ export const SAFE: Framework = {
       ],
     },
     {
-      name: "Development Value Stream", color: "#0891b2", level: "solution",
+      name: "Development Value Stream", color: "#0891b2", layer: "solution",
       description: "The sequence of steps by which the organisation builds and delivers a solution.",
       fields: [{ key: "funding", dataType: "number", description: "Annual, in the workspace's currency." }],
     },
     {
-      name: "Capability", color: "#059669", level: "solution",
+      name: "Capability", color: "#059669", layer: "solution",
       description: "A higher-level behaviour of a solution, spanning more than one train.",
       fields: [{ key: "acceptance", dataType: "text", description: "" }],
     },
     {
-      name: "Agile Release Train", color: "#0d9488", level: "essential",
+      name: "Agile Release Train", color: "#0d9488", layer: "essential",
       description: "The long-lived team of teams that delivers continuously. The unit that actually has capacity.",
       fields: [
         { key: "rte", dataType: "text", description: "Release train engineer." },
@@ -190,7 +190,7 @@ export const SAFE: Framework = {
       ],
     },
     {
-      name: "Feature", color: "#2563eb", level: "essential",
+      name: "Feature", color: "#2563eb", layer: "essential",
       description: "A service that fulfils a stakeholder need, deliverable inside one increment.",
       fields: [
         { key: "benefit hypothesis", dataType: "text", description: "", required: true },
@@ -199,7 +199,7 @@ export const SAFE: Framework = {
       ],
     },
     {
-      name: "Enabler", color: "#7c3aed", level: "essential",
+      name: "Enabler", color: "#7c3aed", layer: "essential",
       description: "Work that builds the runway rather than the product: architecture, infrastructure, compliance, exploration. Where architecture becomes fundable.",
       fields: [
         { key: "kind", dataType: "enum", description: "", options: ["architectural", "infrastructure", "compliance", "exploration"], required: true },
@@ -207,7 +207,7 @@ export const SAFE: Framework = {
       ],
     },
     {
-      name: "Story", color: "#94a3b8", level: "team",
+      name: "Story", color: "#94a3b8", layer: "team",
       description: "The leaf of the tree. Here so an epic can be traced all the way down, not so work is managed here.",
       fields: [{ key: "points", dataType: "number", description: "" }],
     },

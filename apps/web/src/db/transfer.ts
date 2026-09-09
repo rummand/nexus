@@ -49,6 +49,7 @@ export const TRANSFER_ORDER = [
   "board_entities",
   "entity_events",
   "comments",
+  "layers",
   "node_types",
   "node_type_fields",
   "relation_types",

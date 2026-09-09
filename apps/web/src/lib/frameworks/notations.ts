@@ -5,7 +5,7 @@ import type { Framework } from "./types";
 const LIFECYCLE = ["proposed", "active", "sunset", "retired"];
 
 /**
- * The C4 model — four levels of zoom over the same software.
+ * The C4 model — four layers of zoom over the same software.
  *
  * Kept deliberately close to Simon Brown's definitions, because the value of C4 is that everybody
  * means the same thing by "container": a separately deployable, separately runnable thing, not a
@@ -17,11 +17,11 @@ export const C4: Framework = {
   id: "c4",
   name: "C4 model",
   family: "notation",
-  blurb: "Four levels of zoom over one software system: context, containers, components, code.",
+  blurb: "Four layers of zoom over one software system: context, containers, components, code.",
   answers: "What is this system, what is it made of, and who does it talk to — at whichever altitude the person in the room needs?",
   grounding:
     "Simon Brown's C4 model (c4model.com). A container is a separately deployable, separately runnable thing — a process, not a package and not a server.",
-  levels: [
+  layers: [
     { key: "context", name: "System context", blurb: "The system as one box, the people and systems around it. The diagram you show a non-engineer." },
     { key: "container", name: "Container", blurb: "What the system is made of that runs separately: applications, services, databases, file stores." },
     { key: "component", name: "Component", blurb: "The major structural building blocks inside one container, and how they collaborate." },
@@ -29,7 +29,7 @@ export const C4: Framework = {
   ],
   nodeTypes: [
     {
-      name: "Person", color: "#0f3d73", level: "context",
+      name: "Person", color: "#0f3d73", layer: "context",
       description: "A human user of the system, described by the role they play rather than their job title.",
       fields: [
         { key: "role", dataType: "text", description: "What this person does with the system.", required: true },
@@ -37,7 +37,7 @@ export const C4: Framework = {
       ],
     },
     {
-      name: "Software System", color: "#1a4d8f", level: "context",
+      name: "Software System", color: "#1a4d8f", layer: "context",
       description: "The highest level of abstraction: something that delivers value to somebody. Ours, or somebody else's.",
       fields: [
         { key: "owner", dataType: "text", description: "The team or person accountable for it.", required: true },
@@ -46,7 +46,7 @@ export const C4: Framework = {
       ],
     },
     {
-      name: "Container", color: "#2b6cb0", level: "container", parent: "Software System",
+      name: "Container", color: "#2b6cb0", layer: "container", parent: "Software System",
       description: "A separately deployable, separately runnable thing: an application, a service, a database, a file store.",
       fields: [
         { key: "technology", dataType: "text", description: "What it is built with. A container without this is a box on a slide.", required: true },
@@ -55,7 +55,7 @@ export const C4: Framework = {
       ],
     },
     {
-      name: "Component", color: "#4a90d9", level: "component", parent: "Container",
+      name: "Component", color: "#4a90d9", layer: "component", parent: "Container",
       description: "A grouping of related functionality behind a well-defined interface, inside one container.",
       fields: [
         { key: "technology", dataType: "text", description: "Framework or library, where it matters." },
@@ -63,7 +63,7 @@ export const C4: Framework = {
       ],
     },
     {
-      name: "Code Element", color: "#93b8dd", level: "code", parent: "Component",
+      name: "Code Element", color: "#93b8dd", layer: "code", parent: "Component",
       description: "A class, interface or module. Model these only where the detail earns its keep — usually it does not.",
       fields: [{ key: "repository", dataType: "url", description: "Where the source lives." }],
     },
@@ -115,7 +115,7 @@ export const UML_CLASS: Framework = {
   answers: "What are the things in this software, what do they know, and how are they related in code?",
   grounding:
     "OMG UML 2.5.1, class diagram subset. Composition versus aggregation is a claim about lifetime, not about strength of feeling.",
-  levels: [],
+  layers: [],
   nodeTypes: [
     {
       name: "Class", color: "#b45309",
@@ -174,6 +174,100 @@ export const UML_CLASS: Framework = {
     { name: "contains", description: "The package holds this type.", rules: [
       { from: "Package", to: "Class", cardinality: "one-to-many" },
       { from: "Package", to: "Interface", cardinality: "one-to-many" },
+    ] },
+  ],
+};
+
+/**
+ * ArchiMate, core.
+ *
+ * The layered EA language, and the reason §5.58 exists: its whole grammar is that elements live in
+ * bands and dependencies run downward. Ten elements out of roughly sixty, which needs saying —
+ * this is not ArchiMate, it is the tenth of ArchiMate that carries most real models, and the
+ * catalogue's own rule is that a starter is the smallest thing that is still useful rather than the
+ * largest that is still defensible. Add the rest by hand where the estate earns them.
+ */
+export const ARCHIMATE: Framework = {
+  id: "archimate",
+  name: "ArchiMate (core)",
+  family: "notation",
+  blurb: "The layered EA language: motivation over business over application over technology.",
+  answers: "Which business processes does this application serve, what does it run on, and which goal is any of it for?",
+  grounding:
+    "The Open Group ArchiMate® 3.2 Specification. Ten of its ~60 elements — the layering and the serving/realisation relationships are the part that carries most models.",
+  layers: [
+    { key: "motivation", name: "Motivation", blurb: "Why: the goals and requirements the rest of it is for." },
+    { key: "business", name: "Business", blurb: "Who and what: actors, the processes they run, the services they offer." },
+    { key: "application", name: "Application", blurb: "The software serving the business, and the data it keeps." },
+    { key: "technology", name: "Technology", blurb: "What the software runs on." },
+  ],
+  nodeTypes: [
+    { name: "Goal", color: "#a855f7", layer: "motivation",
+      description: "An end state a stakeholder intends to achieve. A noun phrase, not a project.",
+      fields: [{ key: "stakeholder", dataType: "text", description: "Whose goal it is.", required: true },
+               { key: "measure", dataType: "text", description: "How anybody would know it was met." }] },
+    { name: "Requirement", color: "#c084fc", layer: "motivation",
+      description: "Something that must be realised for a goal to be met.",
+      fields: [{ key: "statement", dataType: "text", description: "", required: true }] },
+
+    { name: "Business Actor", color: "#f59e0b", layer: "business",
+      description: "A person, team or organisation that performs behaviour. A role, not a name.",
+      fields: [{ key: "kind", dataType: "enum", description: "", options: ["person", "team", "department", "organisation"] }] },
+    { name: "Business Process", color: "#fbbf24", layer: "business",
+      description: "A sequence of behaviour producing a defined outcome for the business.",
+      fields: [{ key: "owner", dataType: "text", description: "" },
+               { key: "frequency", dataType: "enum", description: "", options: ["continuous", "daily", "weekly", "monthly", "on demand"] }] },
+    { name: "Business Service", color: "#fcd34d", layer: "business",
+      description: "Behaviour offered to the outside world, described by what it gives rather than how.",
+      fields: [{ key: "consumer", dataType: "text", description: "" }] },
+
+    { name: "Application Component", color: "#3b82f6", layer: "application",
+      description: "A modular, deployable, replaceable piece of software. What most people call an application.",
+      fields: [{ key: "owner", dataType: "text", description: "", required: true },
+               { key: "lifecycle", dataType: "enum", description: "", options: LIFECYCLE }] },
+    { name: "Application Service", color: "#60a5fa", layer: "application",
+      description: "Application behaviour exposed to the business, named for what it does for them.",
+      fields: [{ key: "availability", dataType: "text", description: "" }] },
+    { name: "Data Object", color: "#93c5fd", layer: "application",
+      description: "Data structured for automated processing, that the business would recognise by name.",
+      fields: [{ key: "classification", dataType: "enum", description: "", options: ["public", "internal", "confidential", "personal"] }] },
+
+    { name: "Node", color: "#10b981", layer: "technology",
+      description: "A computational or physical resource that hosts, manipulates or interacts with other resources.",
+      fields: [{ key: "environment", dataType: "enum", description: "", options: ["development", "test", "staging", "production"] },
+               { key: "location", dataType: "text", description: "" }] },
+    { name: "Technology Service", color: "#34d399", layer: "technology",
+      description: "Technology behaviour exposed upward: storage, compute, messaging, identity.",
+      fields: [{ key: "provider", dataType: "text", description: "" }] },
+  ],
+  relationTypes: [
+    { name: "serves", description: "Provides functionality to an element in the layer above. ArchiMate's workhorse.", rules: [
+      { from: "Application Component", to: "Business Process", cardinality: "many-to-many" },
+      { from: "Application Service", to: "Business Process", cardinality: "many-to-many" },
+      { from: "Application Service", to: "Business Service", cardinality: "many-to-many" },
+      { from: "Technology Service", to: "Application Component", cardinality: "many-to-many" },
+      { from: "Node", to: "Application Component", cardinality: "many-to-many" },
+    ] },
+    { name: "realises", description: "A more concrete element makes a more abstract one real.", rules: [
+      { from: "Application Component", to: "Application Service", cardinality: "many-to-many" },
+      { from: "Business Process", to: "Business Service", cardinality: "many-to-many" },
+      { from: "Business Process", to: "Requirement", cardinality: "many-to-many" },
+      { from: "Application Component", to: "Requirement", cardinality: "many-to-many" },
+    ] },
+    { name: "assigned to", description: "An active element is allocated to perform behaviour.", rules: [
+      { from: "Business Actor", to: "Business Process", cardinality: "many-to-many" },
+      { from: "Node", to: "Technology Service", cardinality: "many-to-many" },
+    ] },
+    { name: "accesses", description: "Behaviour reads or writes a data object.", rules: [
+      { from: "Application Component", to: "Data Object", cardinality: "many-to-many" },
+      { from: "Application Service", to: "Data Object", cardinality: "many-to-many" },
+    ] },
+    { name: "triggers", description: "One piece of behaviour causes the next.", rules: [
+      { from: "Business Process", to: "Business Process", cardinality: "many-to-many" },
+    ] },
+    { name: "influences", description: "A motivation element affects another, for better or worse.", rules: [
+      { from: "Requirement", to: "Goal", cardinality: "many-to-many" },
+      { from: "Goal", to: "Goal", cardinality: "many-to-many" },
     ] },
   ],
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FRAMEWORKS, adoptedLine, byFamily, framework, levelOf, planApply, planSummary } from "./index";
+import { FRAMEWORKS, adoptedLine, byFamily, framework, layerOf, planApply, planSummary } from "./index";
 import type { MetaModel, MetaNodeType, MetaRelationType } from "../metamodel";
 
 /**
@@ -16,15 +16,15 @@ import type { MetaModel, MetaNodeType, MetaRelationType } from "../metamodel";
 
 const nodeType = (name: string, fields: string[] = []): MetaNodeType => ({
   id: `nt_${name}`, name, description: "theirs", color: "", parentId: null, instances: 0, presence: "declared",
-  framework: "", level: "",
+  framework: "", layerId: null,
   fields: fields.map((key) => ({ id: `f_${key}`, key, dataType: "text", description: "", required: false, options: [], usage: 0, presence: "declared" as const })),
 });
 const relType = (name: string, rules: Array<[string, string]> = []): MetaRelationType => ({
-  id: `rt_${name}`, name, description: "", instances: 0, presence: "declared", observedPairs: [], framework: "",
+  id: `rt_${name}`, name, description: "", instances: 0, presence: "declared", observedPairs: [], framework: "", layerId: null,
   rules: rules.map(([fromType, toType], i) => ({ id: `r${i}`, fromType, toType, cardinality: "many-to-many" })),
 });
 const model = (nodeTypes: MetaNodeType[] = [], relationTypes: MetaRelationType[] = []): MetaModel => ({
-  nodeTypes, relationTypes,
+  nodeTypes, relationTypes, layers: [],
   totals: { entities: 0, relations: 0, undeclaredNodeTypes: 0, undeclaredRelationTypes: 0, violations: 0 },
 });
 
@@ -77,16 +77,16 @@ describe("the catalogue", () => {
     }
   });
 
-  it("only puts a type at a level its own framework declares", () => {
+  it("only puts a type in a layer its own framework declares", () => {
     for (const f of FRAMEWORKS) {
-      const levels = new Set(f.levels.map((l) => l.key));
+      const layers = new Set(f.layers.map((l) => l.key));
       for (const t of f.nodeTypes) {
-        if (!t.level) continue;
-        expect(levels.has(t.level), `${f.name}: ${t.name} at "${t.level}"`).toBe(true);
+        if (!t.layer) continue;
+        expect(layers.has(t.layer), `${f.name}: ${t.name} at "${t.layer}"`).toBe(true);
       }
-      // A layered framework that leaves half its types unplaced is worse than one with no levels.
-      if (f.levels.length > 0) {
-        expect(f.nodeTypes.every((t) => t.level), `${f.name} has an unlevelled type`).toBe(true);
+      // A layered framework that leaves half its types unplaced is worse than one with no layers.
+      if (f.layers.length > 0) {
+        expect(f.nodeTypes.every((t) => t.layer), `${f.name} has an unplaced type`).toBe(true);
       }
     }
   });
@@ -127,10 +127,10 @@ describe("the catalogue", () => {
     }
   });
 
-  it("knows which level one of its own types belongs at", () => {
-    expect(levelOf(c4, "Container")).toBe("container");
-    expect(levelOf(c4, "  container  ")).toBe("container");
-    expect(levelOf(c4, "Nonexistent")).toBe("");
+  it("knows which layer one of its own types belongs in", () => {
+    expect(layerOf(c4, "Container")).toBe("container");
+    expect(layerOf(c4, "  container  ")).toBe("container");
+    expect(layerOf(c4, "Nonexistent")).toBe("");
   });
 
   it("is unknown by an unknown id rather than guessing", () => {

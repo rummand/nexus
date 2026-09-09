@@ -3269,13 +3269,13 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .framework-answers { color: var(--ink); font-size: 12.5px; line-height: 1.5; margin: 0; }
 .framework-grounding { background: #f7f9fc; border-left: 3px solid #dbe4ef; color: var(--muted);
   font-size: 11.5px; line-height: 1.5; margin: 0; padding: 7px 10px; }
-.framework-levels { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
-.framework-levels li { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; }
-.framework-levels i { align-items: center; background: #eef3fa; border-radius: 5px; color: var(--muted);
+.framework-layers { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.framework-layers li { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; }
+.framework-layers i { align-items: center; background: #eef3fa; border-radius: 5px; color: var(--muted);
   display: flex; font-size: 10px; font-style: normal; font-weight: 800; grid-row: span 2; height: 18px;
   justify-content: center; margin-top: 2px; }
-.framework-levels b { font-size: 12px; }
-.framework-levels small { grid-column: -2; }
+.framework-layers b { font-size: 12px; }
+.framework-layers small { grid-column: -2; }
 .framework-lists { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
 .framework-lists h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em;
   margin: 0 0 5px; text-transform: uppercase; }
@@ -3296,3 +3296,62 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
    because the tree row is already carrying a colour, a name, a presence dot and a count. */
 .meta-framework-chip { background: #eef2f7; border-radius: 4px; color: #6f7b8e; font-size: 9.5px;
   font-style: normal; font-weight: 800; letter-spacing: 0.04em; padding: 2px 5px; text-transform: uppercase; }
+
+/* ---- layers: the stack over the metamodel (§5.58) ----------------------------------------- */
+.meta-layers { display: grid; gap: 14px; }
+.meta-layers > .muted { font-size: 12.5px; line-height: 1.55; margin: 0; }
+.layer-empty { align-items: center; background: #f7f9fc; border: 1px dashed var(--line-strong); border-radius: 10px;
+  color: var(--muted); display: flex; font-size: 12.5px; gap: 8px; margin: 0; padding: 12px 14px; }
+.layer-stack { counter-reset: layer; display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.layer { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.layer-stack.proposed .layer { background: #fbfcfe; border-style: dashed; }
+.layer header { align-items: center; display: flex; gap: 8px; }
+.layer header b { color: var(--ink); font-size: 13px; }
+.layer-count { color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: auto; }
+.layer-controls { display: flex; gap: 2px; }
+.layer-controls button { background: none; border: 0; border-radius: 5px; color: var(--quiet); cursor: pointer;
+  display: grid; height: 22px; place-items: center; width: 22px; }
+.layer-controls button:hover:not(:disabled) { background: #eef2f7; color: var(--ink); }
+.layer-controls button:disabled { opacity: 0.32; }
+.layer-source { border-radius: 999px; font-size: 9.5px; font-style: normal; font-weight: 800; letter-spacing: 0.04em;
+  padding: 2px 7px; text-transform: uppercase; }
+.layer-source.hand { background: #eef2f7; color: #6f7b8e; }
+.layer-source.agent { align-items: center; background: #f2ecfd; color: #6d28d9; display: inline-flex; gap: 3px; }
+.layer-source.fw { background: #e8f1fd; color: #1863b5; }
+.layer-why { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin: 5px 0 0; }
+.layer-types { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.layer-chip { align-items: center; background: #f4f7fb; border: 1px solid var(--line); border-radius: 6px;
+  display: inline-flex; font-size: 11.5px; gap: 5px; padding: 3px 8px; }
+.layer-chip i { border-radius: 2px; height: 8px; width: 8px; }
+.layer-chip small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+.layer-chip.rel { background: #fff; border-style: dashed; color: var(--muted); }
+.layer-unplaced { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.layer-unplaced h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em; margin: 0; text-transform: uppercase; }
+.layer-unplaced .muted { font-size: 11.5px; margin: 8px 0 0; }
+.layer-add { display: flex; gap: 8px; }
+.layer-add input { border: 1px solid var(--line-strong); border-radius: 8px; flex: 1; font-size: 12.5px; padding: 7px 10px; }
+.layer-add button { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer;
+  font-size: 12.5px; font-weight: 700; padding: 7px 12px; }
+.layer-add button:disabled { opacity: 0.5; }
+.layer-reading { border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; padding: 12px; }
+.layer-reading h4, .layer-upward h4 { align-items: center; color: var(--ink); display: flex; font-size: 12.5px;
+  font-weight: 800; gap: 7px; margin: 0; }
+.layer-reading h4 > svg { color: #7c3aed; }
+.layer-upward h4 > svg { color: #b45309; }
+.layer-reading .muted, .layer-upward .muted { font-size: 11.5px; line-height: 1.55; margin: 0; }
+.layer-verdict { color: var(--ink); font-size: 12.5px; font-weight: 700; margin: 0; }
+.layer-caveats { color: var(--muted); display: grid; font-size: 11.5px; gap: 4px; line-height: 1.5; margin: 0; padding-left: 16px; }
+.layer-note { font-size: 11.5px; }
+.layer-adopt { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: space-between; padding-top: 10px; }
+.layer-adopt .muted { flex: 1; font-size: 11px; min-width: 200px; }
+.layer-ok { color: #15803d; font-size: 12px; font-weight: 700; margin: 0; }
+.layer-upward { border: 1px solid #f3e2c4; background: #fffdf7; border-radius: 12px; display: grid; gap: 8px; padding: 12px; }
+.layer-upward ul { color: var(--ink); display: grid; font-size: 12px; gap: 5px; line-height: 1.5; margin: 0; padding-left: 16px; }
+.meta-layer-pick { align-items: center; display: flex; gap: 8px; margin-bottom: 10px; }
+.meta-layer-pick span { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+.meta-layer-pick select { border: 1px solid var(--line-strong); border-radius: 7px; font-size: 12.5px; padding: 5px 8px; }
+/* The stack drawn behind the type diagram (§5.58). */
+.meta-band-rect { fill: #f4f7fb; stroke: #e4ebf3; stroke-width: 1; }
+.meta-band-rect.loose { fill: transparent; stroke-dasharray: 4 4; }
+.meta-band-label { fill: #8a95a8; font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }

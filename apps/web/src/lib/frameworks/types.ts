@@ -13,7 +13,7 @@ import type { MetaModel } from "../metamodel";
  * Which is what a framework is here: object types with fields, relation types with rules, and two
  * things a bare "standard model" did not have —
  *
- * - **levels**, because most of these frameworks are layered (C4's four zoom levels, SAFe's
+ * - **layers**, because most of these frameworks are layered (C4's four zoom layers, SAFe's
  *   portfolio-to-team, IT4IT's four value streams) and a type without its level is half a type;
  * - **provenance**, carried down onto every type it declares, so a year later the model can still
  *   answer "who said an Aggregate was a thing here" — us, or Eric Evans.
@@ -45,8 +45,8 @@ export interface FrameworkNodeType {
   color: string;
   /** Name of another type in the same framework. */
   parent?: string;
-  /** Key of one of the framework's levels. */
-  level?: string;
+  /** Key of one of the framework's layers. */
+  layer?: string;
   fields: FrameworkField[];
 }
 
@@ -56,7 +56,7 @@ export interface FrameworkRelationType {
   rules: Array<{ from: string; to: string; cardinality: "one-to-one" | "one-to-many" | "many-to-one" | "many-to-many" }>;
 }
 
-export interface FrameworkLevel {
+export interface FrameworkLayer {
   key: string;
   name: string;
   blurb: string;
@@ -72,7 +72,7 @@ export interface Framework {
   /** Where the practice comes from. A framework with no provenance is a set of assertions. */
   grounding: string;
   /** Ordered, coarsest first. Empty for a framework that is not layered. */
-  levels: FrameworkLevel[];
+  layers: FrameworkLayer[];
   nodeTypes: FrameworkNodeType[];
   relationTypes: FrameworkRelationType[];
 }

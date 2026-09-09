@@ -14,15 +14,15 @@ const field = (over: Partial<MetaField> & { key: string }): MetaField => ({
 });
 const nodeType = (name: string, fields: MetaField[] = [], declared = true): MetaNodeType => ({
   id: declared ? `nt_${name}` : null, name, description: "", color: "", parentId: null, instances: 0, fields,
-  presence: declared ? "declared" : "undeclared", framework: "", level: "",
+  presence: declared ? "declared" : "undeclared", framework: "", layerId: null,
 });
 const relType = (name: string, rules: Array<[string, string]> = [], declared = true): MetaRelationType => ({
-  id: declared ? `rt_${name}` : null, name, description: "", instances: 0, framework: "",
+  id: declared ? `rt_${name}` : null, name, description: "", instances: 0, framework: "", layerId: null,
   rules: rules.map(([fromType, toType], i) => ({ id: `r${i}`, fromType, toType, cardinality: "many-to-many" })),
   observedPairs: [], presence: declared ? "declared" : "undeclared",
 });
 const model = (nodeTypes: MetaNodeType[], relationTypes: MetaRelationType[] = []): MetaModel => ({
-  nodeTypes, relationTypes,
+  nodeTypes, relationTypes, layers: [],
   totals: { entities: 0, relations: 0, undeclaredNodeTypes: 0, undeclaredRelationTypes: 0, violations: 0 },
 });
 const ent = (id: string, kind: string, name: string, attributes: Record<string, string> = {}): EntityLike => ({ id, kind, name, attributes });

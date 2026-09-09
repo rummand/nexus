@@ -18,13 +18,13 @@ export const DDD: Framework = {
   answers: "Where are the seams in this domain, which team owns each, and what does each side promise the other?",
   grounding:
     "Eric Evans, Domain-Driven Design (2003); Vaughn Vernon, Implementing DDD (2013). The context map patterns are Evans's, and they describe power as much as data.",
-  levels: [
+  layers: [
     { key: "strategic", name: "Strategic", blurb: "Bounded contexts and the map between them. The part that decides team boundaries." },
     { key: "tactical", name: "Tactical", blurb: "Inside one context: aggregates, entities, value objects, events." },
   ],
   nodeTypes: [
     {
-      name: "Bounded Context", color: "#7c3aed", level: "strategic",
+      name: "Bounded Context", color: "#7c3aed", layer: "strategic",
       description: "A boundary inside which one model, and one meaning for each word, holds.",
       fields: [
         { key: "team", dataType: "text", description: "The one team that owns this model.", required: true },
@@ -33,7 +33,7 @@ export const DDD: Framework = {
       ],
     },
     {
-      name: "Aggregate", color: "#8b5cf6", level: "tactical", parent: "Bounded Context",
+      name: "Aggregate", color: "#8b5cf6", layer: "tactical", parent: "Bounded Context",
       description: "A cluster of objects changed together, with one entity as the way in.",
       fields: [
         { key: "root", dataType: "text", description: "The entity that is the only way in.", required: true },
@@ -41,17 +41,17 @@ export const DDD: Framework = {
       ],
     },
     {
-      name: "Entity", color: "#a78bfa", level: "tactical",
+      name: "Entity", color: "#a78bfa", layer: "tactical",
       description: "Something with an identity that persists through change: this order, not an equal one.",
       fields: [{ key: "identity", dataType: "text", description: "What makes two of these the same one.", required: true }],
     },
     {
-      name: "Value Object", color: "#c4b5fd", level: "tactical",
+      name: "Value Object", color: "#c4b5fd", layer: "tactical",
       description: "Something defined entirely by its values: Money, a date range, an address.",
       fields: [{ key: "attributes", dataType: "text", description: "The values that define it." }],
     },
     {
-      name: "Domain Event", color: "#f59e0b", level: "tactical",
+      name: "Domain Event", color: "#f59e0b", layer: "tactical",
       description: "Something that happened in the domain that other parts care about. Past tense, always.",
       fields: [
         { key: "payload", dataType: "text", description: "What travels with it." },
@@ -59,12 +59,12 @@ export const DDD: Framework = {
       ],
     },
     {
-      name: "Domain Service", color: "#6366f1", level: "tactical",
+      name: "Domain Service", color: "#6366f1", layer: "tactical",
       description: "Domain logic that belongs to no single object. Use sparingly — most of it belongs on an aggregate.",
       fields: [{ key: "operation", dataType: "text", description: "" }],
     },
     {
-      name: "Repository", color: "#64748b", level: "tactical",
+      name: "Repository", color: "#64748b", layer: "tactical",
       description: "The way aggregates of one type are found and stored. One per aggregate, no more.",
       fields: [{ key: "aggregate", dataType: "text", description: "" }],
     },
@@ -122,7 +122,7 @@ export const MBSE: Framework = {
   answers: "For every requirement: what does it, what is it built out of, and what proves it works?",
   grounding:
     "OMG SysML v1.6 and the INCOSE Systems Engineering Handbook. The verification methods are the standard four; a requirement with none is not yet a requirement.",
-  levels: [
+  layers: [
     { key: "requirement", name: "Requirements", blurb: "What the system must do, and why." },
     { key: "functional", name: "Functional", blurb: "What it does, independent of what it is made of." },
     { key: "physical", name: "Physical", blurb: "What it is made of, and how the parts connect." },
@@ -130,7 +130,7 @@ export const MBSE: Framework = {
   ],
   nodeTypes: [
     {
-      name: "Requirement", color: "#dc2626", level: "requirement",
+      name: "Requirement", color: "#dc2626", layer: "requirement",
       description: "A single testable statement of something the system must do or must be.",
       fields: [
         { key: "identifier", dataType: "text", description: "The number it is known by outside this tool.", required: true },
@@ -142,7 +142,7 @@ export const MBSE: Framework = {
       ],
     },
     {
-      name: "Function", color: "#ea580c", level: "functional",
+      name: "Function", color: "#ea580c", layer: "functional",
       description: "Something the system does, stated as a verb, independent of what performs it.",
       fields: [
         { key: "inputs", dataType: "text", description: "" },
@@ -150,7 +150,7 @@ export const MBSE: Framework = {
       ],
     },
     {
-      name: "Block", color: "#0891b2", level: "physical",
+      name: "Block", color: "#0891b2", layer: "physical",
       description: "A part of the system: an assembly, a unit, a piece of software. SysML's structural building block.",
       fields: [
         { key: "supplier", dataType: "text", description: "" },
@@ -159,7 +159,7 @@ export const MBSE: Framework = {
       ],
     },
     {
-      name: "Port", color: "#14b8a6", level: "physical",
+      name: "Port", color: "#14b8a6", layer: "physical",
       description: "A defined point of connection on a block: what crosses the boundary, and in which direction.",
       fields: [
         { key: "kind", dataType: "enum", description: "", options: ["data", "power", "fluid", "mechanical", "signal"] },
@@ -167,12 +167,12 @@ export const MBSE: Framework = {
       ],
     },
     {
-      name: "Constraint", color: "#7c3aed", level: "requirement",
+      name: "Constraint", color: "#7c3aed", layer: "requirement",
       description: "A rule the design must obey that is not a behaviour: a budget, a standard, a physical law.",
       fields: [{ key: "expression", dataType: "text", description: "Stated so it can be checked." }],
     },
     {
-      name: "Test Case", color: "#16a34a", level: "verification",
+      name: "Test Case", color: "#16a34a", layer: "verification",
       description: "A specific procedure that shows one or more requirements are met.",
       fields: [
         { key: "procedure", dataType: "text", description: "" },
