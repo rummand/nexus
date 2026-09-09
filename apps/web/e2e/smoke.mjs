@@ -1304,6 +1304,42 @@ try {
       await second.waitForSelector(".peer-cursor", { timeout: 10000 });
       assert.ok((await second.locator(".peer-hold").count()) > 0, "the other screen shows what they have selected");
 
+      /*
+       * Following somebody's viewport (§5.51). The property is not "the camera moved" — it is that
+       * the two of them end up looking at the same place from windows of different sizes, which is
+       * the thing copying a camera would get wrong.
+       */
+      const centreOf = (p) => p.evaluate(() => {
+        const el = document.querySelector("[data-canvas-world]");
+        const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+        const r = document.querySelector(".canvas-viewport").getBoundingClientRect();
+        return { x: Math.round((r.width / 2 - m.e) / m.a), y: Math.round((r.height / 2 - m.f) / m.a) };
+      });
+      const followed = await page.locator(".fact-card").nth(1).boundingBox();
+      await page.mouse.move(followed.x + followed.width / 2, followed.y + followed.height / 2);
+      await page.keyboard.down("Control"); // a bare wheel pans in the default scroll mode
+      for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(120); }
+      await page.keyboard.up("Control");
+      await page.waitForTimeout(900);
+
+      await second.click("[data-peer-chips] [data-peer-follow]");
+      await second.waitForSelector("[data-follow-bar]", { timeout: 15000 });
+      await second.waitForTimeout(2200);
+      const [mine, theirs] = [await centreOf(page), await centreOf(second)];
+      assert.ok(Math.abs(mine.x - theirs.x) < 60 && Math.abs(mine.y - theirs.y) < 60,
+        `following puts both windows on the same place (${JSON.stringify(mine)} vs ${JSON.stringify(theirs)})`);
+
+      // A mutual follow would widen by the fitting margin every round and zoom the pair out of the
+      // board, so it is refused rather than merely discouraged.
+      const backChip = page.locator("[data-peer-chips] [data-peer-follow]").first();
+      assert.equal(await backChip.isDisabled(), true, "you cannot follow somebody who is following you");
+
+      // And moving the board yourself takes it back, with nothing to press.
+      await second.mouse.move(700, 500);
+      await second.mouse.wheel(0, 200);
+      await second.waitForTimeout(700);
+      assert.equal(await second.locator("[data-follow-bar]").count(), 0, "moving the board stops following");
+
       // Leaving takes the presence with it: no ghosts, and no lock left behind.
       await other.close();
       await page.waitForFunction(() => document.querySelectorAll(".peer-chip").length === 0, null, { timeout: 15000 });

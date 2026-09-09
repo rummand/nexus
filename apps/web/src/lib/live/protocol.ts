@@ -1,4 +1,4 @@
-import type { CanvasElement, ElementId, Point, SavedViewpoint } from "@/canvas/document";
+import type { Box, CanvasElement, ElementId, Point, SavedViewpoint } from "@/canvas/document";
 
 /**
  * Two people on one board — the wire, and the rules.
@@ -48,6 +48,21 @@ export interface Peer {
   color: string;
   /** World coordinates, or null when the pointer is off the canvas. */
   cursor: Point | null;
+  /**
+   * The world rectangle this peer can see, so somebody else can follow it (§5.51).
+   *
+   * A rectangle rather than their camera: a camera is in *their* screen units, and copying its
+   * zoom onto a smaller window would show less of the board than they are looking at.
+   */
+  view: Box | null;
+  /**
+   * The peer whose viewport this one is tracking (§5.51).
+   *
+   * On the wire so that following somebody who is already following *you* can be refused. Two
+   * cameras each fitting the other's rectangle with a margin would widen by that margin every
+   * round and zoom the pair out to nothing — the one loop the design has to make unreachable.
+   */
+  following: string | null;
   selection: ElementId[];
   /** The element whose text this peer has open. The soft lock everyone else obeys. */
   editing: ElementId | null;
@@ -66,7 +81,7 @@ export type Down =
 export type Up =
   | { kind: "patch"; patch: Patch }
   | { kind: "doc"; parts: DocParts }
-  | { kind: "presence"; cursor?: Point | null; selection?: ElementId[]; editing?: ElementId | null };
+  | { kind: "presence"; cursor?: Point | null; view?: Box | null; following?: string | null; selection?: ElementId[]; editing?: ElementId | null };
 
 /**
  * Apply a patch to an element map, returning a new map (or the same one if nothing changed).

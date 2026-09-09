@@ -77,6 +77,15 @@ export interface CanvasState {
   peers: Peer[];
   live: boolean;
   /**
+   * The peer whose viewport this camera is tracking (§5.51), or null.
+   *
+   * A peer id rather than a user id: one person in two tabs is two peers looking at two different
+   * corners, and "follow Maria" has to mean one of them.
+   */
+  following: string | null;
+  /** This connection's own peer id, once the stream has said hello. "" until then. */
+  myPeerId: string;
+  /**
    * The object whose text this person has focused, broadcast as presence.
    *
    * Deliberately not `editingId`: that one means "just created, put the caret in its title", and
@@ -151,6 +160,9 @@ export interface CanvasState {
   setBoardRevision(n: number): void;
   setPeers(peers: Peer[]): void;
   setLive(live: boolean): void;
+  /** Start tracking a peer's viewport, or stop. Passing the peer already followed stops. */
+  follow(peerId: string | null): void;
+  setMyPeerId(id: string): void;
   setFocused(id: ElementId | null): void;
   /**
    * Take somebody else's change, or the server's copy of the board.
@@ -351,6 +363,8 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       connectorPreset: "arrow",
       peers: [],
       live: false,
+      following: null,
+      myPeerId: "",
       focusedId: null,
       panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false, comments: false },
       isDragging: false,
@@ -402,9 +416,34 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setBoardRevision: (boardRevision) => set({ boardRevision }),
-      setPeers: (peers) => set({ peers }),
+      /*
+       * The peer list decides two things about following (§5.51).
+       *
+       * Following somebody who has closed the tab is following nothing. And two people who pressed
+       * each other's initials in the same moment both saw `following: null` on the other and both
+       * went ahead — the check at the click cannot see a decision that has not arrived yet. So it
+       * is settled here, when it has: the lower peer id keeps the follow, which both sides compute
+       * the same way, so exactly one of them lets go rather than neither or both.
+       */
+      setPeers: (peers) =>
+        set((s) => {
+          if (!s.following) return { peers };
+          const them = peers.find((p) => p.id === s.following);
+          if (!them) return { peers, following: null };
+          if (them.following === s.myPeerId && s.myPeerId > them.id) return { peers, following: null };
+          return { peers };
+        }),
       setFocused: (focusedId) => set((s) => (s.focusedId === focusedId ? s : { focusedId })),
       setLive: (live) => set((s) => (s.live === live ? s : { live, saveState: live && s.saveState === "conflict" ? "saved" : s.saveState })),
+      follow: (peerId) =>
+        set((s) => {
+          if (!peerId || peerId === s.following) return { following: null };
+          // Never into a loop: see `Peer.following` in the protocol.
+          const them = s.peers.find((p) => p.id === peerId);
+          if (them?.following && them.following === s.myPeerId) return { following: null };
+          return { following: peerId };
+        }),
+      setMyPeerId: (id) => set({ myPeerId: id }),
       applyRemoteDoc: (parts) =>
         set((s) => ({
           ...(parts.viewpoints ? { viewpoints: parts.viewpoints } : {}),

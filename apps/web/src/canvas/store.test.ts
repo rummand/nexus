@@ -127,3 +127,74 @@ describe("canvas store", () => {
     expect(documentFromFrame("in1", Object.fromEntries(els.map((e) => [e.id, e])))).toBeNull();
   });
 });
+
+describe("following somebody", () => {
+  const peer = (id: string, following: string | null = null) => ({ id, userId: `u_${id}`, name: id, color: "#1376d4", cursor: null, view: { x: 0, y: 0, w: 100, h: 100 }, following, selection: [], editing: null });
+
+  it("follows, and clicking the same person again stops", () => {
+    const store = makeStore();
+    store.getState().follow("p1");
+    expect(store.getState().following).toBe("p1");
+    store.getState().follow("p1");
+    expect(store.getState().following).toBeNull();
+  });
+
+  it("moves straight from one person to another", () => {
+    const store = makeStore();
+    store.getState().follow("p1");
+    store.getState().follow("p2");
+    expect(store.getState().following).toBe("p2");
+  });
+
+  it("lets go when the person you were following closes the tab", () => {
+    const store = makeStore();
+    store.getState().setPeers([peer("p1"), peer("p2")]);
+    store.getState().follow("p1");
+    store.getState().setPeers([peer("p2")]);
+    expect(store.getState().following).toBeNull();
+  });
+
+  it("refuses to follow somebody who is already following you", () => {
+    const store = makeStore();
+    store.getState().setMyPeerId("me");
+    store.getState().setPeers([peer("p1", "me")]);
+    store.getState().follow("p1");
+    // Two cameras each fitting the other's rectangle with a margin would zoom the pair out to
+    // nothing, one margin at a time.
+    expect(store.getState().following).toBeNull();
+  });
+
+  it("follows somebody who is following a third person", () => {
+    const store = makeStore();
+    store.getState().setMyPeerId("me");
+    store.getState().setPeers([peer("p1", "p2"), peer("p2")]);
+    store.getState().follow("p1");
+    expect(store.getState().following).toBe("p1");
+  });
+
+  it("breaks a tie when two people follow each other in the same moment", () => {
+    // Both clicked before either decision had arrived, so the click-time check let both through.
+    // The lower peer id keeps the follow; both sides compute it the same way, so exactly one lets go.
+    const loser = makeStore();
+    loser.getState().setMyPeerId("zz");
+    loser.getState().setPeers([peer("aa")]);
+    loser.getState().follow("aa");
+    loser.getState().setPeers([peer("aa", "zz")]);
+    expect(loser.getState().following).toBeNull();
+
+    const winner = makeStore();
+    winner.getState().setMyPeerId("aa");
+    winner.getState().setPeers([peer("zz")]);
+    winner.getState().follow("zz");
+    winner.getState().setPeers([peer("zz", "aa")]);
+    expect(winner.getState().following).toBe("zz");
+  });
+
+  it("keeps following while they are still here", () => {
+    const store = makeStore();
+    store.getState().setPeers([peer("p1")]);
+    store.getState().follow("p1");
+    store.getState().setPeers([{ ...peer("p1"), view: { x: 500, y: 500, w: 100, h: 100 } }]);
+    expect(store.getState().following).toBe("p1");
+  });
+});

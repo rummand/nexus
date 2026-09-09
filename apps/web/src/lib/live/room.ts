@@ -371,7 +371,7 @@ export interface Joined {
   patch(patch: Patch): void;
   /** Saved viewpoints and the Compose script — the document's non-element parts. */
   doc(parts: DocParts): void;
-  presence(update: { cursor?: Peer["cursor"]; selection?: ElementId[]; editing?: ElementId | null }): void;
+  presence(update: { cursor?: Peer["cursor"]; view?: Peer["view"]; following?: string | null; selection?: ElementId[]; editing?: ElementId | null }): void;
   leave(): void;
 }
 
@@ -387,7 +387,7 @@ export async function join(
   // The process id is in here because a peer id now travels between replicas and two of them
   // minting "p1-abc" would be one peer as far as everybody else is concerned.
   const peerId = `${PROCESS_ID}-p${++peerCounter}-${Math.random().toString(36).slice(2, 6)}`;
-  const peer: Peer = { id: peerId, userId: user.id, name: user.name, color: peerColor(user.id, user.color), cursor: null, selection: [], editing: null };
+  const peer: Peer = { id: peerId, userId: user.id, name: user.name, color: peerColor(user.id, user.color), cursor: null, view: null, following: null, selection: [], editing: null };
   room.subscribers.set(peerId, { peer, send });
 
   const hello: Down = { kind: "hello", peerId, seq: room.seq, elements: room.elements, peers: peers(room), parts: docParts(room) };
@@ -419,6 +419,8 @@ export async function join(
       const sub = room.subscribers.get(peerId);
       if (!sub) return;
       if ("cursor" in update) sub.peer.cursor = update.cursor ?? null;
+      if ("view" in update) sub.peer.view = update.view ?? null;
+      if ("following" in update) sub.peer.following = update.following ?? null;
       if (update.selection) sub.peer.selection = update.selection;
       if ("editing" in update) sub.peer.editing = update.editing ?? null;
       announcePresence(room);

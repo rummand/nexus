@@ -2083,6 +2083,50 @@ refresh after you post and when the tab regains focus, which is the moment someb
 long enough for a colleague to have said something. Pushing them through the bus is a small change
 when it is worth making; claiming they are live when they are not is not.
 
+### 5.51 Following somebody's viewport (v0.2)
+
+Rev 75 put two people on one board and rev 84 let them talk about it. What was still missing is
+the smallest thing of all: *look at this corner*. A sentence somebody has to act on — scroll, hunt,
+"no, the other one" — where the board could simply take you there.
+
+Click a peer's initials in the topbar and your camera tracks theirs until you move the board
+yourself.
+
+**A rectangle, not a camera.** Presence gains `view`: the world rectangle a peer can see. It is
+tempting to send the camera — three numbers already in the store — and it is wrong. A camera is in
+*their* screen units, so copying its zoom onto a smaller window shows **less** of the board than
+they are looking at, which defeats the entire point: the corner they were pointing at ends up off
+your screen. A rectangle is what they can see, and each follower fits it to whatever window they
+happen to have. In the browser test a 1400×900 leader at 392% and a 1600×1000 follower at 413% have
+the same world point at the centre of both screens — different zooms, same view, which is the whole
+argument in one line. It is the same reasoning that put cursors in world coordinates in §5.40.
+
+**Letting go without a button.** Following ends the moment you pan, zoom, fit, open a viewpoint or
+let the command bar focus a card — anything that moves the board. That has to be automatic: when a
+canvas starts moving under your hands, the reflex is to grab it, not to look for the way out. The
+hook flags its own camera writes (zustand notifies synchronously inside `set`, so a boolean held
+across the call is true for exactly its own change and nothing else) and treats every other camera
+change as the person taking the wheel back. Nothing else in the canvas has to know that following
+exists. Escape and a **Stop** button are there too, for the people who look for one.
+
+**The loop that had to be unreachable.** The fit leaves a 6% margin so the leader's edges are
+inside yours rather than on them. Two people each following the other would therefore widen by 6%
+every round and zoom the pair off the board — a slow, baffling drift outward. So presence also
+carries `following`, and following somebody who is already following you is refused, with their
+initials saying why. The check at the click cannot see a decision that has not arrived yet, so two
+people who press each other's initials in the same moment both get through it; that is settled when
+the presence lands, by letting the **lower peer id keep the follow** — both sides compute the same
+answer, so exactly one of them lets go rather than neither or both. Chains are fine: C following A
+following B is stable, because the margin is applied a fixed number of times, not repeatedly.
+
+**Saying so.** The edge of the canvas takes the followed peer's colour and one pill names them. A
+board that moves on its own is alarming; a board that moves on its own *and says whose view you are
+in* is a feature.
+
+Eased rather than snapped: the wire carries a rectangle about eight times a second and the camera
+eases towards it each frame, zoom geometrically — halfway between 20% and 80% is 40%, not 50%, or a
+long zoom appears to accelerate into its target.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2095,7 +2139,7 @@ when it is worth making; claiming they are live when they are not is not.
 - ~~Real-time multiplayer on boards (presence, cursors, CRDT/OT)~~ **Done (v0.2)** — see §5.40.
   Not a CRDT in the end: the document is a map of flat objects, so per-element last-writer-wins
   ordered by the server is the whole merge, and text is locked rather than merged. ~~Comments~~ done
-  (§5.50). Next: following somebody's viewport, and comments over the live channel.
+  (§5.50); ~~following somebody's viewport~~ done (§5.51). Next: comments over the live channel.
 - ~~Authentication~~ **Done (v0.2)** — see §5.41: email and password, scrypt, revocable sessions.
   Next: enterprise SSO (the sign-in seam is one function and one page), and roles enforced per
   team/space/board — `workspace_members.role` has always been there and nothing reads it yet.
@@ -2120,7 +2164,7 @@ when it is worth making; claiming they are live when they are not is not.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 84)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 85)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2516,6 +2560,16 @@ when it is worth making; claiming they are live when they are not is not.
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
 
+### Following somebody's viewport (v0.2)
+- Click a peer's initials in the topbar and your camera tracks theirs; click again, press Escape,
+  press **Stop**, or simply move the board to take it back.
+- Presence carries the world **rectangle** a peer can see, not their camera, so a smaller window
+  still shows everything they are looking at — at its own zoom.
+- The canvas edge takes their colour and a pill names them, so a board moving on its own is never
+  a mystery.
+- Following somebody who is already following you is refused: the fitting margin would compound and
+  zoom the pair off the board.
+
 ### Comments (v0.2)
 - A conversation about the board, or about one object on it: **Comments** in the topbar with the
   open count, **Comment** on the selection bar, and a pin on any object somebody is still talking
@@ -2909,6 +2963,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | The studio grid gets an explicit `minmax(0, 1fr)` column instead of the topbar being trimmed to fit. | An implicit grid track sizes to its widest child's max-content, so *any* future control would silently widen the whole page and move the canvas out from under the pointer. Making the column the window fixes the class of bug; shortening one button would only have moved the threshold. |
 | 2026-09-09 | Comments refresh on post and on tab focus rather than riding the live channel. | The live bus carries document patches, and adding a second message shape to it to save a poll that costs nothing is complexity bought early. Coming back to the tab is when somebody has been away long enough for a colleague to have said something, which is exactly when a refresh is worth doing. |
 
+| 2026-09-09 | Presence carries the world rectangle a peer can see, not their camera. | A camera is in their screen units: copying its zoom onto a smaller window shows less of the board than they are looking at, so the corner they were pointing at ends up off your screen — the one thing following must not do. A rectangle is what they can see, and each follower fits it to their own window. |
+| 2026-09-09 | Following ends on any camera move of your own, with no button required. | When a canvas starts moving under your hands the reflex is to grab it, not to hunt for an exit. The follow hook flags its own writes and treats every other camera change as the person taking the wheel back, so no other part of the canvas has to know following exists. |
+| 2026-09-09 | Following somebody who is already following you is refused. | The fit leaves a 6% margin so their edges sit inside yours; two cameras each fitting the other's rectangle would widen by that margin every round and drift the pair off the board. Presence carries `following` so the loop can be refused at the point of the click rather than discovered as a mystery. |
+| 2026-09-09 | A simultaneous mutual follow is broken by peer id, not by refusing both. | The click-time check cannot see a decision still in flight, so both sides can get through it. Dropping both would be safe but leaves nobody following after two people asked to; comparing ids is something both compute identically with nothing to negotiate, so exactly one follow survives — which is what either of them wanted. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2922,6 +2981,21 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 85: following somebody's viewport.** The smallest missing thing on a shared
+  board: *look at this corner*. Click somebody's initials and your camera tracks theirs. What
+  travels is the world **rectangle** they can see rather than their camera — a camera is in their
+  screen units, so copying its zoom onto a smaller window shows less of the board than they are
+  looking at, and the corner being pointed at ends up off your screen. Each follower fits the
+  rectangle to their own window: in the browser test a 1400×900 leader at 392% and a 1600×1000
+  follower at 413% have the same world point at the centre of both screens. Following ends the
+  moment you move the board yourself, with nothing to press, because the reflex when a canvas moves
+  under your hands is to grab it; the hook flags its own camera writes and treats everything else
+  as the person taking the wheel back, so no other part of the canvas has to know following exists.
+  The edge of the canvas takes their colour and a pill names them. One loop had to be made
+  unreachable: the fit leaves a 6% margin, so two people each following the other would widen by
+  6% every round and drift off the board — presence therefore also carries who you are following,
+  and following somebody who is following you is refused with their initials saying why.
 
 - **2026-09-09 — Rev 84: talking about a board.** The last real gap in the product: a board is a
   thing two people stand in front of and the one thing they could not do on it was talk. Comments

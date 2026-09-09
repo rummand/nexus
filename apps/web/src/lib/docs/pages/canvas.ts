@@ -299,8 +299,8 @@ export const BOARD_AGENTS: DocPage = {
 export const TOGETHER: DocPage = {
   slug: "together",
   title: "Two people on one board",
-  summary: "Cursors, who has hold of what, the one thing that locks, and what happens when the connection drops.",
-  keywords: ["multiplayer", "collaboration", "together", "presence", "cursors", "shared", "live", "conflict", "lock", "workshop", "real-time"],
+  summary: "Cursors, who has hold of what, the one thing that locks, following somebody's view, and what happens when the connection drops.",
+  keywords: ["multiplayer", "collaboration", "together", "presence", "cursors", "shared", "live", "conflict", "lock", "workshop", "real-time", "follow", "following", "viewport", "camera", "show me", "present"],
   blocks: [
     { kind: "prose", text: "Open a board somebody else already has open and you are both on it. Their cursor moves, what they have selected is outlined in their colour, and anything they change appears on your screen as they do it. Nobody presses share and nobody presses save." },
     { kind: "shot", src: "board-together", alt: "A board with somebody else's coloured cursor on it, their name beside it, an outline around the card they have selected and their initials in the topbar", caption: "Somebody else on the same board: their pointer, what they have hold of, and the field they are typing in." },
@@ -330,6 +330,20 @@ export const TOGETHER: DocPage = {
     },
     { kind: "note", tone: "why", title: "Why a lock on text and nothing else", text: "Positions, colours and kinds merge under “the last one wins” without losing anything — there is one value and somebody set it. Two people typing into one field under that same rule silently eat each other's characters, which looks like the product losing your work. Locking the field is a smaller promise, kept: nobody can be halfway through a sentence and have it rewritten underneath them." },
     { kind: "note", tone: "tip", text: "The lock is presence, not a state. It lifts the moment they click elsewhere, close the tab or lose their connection — there is nothing to release, and nothing that can get stuck." },
+    { kind: "heading", text: "Going where they are looking", id: "following" },
+    { kind: "prose", text: "Click somebody's initials in the topbar and your board goes to whatever they are looking at, and keeps going as they move. It is the shortest path from \u201clook at this corner\u201d to looking at it \u2014 nobody has to say which corner, and nobody has to find it." },
+    { kind: "shot", src: "board-following", alt: "A board zoomed in on one card, with a coloured frame around the whole canvas and a dark pill at the bottom reading \u201cFollowing Maria Lund \u2014 move the board to take it back\u201d", caption: "Following somebody: the frame is in their colour, and one sentence says whose view you are in." },
+    {
+      kind: "table",
+      columns: ["", "What happens"],
+      rows: [
+        ["Their initials", "Ringed in their colour while you are following them. Click again to stop."],
+        ["The frame", "The edge of the canvas takes their colour, so a board moving on its own is never a mystery."],
+        ["**Getting out**", "Move the board \u2014 pan, zoom, anything. There is nothing to press, because the reflex when a canvas moves under you is to grab it."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why you do not get their zoom", text: "What travels is the **rectangle of board they can see**, not their camera. A camera is in their screen units: copy its zoom onto a smaller window and you see less than they do, which defeats the whole point. Each follower fits the rectangle to their own window, so a laptop and a meeting-room display both end up showing the card that was being pointed at \u2014 at different zooms." },
+    { kind: "note", tone: "tip", text: "You cannot follow somebody who is already following you, and their initials say so. Two cameras each fitting the other's rectangle would widen a little every round and zoom the pair off the board." },
     { kind: "heading", text: "When the connection goes", id: "offline" },
     { kind: "prose", text: "The board does not stop. It reconnects by itself, and while it is down your tab goes back to saving for itself — which is also what happens if a corporate proxy will not carry the connection at all. In that state two people editing at once is the old story again: the second save is refused and says so, because your tab genuinely cannot see what the other person did." },
     { kind: "note", tone: "warning", title: "One instance", text: "The shared session lives in the server's memory, so it works when everybody is talking to the same instance — which is the deployment Nexus ships as. Behind a load balancer spreading people across replicas, two people could land in different sessions and not see each other. That is the same limit that makes a single database file work today, and it lifts with the same change." },

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 // The same initials the sidebar and the topbar already show for a person.
 import { initials } from "@/components/workspace/Sidebar";
 import { boxToScreen, elementBounds, worldToScreen } from "./geometry";
-import { useCanvas } from "./store";
+import { useCanvas, useCanvasStore } from "./store";
 
 /**
  * Everybody else, drawn on top of the board.
@@ -66,23 +66,75 @@ export function PeerLayer() {
 }
 
 /**
- * Who is here, in the topbar.
+ * Who is here, in the topbar — and the way to go and stand where they are standing (§5.51).
  *
  * Just the initials, in the person's colour, with the name on hover. Presence is worth a glance,
  * not a panel — the useful signal is "somebody else is in here", and the cursors say the rest.
+ * Clicking one follows their viewport, which is the shortest path from "look at this corner" to
+ * looking at it; clicking it again stops.
  */
 export function PeerChips() {
+  const store = useCanvasStore();
   const peers = useCanvas((s) => s.peers);
   const live = useCanvas((s) => s.live);
+  const following = useCanvas((s) => s.following);
+  const me = useCanvas((s) => s.myPeerId);
   if (!peers.length) return null;
   return (
-    <div className="peer-chips" title={live ? "Also on this board" : "Reconnecting…"}>
-      {peers.slice(0, 5).map((peer) => (
-        <span key={peer.id} className="peer-chip" style={{ background: peer.color }} title={peer.name}>
-          {initials(peer.name)}
-        </span>
-      ))}
+    <div className="peer-chips" title={live ? "Also on this board" : "Reconnecting…"} data-peer-chips>
+      {peers.slice(0, 5).map((peer) => {
+        const on = following === peer.id;
+        // Following somebody who is following you is the one loop the design refuses, so the
+        // control says so rather than doing nothing when pressed.
+        const watchingMe = Boolean(me) && peer.following === me;
+        return (
+          <button
+            key={peer.id}
+            type="button"
+            className={on ? "peer-chip following" : watchingMe ? "peer-chip watching" : "peer-chip"}
+            /* The ring is the person's own colour, so it has to be drawn with it rather than with
+               `currentColor` — the text on these chips is white. */
+            style={on ? { background: peer.color, boxShadow: `0 0 0 2px var(--panel), 0 0 0 4px ${peer.color}` } : { background: peer.color }}
+            title={
+              on ? `Stop following ${peer.name}`
+                : watchingMe ? `${peer.name} is following you`
+                : peer.view ? `Follow ${peer.name}`
+                : `${peer.name} — not looking anywhere yet`
+            }
+            aria-pressed={on}
+            disabled={!peer.view || watchingMe}
+            onClick={() => store.getState().follow(peer.id)}
+            data-peer-follow={peer.id}
+          >
+            {initials(peer.name)}
+          </button>
+        );
+      })}
       {peers.length > 5 && <span className="peer-chip more">+{peers.length - 5}</span>}
     </div>
+  );
+}
+
+/**
+ * The board is not yours at the moment, and that has to be impossible to miss (§5.51).
+ *
+ * A tint in the peer's colour around the edge of the canvas, and one sentence saying whose view
+ * you are in. Both go the instant you touch the board yourself.
+ */
+export function FollowBar() {
+  const store = useCanvasStore();
+  const following = useCanvas((s) => s.following);
+  const peer = useCanvas((s) => s.peers.find((p) => p.id === s.following));
+  if (!following || !peer) return null;
+  return (
+    <>
+      <div className="follow-frame" style={{ borderColor: peer.color }} aria-hidden />
+      <div className="follow-bar" data-follow-bar>
+        <i style={{ background: peer.color }} />
+        Following {peer.name}
+        <small>move the board to take it back</small>
+        <button type="button" onClick={() => store.getState().follow(null)}>Stop</button>
+      </div>
+    </>
   );
 }

@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { applyPatch, diffElements, type DocParts, type Down, type Patch, type Up } from "@/lib/live/protocol";
-import { screenToWorld } from "../geometry";
+import { screenToWorld, visibleWorldRect } from "../geometry";
 import { useCanvasStore } from "../store";
 
 /** Cursors move every frame; the wire does not need to. */
 const CURSOR_MS = 60;
 /** Long enough that a drag is one message rather than sixty, short enough to look immediate. */
 const PATCH_MS = 90;
+/**
+ * Coarser than the cursor on purpose (§5.51): a viewport is a slab of board rather than a point,
+ * so a follower reading it every eighth of a second loses nothing, and the follow eases between
+ * updates anyway.
+ */
+const VIEW_MS = 130;
 
 /**
  * The board, shared.
@@ -169,7 +175,11 @@ export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
         try {
           peerId.current = (JSON.parse((e as MessageEvent<string>).data) as { peerId: string }).peerId;
           retry = 0;
+          store.getState().setMyPeerId(peerId.current);
           store.getState().setLive(true);
+          // Say where we are looking straight away: until the camera next moves there would be
+          // nothing to follow, and "follow me" has to work on the board as it is standing.
+          sendView();
         } catch {
           /* malformed handshake: the retry below will get another one */
         }
@@ -186,6 +196,26 @@ export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
         reconnectTimer = setTimeout(connect, 500 * 2 ** (retry - 1));
       };
     };
+
+    /*
+     * What this person can see, for anybody following them (§5.51). Throttled with a trailing send,
+     * because the last frame of a pan is the one that matters and dropping it would leave the
+     * follower a little behind wherever the leader stopped.
+     */
+    let viewTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastView = 0;
+    const sendView = () => {
+      viewTimer = null;
+      lastView = Date.now();
+      const s = store.getState();
+      post({ kind: "presence", view: visibleWorldRect(s.camera, s.viewport.w, s.viewport.h) });
+    };
+    const unsubView = store.subscribe((state, prev) => {
+      if (state.camera === prev.camera && state.viewport === prev.viewport) return;
+      if (!peerId.current || viewTimer) return;
+      const wait = Math.max(0, VIEW_MS - (Date.now() - lastView));
+      viewTimer = setTimeout(sendView, wait);
+    });
 
     connect();
 
@@ -231,6 +261,12 @@ export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
       post({ kind: "presence", selection: state.selection, editing: state.focusedId });
     });
 
+    /* Who this person is following, so nobody can follow them back into a loop (§5.51). */
+    const unsubFollowing = store.subscribe((state, prev) => {
+      if (state.following === prev.following) return;
+      post({ kind: "presence", following: state.following });
+    });
+
     let lastCursor = 0;
     const onPointer = (e: PointerEvent) => {
       const now = Date.now();
@@ -254,15 +290,20 @@ export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
         flush();
       }
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (viewTimer) clearTimeout(viewTimer);
       window.removeEventListener("pointermove", onPointer);
       document.removeEventListener("mouseleave", onLeave);
       unsubDoc();
       unsubParts();
       unsubPresence();
+      unsubFollowing();
+      unsubView();
       source?.close();
       peerId.current = "";
       store.getState().setLive(false);
       store.getState().setPeers([]);
+      store.getState().follow(null);
+      store.getState().setMyPeerId("");
     };
   }, [store, rootRef]);
 }

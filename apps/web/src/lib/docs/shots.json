@@ -35,6 +35,10 @@
     "width": 1720,
     "height": 1000
   },
+  "board-following": {
+    "width": 1720,
+    "height": 1000
+  },
   "board-graph-panel": {
     "width": 258,
     "height": 420

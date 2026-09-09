@@ -227,6 +227,39 @@ try {
   if (guestContext) await guestContext.close();
 
   /*
+   * Following (§5.51) needs two browsers for the same reason as the shot above, and one more
+   * thing: the two windows are deliberately different sizes, because the picture is of the
+   * follower matching what the leader *sees* rather than copying their zoom.
+   */
+  let leadContext = null;
+  await shot("board-following", async () => {
+    leadContext = await browser.newContext({ viewport: { width: 1180, height: 820 } });
+    const leader = await leadContext.newPage();
+    await signIn(leader, "maria@acme-energy.example");
+    await leader.goto(`${base}/b/brd_landscape`, { waitUntil: "load", timeout: 180_000 });
+    await leader.waitForSelector("[data-element-id]", { timeout: 180_000 });
+    await leader.waitForTimeout(1500);
+
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForSelector("[data-peer-chips] [data-peer-follow]", { timeout: 90_000 });
+    await page.waitForTimeout(1200);
+
+    // The leader zooms in on one card — ctrl+wheel, because a bare wheel pans in the default mode.
+    const card = await leader.locator(".fact-card").nth(2).boundingBox();
+    await leader.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
+    await leader.keyboard.down("Control");
+    for (let i = 0; i < 5; i++) { await leader.mouse.wheel(0, -120); await leader.waitForTimeout(120); }
+    await leader.keyboard.up("Control");
+    await leader.mouse.move(card.x + card.width / 2, card.y + card.height / 2 + 40);
+    await leader.waitForTimeout(1200);
+
+    await page.click("[data-peer-chips] [data-peer-follow]");
+    await page.waitForSelector("[data-follow-bar]", { timeout: 30_000 });
+    await page.waitForTimeout(3000);
+  }, { settle: 1200 });
+  if (leadContext) await leadContext.close();
+
+  /*
    * Comments (§5.50). The picture has to show both kinds at once — one about the board, one about
    * a card, with the card carrying its pin — so it writes them, then clicks empty board so the
    * selection toolbar is not standing on top of the pin it is meant to show.

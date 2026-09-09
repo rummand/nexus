@@ -14,7 +14,7 @@ const card = (id: string, over: Partial<CanvasElement> = {}): CanvasElement =>
   ({ id, type: "card", x: 0, y: 0, w: 200, h: 120, z: 1, kind: "Application", color: "#1376d4", title: id, description: "", ...over }) as CanvasElement;
 
 const peer = (over: Partial<Peer> = {}): Peer =>
-  ({ id: "p1", userId: "u1", name: "Jes Olsen", color: "#1376d4", cursor: null, selection: [], editing: null, ...over });
+  ({ id: "p1", userId: "u1", name: "Jes Olsen", color: "#1376d4", cursor: null, view: null, following: null, selection: [], editing: null, ...over });
 
 describe("a patch", () => {
   it("adds, replaces and removes", () => {
