@@ -127,6 +127,13 @@
       "when": 1788909872878,
       "tag": "0017_silent_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788936349793,
+      "tag": "0018_spotty_mindworm",
+      "breakpoints": true
     }
   ]
 }

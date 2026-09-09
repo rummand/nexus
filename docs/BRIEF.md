@@ -2015,6 +2015,64 @@ the ordinary persist, which **declines unless the replica is the elected writer*
 large for `NOTIFY` could be followed by every replica re-reading a document that did not contain it.
 That write is now forced, and the reload is announced only once it has happened.
 
+### 5.50 Talking about a board (v0.2)
+
+A board is a thing two people stand in front of (§5.40) and, until now, the one thing they could
+not do on it was talk. Everything else about a card is expressible — its kind, its owner, its
+relations — and the argument that produced it lived in an email or somebody's memory. Comments close
+the last real gap in the product.
+
+**Rows, not document.** §6a's known-gaps entry left the question open: is a comment a board object,
+versioned and exported with the drawing like an agent remark, or a row beside it? A row. A comment
+must survive the thing it is about — you delete the card and the reasoning is exactly what you still
+want — and a version restore that silently deleted three colleagues' questions would be the product
+losing people's words. Rows also mean a guest can write one without being able to write a document.
+
+```
+comments  id, workspace_id, board_id, element_id(""), anchor_label, parent_id?, author_id?,
+          author_name, body, resolved_at?, resolved_by_id?, resolved_by_name, edited_at?, created_at
+```
+
+`element_id` is `""` for a comment about the board as a whole, and is deliberately not a foreign key
+— the document is JSON, and a conversation about a card that has been deleted is one somebody still
+needs to read. `anchor_label` and `author_name` are copies taken at write time, for the same reason.
+
+**Two levels, never three.** A conversation is one thing somebody said and the replies to it. A
+reply to a reply joins the same conversation rather than starting a third rung: an arbitrarily deep
+tree is a shape nobody can read in a panel beside a canvas, and every product that has tried it
+ends up flattening the display anyway.
+
+**A separate capability.** `board.comment` is granted to all four roles including **guest**, which
+is the point of it existing rather than being a corner of `board.edit`: the reviewer you invite to
+look at an architecture is exactly the person with something to say about it. Editing and deleting
+are *your own words only*, and deliberately **not** an administrator's power — a record somebody
+can rewrite is not a record, and no amount of convenience is worth that. Resolving is different: it
+settles a conversation rather than changing it, so anybody who may comment may settle or reopen one.
+The rule is shown rather than enforced after the fact: **Edit** and the bin appear only on your own
+words, so nobody is offered a control that would answer them with a refusal.
+
+**Settled, not deleted.** The tick drops a conversation below the open ones, takes its pin off the
+board and leaves it under *Show settled*. A year later, why a card is the shape it is matters more
+than the question that got it there.
+
+**What survives a deletion**, which is most of the design:
+
+| Deleted | What happens | Why |
+|---|---|---|
+| The opening comment | Its replies are promoted to conversations of their own (`threadsOf`), because there is no foreign key on `parent_id` | Somebody withdrawing their own question must not silently delete three colleagues' answers |
+| The object it was about | The conversation stays and its heading says **(deleted)**, next to the name the object had when somebody first commented | Hiding it throws the reasoning away at the moment it became history |
+| The person who wrote it | `author_id` goes null; `author_name` was copied at write time and stays | A conversation still says who said it after somebody leaves |
+| The board | The comments go with it (`ON DELETE CASCADE`) | A comment about a board that no longer exists is about nothing |
+
+**On the board, in screen space.** An object with an open conversation carries a pin at its
+top-right — drawn in one overlay above the world layer rather than inside each of the seven element
+renderers, so it is the same size at 30% zoom and at 300% and there is one place to change it.
+
+**Not live, and honest about it.** Comments are not carried by the live channel (§5.47). They
+refresh after you post and when the tab regains focus, which is the moment somebody has been away
+long enough for a colleague to have said something. Pushing them through the bus is a small change
+when it is worth making; claiming they are live when they are not is not.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2026,8 +2084,8 @@ That write is now forced, and the reload is announced only once it has happened.
 ### Next (brief 2+ — candidates, to be confirmed by the product owner)
 - ~~Real-time multiplayer on boards (presence, cursors, CRDT/OT)~~ **Done (v0.2)** — see §5.40.
   Not a CRDT in the end: the document is a map of flat objects, so per-element last-writer-wins
-  ordered by the server is the whole merge, and text is locked rather than merged. Next: comments,
-  and following somebody's viewport.
+  ordered by the server is the whole merge, and text is locked rather than merged. ~~Comments~~ done
+  (§5.50). Next: following somebody's viewport, and comments over the live channel.
 - ~~Authentication~~ **Done (v0.2)** — see §5.41: email and password, scrypt, revocable sessions.
   Next: enterprise SSO (the sign-in seam is one function and one page), and roles enforced per
   team/space/board — `workspace_members.role` has always been there and nothing reads it yet.
@@ -2046,13 +2104,13 @@ That write is now forced, and the reload is announced only once it has happened.
   enrichment, with human review queue (the accept / dismiss flow exists; LLM-backed
   proposal sources are next).
 - ~~Search across boards and the graph~~ done: home search over boards + objects, board command bar with structured graph queries (§5.10). Next: natural-language translation by the agent layer.
-- Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; comments.
+- Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; ~~comments~~ done (§5.50).
 - Sovereign deployment package (containers, Postgres, object storage, model gateway).
 - **The agent framework** — agents as objects in the graph, a run log, a fleet view, model providers
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-08 — rev 82)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 84)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2448,6 +2506,18 @@ That write is now forced, and the reload is announced only once it has happened.
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
 
+### Comments (v0.2)
+- A conversation about the board, or about one object on it: **Comments** in the topbar with the
+  open count, **Comment** on the selection bar, and a pin on any object somebody is still talking
+  about.
+- Two levels — an opening comment and replies; a reply to a reply joins the same conversation.
+- Settled rather than deleted: the tick drops a conversation below the open ones and takes its pin
+  off the board, and it stays under *Show settled* with who settled it.
+- Rows beside the document, not part of it: they survive the card, the board version and the person.
+  A thread about a deleted object says **(deleted)** rather than disappearing.
+- `board.comment` is granted to every role including **guest**; editing and deleting are your own
+  words only, and not an administrator's power.
+
 ### More than one workspace (v0.2)
 - A switcher in the sidebar, in place of the static workspace name; creating one makes you its
   owner and gives it a space to start in.
@@ -2566,13 +2636,9 @@ That write is now forced, and the reload is announced only once it has happened.
 
 ### Known gaps
 
-Every gap this section carried through brief 1 has now been closed (§5.45–§5.48). What is left is
+Every gap this section carried through brief 1 has now been closed (§5.45–§5.50). What is left is
 what is honestly still missing, and why.
 
-- **No comments.** A board is a thing two people stand in front of (§5.40) and the one thing they
-  cannot do on it is talk. The open question is whether a comment is a board object — versioned and
-  exported with the drawing, like an agent remark — or a row beside it that survives the object it
-  is about. A human conversation probably wants the row.
 - **No sign-up and no password-reset email**, by choice. Somebody can change their own password and
   an owner can add a colleague and reset one (§5.46); enterprise SSO is the intended answer to the
   rest, and a mail transport in the middle of an architecture tool is a moving part, a
@@ -2825,6 +2891,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | A drop onto a floating panel is refused rather than passed through to the board. | The panels are children of the canvas element, so the old behaviour created the card underneath one: in the model, invisible on the board, and impossible to find without moving the panel. Refusing it costs one gesture; the alternative costs somebody ten minutes wondering where their object went. |
 | 2026-09-08 | Board-only edits — moving, resizing, recolouring — are not graph history. | They are changes to a picture, not to the estate, and boards already keep version history for them. Mixing the two would bury the six changes that mattered under six hundred that did not, which is how an audit trail becomes something nobody opens. |
 
+| 2026-09-09 | A comment is a row beside the board document, not an element inside it. | It has to outlive the thing it is about — you delete the card and the reasoning is exactly what you still want to read — and a version restore that silently deleted three colleagues' questions would be the product losing people's words. Being a row is also what lets a guest write one without being able to write a document. |
+| 2026-09-09 | Commenting is its own capability, granted to guests. | The reviewer you invite to look at an architecture is exactly the person with something to say about it. Folding it into `board.edit` would make "come and review this" mean "come and change this", so inviting somebody would cost more than it is worth. |
+| 2026-09-09 | Nobody can edit or delete somebody else's comment — not even an owner. | A record an administrator can rewrite is not a record. Every convenience this rule costs is smaller than what the exception would cost, so there is no exception; the only thing anybody else can do to your words is reply to them. |
+| 2026-09-09 | No foreign key on `comments.parent_id`, so deleting an opening comment orphans its replies rather than cascading. | Somebody taking back their own question must not silently delete the answers to it. `threadsOf` promotes an orphan to a conversation of its own, which is the behaviour a person would expect and a cascade is the behaviour a schema would default to. |
+| 2026-09-09 | Comment pins are one screen-space overlay, not a badge inside each element renderer. | The world layer is scaled, so a pin drawn inside a card is unreadable at 30% zoom and enormous at 300%; and seven element types would each need the same thing. One layer above the board is what the selection outlines already do. |
+| 2026-09-09 | Comments refresh on post and on tab focus rather than riding the live channel. | The live bus carries document patches, and adding a second message shape to it to save a poll that costs nothing is complexity bought early. Coming back to the tab is when somebody has been away long enough for a colleague to have said something, which is exactly when a refresh is worth doing. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -2838,6 +2911,25 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 84: talking about a board.** The last real gap in the product: a board is a
+  thing two people stand in front of and the one thing they could not do on it was talk. Comments
+  are rows beside the document rather than objects inside it — they have to outlive the card they
+  are about, and a version restore that deleted three colleagues' questions would be the product
+  losing people's words. A conversation is two levels, never three; a reply to a reply joins the
+  same one. `board.comment` is a capability of its own granted to **guests**, because the reviewer
+  you invite to look at an architecture is exactly the person with something to say about it —
+  while editing and deleting are your own words only, and deliberately not an administrator's
+  power: a record somebody can rewrite is not a record. Most of the design is about what survives a
+  deletion. There is no foreign key on `parent_id`, so withdrawing your own question promotes the
+  answers to conversations of their own instead of deleting them; a thread about a deleted object
+  says **(deleted)** next to the name it had, because hiding it throws the reasoning away at the
+  moment it became history; and the author's name is copied at write time so a conversation still
+  says who said it after somebody leaves. On the board, an object somebody is still talking about
+  carries a pin, drawn in one screen-space overlay rather than inside each of the seven element
+  renderers so it is the same size at any zoom. Settling a conversation does not delete it. What is
+  honestly missing: comments do not ride the live channel, so they refresh when you post and when
+  the tab comes back to the front rather than the second somebody else writes one.
 
 - **2026-09-09 — Rev 83: the guard, actually everywhere.** Rev 81 said the write boundary was closed
   and it was not: an audit found forty-nine exported actions that changed something and asked

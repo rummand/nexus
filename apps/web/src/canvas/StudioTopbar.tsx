@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, LogOut, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, LogOut, MessageSquare, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
 import { documentToSvg } from "./export";
 import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
 import { NexusMark } from "@/components/workspace/NexusMark";
 import { initials } from "@/components/workspace/Sidebar";
 import { PeerChips } from "./PeerLayer";
+import { useComments } from "./comments/CommentsContext";
 import { useCanvas, useCanvasStore } from "./store";
 
 export interface StudioTopbarProps {
@@ -17,7 +18,7 @@ export interface StudioTopbarProps {
   name: string;
   space: { id: string; name: string; emoji: string };
   workspace: { slug: string; name: string };
-  user: { name: string; color: string };
+  user: { id: string; name: string; color: string };
 }
 
 export function StudioTopbar({ boardId, name: initialName, space, workspace, user }: StudioTopbarProps) {
@@ -35,6 +36,8 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
   const helpOpen = useCanvas((s) => s.panels.help);
   const historyOpen = useCanvas((s) => s.panels.history);
   const composeOpen = useCanvas((s) => s.panels.compose);
+  const commentsOpen = useCanvas((s) => s.panels.comments);
+  const { open: openComments } = useComments();
 
   const commit = () => {
     const v = name.trim();
@@ -117,6 +120,15 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
             {saveState === "saved" ? (live ? "Shared" : "Saved") : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : "Not saved"}
           </span>
         )}
+        <button
+          className={commentsOpen ? "ghost-button active" : "ghost-button"}
+          type="button"
+          onClick={() => store.getState().togglePanel("comments")}
+          title={openComments ? `${openComments} open conversation${openComments === 1 ? "" : "s"} on this board` : "Conversations about this board"}
+          data-comments-button
+        >
+          <MessageSquare size={16} /> Comments{openComments > 0 && <b className="topbar-count">{openComments}</b>}
+        </button>
         <button className={composeOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("compose")} title="Write the board instead of drawing it"><Sparkles size={16} /> Compose</button>
         <button className={historyOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("history")} title="Version history"><History size={16} /> History</button>
         <button className={helpOpen ? "ghost-button active" : "ghost-button"} type="button" onClick={() => store.getState().togglePanel("help")} title="Keyboard shortcuts"><Keyboard size={16} /> Shortcuts</button>

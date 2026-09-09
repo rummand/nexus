@@ -226,6 +226,30 @@ try {
   }, { settle: 1500 });
   if (guestContext) await guestContext.close();
 
+  /*
+   * Comments (§5.50). The picture has to show both kinds at once — one about the board, one about
+   * a card, with the card carrying its pin — so it writes them, then clicks empty board so the
+   * selection toolbar is not standing on top of the pin it is meant to show.
+   */
+  await shot("board-comments", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1500);
+    await page.click("[data-comments-button]");
+    await page.waitForSelector("[data-comments-panel]", { timeout: 60_000 });
+    await page.fill("[data-comment-input]", "Is this the whole estate, or only what we could get out of the CMDB?");
+    await page.click("[data-comments-panel] .comment-compose button[type=submit]");
+    await page.waitForSelector(".comment-thread", { timeout: 60_000 });
+    await page.locator(".fact-card").first().click();
+    await page.waitForSelector("[data-comment-button]", { timeout: 60_000 });
+    await page.click("[data-comment-button]");
+    await page.waitForSelector(".comment-about", { timeout: 60_000 });
+    await page.fill("[data-comment-input]", "Who owns this now that the platform team has been split?");
+    await page.click("[data-comments-panel] .comment-compose button[type=submit]");
+    await page.waitForSelector(".comment-pin", { timeout: 60_000 });
+    await page.mouse.click(700, 880);
+    await page.waitForTimeout(800);
+  }, { settle: 800 });
+
   await shot("board-lens-impact", async () => {
     await goto("/b/brd_integrations", "[data-element-id]");
     await page.waitForTimeout(1500);

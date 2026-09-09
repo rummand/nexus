@@ -1080,3 +1080,59 @@ export const entityEvents = pgTable(
 );
 
 export type EntityEventRow = typeof entityEvents.$inferSelect;
+
+// ---- talking about it (§5.50) -----------------------------------------------
+
+/**
+ * A conversation about a board, or about one thing on it.
+ *
+ * The open question when this was logged was whether a comment is a board object — versioned and
+ * exported with the drawing, the way an agent's remark is (§5.27) — or a row beside it. It is a
+ * row, for four reasons, and the difference from a remark is the whole argument:
+ *
+ * - **It has to outlive its subject.** Somebody deletes the card and the conversation about *why*
+ *   is the most valuable thing left. `element_id` is therefore a plain string, not a foreign key.
+ * - **It is not part of the drawing.** A board exported to PDF for a steering committee should not
+ *   carry the team's argument about it.
+ * - **Restoring a version must not rewrite it.** A checkpoint from Tuesday would otherwise
+ *   resurrect resolved threads and delete Wednesday's.
+ * - **"What is still open?" is a query**, and a JSON blob inside a document cannot answer it.
+ *
+ * An agent's remark is an annotation of a drawing at a moment and is meant to be disposable. A
+ * human conversation is neither.
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    boardId: text("board_id")
+      .notNull()
+      .references(() => boards.id, { onDelete: "cascade" }),
+    /** The element it is pinned to, or "" for a comment about the board as a whole. No FK: see above. */
+    elementId: text("element_id").notNull().default(""),
+    /** What the element was called when the comment was written, so a deleted card is still named. */
+    anchorLabel: text("anchor_label").notNull().default(""),
+    /** Null for the first comment in a thread; the thread's id for a reply. */
+    parentId: text("parent_id"),
+    authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+    /** Copied, so a conversation still says who said it after somebody leaves the organisation. */
+    authorName: text("author_name").notNull().default(""),
+    body: text("body").notNull().default(""),
+    /** Set on the first comment of a thread when somebody marks the whole thing settled. */
+    resolvedAt: text("resolved_at"),
+    resolvedById: text("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+    resolvedByName: text("resolved_by_name").notNull().default(""),
+    editedAt: text("edited_at"),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [
+    index("comments_board_idx").on(t.boardId, t.createdAt),
+    index("comments_thread_idx").on(t.parentId),
+    index("comments_open_idx").on(t.workspaceId, t.resolvedAt),
+  ],
+);
+
+export type CommentRow = typeof comments.$inferSelect;

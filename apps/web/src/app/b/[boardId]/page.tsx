@@ -41,7 +41,7 @@ export default async function BoardPage({ params }: Props) {
         name: board.name,
         space: { id: board.space.id, name: board.space.name, emoji: board.space.emoji },
         workspace: { slug: board.workspace.slug, name: board.workspace.name },
-        user: { name: user.name, color: user.color },
+        user: { id: user.id, name: user.name, color: user.color },
       }}
     />
   );

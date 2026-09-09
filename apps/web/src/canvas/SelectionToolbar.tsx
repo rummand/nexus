@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageSquare } from "lucide-react";
 import { AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceBetween, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceBetween, ArrowLeftRight, ArrowRight, BringToFront, Circle, Copy, CornerDownRight, Diamond, Lock, Minus, Network, SendToBack, Spline, Square, Trash2, Unlock } from "lucide-react";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { useState } from "react";
@@ -7,6 +8,8 @@ import type { CanvasElement, ConnectorElement, ElementId } from "./document";
 import { CARD_KINDS, FRAME_COLORS, NOTE_COLORS, SHAPE_FILLS, STROKE_COLORS, TEXT_COLORS } from "./document";
 import { boxToScreen, clamp } from "./geometry";
 import { selectionBounds, useCanvas, useCanvasStore } from "./store";
+import { elementLabel } from "./diff";
+import { useComments } from "./comments/CommentsContext";
 
 /** Floating property bar above the selection (LeanFlow "shape inspector bar"). */
 export function SelectionToolbar() {
@@ -19,6 +22,7 @@ export function SelectionToolbar() {
   const marquee = useCanvas((s) => s.marquee);
   const dragging = useCanvas((s) => s.isDragging);
   const { busy, expandSelection } = useGraphActions();
+  const { setDraft } = useComments();
 
   if (selection.length === 0 || editingId || marquee || dragging) return null;
   const bounds = selectionBounds(selection, elements);
@@ -105,6 +109,21 @@ export function SelectionToolbar() {
         <button type="button" title="Send to back  ⌘[" onClick={() => store.getState().sendToBack(selection)}><SendToBack size={12} /> Back</button>
         <button type="button" title="Duplicate  ⌘D" onClick={() => store.getState().duplicateSelection()}><Copy size={12} /></button>
         <button type="button" title={allLocked ? "Unlock" : "Lock"} className={allLocked ? "active" : ""} onClick={() => patchAll(() => ({ locked: !allLocked }))}>{allLocked ? <Lock size={12} /> : <Unlock size={12} />}</button>
+        {/* One object at a time: a comment is about a thing, and "about these five" is a thread
+            nobody could later find from any of them (§5.50). */}
+        {selection.length === 1 && (
+          <button
+            type="button"
+            title="Say something about this"
+            data-comment-button
+            onClick={() => {
+              setDraft({ elementId: first.id, anchorLabel: elementLabel(first) });
+              store.getState().togglePanel("comments", true);
+            }}
+          >
+            <MessageSquare size={12} /> Comment
+          </button>
+        )}
         <button type="button" title="Delete  ⌫" className="danger" onClick={() => store.getState().deleteElements(selection)}><Trash2 size={12} /></button>
       </div>
     </div>

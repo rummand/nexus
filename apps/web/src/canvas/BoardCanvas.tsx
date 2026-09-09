@@ -7,6 +7,7 @@ import { Canvas } from "./Canvas";
 import { StudioTopbar, type StudioTopbarProps } from "./StudioTopbar";
 import { ImportBar } from "./ImportBar";
 import { markBoardOpened } from "@/lib/actions";
+import { CommentsProvider } from "./comments/CommentsContext";
 
 const SCROLL_MODE_KEY = "nexus.scrollMode";
 
@@ -46,12 +47,16 @@ export function BoardCanvas({ document, header, boardRevision = 0, importStatus 
   const importBatch = useStore(store, (s) => s.importBatch);
   return (
     <CanvasStoreContext.Provider value={store}>
-      <div className={`miro-studio${presenting ? " presenting" : ""}${!presenting && importBatch ? " staged-import" : ""}`}>
-        {!presenting && <StudioTopbar {...header} />}
-        {/* A staged import is work, not a drawing: say so, and let it be finished from here (§5.36). */}
-        {!presenting && importBatch && <ImportBar batchId={importBatch} slug={header.workspace.slug} status={importStatus} />}
-        <Canvas />
-      </div>
+      {/* Conversations are rows beside the document, so they wrap the shell rather than the canvas:
+          the topbar's count and the pins on the board are the same data (§5.50). */}
+      <CommentsProvider boardId={header.boardId} me={header.user.id}>
+        <div className={`miro-studio${presenting ? " presenting" : ""}${!presenting && importBatch ? " staged-import" : ""}`}>
+          {!presenting && <StudioTopbar {...header} />}
+          {/* A staged import is work, not a drawing: say so, and let it be finished from here (§5.36). */}
+          {!presenting && importBatch && <ImportBar batchId={importBatch} slug={header.workspace.slug} status={importStatus} />}
+          <Canvas />
+        </div>
+      </CommentsProvider>
     </CanvasStoreContext.Provider>
   );
 }

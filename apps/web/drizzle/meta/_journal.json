@@ -176,6 +176,13 @@
       "when": 1788909871803,
       "tag": "0024_abnormal_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1788936348666,
+      "tag": "0025_wise_microbe",
+      "breakpoints": true
     }
   ]
 }

@@ -338,3 +338,43 @@ export const TOGETHER: DocPage = {
     { kind: "try", href: "/w/:slug", label: "Open a board", note: "Open the same one in a second window to see it for yourself." },
   ],
 };
+
+export const COMMENTS: DocPage = {
+  slug: "comments",
+  title: "Talking about a board",
+  summary: "Say something about the board or about one object on it, reply, and settle a conversation without deleting it.",
+  keywords: ["comment", "comments", "conversation", "thread", "reply", "discuss", "review", "feedback", "annotate", "resolve", "settle", "guest"],
+  blocks: [
+    { kind: "prose", text: "A board is a thing two people stand in front of. **Comments** are how they argue about it: a question about the whole board, or a question about one card, kept beside the drawing rather than in an email nobody can find in eighteen months." },
+    { kind: "shot", src: "board-comments", alt: "A board with the comments panel open on the right: one conversation about the board and one about a card, and a small blue pin on the card itself", caption: "Two conversations: one about the board, one about CRM Cloud \u2014 which carries a pin so the conversation can be found from the board." },
+    { kind: "heading", text: "Saying something", id: "saying" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Press **Comments** in the topbar.", note: "The number beside it is how many conversations are still open." },
+        { do: "Type in the box at the top and press **Post**.", note: "With nothing selected this is about the board as a whole." },
+        { do: "To talk about one object instead, click it and press **Comment** on the bar above it.", note: "The compose box then says what it is about; take the chip off to go back to the board." },
+      ],
+    },
+    { kind: "note", tone: "tip", text: "An object with an open conversation gets a small pin in its top-right corner. Click it to open the panel at that conversation. The pin is drawn over the board rather than inside the object, so it stays the same size at any zoom." },
+    { kind: "heading", text: "Replies and settling", id: "settling" },
+    { kind: "prose", text: "A conversation is one thing somebody said and the replies to it \u2014 two levels, not a tree. A reply to a reply joins the same conversation rather than starting a third rung, because an arbitrarily deep thread is a shape nobody can read beside a canvas." },
+    { kind: "prose", text: "When a question has been answered, press the tick. The conversation is **settled**, not deleted: it drops below the open ones, loses its pin, and is still there under **Show settled**. The reasoning is usually the point \u2014 a year later, why a card is the shape it is matters more than the question that got it there." },
+    { kind: "heading", text: "Who may do what", id: "who" },
+    {
+      kind: "table",
+      columns: ["Role", "Comments"],
+      rows: [
+        ["Owner, administrator, member", "Write, reply, settle and reopen."],
+        ["**Guest**", "The same. A guest changes nothing on the board and nothing in the model, but may take part in every conversation on it."],
+        ["Anybody", "Edit or delete **their own** words only \u2014 never somebody else's, and this is not an administrator's power either."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why a guest can comment", text: "The reviewer you invite to look at an architecture is exactly the person with something to say about it. Commenting is its own capability rather than a corner of \u201ccan edit the board\u201d, so inviting somebody to review costs nothing and risks nothing." },
+    { kind: "note", tone: "why", title: "Why nobody can edit somebody else's comment", text: "A record that an administrator can rewrite is not a record. There is no version of that convenience worth what it costs, so the rule has no exception \u2014 the only thing anybody else can do to your words is reply to them." },
+    { kind: "heading", text: "When the thing you were talking about is deleted", id: "deleted" },
+    { kind: "prose", text: "The conversation stays, and says so: its heading reads **(deleted)** next to whatever the object was called when somebody first commented. Hiding it would throw the reasoning away at exactly the moment it became history. The same holds for people: a comment keeps the name of whoever wrote it after they leave the organisation." },
+    { kind: "note", tone: "warning", title: "Comments are not live", text: "Unlike the drawing itself, a comment posted by somebody else does not appear on your screen the second they post it. The panel refreshes when you post something and when you come back to the tab, which is the moment somebody has been away long enough for a colleague to have said something." },
+    { kind: "try", href: "/w/:slug", label: "Open a board", note: "Press Comments in the topbar." },
+  ],
+};

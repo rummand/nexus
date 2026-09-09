@@ -1345,6 +1345,54 @@ try {
   assert.deepEqual(problems, [], "no browser errors");
 
   /*
+   * Comments (§5.50). A board is a thing two people stand in front of, so the checks are the two
+   * things they do: say something about the board, and say something about one object on it — and
+   * the second one has to leave a mark on the board itself, or nobody finds the conversation again.
+   */
+  await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+  await page.waitForSelector("[data-element-id]");
+  await page.click("[data-comments-button]");
+  await page.waitForSelector("[data-comments-panel]");
+
+  const aboutBoard = `Smoke: is this the whole estate? ${Date.now()}`;
+  await page.fill("[data-comment-input]", aboutBoard);
+  await page.click("[data-comments-panel] .comment-compose button[type=submit]");
+  await page.waitForSelector(`.comment-thread:has-text("${aboutBoard}")`);
+  assert.equal(await page.locator(`.comment-thread:has-text("${aboutBoard}") .comment-anchor`).innerText(), "THIS BOARD",
+    "a comment with no object is about the board");
+  assert.ok((await page.locator(".topbar-count").innerText()).length > 0, "the topbar counts what is open");
+
+  // Now about one object: select it, press Comment, and the compose box says what it is about.
+  await page.locator("[data-element-id]").first().click();
+  await page.waitForSelector("[data-comment-button]");
+  const anchorName = await page.locator("[data-element-id]").first().getAttribute("data-element-id");
+  await page.click("[data-comment-button]");
+  await page.waitForSelector(".comment-about");
+  const aboutThing = `Smoke: who owns this? ${Date.now()}`;
+  await page.fill("[data-comment-input]", aboutThing);
+  await page.click("[data-comments-panel] .comment-compose button[type=submit]");
+  await page.waitForSelector(".comment-pin");
+  assert.ok(anchorName, "the object being discussed has an id");
+  assert.notEqual(await page.locator(`.comment-thread:has-text("${aboutThing}") .comment-anchor`).innerText(), "THIS BOARD",
+    "a comment made from the selection is about that object");
+
+  // A reply joins the conversation rather than starting a second one.
+  const thing = page.locator(`.comment-thread:has-text("${aboutThing}")`);
+  await thing.locator(".comment-more").click();
+  await thing.locator("[data-comment-reply]").fill("Smoke: grid operations, I think.");
+  await thing.locator(".comment-reply button[type=submit]").click();
+  await page.waitForSelector(`.comment-thread:has-text("grid operations, I think")`);
+
+  // Settling hides the pin and takes the thread out of the count, without deleting anything.
+  const openThreads = await page.locator(".comment-thread").count();
+  await page.locator(`.comment-thread:has-text("${aboutThing}") .comment-settle`).click();
+  await page.waitForSelector(".comment-pin", { state: "detached" });
+  await page.waitForFunction((n) => document.querySelectorAll(".comment-thread").length === n - 1, openThreads);
+  await page.click(".comments-toggle");
+  await page.waitForSelector(`.comment-thread.resolved:has-text("${aboutThing}")`);
+  assert.ok(await page.locator(".comment-settled-by").first().isVisible(), "a settled conversation says who settled it");
+
+  /*
    * People and roles (§5.46). The seeded owner can see the roster, change somebody's role and
    * change their own password; and the capability check is real — a member is refused where an
    * administrator is not, on the server, whatever the page chose to render.
@@ -1384,9 +1432,40 @@ try {
       return res.status;
     });
     assert.equal(refused, 403, "a guest's board save is refused by the server");
+
+    /*
+     * …and yet a guest may comment (§5.50). The reviewer you invite to look at an architecture is
+     * exactly the person with something to say about it, so `board.comment` is its own capability
+     * rather than a corner of `board.edit`.
+     */
+    await guest.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+    await guest.waitForSelector("[data-element-id]");
+    await guest.click("[data-comments-button]");
+    await guest.waitForSelector("[data-comments-panel]");
+    const guestSaid = `Smoke guest: looks right to me ${Date.now()}`;
+    await guest.fill("[data-comment-input]", guestSaid);
+    await guest.click("[data-comments-panel] .comment-compose button[type=submit]");
+    await guest.waitForSelector(`.comment-thread:has-text("${guestSaid}")`);
+
+    // Your own words only, and the rule is visible rather than a refusal after the fact: the
+    // guest's own comment carries Edit, and the one Jes left does not.
+    assert.equal(await guest.locator(`.comment-thread:has-text("${guestSaid}") .comment-edit`).count(), 1,
+      "you can edit what you wrote");
+    assert.equal(await guest.locator(`.comment-thread:has-text("${aboutBoard}") .comment-edit`).count(), 0,
+      "you cannot edit what somebody else wrote");
+
+    await guest.locator(`.comment-thread:has-text("${guestSaid}") .comment-settle`).click();
+    await guest.waitForTimeout(500);
   } finally {
     await guestContext.close();
   }
+
+  // Leave the board as it was found: settle the board-level thread too.
+  await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+  await page.click("[data-comments-button]");
+  await page.waitForSelector(`.comment-thread:has-text("${aboutBoard}")`);
+  await page.locator(`.comment-thread:has-text("${aboutBoard}") .comment-settle`).click();
+  await page.waitForTimeout(500);
 
   /*
    * More than one workspace (§5.48): the switcher lists what you are in, creating one lands you in

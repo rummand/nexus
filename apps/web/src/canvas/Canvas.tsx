@@ -28,6 +28,8 @@ import { TimeScrubber } from "./TimeScrubber";
 import { HelpPanel } from "./HelpPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { ComposePanel } from "./ComposePanel";
+import { CommentsPanel } from "./comments/CommentsPanel";
+import { CommentBadges } from "./comments/CommentBadges";
 import { ContextMenu } from "./ContextMenu";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { GridCanvas } from "./GridCanvas";
@@ -37,7 +39,7 @@ import { GridCanvas } from "./GridCanvas";
  * drop landing on one has to be refused explicitly — see `onDragOver`. New chrome can opt in with
  * `data-canvas-chrome` instead of being added to this list.
  */
-const CHROME = "[data-canvas-chrome], .floating-panel, .canvas-toolbar, .command-bar, .shape-inspector-bar, .lens-legend, .time-scrubber, .compose-panel, .present-bar";
+const CHROME = "[data-canvas-chrome], .floating-panel, .canvas-toolbar, .command-bar, .shape-inspector-bar, .lens-legend, .time-scrubber, .compose-panel, .comments-panel, .present-bar";
 
 /** Is the pointer over the board itself, rather than over something floating above it? */
 function overCanvas(e: React.DragEvent): boolean {
@@ -240,6 +242,8 @@ export function Canvas() {
       {!presenting && panels.help && <HelpPanel />}
       {!presenting && panels.history && <HistoryPanel rootRef={rootRef} />}
       {!presenting && panels.compose && <ComposePanel rootRef={rootRef} />}
+      {!presenting && panels.comments && <CommentsPanel rootRef={rootRef} />}
+      {!presenting && <CommentBadges />}
       {!presenting && <ZoomCard />}
       {!presenting && <TimeScrubber />}
       <LensLegend />

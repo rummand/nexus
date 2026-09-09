@@ -12,12 +12,18 @@ import { allows, capabilitiesOf, CAPABILITIES, isRole, mayGrant, refusal, ROLES,
 const admin: Capability[] = ["graph.delete", "agent.manage", "import.approve", "plan.deliver", "settings.manage"];
 
 describe("what each role may do", () => {
-  it("lets a guest read and nothing else", () => {
-    for (const cap of CAPABILITIES) expect(allows("guest", cap), cap).toBe(false);
+  it("lets a guest read, and say something, and nothing else", () => {
+    /*
+     * The one power a guest has (§5.50). "Reads everything and changes nothing" described the
+     * wrong person: the reviewer you invite to look at an architecture is exactly the one with
+     * something to say about it, and a comment changes no model data.
+     */
+    expect(allows("guest", "board.comment")).toBe(true);
+    for (const cap of CAPABILITIES.filter((c) => c !== "board.comment")) expect(allows("guest", cap), cap).toBe(false);
   });
 
   it("lets a member work, and not administer", () => {
-    for (const cap of ["board.edit", "graph.edit", "agent.run"] as Capability[]) expect(allows("member", cap), cap).toBe(true);
+    for (const cap of ["board.edit", "board.comment", "graph.edit", "agent.run"] as Capability[]) expect(allows("member", cap), cap).toBe(true);
     // The line is consequence outside the screen you are on: approving an import rewrites the
     // estate everybody else is reading.
     for (const cap of admin) expect(allows("member", cap), cap).toBe(false);
@@ -31,6 +37,11 @@ describe("what each role may do", () => {
 
   it("lets an owner do everything there is", () => {
     for (const cap of CAPABILITIES) expect(allows("owner", cap), cap).toBe(true);
+  });
+
+  it("lets everybody who is in the workspace comment", () => {
+    // The floor: if a role cannot say anything, inviting somebody to review is pointless.
+    for (const role of ROLES) expect(allows(role, "board.comment"), role).toBe(true);
   });
 
   it("refuses somebody who is not a member at all", () => {

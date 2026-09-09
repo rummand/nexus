@@ -32,7 +32,7 @@ export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" |
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 
-export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history" | "compose";
+export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history" | "compose" | "comments";
 
 /** "conflict": the server refused the save because the board changed elsewhere. Terminal until reload. */
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
@@ -352,7 +352,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       peers: [],
       live: false,
       focusedId: null,
-      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false },
+      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false, comments: false },
       isDragging: false,
       hiddenKinds: [],
       graphTab: "inventory",

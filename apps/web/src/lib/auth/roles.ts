@@ -25,6 +25,15 @@ export type Role = (typeof ROLES)[number];
 export const CAPABILITIES = [
   /** Draw on a board: elements, layout, viewpoints, remarks. */
   "board.edit",
+  /**
+   * Say something about a board or a thing on it (§5.50).
+   *
+   * A capability of its own, and the only one a **guest** has. "Reads everything and changes
+   * nothing" turned out to describe the wrong person: the reviewer you invite to look at an
+   * architecture is exactly the person with something to say about it, and a comment changes no
+   * model data. Giving a guest a voice makes the role useful without making it dangerous.
+   */
+  "board.comment",
   /** Change the model directly — an entity's fields, a relation, an attribute, the meta-model. */
   "graph.edit",
   /** Remove something from the model, or merge two objects into one. Not reversible. */
@@ -53,10 +62,10 @@ export type Capability = (typeof CAPABILITIES)[number];
  * will look.
  */
 const MATRIX: Record<Role, readonly Capability[]> = {
-  guest: [],
-  member: ["board.edit", "graph.edit", "agent.run"],
-  admin: ["board.edit", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage"],
-  owner: ["board.edit", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage", "people.manage"],
+  guest: ["board.comment"],
+  member: ["board.edit", "board.comment", "graph.edit", "agent.run"],
+  admin: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage"],
+  owner: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage", "people.manage"],
 };
 
 export function isRole(v: unknown): v is Role {
@@ -92,7 +101,7 @@ export const ROLE_BLURB: Record<Role, string> = {
   owner: "Everything an administrator can do, and manages the people.",
   admin: "Runs the workspace: imports, plans, agents, models and connections.",
   member: "Draws on boards and edits the model. Cannot approve, deliver or configure.",
-  guest: "Reads everything and changes nothing.",
+  guest: "Reads everything and can comment. Changes nothing else.",
 };
 
 /** What to say when somebody is refused, in words rather than a status code. */
@@ -101,6 +110,7 @@ export function refusal(capability: Capability, role: Role | null | undefined): 
   const label = isRole(role) ? ROLE_LABEL[role].toLowerCase() : "";
   const what: Record<Capability, string> = {
     "board.edit": "change a board",
+    "board.comment": "comment here",
     "graph.edit": "change the model",
     "graph.delete": "delete from the model",
     "agent.run": "run an agent",
