@@ -2068,6 +2068,16 @@ than the question that got it there.
 top-right — drawn in one overlay above the world layer rather than inside each of the seven element
 renderers, so it is the same size at 30% zoom and at 300% and there is one place to change it.
 
+**One thing the new button uncovered.** `.miro-studio` is a grid with no explicit column, so its
+single implicit track sized itself to the *max-content* of its widest child — and the topbar is a
+flex row of controls that do not wrap. Adding a sixth button pushed that past the window, the whole
+studio grew wider than the viewport, the page scrolled sideways and the board no longer sat where
+the pointer expected it: a drag aimed at a card landed on a connector behind it. The bar had already
+been twelve pixels over before this change and nothing had gone visibly wrong yet. The fix is the
+column — `minmax(0, 1fr)`, so the track is the window — and the breadcrumb now gives way first. The
+browser suite caught it, which is the argument for having one: no unit test can see a page that is
+the wrong width.
+
 **Not live, and honest about it.** Comments are not carried by the live channel (§5.47). They
 refresh after you post and when the tab regains focus, which is the moment somebody has been away
 long enough for a colleague to have said something. Pushing them through the bus is a small change
@@ -2896,6 +2906,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | Nobody can edit or delete somebody else's comment — not even an owner. | A record an administrator can rewrite is not a record. Every convenience this rule costs is smaller than what the exception would cost, so there is no exception; the only thing anybody else can do to your words is reply to them. |
 | 2026-09-09 | No foreign key on `comments.parent_id`, so deleting an opening comment orphans its replies rather than cascading. | Somebody taking back their own question must not silently delete the answers to it. `threadsOf` promotes an orphan to a conversation of its own, which is the behaviour a person would expect and a cascade is the behaviour a schema would default to. |
 | 2026-09-09 | Comment pins are one screen-space overlay, not a badge inside each element renderer. | The world layer is scaled, so a pin drawn inside a card is unreadable at 30% zoom and enormous at 300%; and seven element types would each need the same thing. One layer above the board is what the selection outlines already do. |
+| 2026-09-09 | The studio grid gets an explicit `minmax(0, 1fr)` column instead of the topbar being trimmed to fit. | An implicit grid track sizes to its widest child's max-content, so *any* future control would silently widen the whole page and move the canvas out from under the pointer. Making the column the window fixes the class of bug; shortening one button would only have moved the threshold. |
 | 2026-09-09 | Comments refresh on post and on tab focus rather than riding the live channel. | The live bus carries document patches, and adding a second message shape to it to save a poll that costs nothing is complexity bought early. Coming back to the tab is when somebody has been away long enough for a colleague to have said something, which is exactly when a refresh is worth doing. |
 
 ## 8. Open questions for the product owner
@@ -2929,7 +2940,12 @@ migrations. Steps in `docs/DEPLOY.md`.
   carries a pin, drawn in one screen-space overlay rather than inside each of the seven element
   renderers so it is the same size at any zoom. Settling a conversation does not delete it. What is
   honestly missing: comments do not ride the live channel, so they refresh when you post and when
-  the tab comes back to the front rather than the second somebody else writes one.
+  the tab comes back to the front rather than the second somebody else writes one. The new button
+  also uncovered an older bug: `.miro-studio` is a grid with no explicit column, so its track sized
+  to the topbar's max-content and a sixth control made the whole studio wider than the window —
+  the page scrolled sideways and a drag aimed at a card landed on the connector behind it. The bar
+  had already been twelve pixels over. The column is now the window and the breadcrumb gives way
+  first; the browser suite is what caught it, which is the argument for having one.
 
 - **2026-09-09 — Rev 83: the guard, actually everywhere.** Rev 81 said the write boundary was closed
   and it was not: an audit found forty-nine exported actions that changed something and asked
