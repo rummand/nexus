@@ -65,6 +65,14 @@ async function touch(workspaceId: string, changeSetId?: string) {
   }
 }
 
+/** The workspace a single change belongs to, through the set it is part of. */
+async function denyChange(changeId: string) {
+  const db = await getDb();
+  const [row] = await db.select({ changeSetId: s.changes.changeSetId }).from(s.changes).where(eq(s.changes.id, changeId));
+  if (!row) return { error: "That change is gone." };
+  return denySet(row.changeSetId, "graph.edit");
+}
+
 export async function createChangeSet(input: { workspaceId: string; name: string; description?: string; targetDate?: string }) {
   const no = await deny(input.workspaceId, "graph.edit");
   if (no) return no;
@@ -144,6 +152,8 @@ export async function addChange(input: {
   payload?: AddEntityPayload | SetAttributePayload | AddRelationPayload | Record<string, unknown>;
   note?: string;
 }): Promise<{ id: string; entityId: string | null; relationId: string | null } | { error: string }> {
+  const no = await denySet(input.changeSetId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const set = await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, input.changeSetId) });
   if (!set) return { error: "That change set is gone." };
@@ -169,6 +179,8 @@ export async function addChange(input: {
 }
 
 export async function removeChange(changeId: string): Promise<ChangeResult> {
+  const no = await denyChange(changeId);
+  if (no) return no;
   const db = await getDb();
   const row = await db.query.changes.findFirst({ where: eq(s.changes.id, changeId) });
   if (!row) return { ok: true };
@@ -187,6 +199,8 @@ export async function removeChange(changeId: string): Promise<ChangeResult> {
  * somebody tries to deliver either of them.
  */
 export async function addDependency(changeSetId: string, dependsOnId: string): Promise<ChangeResult> {
+  const no = await denySet(changeSetId, "graph.edit");
+  if (no) return no;
   if (changeSetId === dependsOnId) return { error: "A change set cannot wait for itself." };
   const db = await getDb();
   const [set, blocker] = await Promise.all([
@@ -208,6 +222,8 @@ export async function addDependency(changeSetId: string, dependsOnId: string): P
 }
 
 export async function removeDependency(changeSetId: string, dependsOnId: string): Promise<ChangeResult> {
+  const no = await denySet(changeSetId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const set = await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, changeSetId) });
   await db
@@ -277,6 +293,8 @@ export async function deletePlateau(plateauId: string): Promise<ChangeResult> {
  * decision made on somebody's behalf without telling them.
  */
 export async function includeInPlateau(plateauId: string, changeSetId: string): Promise<{ ok: true; alsoIncluded: number } | { error: string }> {
+  const no = await denyPlateau(plateauId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
   if (!plateau) return { error: "That state is gone." };
@@ -302,6 +320,8 @@ export async function includeInPlateau(plateauId: string, changeSetId: string): 
  * that is depending on it so the person knows what else they would have to remove.
  */
 export async function excludeFromPlateau(plateauId: string, changeSetId: string): Promise<ChangeResult> {
+  const no = await denyPlateau(plateauId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const plateau = await db.query.plateaus.findFirst({ where: eq(s.plateaus.id, plateauId) });
   if (!plateau) return { ok: true };
@@ -469,6 +489,8 @@ export async function createRoadmapBoard(input: {
   lanesBy?: "effect" | "change set";
   name?: string;
 }): Promise<{ error: string } | never> {
+  const no = await deny(input.workspaceId, "board.edit");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const [{ entities, relations }, sets, deps] = await Promise.all([

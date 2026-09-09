@@ -3065,3 +3065,6 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .ws-switcher-new { border-top: 1px solid #eef2f7; display: flex; gap: 6px; margin-top: 4px; padding-top: 7px; }
 .ws-switcher-new input { background: #fff; border: 1px solid var(--line); border-radius: 8px; flex: 1; font-size: 12.5px; min-height: 30px; min-width: 0; padding: 0 9px; }
 .ws-switcher-error { color: #b45309; display: block; font-size: 11.5px; padding: 4px 9px 2px; }
+
+/* A control somebody may not use, when there is no room for the sentence beside it (§5.49). */
+.studio-space-list button.refused { color: #b45309; }

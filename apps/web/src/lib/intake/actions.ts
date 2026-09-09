@@ -62,7 +62,17 @@ export async function createSource(input: { workspaceId: string; name: string; t
 }
 
 /** Run the pipeline and store the result. Never writes to the graph. */
+/** The workspace a source belongs to. Committing one writes the model, so it asks for more. */
+async function denySource(sourceId: string, capability: "graph.edit" | "import.approve") {
+  const db = await getDb();
+  const row = await db.query.sources.findFirst({ where: eq(s.sources.id, sourceId) });
+  if (!row) return { error: "That source is gone." };
+  return deny(row.workspaceId, capability);
+}
+
 export async function runSource(sourceId: string) {
+  const no = await denySource(sourceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const [source] = await db.select().from(s.sources).where(eq(s.sources.id, sourceId));
   if (!source) return { error: "That source is gone" };
@@ -104,6 +114,10 @@ export async function runSource(sourceId: string) {
 
 /** Write the accepted part of the latest run into the graph. */
 export async function commitSource(sourceId: string, selection: CommitSelection) {
+  // Committing turns reviewed claims into objects and relations: the same act as approving an
+  // import, and the hole that mattered most in the audit that produced §5.49.
+  const no = await denySource(sourceId, "import.approve");
+  if (no) return no;
   const db = await getDb();
   const [source] = await db.select().from(s.sources).where(eq(s.sources.id, sourceId));
   if (!source) return { error: "That source is gone" };
@@ -120,6 +134,8 @@ export async function commitSource(sourceId: string, selection: CommitSelection)
 }
 
 export async function deleteSource(sourceId: string) {
+  const no = await denySource(sourceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const [source] = await db.select().from(s.sources).where(eq(s.sources.id, sourceId));
   if (!source) return { ok: true };
@@ -129,6 +145,8 @@ export async function deleteSource(sourceId: string) {
 }
 
 export async function renameSource(sourceId: string, name: string) {
+  const no = await denySource(sourceId, "graph.edit");
+  if (no) return no;
   const trimmed = name.trim();
   if (!trimmed) return { error: "A name is required" };
   const db = await getDb();

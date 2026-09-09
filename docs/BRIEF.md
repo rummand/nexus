@@ -1982,6 +1982,39 @@ part that matters, the workspace layout now checks **membership**. Somebody who 
 `notFound` rather than a refusal, because "this exists and you may not see it" is itself something
 they should not learn from a URL. The front door sends a person to a workspace they are actually in.
 
+### 5.49 The guard, actually everywhere (v0.2)
+
+§5.46 introduced the capability matrix, guarded the administrative modules, and reported that the
+write boundary was closed. It was not. An audit the next morning found **forty-nine exported actions
+that changed something and asked nobody** — bulk attribute edits, committing an intake source into
+the model, deleting a board or a space, renaming a relation type, staging and deleting import
+batches, every change-set edit, four meta-model actions. Every one was reachable by a guest.
+
+The lesson is not "be more careful". Ninety actions guarded by hand is a coverage problem, and a
+coverage problem wants a machine. So the fix is two things: the forty-nine guards, and a **test that
+reads the action modules and fails unless every exported async function either calls a guard or is
+named in a list of deliberate exceptions with its reason written down**. It is a coarse check — it
+proves a guard is called, not that the right capability was chosen — but it converts the failure
+that actually happened, somebody forgetting, from a silent hole into a red build.
+
+Writing that scanner produced its own small lesson. The first version counted braces from the
+`export` keyword, which meant a multi-line `Promise<{ … } | { error: string }>` return type opened
+and closed a brace before the body began: the scan stopped at the signature and reported two
+*guarded* actions as unguarded. A test that errs towards false alarms is tolerable; one that errs
+the other way is worse than none, and this one did both until the body was taken as "everything up
+to the next line that is exactly `}`".
+
+Two actions are deliberately open and say so: starring a board and marking one opened write a row
+about *you*, and somebody entitled to read a board is entitled to have opened it. The new lines the
+guards drew, beyond §5.46: **staging an import is a member's work and approving it is not**, which
+is a workflow worth having rather than a compromise; deleting a *space* is administrative because it
+takes its boards with it; and teams are administrative because they decide who owns what.
+
+Also fixed, from the same review: the live bus's oversized-message path wrote the board down through
+the ordinary persist, which **declines unless the replica is the elected writer** — so a patch too
+large for `NOTIFY` could be followed by every replica re-reading a document that did not contain it.
+That write is now forced, and the reload is announced only once it has happened.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2423,6 +2456,11 @@ they should not learn from a URL. The front door sends a person to a workspace t
 - The front door sends you to a workspace you belong to.
 
 ### Who may do what (v0.2)
+- **A coverage test over the write boundary**: every exported action in a `"use server"` module must
+  call a guard or be listed as deliberately open with a reason. Forty-nine that were not are now.
+- Staging an import is a member's; approving, rolling back and deleting a batch are an
+  administrator's. Deleting a space and shaping teams are administrative; committing an intake
+  source is the same act as approving an import.
 - Four roles — owner, administrator, member, guest — over nine capabilities, in one table
   (`src/lib/auth/roles.ts`) with the matrix asserted by tests rather than discovered in production.
 - Guarded: model providers, MCP keys, connected servers, source grants, agent definitions, import
@@ -2772,6 +2810,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-08 | The lowest process id present writes the board down. | Any replica could, since they converge — but then a settle costs one save per replica. This needs no election, no lock and no new state: presence is already being published, so every replica can compute the same answer, and a dead writer's peers age out and hand it over. |
 | 2026-09-08 | A live message too big for NOTIFY persists and asks for a re-read. | 8000 bytes covers essentially every patch. Chunking would be a protocol, with ordering and reassembly and a partial-delivery case, to serve the card with a thousand-word description. Writing the board down and saying "read it again" is three lines and always correct. |
 | 2026-09-08 | A workspace you are not a member of answers 404, not 403. | A refusal confirms the workspace exists, and slugs are guessable — an organisation's name is not a secret but the fact that it uses this product might be. Not-found is the same answer a made-up slug gets. |
+| 2026-09-09 | Guard coverage is enforced by a test that reads the source, not by review. | Rev 81 guarded the modules a person thinks of as administrative and shipped forty-nine holes in the ones they do not — deleting a board, committing an intake source, editing a change set. Ninety hand-written guards is a coverage problem; a coverage problem is a machine's job, and the list of deliberate exceptions is the part a reviewer can actually argue with. |
+| 2026-09-09 | Staging an import is a member's work; approving it is not. | Splitting them is better than either alternative: a member can do the laborious part — reading files, mapping columns, sorting cards into lanes — and an administrator reviews and approves. That is how the work actually divides in an EA team, and it fell out of asking which acts have consequences outside the screen. |
 | 2026-09-08 | Authorisation is capabilities in one table, not role checks at the call sites. | Ninety server actions asking `role === "admin"` is ninety chances to be inconsistent, and nobody can answer "what may a member do?" by reading them. One matrix turns a role into sentences about the product, the actions ask the matrix, and a test argues with the matrix. |
 | 2026-09-08 | A member may edit the model but not delete from it, approve an import or deliver a plan. | The line is consequence outside the screen you are on. Editing an object is what the model is for; a merge cannot be undone by merging back, an approval rewrites what everybody else is reading, and a delivery moves the estate into the future. Those are the acts a workspace wants somebody accountable for. |
 | 2026-09-08 | A guest may join a live board and may not patch it. | Presence is the point of the feature and reading is what a guest is for, so shutting them out of the channel would remove something valuable to prevent nothing. The edit right is decided once when the stream opens and carried on the connection, which keeps the per-patch path free of a lookup. |
@@ -2798,6 +2838,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 83: the guard, actually everywhere.** Rev 81 said the write boundary was closed
+  and it was not: an audit found forty-nine exported actions that changed something and asked
+  nobody — bulk attribute edits, committing an intake source into the model, deleting a board or a
+  space, every change-set edit, four meta-model actions — all of them reachable by a guest. The
+  guards are now in place, and so is the thing that should have been there first: a test that reads
+  every `"use server"` module and fails unless each exported action either calls a guard or is named
+  in a list of deliberate exceptions with its reason. Ninety hand-written guards is a coverage
+  problem and a coverage problem wants a machine. Writing the scanner produced its own lesson — the
+  first version counted braces from the `export` keyword, so a multi-line `Promise<{ … }>` return
+  type ended the scan at the signature and reported two *guarded* actions as unguarded; a test that
+  errs towards false alarms is tolerable, one that errs the other way is worse than none. Two
+  actions stay deliberately open and say why. The same review caught a real bug in rev 82: the live
+  bus's oversized-message path persisted through the ordinary path, which declines unless the
+  replica is the elected writer, so a patch too large for `NOTIFY` could be followed by every
+  replica re-reading a document without it. That write is now forced.
 
 - **2026-09-08 — Rev 82: the last two gaps.** A live board now works across more than one server
   process, and there can be more than one workspace. Rooms lived in one heap, so a second replica

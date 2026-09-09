@@ -159,6 +159,8 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
   const workspaceId = String(form.get("workspaceId") ?? "");
   const uploads = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (!workspaceId) return { error: "No workspace." };
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   if (!uploads.length) return { error: "Choose at least one file." };
 
   const files: BatchFile[] = [];
@@ -183,6 +185,8 @@ export async function createBatch(form: FormData): Promise<{ id: string } | { er
  * whose only purpose is to satisfy the import feature.
  */
 export async function createPastedBatch(workspaceId: string, input: { name: string; text: string }): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const text = input.text.slice(0, 4_000_000);
   if (!text.trim()) return { error: "There is nothing in that." };
   const name = input.name.trim().slice(0, 80) || "Pasted";
@@ -205,6 +209,8 @@ export async function createPastedBatch(workspaceId: string, input: { name: stri
  * remote system says reaches the model without a person accepting it.
  */
 export async function stageFromServer(workspaceId: string, input: { server: string; tool: string; text: string }): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const name = `${input.server} · ${input.tool}`.slice(0, 80);
   let read;
   try {
@@ -264,6 +270,8 @@ export async function remapBatch(batchId: string, input: {
   kinds?: Array<{ file: string; kind: string }>;
   includePersonal?: boolean;
 }): Promise<{ ok: true } | { error: string }> {
+  const notAllowed = await denyBatch(batchId, "graph.edit");
+  if (notAllowed) return notAllowed;
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
@@ -324,6 +332,8 @@ function isRole(v: unknown): v is import("./map").Role {
 
 /** Accept, hold or reject some rows. */
 export async function decideRows(batchId: string, decisions: Array<{ id: string; decision: Decision }>): Promise<{ ok: true } | { error: string }> {
+  const no = await denyBatch(batchId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
@@ -344,6 +354,21 @@ export async function decideRows(batchId: string, decisions: Array<{ id: string;
  * entity created, every field overwritten and the value that was there before — because a rollback
  * you cannot trust is worse than no rollback at all.
  */
+/**
+ * The guard for the batch actions (§5.49).
+ *
+ * Staging, mapping columns and deciding lanes are a member's work — nothing has touched the model
+ * yet, which is the whole point of a landing zone. Approving, rolling back and deleting a batch
+ * are an administrator's: the first two rewrite the estate and the third destroys the record of
+ * what happened.
+ */
+async function denyBatch(batchId: string, capability: "graph.edit" | "import.approve") {
+  const db = await getDb();
+  const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
+  if (!batch) return { error: "That batch is gone." };
+  return deny(batch.workspaceId, capability);
+}
+
 export async function approveBatch(batchId: string): Promise<{ ok: true; created: number; updated: number; connected: number } | { error: string }> {
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
@@ -572,6 +597,8 @@ export async function rollbackBatch(batchId: string): Promise<
 }
 
 export async function deleteBatch(batchId: string): Promise<{ ok: true } | { error: string }> {
+  const no = await denyBatch(batchId, "import.approve");
+  if (no) return no;
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
@@ -590,6 +617,8 @@ export async function deleteBatch(batchId: string): Promise<{ ok: true } | { err
  * marked planned, so none of it enters the graph by being drawn.
  */
 export async function createBatchBoard(batchId: string): Promise<{ error: string } | never> {
+  const no = await denyBatch(batchId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
@@ -639,6 +668,8 @@ export async function createBatchBoard(batchId: string): Promise<{ error: string
  * but not at the price of a board that quietly describes the wrong import.
  */
 export async function redrawBatchBoard(batchId: string): Promise<{ ok: true; drawn: number } | { error: string }> {
+  const no = await denyBatch(batchId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };

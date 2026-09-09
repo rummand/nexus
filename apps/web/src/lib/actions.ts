@@ -35,6 +35,35 @@ async function denyEntity(entityId: string, capability: "graph.edit" | "graph.de
   return deny(row.workspaceId, capability);
 }
 
+/**
+ * Resolving a workspace from the thing an action was given (§5.49).
+ *
+ * Most actions here take a board, a space or a team rather than a workspace, so the guard needs a
+ * lookup first. Gathered in one place because the alternative — each action doing its own — is how
+ * the first pass at this ended up with forty-nine unguarded doors.
+ */
+async function denySpace(spaceId: string, capability: "board.edit" | "settings.manage") {
+  const db = await getDb();
+  const row = await db.query.spaces.findFirst({ where: eq(s.spaces.id, spaceId) });
+  if (!row) return { error: "That space is gone." };
+  return deny(row.workspaceId, capability);
+}
+
+async function denyBoard(boardId: string, capability: "board.edit" | "graph.edit") {
+  const db = await getDb();
+  const [row] = await db.select({ workspaceId: s.boards.workspaceId }).from(s.boards).where(eq(s.boards.id, boardId));
+  if (!row) return { error: "That board is gone." };
+  return deny(row.workspaceId, capability);
+}
+
+async function denyTeam(teamId: string) {
+  const db = await getDb();
+  const row = await db.query.teams.findFirst({ where: eq(s.teams.id, teamId) });
+  if (!row) return { error: "That team is gone." };
+  // Teams decide who owns what — an agent's owner, a space's team — so shaping them is settings.
+  return deny(row.workspaceId, "settings.manage");
+}
+
 /** The name to put in the history for one end of a relation, from rows already in hand. */
 function pick(rows: Array<{ id: string; name: string }>, id: string) {
   return { id, name: rows.find((r) => r.id === id)?.name ?? "" };
@@ -59,6 +88,8 @@ async function workspaceSlug(workspaceId: string) {
 // ---- spaces -----------------------------------------------------------------
 
 export async function createSpace(input: { workspaceId: string; name: string; description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
+  const no = await deny(input.workspaceId, "board.edit");
+  if (no) return no;
   const db = await getDb();
   const name = input.name.trim();
   if (!name) return { error: "Name is required" };
@@ -78,6 +109,7 @@ export async function createSpace(input: { workspaceId: string; name: string; de
 }
 
 export async function renameSpace(spaceId: string, name: string) {
+  if (await denySpace(spaceId, "board.edit")) return;
   const db = await getDb();
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -86,12 +118,15 @@ export async function renameSpace(spaceId: string, name: string) {
 }
 
 export async function updateSpace(spaceId: string, patch: { description?: string; emoji?: string; teamId?: string | null; visibility?: "open" | "private" }) {
+  if (await denySpace(spaceId, "board.edit")) return;
   const db = await getDb();
   const [space] = await db.update(s.spaces).set({ ...patch, updatedAt: now() }).where(eq(s.spaces.id, spaceId)).returning();
   if (space) revalidatePath(`/w/${await workspaceSlug(space.workspaceId)}`, "layout");
 }
 
 export async function deleteSpace(spaceId: string) {
+  // A space takes its boards with it, so this is a shaping act rather than an editing one.
+  if (await denySpace(spaceId, "settings.manage")) return;
   const db = await getDb();
   const [space] = await db.delete(s.spaces).where(eq(s.spaces.id, spaceId)).returning();
   if (!space) return;
@@ -103,6 +138,8 @@ export async function deleteSpace(spaceId: string) {
 // ---- boards ----------------------------------------------------------------
 
 export async function createBoard(input: { workspaceId: string; spaceId: string; name?: string; description?: string; template?: TemplateId }) {
+  const no = await deny(input.workspaceId, "board.edit");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const id = `brd_${nanoid(10)}`;
@@ -123,6 +160,7 @@ export async function createBoard(input: { workspaceId: string; spaceId: string;
 }
 
 export async function renameBoard(boardId: string, name: string) {
+  if (await denyBoard(boardId, "board.edit")) return;
   const db = await getDb();
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -131,6 +169,7 @@ export async function renameBoard(boardId: string, name: string) {
 }
 
 export async function moveBoard(boardId: string, spaceId: string) {
+  if (await denyBoard(boardId, "board.edit")) return;
   const db = await getDb();
   const space = await db.query.spaces.findFirst({ where: eq(s.spaces.id, spaceId) });
   if (!space) return;
@@ -139,18 +178,21 @@ export async function moveBoard(boardId: string, spaceId: string) {
 }
 
 export async function updateBoardDescription(boardId: string, description: string) {
+  if (await denyBoard(boardId, "board.edit")) return;
   const db = await getDb();
   const [board] = await db.update(s.boards).set({ description: description.trim(), updatedAt: now() }).where(eq(s.boards.id, boardId)).returning();
   if (board) revalidatePath(`/w/${await workspaceSlug(board.workspaceId)}`, "layout");
 }
 
 export async function deleteBoard(boardId: string) {
+  if (await denyBoard(boardId, "board.edit")) return;
   const db = await getDb();
   const [board] = await db.delete(s.boards).where(eq(s.boards.id, boardId)).returning();
   if (board) revalidatePath(`/w/${await workspaceSlug(board.workspaceId)}`, "layout");
 }
 
 export async function duplicateBoard(boardId: string) {
+  if (await denyBoard(boardId, "board.edit")) return;
   const db = await getDb();
   const user = await currentUser();
   const src = await db.query.boards.findFirst({ where: eq(s.boards.id, boardId) });
@@ -197,6 +239,8 @@ export async function markBoardOpened(boardId: string) {
 // ---- teams -----------------------------------------------------------------
 
 export async function createTeam(input: { workspaceId: string; name: string; description?: string; color?: string }) {
+  const no = await deny(input.workspaceId, "settings.manage");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const name = input.name.trim();
@@ -217,6 +261,7 @@ export async function createTeam(input: { workspaceId: string; name: string; des
 }
 
 export async function renameTeam(teamId: string, name: string) {
+  if (await denyTeam(teamId)) return;
   const db = await getDb();
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -225,6 +270,7 @@ export async function renameTeam(teamId: string, name: string) {
 }
 
 export async function setTeamMembership(teamId: string, userId: string, member: boolean) {
+  if (await denyTeam(teamId)) return;
   const db = await getDb();
   if (member) {
     await db.insert(s.teamMembers).values({ teamId, userId, role: "member" }).onConflictDoNothing();
@@ -236,6 +282,7 @@ export async function setTeamMembership(teamId: string, userId: string, member: 
 }
 
 export async function deleteTeam(teamId: string) {
+  if (await denyTeam(teamId)) return;
   const db = await getDb();
   const [team] = await db.delete(s.teams).where(eq(s.teams.id, teamId)).returning();
   if (!team) return;
@@ -290,6 +337,8 @@ export async function updateEntity(entityId: string, patch: { kind?: string; nam
 
 /** Entity drawer: add a relation between two entities (deduped by ends + kind). */
 export async function createRelationAction(workspaceId: string, fromEntityId: string, kind: string, toEntityId: string) {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   try {
     const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId, "graph", { workspaceId, actor: await currentActor(), context: "the entity drawer" });
@@ -302,6 +351,8 @@ export async function createRelationAction(workspaceId: string, fromEntityId: st
 
 /** Entity drawer: delete a relation (and the connectors drawing it on boards). */
 export async function deleteRelationAction(workspaceId: string, relationId: string) {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
   const db = await getDb();
   const r = await deleteRelation(db, relationId, { workspaceId, actor: await currentActor(), context: "the entity drawer" });
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
@@ -310,6 +361,8 @@ export async function deleteRelationAction(workspaceId: string, relationId: stri
 
 /** "Create board from frame": a new board in the same space seeded with the given document. */
 export async function createBoardFromFrame(boardId: string, name: string, document: unknown) {
+  const no = await denyBoard(boardId, "board.edit");
+  if (no) return no;
   const db = await getDb();
   const source = await db.query.boards.findFirst({ where: eq(s.boards.id, boardId) });
   if (!source) return { error: "Board not found" };
@@ -334,6 +387,11 @@ export async function createBoardFromFrame(boardId: string, name: string, docume
 
 /** Table view bulk actions. */
 export async function bulkSetAttribute(entityIds: string[], key: string, value: string) {
+  const target = entityIds[0];
+  if (target) {
+    const no = await denyEntity(target, "graph.edit");
+    if (no) return no;
+  }
   const db = await getDb();
   const k = key.trim();
   if (!k || entityIds.length === 0) return { error: "An attribute key and at least one entity are required" };
@@ -355,6 +413,11 @@ export async function bulkSetAttribute(entityIds: string[], key: string, value: 
 }
 
 export async function bulkSetKind(entityIds: string[], kind: string) {
+  const target = entityIds[0];
+  if (target) {
+    const no = await denyEntity(target, "graph.edit");
+    if (no) return no;
+  }
   const db = await getDb();
   const k = kind.trim();
   if (!k || entityIds.length === 0) return { error: "A kind and at least one entity are required" };
@@ -386,6 +449,7 @@ export async function bulkDeleteEntities(entityIds: string[]) {
 
 /** Rename an attribute key across the workspace (the kind card's schema chips). */
 export async function renameAttributeKeyAction(workspaceId: string, from: string, to: string) {
+  if (await deny(workspaceId, "graph.edit")) return;
   const db = await getDb();
   const target = to.trim();
   if (!target || target === from) return;
@@ -426,6 +490,8 @@ export async function deleteEntity(entityId: string) {
 
 /** Lay the (optionally kind-filtered) graph out on a new board in the given space. */
 export async function createBoardFromGraph(input: { workspaceId: string; spaceId: string; name?: string; kinds?: string[] }) {
+  const no = await deny(input.workspaceId, "board.edit");
+  if (no) return no;
   const db = await getDb();
   const user = await currentUser();
   const { entities, relations } = await graphForWorkspace(db, input.workspaceId, input.kinds);
@@ -459,6 +525,9 @@ export async function createBoardFromGraph(input: { workspaceId: string; spaceId
  * target has already been merged away simply fails and is reported, rather than aborting the rest.
  */
 export async function acceptProposals(workspaceId: string, proposals: Proposal[]) {
+  // Fails fast; each proposal is still checked individually, since a merge asks for more.
+  const no = await deny(workspaceId, "agent.run");
+  if (no) return { applied: 0, failed: [no.error] };
   let applied = 0;
   const failed: string[] = [];
   for (const proposal of proposals.slice(0, 200)) {
@@ -579,6 +648,7 @@ export async function mergeEntitiesAction(workspaceId: string, survivorId: strin
 }
 
 export async function renameRelationKind(workspaceId: string, from: string, to: string) {
+  if (await deny(workspaceId, "graph.edit")) return;
   const db = await getDb();
   const target = to.trim();
   await db.update(s.relations_).set({ kind: target, updatedAt: now() }).where(and(eq(s.relations_.workspaceId, workspaceId), eq(s.relations_.kind, from)));

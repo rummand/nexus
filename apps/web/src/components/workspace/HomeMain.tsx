@@ -70,6 +70,7 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
   const [storedView, storeView] = useLocalStorageValue(VIEW_KEY, "list");
   const view: ViewMode = storedView === "grid" ? "grid" : "list";
   const [dialog, setDialog] = useState<{ open: boolean; template: TemplateId }>({ open: false, template: "blank" });
+  const [refused, setRefused] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const changeView = (v: ViewMode) => storeView(v);
@@ -87,7 +88,12 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
   const recent = useMemo(() => boards.filter((b) => b.lastOpenedAt).sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "")).slice(0, 4), [boards]);
 
   const startTemplate = (template: TemplateId) => {
-    if (spaceId) start(() => createBoard({ workspaceId, spaceId, template, name: template === "blank" ? "" : STARTERS.find((s) => s.id === template)?.title }));
+    if (spaceId) {
+      start(async () => {
+        const r = await createBoard({ workspaceId, spaceId, template, name: template === "blank" ? "" : STARTERS.find((s) => s.id === template)?.title });
+        if (r && "error" in r) setRefused(r.error);
+      });
+    }
     else setDialog({ open: true, template });
   };
 
@@ -131,6 +137,7 @@ export function HomeMain({ workspaceId, heading, headingEmoji, onRenameHeading, 
               <span className="keycap">⌘ K</span>
             </label>
           </section>
+          {refused && <p className="form-error" data-refused>{refused}</p>}
           <section className="studio-starters" aria-label="Board starters">
             {STARTERS.map((s) => (
               <button key={s.id} type="button" disabled={pending} onClick={() => startTemplate(s.id)}>

@@ -41,6 +41,21 @@ async function denyRelationType(id: string) {
   return deny(row.workspaceId, "graph.edit");
 }
 
+/** A field and a rule reach their workspace through the type they belong to. */
+async function denyFieldRow(id: string) {
+  const db = await getDb();
+  const row = await db.query.nodeTypeFields.findFirst({ where: eq(s.nodeTypeFields.id, id) });
+  if (!row) return { error: "That field is gone." };
+  return denyNodeType(row.nodeTypeId);
+}
+
+async function denyRuleRow(id: string) {
+  const db = await getDb();
+  const row = await db.query.relationRules.findFirst({ where: eq(s.relationRules.id, id) });
+  if (!row) return { error: "That rule is gone." };
+  return denyRelationType(row.relationTypeId);
+}
+
 export async function createNodeType(workspaceId: string, name: string, description = "", color = "") {
   const no = await deny(workspaceId, "graph.edit");
   if (no) return no;
@@ -113,6 +128,8 @@ export async function deleteNodeType(id: string) {
 // ---- fields ------------------------------------------------------------------------------
 
 export async function addField(nodeTypeId: string, key: string, dataType = "text", options: string[] = []) {
+  const no = await denyNodeType(nodeTypeId);
+  if (no) return no;
   const trimmed = key.trim();
   if (!trimmed) return { error: "A field key is required" };
   const db = await getDb();
@@ -133,6 +150,8 @@ export async function addField(nodeTypeId: string, key: string, dataType = "text
 }
 
 export async function updateField(id: string, patch: { key?: string; dataType?: string; required?: boolean; description?: string; options?: string[] }) {
+  const no = await denyFieldRow(id);
+  if (no) return no;
   const db = await getDb();
   const [field] = await db.select().from(s.nodeTypeFields).where(eq(s.nodeTypeFields.id, id));
   if (!field) return { error: "Field not found" };
@@ -168,6 +187,8 @@ export async function updateField(id: string, patch: { key?: string; dataType?: 
 
 /** Removes the declaration; the attribute stays on instances and shows as undeclared again. */
 export async function deleteField(id: string) {
+  const no = await denyFieldRow(id);
+  if (no) return no;
   const db = await getDb();
   const [field] = await db.delete(s.nodeTypeFields).where(eq(s.nodeTypeFields.id, id)).returning();
   if (field) {
@@ -239,6 +260,8 @@ export async function addRule(relationTypeId: string, fromType: string, toType: 
 }
 
 export async function deleteRule(id: string) {
+  const no = await denyRuleRow(id);
+  if (no) return no;
   const db = await getDb();
   const [rule] = await db.delete(s.relationRules).where(eq(s.relationRules.id, id)).returning();
   if (rule) {

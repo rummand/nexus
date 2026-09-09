@@ -186,10 +186,16 @@ function publish(message: LiveMessage) {
     bus.publish(message);
     return;
   }
-  const room = rooms.get("boardId" in message ? message.boardId : "");
+  const room = rooms.get(message.boardId);
   if (!room) return;
   apply(message);
-  void persist(room).then(() => bus.publish({ kind: "reload", boardId: room.boardId }));
+  /*
+   * `persist` normally declines unless this replica is the elected writer — which would be wrong
+   * here: the others are about to re-read the board, so if nobody writes it first they read a
+   * document without this change in it and the edit is silently lost. So this one is forced, and
+   * the reload is only announced once the write has actually happened.
+   */
+  void persist(room, { force: true }).then(() => bus.publish({ kind: "reload", boardId: room.boardId }));
 }
 
 /**
@@ -289,7 +295,7 @@ function listen() {
  * become the same graph as a board edited by one. The revision guard is passed `null`: the room is
  * the only writer while it is live, so there is nobody to be refused by.
  */
-async function persist(room: Room) {
+async function persist(room: Room, opts: { force?: boolean } = {}) {
   room.persistTimer = null;
   if (!room.dirty) return;
   /*
@@ -298,7 +304,7 @@ async function persist(room: Room) {
    * three import reconciles per settle, which is the exact waste the room exists to remove. The
    * lowest process id present wins; when it dies its peers age out and the next takes over.
    */
-  if (!shouldPersist(PROCESS_ID, processesPresent(room))) {
+  if (!opts.force && !shouldPersist(PROCESS_ID, processesPresent(room))) {
     room.dirty = false;
     room.dirtySince = 0;
     return;

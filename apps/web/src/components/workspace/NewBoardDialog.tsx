@@ -11,6 +11,7 @@ export function NewBoardDialog({ open, onClose, workspaceId, spaces, defaultSpac
   const [spaceId, setSpaceId] = useState(defaultSpaceId ?? spaces[0]?.id ?? "");
   const [template, setTemplate] = useState<TemplateId>(defaultTemplate);
   const [pending, start] = useTransition();
+  const [refused, setRefused] = useState<string | null>(null);
 
   return (
     <Modal open={open} onClose={onClose} title="Create board">
@@ -20,9 +21,14 @@ export function NewBoardDialog({ open, onClose, workspaceId, spaces, defaultSpac
           e.preventDefault();
           if (!spaceId) return;
           const tpl = TEMPLATES.find((t) => t.id === template);
-          start(() => createBoard({ workspaceId, spaceId, name: name || (template === "blank" ? "" : tpl?.name), template }));
+          start(async () => {
+            // Creating a board succeeds by redirecting, so anything returned is a refusal (§5.49).
+            const r = await createBoard({ workspaceId, spaceId, name: name || (template === "blank" ? "" : tpl?.name), template });
+            if (r && "error" in r) setRefused(r.error);
+          });
         }}
       >
+        {refused && <p className="form-error" data-refused>{refused}</p>}
         <div className="field">
           <label>Name</label>
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={template === "blank" ? "Untitled board" : TEMPLATES.find((t) => t.id === template)?.name} />

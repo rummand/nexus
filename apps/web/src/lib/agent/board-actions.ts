@@ -165,6 +165,10 @@ export async function recordRemarkOutcome(input: {
   agentName: string;
   outcome: "kept" | "dismissed";
 }) {
+  // Keeping or dismissing a remark is what the fleet's acceptance rate is made of, so it is the
+  // same power as running an agent rather than merely reading one.
+  const no = await deny(input.workspaceId, "agent.run");
+  if (no) return no;
   const db = await getDb();
   await db.insert(s.agentRemarkOutcomes).values({
     id: `aro_${nanoid(10)}`,
