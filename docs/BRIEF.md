@@ -807,6 +807,10 @@ nodes connected to nothing, 54 with no owner. That is the honest state of most a
 repositories, and it is the argument for intake, the catalogue and the meta-model in one number
 that moves when the work is done.
 
+Health is not conformance (§5.56). These six measures are general EA standards that nobody in this
+organisation chose; conformance asks the narrower question of whether the data obeys the rules these
+people wrote down for themselves. Both screens link to the other, because the answers differ.
+
 **And fixable.** A measure that only scolds gets read past, so each one shows what the agent can
 already close from evidence the graph holds. `src/lib/proposals-evidence.ts` reads intake's own
 record back out: the person who *raised an action about* a system is the best available candidate
@@ -2316,6 +2320,75 @@ browser test has caught something no unit test could see.
 | Board objects hidden behind the property bar | 5 | **1** |
 | Chrome overlapping other chrome | 3 collisions | **none** |
 
+### 5.56 The meta-model means something (v0.2)
+
+§5.14 built the declaration — node types, fields with data types and required flags, enum options,
+relation rules — and then checked almost none of it. A field could be marked required and be missing
+on every object; an enum could list four options and the data hold nine; a date field could contain
+"Q3"; only relation rules were ever counted, and only as a number. Everything else the modeller
+wrote down was decoration. A model nothing is checked against is a diagram of good intentions.
+
+And a new workspace started from nothing: the model could only grow from whatever got imported
+first, so the vocabulary of an estate ended up being the column headings of somebody else's
+spreadsheet. Ardoq's answer to that — best-practice models you apply on day one — is a good one.
+
+Two halves, then, both on the meta-model page as tabs beside Details and Diagram.
+
+**Conformance** (`src/lib/metamodel-conformance.ts`) checks the estate against every claim the
+declaration makes and names each object that breaks one. Six kinds of breach: an object of a kind
+nobody declared, a missing required field, a value outside its field's vocabulary, a value that is
+not the data type it was declared as, a relation of an undeclared type, and a connection no rule
+allows. The output is not a number. Every breach carries one object, a link to it, and a sentence:
+*"Maximo" has no owner, and Application requires one.* "83% conformant" tells nobody what to do on
+Monday.
+
+Two headline numbers rather than one, because one would lie:
+
+| Number | What it is | Why it is separate |
+|---|---|---|
+| **score** | of instances *of declared types*, the share breaking no rule | It is the only honest denominator: an undeclared kind cannot break rules it was never given. |
+| **typed** | of the whole estate, the share of a declared type at all | Without it, a workspace that declares one type and obeys it scores 100% on 3% of its estate. |
+
+Beside them a sentence, because a percentage is not a verdict — from *"Nothing is declared yet, so
+there is nothing to conform to"* through *"Most of this estate is of types nobody has declared"* to
+*"The declared model and the data disagree more than they agree. One of them needs to change."*
+
+This is deliberately **not** estate health (§5.18). Health asks whether an estate is in good shape
+by general EA standards, on checks nobody in this organisation chose. Conformance asks the narrower
+and more useful question: does the data obey *the rules these people wrote for themselves*. An
+estate can be in poor health and perfectly conformant, or immaculate and conform to nothing. Each
+screen says so and links to the other.
+
+Nothing rejects a write. The premise of the whole product is that the model grows out of the work
+(§2.2, §5.14), and a canvas that refused a card because a field was empty would stop the drawing
+that produces the model in the first place. So conformance reports, names, and leaves the decision
+where it belongs — the data may be wrong, or the model may be.
+
+**Standard models** (`src/lib/metamodel-standards.ts`) are three starter meta-models: an application
+portfolio, a business capability model, and integration and data flow. Three rules kept them honest.
+*Small* — the smallest model that is still useful, not the largest that is still defensible; a
+forty-type starter model is somebody else's opinion imposed as work. *Additive* — applying one never
+renames, never deletes and never touches an entity; it adds only what is missing, so it is safe on a
+workspace that has been running for a year, and applying it twice does nothing the second time.
+*Attributable* — each says where its practice comes from, which is this product's habit everywhere
+else.
+
+The summary above the button is a plan computed against *this* workspace's live model
+(`planApply`), not a description of the standard: *"Adds 5 object types, 9 fields, 5 relation types,
+6 rules."* When there is nothing left to add it says *"Everything in this standard is already
+declared here"* and the button is disabled. The plan is recomputed server-side at write time as
+well, so a stale page cannot double-declare.
+
+Applying a standard usually makes the conformance numbers *worse*, and that is the point. Before,
+nothing was declared, so nothing could be wrong. The breaches were already there; there were simply
+no rules to see them against. On the seeded estate: 100% / 0% before, 48% / 61% after.
+
+One thing that looked like a detail and was not: the sentences embed type names, which are somebody
+else's words, so `article()` picks *a* or *an* from how a name is **said** rather than how it is
+spelt — a leading acronym is read letter by letter (an IT Component, an API, an SLA, but a CRM
+System), and a leading "u" is "yoo" in the words people use for types (a User, a Utility). "is a
+Interface" in a compliance report is the sentence that makes a reader stop trusting the tool.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2353,7 +2426,7 @@ browser test has caught something no unit test could see.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 89)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 90)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2463,6 +2536,15 @@ browser test has caught something no unit test could see.
 - Diagram tab: the meta-model on a canvas — a box per node type, an arc per relation type,
   coloured by rule / observed / violation, with bundled arcs, self-loops, pan-zoom, focus
   highlighting and click-through to the detail pane. Redraws as the model changes.
+- Conformance tab: the estate checked against the declared model — undeclared kinds, missing
+  required fields, values outside an enum's vocabulary, values that are not their declared data
+  type, undeclared relation types and connections no rule allows. Two headline numbers (of what
+  could be checked; of the estate that is typed at all), a plain-English verdict, breaches grouped
+  by kind with every offender named and linked, and a by-type table. Nothing is ever blocked.
+- Standards tab: three additive starter meta-models (application portfolio, business capability
+  model, integration and data flow) with what each answers and where the practice comes from.
+  Applying one adds only what is missing — never renames, deletes or touches an object — and the
+  summary is a plan computed against this workspace's model, so a second apply is a no-op.
 
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
@@ -3207,6 +3289,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | The search bar rests as a pill and opens on ⌘K. | It held 720×53 of the middle of the board, permanently, while displaying the keyboard shortcut that makes it unnecessary. The documentation already said "press ⌘K"; the bar now matches the documentation rather than the other way round. |
 | 2026-09-09 | The map overview starts folded away rather than open. | It was the largest permanently-open thing on the canvas for something you want occasionally and can otherwise get by zooming out. It is one press back from the tool rail, which shows it as off — a default, not a removal. Inventory and Selection stay open because they are the product rather than a convenience. |
 
+| 2026-09-09 | Conformance is a separate idea from estate health, not a seventh health measure. | They answer different questions and a single number would blur both. Health asks whether an estate is in good shape by general standards; conformance asks whether it obeys the rules this organisation wrote for itself. An estate can be in poor health and perfectly conformant, or immaculate and conform to nothing — folding them together would make each less useful and neither actionable. |
+| 2026-09-09 | Conformance reports two numbers instead of one. | A score over declared types alone would let a workspace that declares one type and obeys it claim 100% while describing 3% of its estate. Scoring the whole estate instead would punish an organisation for having a small deliberate model. The only honest answer is both numbers side by side, and a sentence saying which one is the problem. |
+| 2026-09-09 | A breach names one object and links to it, rather than being counted. | "83% conformant" tells nobody what to do on Monday. The deliverable of a compliance check is the list, and the number is only there to be clicked through — which is the same argument that made estate health's measures fixable rather than scolding (§5.18). |
+| 2026-09-09 | Nothing in conformance blocks a write. | The product's premise is that the model grows out of the work; a canvas that refused a card because a required field was empty would stop the drawing that produces the model. When the data and the declaration disagree, which one is wrong is a judgement, and the tool is not in a position to make it. |
+| 2026-09-09 | Standard starter models are additive only — never rename, never delete, never touch an object. | It is what makes them safe to offer at any point in a workspace's life rather than only on day one, and it makes "apply" reversible in the only sense that matters: nothing you had is gone. It also makes applying twice a no-op without any bookkeeping about what was applied before. |
+| 2026-09-09 | The apply summary is a plan computed against the live model, and recomputed server-side at write time. | Describing the standard would be true of an empty workspace and misleading in every other one. Computing the difference means the sentence is about *this* workspace; recomputing it at write time means a page left open for an hour cannot double-declare. |
+| 2026-09-09 | The article in a generated sentence is chosen from how a type name is said, not how it is spelt. | Type names are the user's words and land mid-sentence in every breach. "is a Interface" in a compliance report is the sentence that makes a reader stop trusting the report, and two rules — a leading acronym is read letter by letter, a leading "u" is "yoo" — cover what an estate actually throws at it. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3220,6 +3310,28 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 90: the meta-model means something.** §5.14 let an organisation declare its
+  types, fields, data types, required flags, enum vocabularies and relation rules — and then checked
+  almost none of it: only rule violations, and only as a count. A field could be required and missing
+  everywhere, an enum could list four options and the data hold nine, a date field could hold "Q3".
+  Conformance now checks the estate against every claim the declaration makes, in six kinds of
+  breach, and the output is a list rather than a number: each breach names one object, links to it,
+  and says what is wrong in a sentence — *"Maximo" has no owner, and Application requires one.* Two
+  headline numbers rather than one, because either alone lies: the share of *declared-type* instances
+  that break no rule, beside the share of the estate the model describes at all, with a plain-English
+  verdict beneath them. It is deliberately not estate health, which asks whether an estate is in good
+  shape by standards nobody here chose; this asks whether the data obeys the rules these people wrote
+  for themselves, and each screen links to the other. Nothing is ever blocked — the model grows out of
+  the work, and when the data and the declaration disagree either can be the one that is wrong. The
+  other half is where a model starts: three additive starter meta-models (application portfolio,
+  business capability, integration and data flow), each small enough to be useful rather than
+  imposed, each saying what it answers and where the practice comes from. Applying one only ever
+  adds — nothing renamed, nothing deleted, no object touched — and the summary above the button is a
+  plan computed against this workspace's live model, so it says what would change *here* and a
+  second apply is a no-op that says so before you click. On the seeded estate the numbers go from
+  100% / 0% to 48% / 61% on applying one, which is the feature working: the breaches were always
+  there, and until something was declared there were no rules to see them against.
 
 - **2026-09-09 — Rev 89: say it once, and give the canvas edges.** Where rev 88 stopped the chrome
   landing on itself, this asks how much of it should be there at all — measured again rather than

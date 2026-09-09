@@ -8,6 +8,8 @@ import * as s from "@/db/schema";
 import { deny } from "@/lib/auth/guard";
 import { remembering } from "./history/record";
 import { currentActor } from "./history/current";
+import { metaModel } from "./metamodel";
+import { planApply, standardModel, type ApplyPlan } from "./metamodel-standards";
 
 
 /**
@@ -269,4 +271,89 @@ export async function deleteRule(id: string) {
     if (type) await touched(type.workspaceId);
   }
   return { ok: true };
+}
+
+/**
+ * Apply a standard metamodel (§5.56).
+ *
+ * Purely additive, by construction rather than by care: everything already declared is left exactly
+ * as it is, including its description and its fields, because a workspace's own words beat a
+ * template's. That is what makes this safe to offer to a workspace that has been running for a year
+ * rather than only to an empty one — and it means applying the same standard twice is a no-op.
+ *
+ * The plan is worked out twice: once for the screen so somebody can read what will happen, and once
+ * here against the model as it stands at the moment of the write, because the two can be minutes
+ * apart and the second one is the one that must be true.
+ */
+export async function applyStandardModel(workspaceId: string, standardId: string): Promise<{ applied: ApplyPlan } | { error: string }> {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
+  const std = standardModel(standardId);
+  if (!std) return { error: "That standard model is not one of the ones on offer." };
+
+  const db = await getDb();
+  const before = await metaModel(db, workspaceId);
+  const plan = planApply(std, before);
+  if (plan.noop) return { applied: plan };
+
+  const nodeTypeIds = new Map<string, string>();
+  for (const t of before.nodeTypes) if (t.id) nodeTypeIds.set(t.name.trim().toLowerCase(), t.id);
+  const relTypeIds = new Map<string, string>();
+  for (const t of before.relationTypes) if (t.id) relTypeIds.set(t.name.trim().toLowerCase(), t.id);
+
+  for (const t of std.nodeTypes) {
+    const at = t.name.trim().toLowerCase();
+    if (!nodeTypeIds.has(at)) {
+      const id = `nt_${nanoid(10)}`;
+      await db.insert(s.nodeTypes).values({ id, workspaceId, name: t.name, description: t.description, color: t.color });
+      nodeTypeIds.set(at, id);
+    }
+  }
+
+  /* Parents second: a type's parent may be a type this same standard has only just created. */
+  for (const t of std.nodeTypes) {
+    if (!t.parent) continue;
+    const id = nodeTypeIds.get(t.name.trim().toLowerCase());
+    const parentId = nodeTypeIds.get(t.parent.trim().toLowerCase());
+    if (!id || !parentId) continue;
+    const [row] = await db.select().from(s.nodeTypes).where(eq(s.nodeTypes.id, id));
+    if (row && !row.parentId) await db.update(s.nodeTypes).set({ parentId, updatedAt: now() }).where(eq(s.nodeTypes.id, id));
+  }
+
+  for (const t of std.nodeTypes) {
+    const typeId = nodeTypeIds.get(t.name.trim().toLowerCase());
+    if (!typeId) continue;
+    const have = await db.select().from(s.nodeTypeFields).where(eq(s.nodeTypeFields.nodeTypeId, typeId));
+    const haveKeys = new Set(have.map((f) => f.key.trim().toLowerCase()));
+    let position = have.length;
+    for (const f of t.fields) {
+      if (haveKeys.has(f.key.trim().toLowerCase())) continue;
+      await db.insert(s.nodeTypeFields).values({
+        id: `ntf_${nanoid(10)}`, nodeTypeId: typeId, key: f.key, dataType: f.dataType,
+        description: f.description, required: Boolean(f.required), options: JSON.stringify(f.options ?? []),
+        position: position++,
+      });
+    }
+  }
+
+  for (const t of std.relationTypes) {
+    const at = t.name.trim().toLowerCase();
+    let typeId = relTypeIds.get(at);
+    if (!typeId) {
+      typeId = `rt_${nanoid(10)}`;
+      await db.insert(s.relationTypes).values({ id: typeId, workspaceId, name: t.name, description: t.description });
+      relTypeIds.set(at, typeId);
+    }
+    const have = await db.select().from(s.relationRules).where(eq(s.relationRules.relationTypeId, typeId));
+    const haveRules = new Set(have.map((r) => `${r.fromType.trim().toLowerCase()}>${r.toType.trim().toLowerCase()}`));
+    for (const rule of t.rules) {
+      if (haveRules.has(`${rule.from.trim().toLowerCase()}>${rule.to.trim().toLowerCase()}`)) continue;
+      await db.insert(s.relationRules).values({
+        id: `rr_${nanoid(10)}`, relationTypeId: typeId, fromType: rule.from, toType: rule.to, cardinality: rule.cardinality,
+      });
+    }
+  }
+
+  await touched(workspaceId);
+  return { applied: plan };
 }

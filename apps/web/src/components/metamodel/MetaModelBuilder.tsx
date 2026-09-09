@@ -1,14 +1,18 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, Spline, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
 import type { MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
   deleteField, deleteNodeType, deleteRelationType, deleteRule, updateField, updateNodeType, updateRelationType,
 } from "@/lib/metamodel-actions";
 import { MetaModelDiagram } from "./MetaModelDiagram";
+import { Conformance } from "./Conformance";
+import { StandardModels } from "./StandardModels";
+import type { Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -25,13 +29,14 @@ type Selection = { kind: "node" | "relation"; name: string } | null;
 /** What the corpus says about a type name — precomputed on the server (§5.20). */
 export interface TypeNote { label: string; title: string; url: string; text: string }
 
-export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote> }) {
+export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote>; report: ConformanceReport }) {
   const [selected, setSelected] = useState<Selection>(model.nodeTypes[0] ? { kind: "node", name: model.nodeTypes[0].name } : null);
   const [openNodes, setOpenNodes] = useState(true);
   const [openRels, setOpenRels] = useState(true);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"details" | "diagram">("details");
+  const [view, setView] = useState<"details" | "diagram" | "conformance" | "standards">("details");
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -149,12 +154,23 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { mod
           <div className="panel-tabs meta-view-tabs" role="tablist" aria-label="Meta-model view">
             <button type="button" role="tab" className={view === "details" ? "active" : ""} onClick={() => setView("details")}><Rows3 size={13} /> Details</button>
             <button type="button" role="tab" className={view === "diagram" ? "active" : ""} onClick={() => setView("diagram")}><Network size={13} /> Diagram</button>
+            <button type="button" role="tab" className={view === "conformance" ? "active" : ""} onClick={() => setView("conformance")} data-tab-conformance>
+              <ShieldCheck size={13} /> Conformance
+              {report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
+            </button>
+            <button type="button" role="tab" className={view === "standards" ? "active" : ""} onClick={() => setView("standards")} data-tab-standards><BookOpen size={13} /> Standards</button>
           </div>
 
           {error && <p className="form-error">{error}</p>}
 
           {view === "diagram" && (
             <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
+          )}
+
+          {view === "conformance" && <Conformance report={report} slug={slug} />}
+
+          {view === "standards" && (
+            <StandardModels model={model} workspaceId={workspaceId} onApplied={() => router.refresh()} />
           )}
 
           {view === "details" && !current && <p className="muted">Select a type on the left.</p>}

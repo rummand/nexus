@@ -511,6 +511,53 @@ try {
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
 
+  // conformance: the declared model, checked against the data, object by named object (§5.56)
+  await page.click("[data-tab-conformance]");
+  await page.waitForSelector("[data-conformance]");
+  const numbers = await page.locator(".conformance-head").innerText();
+  assert.match(numbers, /%/, "conformance leads with a number");
+  assert.ok((await page.locator(".conformance-verdict").innerText()).trim().length > 20,
+    "the number is said in words as well, because a percentage is not a verdict");
+
+  // a standard metamodel: what applying it would add, worked out against this workspace
+  await page.click("[data-tab-standards]");
+  await page.waitForSelector("[data-standard-models]");
+  const std = page.locator('[data-standard="integration"]');
+  await std.locator("> button").click();
+  await page.waitForSelector('[data-apply-standard="integration"]');
+  const plan = await std.locator(".standard-apply span").innerText();
+  assert.match(plan, /Adds .*type/, `the plan says what applying would add, not just that it would: ${plan}`);
+  {
+    // The property that makes a starter model safe on a live workspace: it only ever adds.
+    const before = await page.locator('.meta-tree-item[data-type-kind="node"]').count();
+    await page.click('[data-apply-standard="integration"]');
+    await page.waitForSelector(".standard-ok", { timeout: 60000 });
+    await page.waitForFunction((n) => document.querySelectorAll('.meta-tree-item[data-type-kind="node"]').length > n,
+      before, { timeout: 30000 });
+    assert.ok((await page.locator('.meta-tree-item[data-type-kind="node"]').count()) > before,
+      "applying a standard adds the types it declares");
+  }
+
+  // …and applying it again does nothing, which is what "additive" has to mean in practice. The
+  // panel is still open on the standard that was just applied, so this is the same summary
+  // recomputing itself against the model it just changed — no second navigation to confuse it.
+  await page.waitForFunction(
+    () => /already declared/.test(document.querySelector('[data-standard="integration"] .standard-apply span')?.textContent ?? ""),
+    null, { timeout: 30000 });
+  assert.ok(await page.locator('[data-apply-standard="integration"]').isDisabled(),
+    "the button for an already-applied standard is not clickable");
+
+  // now that types are declared, conformance has something to check — and names the offenders
+  await page.click("[data-tab-conformance]");
+  await page.waitForSelector("[data-conformance]");
+  assert.ok((await page.locator("[data-breach-group]").count()) > 0,
+    "a declared model over an unaligned estate produces breaches");
+  await page.locator("[data-breach-group] > button").first().click();
+  await page.waitForSelector("[data-breach-group] li");
+  const breach = await page.locator("[data-breach-group] li").first().innerText();
+  assert.match(breach, /\S/, "a breach is a named object, not a count");
+  assert.ok(breach.split("\n").length >= 2, `a breach says what is wrong in a sentence: ${breach}`);
+
   // deleting works: once housekeeping for a shared database, now an assertion of its own
   await page.goto(`${base}/b/brd_capabilities`, { waitUntil: "load" });
   const leftover = page.locator(`[data-element-id="${noteId}"]`);

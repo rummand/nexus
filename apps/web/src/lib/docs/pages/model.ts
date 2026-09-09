@@ -59,8 +59,8 @@ export const EXPLORER: DocPage = {
 export const META_MODEL: DocPage = {
   slug: "meta-model",
   title: "The meta-model",
-  summary: "The types in your model: what grew from the data, what you have declared, and the rules between them.",
-  keywords: ["types", "schema", "node type", "relation type", "fields", "rules", "declare", "diagram", "archimate"],
+  summary: "The types in your model: what grew from the data, what you have declared, whether the data obeys it, and where to start.",
+  keywords: ["types", "schema", "node type", "relation type", "fields", "rules", "declare", "diagram", "archimate", "conformance", "compliance", "standard", "starter model", "best practice"],
   blocks: [
     { kind: "prose", text: "Most tools make you adopt a meta-model before you can draw anything. Nexus works the other way round: you draw, types accumulate from what you actually called things, and the Meta-model page shows you what you have ended up with — then lets you make it deliberate." },
     { kind: "shot", src: "meta", alt: "The meta-model builder with node types, relation types and the detail of one type", caption: "Types on the left, the selected type on the right. The dot says whether a type was declared or simply appeared." },
@@ -88,6 +88,36 @@ export const META_MODEL: DocPage = {
     { kind: "heading", text: "The diagram", id: "diagram" },
     { kind: "prose", text: "The Diagram tab draws the meta-model itself: types as boxes, relation types as labelled edges between them, laid out automatically. It is generated from the model every time, so unlike the diagram in the architecture handbook it cannot be out of date." },
     { kind: "shot", src: "meta-diagram", alt: "The meta-model diagram: node types as boxes joined by labelled relation-type edges", caption: "The type-level view. Edges are coloured by whether they were declared, observed in the data, or observed in violation of a rule." },
+
+    { kind: "heading", text: "Conformance: does the data obey the model?", id: "conformance" },
+    { kind: "prose", text: "Declaring a type is a claim about the estate — that an application has an owner, that a lifecycle is one of four words, that “depends on” joins two applications and nothing else. The Conformance tab checks the estate against every one of those claims and shows you where they are not true." },
+    { kind: "shot", src: "meta-conformance", alt: "The conformance tab: two headline percentages, a plain-English verdict, and expandable groups of named breaches", caption: "Two numbers, a sentence, and then the actual objects. Every breach names one thing and links to it." },
+    {
+      kind: "table",
+      columns: ["Number", "What it means"],
+      rows: [
+        ["Of what could be checked", "Of the objects and connections whose type you declared, the share that break none of your rules."],
+        ["Of a declared type at all", "The share of the whole estate the model describes. A perfect first number over a tiny second one means you are grading the exam you wrote."],
+      ],
+    },
+    { kind: "prose", text: "The breaches are grouped by what kind of problem they are — an undeclared kind, a missing required field, a value outside its vocabulary, a value that is not the type it was declared as, an undeclared relation type, a connection no rule allows. Open a group and you get the objects themselves, each with a sentence: *“Maximo” has no owner, and Application requires one.*" },
+    { kind: "note", tone: "why", title: "Why nothing is blocked", text: "The model grows out of the work here. A canvas that refused a card because a field was empty would stop the drawing that produces the model in the first place — so conformance reports and leaves the decision to a person. When the data and the model disagree, either can be the one that is wrong." },
+    { kind: "note", tone: "tip", text: "Conformance is not estate health. Health asks whether your estate is in good shape by general EA standards — provenance, duplicates, orphans. Conformance asks the narrower question: does it obey the rules *you* wrote. An estate can be in poor health and perfectly conformant, or immaculate and conform to nothing." },
+
+    { kind: "heading", text: "Starting from a standard", id: "standards" },
+    { kind: "prose", text: "A model that grows from whatever was imported first ends up with somebody else's spreadsheet column headings as its vocabulary. The Standards tab offers three small starter models — an application portfolio, a business capability model, and integration and data flow — each with the object types, fields and relation rules that practice has settled on, and a note about where that practice comes from." },
+    { kind: "shot", src: "meta-standards", alt: "The Standards tab with a starter model expanded, listing its object types, relation types and what applying it would add", caption: "Each standard says what question it answers and exactly what applying it would add to this workspace." },
+    {
+      kind: "list",
+      items: [
+        "Applying one only ever **adds**. Nothing is renamed, nothing is deleted, and no object is touched.",
+        "Anything you have already declared is left exactly as it is — so a standard is safe on a workspace that has been running for a year.",
+        "The summary is worked out against *your* model, not an empty one, so it tells you what would change here.",
+        "Apply the same standard twice and the second time does nothing; the button says so before you click it.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "Applying a standard usually makes the conformance numbers worse, and that is the point: before, nothing was declared, so nothing could be wrong. The breaches were already there — you just had no rules to see them against." },
+
     { kind: "try", href: "/w/:slug/meta", label: "Open the meta-model" },
   ],
 };
