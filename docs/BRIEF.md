@@ -2184,6 +2184,42 @@ why and pressing a button to be told what is written under it is not an interact
 The wording is the feature here, so the wording is tested (`canvas/agentReport.ts`): the property
 under all of it is that two different outcomes must never produce the same sentence.
 
+### 5.53 An answer you can keep (v0.2)
+
+*Ask about a selection* (§5.28) is the agent that needs no setting up: point at some objects, ask,
+read prose with checked citations under it. Two things about it were wrong, and both are about what
+happens **after** the answer arrives.
+
+**It evaporated.** Click anywhere else and the answer was gone. Remarks have had *keep as a note*
+since §5.27; an answer had nothing at all, so a good one survived exactly as long as the selection
+did — and the better the answer, the more that hurt. *Keep as a comment* now turns the exchange
+into a comment on the board (§5.50), or on the object if that is all that was selected: the
+questions, the answers, and the words on the objects each answer rested on.
+
+A comment rather than a note, deliberately. A note is a thing on the drawing; a comment is somebody
+talking *about* the drawing, which is exactly what this is. It also lands where colleagues already
+look, records who kept it and when, and can be settled when it stops mattering — without adding an
+object nobody drew. And the body says plainly that a model wrote the prose. An agent's answer read
+as a colleague's would be the worst outcome this feature could have, so that line is written once
+per exchange rather than per answer, where it will not be scrolled past.
+
+**You could not ask a second question.** Each ask replaced the last, which is the wrong shape: a
+second question is nearly always a narrowing of the first — *"and which of those are
+customer-facing?"* — and on its own that is not a question at all. The exchange now stays on screen
+and the next question carries the ones before it, capped at four turns.
+
+Only the prose of earlier turns goes back to the model, not their citations: those were checked
+against these same objects, which are already at the top of the conversation, and re-sending them
+would be telling the model what it is looking at. The objects go once; the turns follow.
+
+Four turns is a cap with an opinion in it. This is one question taking a second breath, not a chat
+window bolted to a canvas — the moment an exchange wants to be longer than that, what it wants is
+to be an agent on the board with a purpose somebody wrote down.
+
+One thing this uncovered: `useComments()` falls back to a no-op outside a board, and a no-op `say`
+returns null, which is the *success* value. Anything asking outside a board would have reported
+keeping a comment it never wrote. The fallback now refuses in a sentence.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2221,7 +2257,7 @@ under all of it is that two different outcomes must never produce the same sente
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 86)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 87)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2616,6 +2652,13 @@ under all of it is that two different outcomes must never produce the same sente
 - Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### An answer you can keep (v0.2)
+- *Ask about a selection* keeps the exchange on screen and carries it into the next question, so a
+  follow-up is a follow-up. Capped at four turns.
+- **Keep as a comment** writes the questions, the answers and the words each answer rested on into a
+  comment on the board — or on the object, when one object was selected.
+- The kept body says a model wrote the prose, once per exchange.
 
 ### An agent that accounts for itself (v0.2)
 - Selecting an agent outlines every object it would read, in its colour, and it counts them —
@@ -3039,6 +3082,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | The agent shows how many remarks the validator discarded. | It is the unflattering number and that is the argument for it: an agent that keeps quoting words which are not on the object is one to rewrite or delete, and nobody can notice a pattern that is never displayed. Hiding it would make the feature look better and the agent harder to judge. |
 | 2026-09-09 | `thinking` is cleared by `migrateDocument` rather than by a timeout or a heartbeat. | A run cannot outlive the page that started it, so loading the document is a moment when the flag is *known* false — no clock to tune and nothing to get wrong. Because the same function runs on the board `PUT`, the flag also stops reaching the database at all, which closes the stuck state twice over. |
 
+| 2026-09-09 | An agent's answer is kept as a comment, not as a note. | A note is a thing on the drawing; a comment is somebody talking about the drawing, which is what an exchange with an agent is. It lands where colleagues already look, keeps who kept it and when, and can be settled — without adding an object nobody drew. |
+| 2026-09-09 | Follow-ups are capped at four turns. | A second question is usually a narrowing of the first and is worth carrying. An unbounded transcript is a chat window bolted to a canvas, which is the thing this product deliberately is not: past a few turns, what the exchange wants is to be an agent on the board with a purpose written down. |
+| 2026-09-09 | Earlier turns are replayed to the model as prose only, without their citations. | The citations were checked against the same objects, and those objects are already the first message in the conversation. Re-sending them would be telling the model what it is looking at, twice. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3052,6 +3099,23 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 87: an answer you can keep.** *Ask about a selection* answered well and then
+  threw the answer away: click anywhere else and it was gone. Remarks have had *keep as a note*
+  since rev 27; an answer had nothing, so the better it was the more that hurt. **Keep as a
+  comment** now writes the exchange — questions, answers, and the words on the objects each answer
+  rested on — into a comment on the board, or on the object if that is all that was selected. A
+  comment rather than a note because a note is a thing on the drawing and a comment is somebody
+  talking about it; it also lands where colleagues already look and can be settled when it stops
+  mattering. The body says once, plainly, that a model wrote the prose: an agent's answer read as a
+  colleague's is the worst thing this feature could do. The second half is follow-ups — each ask
+  used to replace the last, which is the wrong shape for a question like "and which of those are
+  customer-facing?" The exchange now stays on screen and carries into the next question, capped at
+  four turns, because past that what it wants to be is an agent on the board with a purpose written
+  down rather than a chat window bolted to a canvas. Building it turned up a real trap: the comments
+  context falls back to a no-op outside a board, and a no-op `say` returns null — the success
+  value — so anything asking outside a board would have reported keeping a comment it never wrote.
+  The fallback refuses in a sentence now.
 
 - **2026-09-09 — Rev 86: an agent that accounts for itself.** Using a board agent for an afternoon
   shows what §5.27 and §5.28 left out: it was a black box with a Wake button, and everything missing

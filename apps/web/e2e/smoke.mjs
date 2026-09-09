@@ -960,6 +960,9 @@ try {
   await page.waitForSelector(".ask-error", { timeout: 30000 });
   assert.match(await page.locator(".ask-error").innerText(), /ANTHROPIC_API_KEY|NEXUS_MODEL|No model/i,
     "asking without a model says what is missing rather than failing silently");
+  // Nothing was answered, so there is nothing to keep — the control that writes a comment must not
+  // be offered before there is an exchange to write (§5.53).
+  assert.equal(await page.locator("[data-ask-keep]").count(), 0, "there is nothing to keep until something has been answered");
 
   // the fleet: one place that knows every agent in the workspace
   await page.waitForTimeout(2500); // let the board autosave, so the fleet can see the agent

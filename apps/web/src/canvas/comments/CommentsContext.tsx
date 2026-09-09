@@ -46,10 +46,14 @@ const EMPTY: CommentsValue = {
   byElement: {},
   loading: false,
   refresh: async () => {},
-  say: async () => null,
-  edit: async () => null,
-  remove: async () => null,
-  settle: async () => null,
+  /*
+   * The fallback refuses rather than pretending (§5.53). A null from `say` means "it worked", so a
+   * no-op default would let anything outside a board report a comment it never wrote.
+   */
+  say: async () => "Comments live on a board, and this is not one.",
+  edit: async () => "Comments live on a board, and this is not one.",
+  remove: async () => "Comments live on a board, and this is not one.",
+  settle: async () => "Comments live on a board, and this is not one.",
   focused: null,
   focus: () => {},
   draft: null,

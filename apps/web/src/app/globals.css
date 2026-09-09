@@ -3143,3 +3143,16 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .board-agent-scope-line { color: #6f7b8e; }
 .board-agent-run { color: #53627a; font-weight: 700; }
 .board-agent-wake:disabled { cursor: default; opacity: 0.5; }
+
+/* ── An exchange with the agent, kept (§5.53) ─────────────────────────────── */
+.ask-block header { align-items: center; display: flex; gap: 6px; }
+.ask-reset { background: transparent; border: 0; color: #8a95a8; margin-left: auto; padding: 2px; }
+.ask-reset:hover { color: var(--blue); }
+/* The question above its answer, so a follow-up reads as a follow-up. */
+.ask-question { color: var(--ink); font-size: 11.5px; font-weight: 800; margin: 0 0 4px; }
+.ask-answer + .ask-answer { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.ask-exchange { max-height: 300px; overflow-y: auto; }
+.ask-keep { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ask-keep button { align-items: center; background: #f2f6fb; border: 1px solid #dbe4ef; border-radius: 8px; color: #53627a; display: inline-flex; font-size: 11px; font-weight: 800; gap: 4px; padding: 4px 9px; }
+.ask-keep button:hover:not(:disabled) { background: #eaf4ff; border-color: #b8d7ff; color: var(--blue); }
+.ask-keep small { color: var(--muted); font-size: 10.5px; }
