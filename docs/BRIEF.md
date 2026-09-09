@@ -2220,6 +2220,50 @@ One thing this uncovered: `useComments()` falls back to a no-op outside a board,
 returns null, which is the *success* value. Anything asking outside a board would have reported
 keeping a comment it never wrote. The fallback now refuses in a sentence.
 
+### 5.54 The chrome stops landing on itself (v0.2)
+
+A craft pass driven by measuring rather than looking. Opening the canvas at 1280×800 — an ordinary
+laptop, not a corner case — and asking which pieces of floating chrome overlap each other turned up
+three collisions, **all of them present at every window size including 1920×1080**, and all three
+the same shape: *a hard-coded offset that assumed a smaller version of something which has since
+grown*.
+
+| What overlapped | By | Why |
+|---|---|---|
+| The property bar on the Graph panel | 117–184px | The bar clamped its position to the raw window, so it slid under whatever was at the edge |
+| The Selection panel on the Map overview | 172×84px | The panel's height budget reserved 230px for the map card; the map grows a second button, *Fit selection*, exactly when something is selected — which is exactly when the Selection panel is at its tallest |
+| The property bar on **the object it belongs to** | 22px, always | Placed at `sb.y - 64` while standing 86px tall. The 64 was written when the bar was one row; it grew to two and the offset never followed |
+
+The fixes are each a removal of a guess.
+
+**The property bar lives in the band between the panels.** `fitInsets` was already the canvas's one
+answer to "where is the chrome" — it is what zoom-to-fit uses, and it carries a comment asking the
+next person to keep it in step. The bar now asks it too, with `extra` at zero because it wants the
+chrome's real edges rather than the breathing room a fitted board gets. Two things that must agree
+now read from one function. Where the band is narrower than the bar would like, the bar wraps
+instead of reaching outside it: a control that is off the edge is worse than a taller bar.
+
+**The bar is anchored by the edge that faces the selection.** Placing it above by `top` requires
+knowing how tall it is; anchoring its **bottom** a fixed gap above the selection means the height
+cannot matter, because it grows away from the object rather than onto it. There is no number left
+to fall out of step.
+
+**The bottom reserve is one named number.** `--canvas-bottom-reserve`, beside `--canvas-panel-top`
+and `--canvas-topbar`, so a panel hanging from the top subtracts the topbar it hangs below and the
+map card it must not land on — and the next person to add a row to the map card has something to
+change rather than a magic `360` to reverse-engineer.
+
+What it is worth, measured on the same board: objects hidden behind the property bar fell from five,
+four and three (at 1280, 1440 and 1920) to **one at every size**, chrome-on-chrome overlap went to
+zero, and the share of the canvas covered by chrome at 1280×800 went from 43% to 41% — a small
+number that undersells it, because the change is not how much is covered but *what*: the panel you
+are reading and the card you just clicked.
+
+The durable part is the check. The browser suite now resizes to 1280×800, selects a card, and fails
+if any two pieces of chrome overlap or if the property bar is standing on its own object. None of
+these three bugs is visible to a unit test and all three are obvious in a window; the suite is the
+only place that can see them.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2257,7 +2301,7 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 87)
+## 6a. What exists today (v0.2, 2026-09-09 — rev 88)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2652,6 +2696,13 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
 - Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### Chrome that keeps out of its own way (v0.2)
+- The property bar sits in the band between the side panels, wrapping rather than sliding under one.
+- It is anchored by the edge facing the selection, so however tall it grows it never covers the
+  object whose controls it holds.
+- One named reserve (`--canvas-bottom-reserve`) keeps a top-anchored panel off the map card.
+- The browser suite fails if any two pieces of canvas chrome overlap at 1280×800.
 
 ### An answer you can keep (v0.2)
 - *Ask about a selection* keeps the exchange on screen and carries it into the next question, so a
@@ -3086,6 +3137,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | Follow-ups are capped at four turns. | A second question is usually a narrowing of the first and is worth carrying. An unbounded transcript is a chat window bolted to a canvas, which is the thing this product deliberately is not: past a few turns, what the exchange wants is to be an agent on the board with a purpose written down. |
 | 2026-09-09 | Earlier turns are replayed to the model as prose only, without their citations. | The citations were checked against the same objects, and those objects are already the first message in the conversation. Re-sending them would be telling the model what it is looking at, twice. |
 
+| 2026-09-09 | The property bar asks `fitInsets` where the chrome is, rather than clamping to the window. | There was already one function that answered "where is the chrome", used by zoom-to-fit and carrying a comment asking to be kept in step. A second, private answer inside the toolbar is exactly how the two drift apart; asking the same function is the fix and the prevention. |
+| 2026-09-09 | The property bar is anchored by the edge that faces the selection, not by its top. | Positioning it above by `top` needs its height, and that height changes with what is selected — which is how it came to stand on the object it belongs to. Anchoring the bottom edge means the bar grows away from the object and there is no measurement to get wrong. |
+| 2026-09-09 | Overlap is checked in the browser suite rather than reviewed. | Three collisions shipped, all present at every window size, none visible to a unit test and all obvious in a window. This is the same argument as the guard-coverage test in §5.49: a class of mistake that review keeps missing wants a machine, not more care. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3099,6 +3154,22 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-09 — Rev 88: the chrome stops landing on itself.** Measuring the canvas at 1280×800
+  rather than looking at it turned up three overlapping pieces of floating chrome — all present at
+  every window size up to 1920×1080, and all three the same shape: a hard-coded offset that assumed
+  a smaller version of something that had since grown. The property bar clamped to the raw window
+  and slid under the Graph panel by up to 184px; the Selection panel reserved 230px for the map
+  card, which grows a *Fit selection* button exactly when something is selected — exactly when the
+  Selection panel is also at its tallest; and the bar was placed 64px above a selection while
+  standing 86px tall, so it sat on the top 22px of the object whose controls it held. Each fix
+  removes a guess: the bar asks `fitInsets`, the one function that already answers "where is the
+  chrome" for zoom-to-fit; it is anchored by the edge facing the selection so its height cannot
+  matter; and the bottom reserve is a named custom property beside the topbar height rather than a
+  magic 360. Objects hidden behind the bar fell from five, four and three to one at every size, and
+  chrome-on-chrome overlap to zero. The durable part is the check: the browser suite now resizes to
+  1280×800 and fails if any two pieces of chrome overlap, or if the property bar is standing on its
+  own object — none of which a unit test can see.
 
 - **2026-09-09 — Rev 87: an answer you can keep.** *Ask about a selection* answered well and then
   threw the answer away: click anywhere else and it was gone. Remarks have had *keep as a note*

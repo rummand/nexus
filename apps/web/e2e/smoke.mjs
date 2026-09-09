@@ -944,6 +944,60 @@ try {
     `an agent that cannot run says why on the board — got "${said}"`);
 
 
+  /*
+   * The chrome must not land on itself, at the sizes people actually have (§5.54).
+   *
+   * Three separate collisions shipped before this check existed, all the same shape: a hard-coded
+   * offset that assumed a smaller version of something which had since grown. The property bar was
+   * placed 64px above a selection while standing 86px tall; the Selection panel reserved the map
+   * card's height without its second button. None of it is visible in a unit test and all of it is
+   * obvious in a window.
+   */
+  {
+    const before = page.viewportSize();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(700);
+    await page.locator(".fact-card").first().click();
+    await page.waitForSelector(".shape-inspector-bar", { timeout: 15000 });
+    await page.waitForTimeout(500);
+
+    const clashes = await page.evaluate(() => {
+      const sel = ".floating-panel, .canvas-toolbar, .command-bar, .shape-inspector-bar, .time-scrubber, .comments-panel";
+      const boxes = [...document.querySelectorAll(sel)]
+        .map((el) => ({ name: el.className.split(" ").filter((c) => c && c !== "fade-in")[0], r: el.getBoundingClientRect() }))
+        .filter((b) => b.r.width > 2 && b.r.height > 2)
+        // A panel nested inside another is not a collision.
+        .filter((b, _i, all) => !all.some((o) => o !== b && o.r.left <= b.r.left && o.r.top <= b.r.top
+          && o.r.right >= b.r.right && o.r.bottom >= b.r.bottom && o.r.width * o.r.height > b.r.width * b.r.height * 1.2));
+      const out = [];
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i].r, b = boxes[j].r;
+          const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (w > 4 && h > 4) out.push(`${boxes[i].name} over ${boxes[j].name} (${Math.round(w)}×${Math.round(h)})`);
+        }
+      }
+      return out;
+    });
+    assert.deepEqual(clashes, [], "no two pieces of canvas chrome overlap at 1280×800");
+
+    // And the bar of controls for an object must not be standing on that object.
+    const onSelection = await page.evaluate(() => {
+      const bar = document.querySelector(".shape-inspector-bar")?.getBoundingClientRect();
+      const el = document.querySelector("[data-element-id].selected")?.getBoundingClientRect();
+      if (!bar || !el) return null;
+      const w = Math.min(bar.right, el.right) - Math.max(bar.left, el.left);
+      const h = Math.min(bar.bottom, el.bottom) - Math.max(bar.top, el.top);
+      return w > 4 && h > 4 ? `${Math.round(w)}×${Math.round(h)}` : null;
+    });
+    assert.equal(onSelection, null, `the property bar covers the object it belongs to (${onSelection})`);
+
+    await page.keyboard.press("Escape");
+    await page.setViewportSize(before);
+    await page.waitForTimeout(600);
+  }
+
   // ask about a selection: the agent that needs no placing. Selecting is scope.
   await page.keyboard.press("Escape");
   await page.click('[aria-label="Select"]');

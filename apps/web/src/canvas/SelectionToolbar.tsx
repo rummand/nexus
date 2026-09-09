@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { CanvasElement, ConnectorElement, ElementId } from "./document";
 import { CARD_KINDS, FRAME_COLORS, NOTE_COLORS, SHAPE_FILLS, STROKE_COLORS, TEXT_COLORS } from "./document";
 import { boxToScreen, clamp } from "./geometry";
-import { selectionBounds, useCanvas, useCanvasStore } from "./store";
+import { fitInsets, selectionBounds, useCanvas, useCanvasStore } from "./store";
 import { elementLabel } from "./diff";
 import { useComments } from "./comments/CommentsContext";
 
@@ -21,6 +21,8 @@ export function SelectionToolbar() {
   const editingId = useCanvas((s) => s.editingId);
   const marquee = useCanvas((s) => s.marquee);
   const dragging = useCanvas((s) => s.isDragging);
+  const panels = useCanvas((s) => s.panels);
+  const presenting = useCanvas((s) => s.presenting);
   const { busy, expandSelection } = useGraphActions();
   const { setDraft } = useComments();
 
@@ -44,13 +46,38 @@ export function SelectionToolbar() {
   };
 
   const boxCount = items.filter((i) => i.type !== "connector").length;
-  const width = only === "connector" ? 640 : boxCount >= 2 ? 800 : 560;
-  const left = clamp(sb.x + sb.w / 2 - width / 2, 8, Math.max(8, viewport.w - width - 8));
-  const above = sb.y - 64;
-  const top = above > 80 ? above : Math.min(sb.y + sb.h + 14, viewport.h - 70);
+  /*
+   * The bar lives in the band between the side panels, not in the raw window (§5.54).
+   *
+   * Clamping to the viewport let it slide underneath the Graph panel — at every window size, by
+   * a hundred to two hundred pixels — so half the controls for the thing you had just clicked were
+   * behind a panel. `fitInsets` is already the canvas's one answer to "where is the chrome", used
+   * by zoom-to-fit; asking it here means the two cannot drift apart. `extra` is zero because this
+   * wants the chrome's real edges rather than the breathing room a fitted board is given.
+   */
+  const chrome = fitInsets({ panels, viewport, presenting }, 0);
+  const band = { from: chrome.left + 8, to: Math.max(chrome.left + 8, viewport.w - chrome.right - 8) };
+  // On a narrow window the band can be thinner than the bar wants to be; it wraps rather than
+  // reaching outside, because a control that is off the edge is worse than a taller bar.
+  const width = Math.min(only === "connector" ? 640 : boxCount >= 2 ? 800 : 560, Math.max(280, band.to - band.from));
+  const left = clamp(sb.x + sb.w / 2 - width / 2, band.from, Math.max(band.from, band.to - width));
+  /*
+   * Anchored by whichever edge faces the selection, so the bar's height cannot matter (§5.54).
+   *
+   * It used to be placed at `sb.y - 64` while standing 86px tall, so it sat on the top 22px of the
+   * very object whose controls it holds — at every window size. The 64 was written when the bar
+   * was one row; it grew to two and the offset never followed. Anchoring the *bottom* edge a fixed
+   * gap above the selection makes the bar grow upwards away from it, and there is no number left
+   * to fall out of step with the content.
+   */
+  const GAP = 12;
+  const roomAbove = sb.y > 150;
+  const place = roomAbove
+    ? { bottom: Math.max(8, viewport.h - sb.y + GAP) }
+    : { top: Math.min(sb.y + sb.h + GAP, Math.max(8, viewport.h - 100)) };
 
   return (
-    <div className="shape-inspector-bar fade-in" style={{ left, top, width }} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+    <div className="shape-inspector-bar fade-in" style={{ left, width, ...place }} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
       {only === "card" && (
         <div className="shape-inspector-group">
           <button type="button" title="Place this card's graph neighbours around it" disabled={busy} onClick={() => void expandSelection(1, "both")}><Network size={12} /> Expand</button>
