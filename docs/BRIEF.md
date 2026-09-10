@@ -2695,6 +2695,52 @@ One trap, found by walking into it: **`#` starts a comment in a `.env` file**, s
 can guess — or, as happened here, refused for being too short with no hint as to why. Quote the
 value. The refusal now names the length it saw, which is what made it findable in seconds.
 
+### 5.62 Getting a LeanIX workspace out (v0.2)
+
+Nobody starts from zero. §5.30's catalogue has carried an entry for an incumbent EA repository
+since it was written, on the argument that bringing one in as *data* is the difference between a
+migration and a rebuild. This is the first half of that, for LeanIX: `pnpm leanix:export` reads a
+workspace and writes it to files.
+
+```
+LEANIX_HOST=acme.leanix.net LEANIX_API_TOKEN=… pnpm leanix:export --dry-run
+LEANIX_HOST=acme.leanix.net LEANIX_API_TOKEN=… pnpm leanix:export
+```
+
+It writes `raw.json` (everything as it came back, so nothing is fetched twice), `nexus-import.json`
+(entities and relations in the Import page's own format), `dropped.json` where it applies, and a
+`summary.md` counting what it found by kind — a number somebody can check against LeanIX itself.
+The output directory is git-ignored: an estate export is the most sensitive file this repository
+will ever sit next to.
+
+**The token is read from the environment and never from an argument.** A secret in `argv` is a
+secret in the shell history and in every `ps` on the machine. Nothing in the tool writes it down.
+
+Two rules shape the mapping, which lives in `src/lib/leanix/map.ts` — pure, and separate from the
+fetching, so the half with judgement in it can be tested without a licence or a network:
+
+- **Keep their vocabulary.** An `ITComponent` becomes an "IT Component", not a "Technology". The
+  names an organisation has used for years are the ones its people search for, and a migration
+  that renames everything on the way in is one nobody can check. Only the spelling is normalised.
+  Relation names keep both ends and invent no verb: `relApplicationToITComponent` becomes
+  "application → it component", because a guessed "uses" would be an invention presented as data.
+- **Lose nothing quietly.** Every configured field crosses as an attribute; the LeanIX id is kept
+  so a second import updates rather than duplicates; subscriptions become the ownership fields
+  every health measure asks for first (§5.18). Two fact sheets that share a name — LeanIX allows
+  it, and a large workspace is full of "Reporting" — get the id appended to *both*, because Nexus
+  keys an import on the name and merging two systems into one is the quietest possible data loss.
+  A relation whose other end was not exported is **counted and listed**, not discarded: a relation
+  count that silently shrinks is how somebody concludes the export worked.
+
+Verified end to end against a stub that speaks the real two-step auth and pages the way Pathfinder
+does — the token exchange, two pages, the duplicate names, the dropped relation. It has **not**
+been run against a live LeanIX instance from here; outbound access to that host is closed in this
+environment, so `--dry-run` exists to prove the token, the host and the network in about a second
+before anything is written.
+
+The other half — an in-app connector with a scope grant, so the repository is read on a schedule
+rather than dumped by hand — remains where §5.30 put it: planned, and honestly labelled.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2732,7 +2778,7 @@ value. The refusal now names the length it saw, which is what made it findable i
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 95)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 96)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3683,6 +3729,19 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 96: getting a LeanIX workspace out.** `pnpm leanix:export` reads a LeanIX
+  workspace over its Pathfinder GraphQL and writes it to files: the raw dump, a `nexus-import.json`
+  in the Import page's own format, the relations it could not map, and a summary counting what it
+  found by kind so the total can be checked against LeanIX itself. The token comes from the
+  environment and never from an argument, and the output directory is git-ignored. The mapping is
+  pure and separate from the fetching, so the half with judgement in it is tested without a licence:
+  it keeps the organisation's own vocabulary rather than renaming everything on the way in, keeps
+  the LeanIX id so a second import updates rather than duplicates, turns subscriptions into
+  ownership, disambiguates two fact sheets that share a name — and counts the relations whose other
+  end was outside the export rather than discarding them, because a relation count that silently
+  shrinks is how somebody concludes an export worked. Verified end to end against a stub speaking
+  the real two-step auth; not yet run against a live instance, which is what `--dry-run` is for.
 
 - **2026-09-10 — Rev 95: an owner who is not the demo.** Nexus has no self-signup, which is right
   for a workspace tool and leaves exactly one hole: the first real person, who has nobody to ask

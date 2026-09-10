@@ -29,3 +29,6 @@ data/
 coverage/
 playwright-report/
 test-results/
+
+# LeanIX exports — real estate data, never committed
+leanix-export/
