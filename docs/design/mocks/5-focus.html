@@ -1,0 +1,233 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Direction 5 — Focus</title>
+<!--
+  Direction 5: FOCUS — take the chrome away and give the drawing the room.
+  Thesis: rev 89 got chrome from 43% to 32% of the screen by deleting duplication. This direction
+  goes further on purpose: one 44px rail, one command strip, and everything else is a sheet that
+  slides in over the canvas when you ask for it and is gone when you do not. Nothing floats
+  permanently. The canvas is the product; the panels are visitors.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fcfcfd; --surface: #fff; --line: #e8eaee; --line-2: #d2d6dd;
+    --ink: #0e1117; --mid: #545c69; --faint: #8d95a1; --accent: #1d4ed8;
+    --mono: "SFMono-Regular","IBM Plex Mono",ui-monospace,monospace;
+    --sans: "Aptos","Inter","IBM Plex Sans",system-ui,sans-serif;
+  }
+  body { width: 1600px; height: 1000px; background: var(--bg); color: var(--ink);
+         font: 12px/1.45 var(--sans); overflow: hidden; }
+
+  /* one rail, the whole of the permanent chrome besides the strip */
+  .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 44px; background: var(--surface);
+          border-right: 1px solid var(--line); display: flex; flex-direction: column;
+          align-items: center; padding: 8px 0; gap: 3px; z-index: 3; }
+  .rail i { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center;
+            font: 10px/1 var(--mono); color: var(--faint); font-style: normal; }
+  .rail i.on { background: #eef2ff; color: var(--accent); box-shadow: inset 0 0 0 1px #dbe3fb; }
+  .rail .gap { flex: 1; }
+  .rail .who { width: 26px; height: 26px; border-radius: 50%; background: #1e293b; color: #fff;
+               display: grid; place-items: center; font-size: 10px; font-weight: 600; }
+
+  /* the title sits ON the canvas, not in a bar */
+  .title { position: absolute; left: 70px; top: 22px; z-index: 2; }
+  .title h1 { font-size: 19px; font-weight: 600; letter-spacing: -.022em; }
+  .title .sub { font: 10.5px/1 var(--mono); letter-spacing: .04em; color: var(--faint); margin-top: 6px; }
+  .title .sub b { color: var(--mid); font-weight: 400; }
+
+  .canvas { position: absolute; inset: 0 0 0 44px; overflow: hidden;
+    background-image: radial-gradient(circle at 1px 1px, #e4e7ec 1px, transparent 0); background-size: 26px 26px; }
+
+  .node { position: absolute; width: 210px; background: var(--surface); border: 1px solid var(--line-2);
+          border-radius: 4px; }
+  .node .t { font: 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+             padding: 8px 11px 0; display: flex; align-items: center; gap: 6px; }
+  .node .t i { width: 6px; height: 6px; border-radius: 1.5px; }
+  .node h4 { font-size: 13px; font-weight: 600; letter-spacing: -.008em; padding: 5px 11px 9px; }
+  .node .f { border-top: 1px solid var(--line); padding: 6px 11px; font: 10.5px/1.6 var(--mono); color: var(--mid); }
+  .node .f b { color: var(--faint); font-weight: 400; }
+  .node.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+  svg.wires { position: absolute; inset: 0; overflow: visible; }
+  svg.wires path { fill: none; stroke: #b9c0ca; stroke-width: 1.2; }
+  .wl { position: absolute; font: 9.5px/1 var(--mono); color: var(--mid); background: var(--bg); padding: 2px 5px; }
+
+  /* the sheet: slides over the canvas, has a hard edge, is not always there */
+  .sheet { position: absolute; right: 0; top: 0; bottom: 0; width: 344px; background: var(--surface);
+           border-left: 1px solid var(--line-2); box-shadow: -18px 0 34px rgba(16,24,40,.055); z-index: 2; }
+  .sheet header { height: 52px; border-bottom: 1px solid var(--line); display: flex; align-items: center;
+                  justify-content: space-between; padding: 0 16px; }
+  .sheet header h2 { font-size: 14px; font-weight: 600; letter-spacing: -.012em; }
+  .sheet header small { display: block; font: 9.5px/1 var(--mono); letter-spacing: .1em;
+                        text-transform: uppercase; color: var(--faint); margin-top: 4px; }
+  .sheet header button { border: 0; background: none; color: var(--faint); font-size: 13px; cursor: pointer; }
+  .sheet .grp { font: 9.5px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase;
+                color: var(--faint); padding: 16px 16px 8px; }
+  .sheet .kv { display: grid; grid-template-columns: 110px 1fr; padding: 6px 16px; border-bottom: 1px solid #f2f4f7; }
+  .sheet .kv dt { font: 10.5px/1.5 var(--mono); color: var(--faint); }
+  .sheet .kv dd { font-size: 12px; }
+  .sheet .kv dd small { display: block; font: 10px/1.4 var(--mono); color: var(--faint); margin-top: 2px; }
+  .sheet .note { margin: 8px 16px; padding: 10px 12px; border: 1px solid #f0d9ae; background: #fffbf2;
+                 border-radius: 4px; font-size: 11.5px; line-height: 1.55; color: #7a5a1a; }
+
+  /* one command strip; everything transient lives here */
+  .strip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 3;
+           display: flex; align-items: center; gap: 2px; background: var(--surface);
+           border: 1px solid var(--line-2); border-radius: 8px; padding: 5px;
+           box-shadow: 0 10px 26px rgba(16,24,40,.09); }
+  .strip button { border: 0; background: none; font: 11.5px/1 var(--sans); color: var(--mid);
+                  padding: 8px 11px; border-radius: 5px; cursor: pointer; }
+  .strip button:hover { background: #f3f5f8; color: var(--ink); }
+  .strip .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+  .strip .kbd { font: 10px/1 var(--mono); border: 1px solid var(--line-2); border-radius: 3px;
+                padding: 3px 4px; color: var(--faint); margin-left: 2px; }
+  .strip .z { font: 11px/1 var(--mono); color: var(--mid); padding: 0 8px; }
+
+  .peek { position: absolute; left: 70px; bottom: 74px; font: 10.5px/1.7 var(--mono); color: var(--faint); }
+  .peek b { color: var(--mid); font-weight: 400; }
+</style>
+
+<nav class="rail">
+  <i class="on">V</i><i>H</i><i>F</i><i>C</i><i>N</i><i>T</i><i>S</i><i>A</i>
+  <div style="height:10px"></div>
+  <i>▤</i><i>◫</i><i>◔</i>
+  <div class="gap"></div>
+  <i>?</i><div class="who">JO</div>
+</nav>
+
+<div class="title">
+  <h1>Application landscape</h1>
+  <div class="sub">ACME ENERGY <b>/</b> ARCHITECTURE THINKING ROOM <b>·</b> 13 OBJECTS <b>·</b> SAVED 14:02</div>
+</div>
+
+<main class="canvas">
+  <svg class="wires">
+    </svg>
+
+  <div id="n-crm" class="node sel" style="left:98px; top:150px">
+    <div class="t"><i style="background:#e08c2a"></i>Application</div><h4>CRM Cloud</h4>
+    <div class="f"><b>owner</b> Customer Ops · <b>lifecycle</b> active</div>
+  </div>
+  <div id="n-api" class="node" style="left:360px; top:150px">
+    <div class="t"><i style="background:#2b5cff"></i>Interface</div><h4>Customer API</h4>
+    <div class="f"><b>protocol</b> REST / JSON</div>
+  </div>
+  <div id="n-erp" class="node" style="left:626px; top:150px">
+    <div class="t"><i style="background:#e08c2a"></i>Application</div><h4>ERP Core</h4>
+    <div class="f"><b>owner</b> Corporate IT · <b>lifecycle</b> active</div>
+  </div>
+  <div id="n-workflow" class="node" style="left:98px; top:364px">
+    <div class="t"><i style="background:#8b5cf6"></i>IT Component</div><h4>Workflow Service</h4>
+    <div class="f"><b>runtime</b> Kubernetes</div>
+  </div>
+  <div id="n-revenue" class="node" style="left:360px; top:364px">
+    <div class="t"><i style="background:#10a37f"></i>Business Capability</div><h4>Revenue Management</h4>
+    <div class="f"><b>level</b> 2</div>
+  </div>
+  <div id="n-data" class="node" style="left:626px; top:364px">
+    <div class="t"><i style="background:#0ea5e9"></i>Data Object</div><h4>Customer Data</h4>
+    <div class="f"><b>classification</b> personal</div>
+  </div>
+
+  <div class="peek">
+    INVENTORY <b>hidden</b> · press <b>I</b> &nbsp;&nbsp; MAP <b>hidden</b> · press <b>M</b>
+    &nbsp;&nbsp; CONFORMANCE <b>4 groups</b> · press <b>K</b>
+  </div>
+
+  <aside class="sheet">
+    <header>
+      <div><h2>CRM Cloud</h2><small>Application · ent_8f21c40a</small></div>
+      <button>✕</button>
+    </header>
+    <div class="grp">Attributes</div>
+    <dl class="kv"><dt>owner</dt><dd>Customer Ops<small>decision · 12 Aug intake</small></dd></dl>
+    <dl class="kv"><dt>lifecycle</dt><dd>active</dd></dl>
+    <dl class="kv"><dt>criticality</dt><dd>medium</dd></dl>
+    <dl class="kv"><dt>annual cost</dt><dd>412,000</dd></dl>
+    <dl class="kv"><dt>retires</dt><dd style="color:#a16207">—</dd></dl>
+    <div class="note">“CRM Cloud” has no <code style="font-family:var(--mono)">retires</code>, and
+      Application requires one. Either set a date or drop the requirement from the type.</div>
+    <div class="grp">Connections · 5</div>
+    <dl class="kv"><dt>provides</dt><dd>Customer API</dd></dl>
+    <dl class="kv"><dt>← implements</dt><dd>Workflow Service</dd></dl>
+    <dl class="kv"><dt>supports</dt><dd>Revenue Management</dd></dl>
+    <div class="grp">On boards</div>
+    <dl class="kv"><dt>3 boards</dt><dd>Application landscape<small>+ Integration review, Target 2028</small></dd></dl>
+  </aside>
+
+  <div class="strip">
+    <button>Select</button><button>Connect</button><button>Card</button><button>Note</button>
+    <span class="sep"></span>
+    <button>Ask the agent</button><button>Compose</button>
+    <span class="sep"></span>
+    <button>Search <span class="kbd">⌘K</span></button>
+    <span class="sep"></span>
+    <span class="z">97%</span>
+  </div>
+</main>
+<script>
+const CONNECTOR_INK = "#9aa3b0";
+const EDGES = [
+  ["n-workflow", "n-crm", "implements"],
+  ["n-crm", "n-api", "provides"],
+  ["n-api", "n-erp", "consumed by"],
+  ["n-api", "n-revenue", "supports"],
+  ["n-erp", "n-data", "owns"],
+];
+</script>
+<script>
+/* Connectors are measured from the real boxes rather than typed in by hand: a mock with lines
+   that miss their shapes is arguing against itself. */
+(function () {
+  const canvas = document.querySelector(".canvas");
+  const svg = canvas.querySelector("svg.wires");
+  const stroke = getComputedStyle(svg.querySelector("path") || svg).stroke;
+  const box = (id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    return { x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height };
+  };
+  const line = (d) => { const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); svg.appendChild(p); };
+  const head = (x, y, dir) => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const s = 5;
+    const d = dir === "down" ? `M${x - s} ${y - s * 2} L${x} ${y} L${x + s} ${y - s * 2} z`
+            : dir === "up" ? `M${x - s} ${y + s * 2} L${x} ${y} L${x + s} ${y + s * 2} z`
+            : dir === "right" ? `M${x - s * 2} ${y - s} L${x} ${y} L${x - s * 2} ${y + s} z`
+            : `M${x + s * 2} ${y - s} L${x} ${y} L${x + s * 2} ${y + s} z`;
+    p.setAttribute("d", d); p.style.fill = CONNECTOR_INK; p.style.stroke = "none";
+    svg.appendChild(p);
+  };
+  const label = (text, x, y) => {
+    const el = document.createElement("span");
+    el.className = "wl"; el.textContent = text;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    canvas.appendChild(el);
+    const r = el.getBoundingClientRect();
+    el.style.left = (x - r.width / 2) + "px";
+    el.style.top = (y - r.height / 2) + "px";
+  };
+  for (const [from, to, text] of EDGES) {
+    const a = box(from), b = box(to);
+    const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 }, bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    let x1, y1, x2, y2, dir;
+    if (Math.abs(bc.x - ac.x) > Math.abs(bc.y - ac.y)) {
+      const right = bc.x > ac.x;
+      x1 = right ? a.x + a.w : a.x; x2 = right ? b.x : b.x + b.w;
+      y1 = ac.y; y2 = bc.y; dir = right ? "right" : "left";
+    } else {
+      const down = bc.y > ac.y;
+      y1 = down ? a.y + a.h : a.y; y2 = down ? b.y : b.y + b.h;
+      x1 = ac.x; x2 = bc.x; dir = down ? "down" : "up";
+    }
+    const shortened = dir === "down" ? [x2, y2 - 1] : dir === "up" ? [x2, y2 + 1]
+                    : dir === "right" ? [x2 - 1, y2] : [x2 + 1, y2];
+    line(x1 === x2 || y1 === y2 ? `M${x1} ${y1} L${shortened[0]} ${shortened[1]}`
+       : `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${shortened[0]} ${shortened[1]}`);
+    head(shortened[0], shortened[1], dir);
+    label(text, (x1 + x2) / 2, (y1 + y2) / 2);
+  }
+})();
+</script>
+

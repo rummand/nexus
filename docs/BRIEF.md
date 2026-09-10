@@ -143,6 +143,31 @@ and UX were replicated on 2026-09-04 and Nexus must keep following it:
 
 When the reference evolves, port the change here and note it in the changelog.
 
+## 4b. Five directions for a tighter look (proposal, 2026-09-09)
+
+The owner's note: *"we are still too Miro cartoonish"*. It is a fair reading of what is on screen.
+The visual language Nexus inherited is a whiteboard's — 12–16px radii on everything, chunky pill
+chips for attributes, soft blue shadows, a pastel note, loose vertical rhythm. None of it is wrong
+for a drawing toy and all of it undersells a system of record that an enterprise architect is meant
+to defend in a governance forum.
+
+Five directions were drawn, as standalone HTML in **`docs/design/mocks`**, rendered by
+`apps/web/scripts/capture-mocks.mjs`. All five show the *same* board with the same six objects and
+the same five connections, so the difference between them is the argument and not the content.
+Nothing here is wired into the app — this is a proposal awaiting the owner's pick.
+
+| # | Direction | Thesis | What changes |
+|---|---|---|---|
+| 1 | **Blueprint** | Architecture is drafting, not sticky notes. | Hairlines and no shadows at all; 2px corners; `« stereotype »` headers and UML-ish compartments; mono for every machine-shaped value; colour reduced to a 3px rule on one edge; a drawing frame with a title block (sheet, notation, as-of, revision). |
+| 2 | **Console** | The people who live in this spend their day in Linear, Grafana and an IDE. | Graphite surfaces, one accent, 4px radii, 26px rows, chrome flush to the edges with no floating cards; attribute chips become `key value` in mono; the inspector is a property grid. |
+| 3 | **Ledger** | An EA repository's job is to be believed. | Tabular figures, hairline rules, every fact carrying its source underneath it; headline numbers in the topbar; the inspector is a property sheet; a footnote on the canvas saying how much of the board nothing explains. |
+| 4 | **Notation-aware** | The reason it looks like a whiteboard is that every object is the same rounded rectangle. | The shape follows the framework: a C4 container with its technology line, a UML class with three compartments, a DDD aggregate inside a dashed consistency boundary. This is the visual half of §5.57. |
+| 5 | **Focus** | Rev 89 took chrome from 43% to 32%; go further. | One 44px rail and one command strip are the whole of the permanent chrome. The title sits on the canvas. Panels become sheets that slide in and are gone again. Hidden panels advertise their key. |
+
+They are not mutually exclusive: 1 and 3 share a palette, 4 is a capability rather than a skin and
+belongs under whichever of the others is chosen, and 5 is a layout decision that any of the four
+could wear. A reasonable outcome is one skin plus 4 plus 5.
+
 ## 5. Architecture
 
 ### 5.1 Stack
@@ -806,6 +831,10 @@ The seed workspace scores **40 — "thin"**: 56 systems drawn by hand that no so
 nodes connected to nothing, 54 with no owner. That is the honest state of most architecture
 repositories, and it is the argument for intake, the catalogue and the meta-model in one number
 that moves when the work is done.
+
+Health is not conformance (§5.56). These six measures are general EA standards that nobody in this
+organisation chose; conformance asks the narrower question of whether the data obeys the rules these
+people wrote down for themselves. Both screens link to the other, because the answers differ.
 
 **And fixable.** A measure that only scolds gets read past, so each one shows what the agent can
 already close from evidence the graph holds. `src/lib/proposals-evidence.ts` reads intake's own
@@ -1575,9 +1604,11 @@ summarising for a person, but "give me that as a table" is a reasonable ask — 
 one Nexus import from another. The e2e uses exactly that: it asks this instance's own endpoint for
 its applications as a table and stages them, and every row matches itself as unchanged.
 
-All three doors converge on one `stageBatch`, so "paste" cannot quietly become a worse import than
-"upload". The batch records which door it came through, because *somebody pasted this* and *a CMDB
-answered this* are different kinds of claim even when the staging is identical.
+All the doors converge on one `stageBatch`, so "paste" cannot quietly become a worse import than
+"upload" — and when a fourth was added for an EA repository (§5.63) it inherited the whole pipeline
+rather than growing a second one. The batch records which door it came through, because *somebody
+pasted this* and *a CMDB answered this* are different kinds of claim even when the staging is
+identical.
 
 
 ### 5.38 Prose and tables as one pipeline (v0.2)
@@ -2220,6 +2251,611 @@ One thing this uncovered: `useComments()` falls back to a no-op outside a board,
 returns null, which is the *success* value. Anything asking outside a board would have reported
 keeping a comment it never wrote. The fallback now refuses in a sentence.
 
+### 5.54 The chrome stops landing on itself (v0.2)
+
+A craft pass driven by measuring rather than looking. Opening the canvas at 1280×800 — an ordinary
+laptop, not a corner case — and asking which pieces of floating chrome overlap each other turned up
+three collisions, **all of them present at every window size including 1920×1080**, and all three
+the same shape: *a hard-coded offset that assumed a smaller version of something which has since
+grown*.
+
+| What overlapped | By | Why |
+|---|---|---|
+| The property bar on the Graph panel | 117–184px | The bar clamped its position to the raw window, so it slid under whatever was at the edge |
+| The Selection panel on the Map overview | 172×84px | The panel's height budget reserved 230px for the map card; the map grows a second button, *Fit selection*, exactly when something is selected — which is exactly when the Selection panel is at its tallest |
+| The property bar on **the object it belongs to** | 22px, always | Placed at `sb.y - 64` while standing 86px tall. The 64 was written when the bar was one row; it grew to two and the offset never followed |
+
+The fixes are each a removal of a guess.
+
+**The property bar lives in the band between the panels.** `fitInsets` was already the canvas's one
+answer to "where is the chrome" — it is what zoom-to-fit uses, and it carries a comment asking the
+next person to keep it in step. The bar now asks it too, with `extra` at zero because it wants the
+chrome's real edges rather than the breathing room a fitted board gets. Two things that must agree
+now read from one function. Where the band is narrower than the bar would like, the bar wraps
+instead of reaching outside it: a control that is off the edge is worse than a taller bar.
+
+**The bar is anchored by the edge that faces the selection.** Placing it above by `top` requires
+knowing how tall it is; anchoring its **bottom** a fixed gap above the selection means the height
+cannot matter, because it grows away from the object rather than onto it. There is no number left
+to fall out of step.
+
+**The bottom reserve is one named number.** `--canvas-bottom-reserve`, beside `--canvas-panel-top`
+and `--canvas-topbar`, so a panel hanging from the top subtracts the topbar it hangs below and the
+map card it must not land on — and the next person to add a row to the map card has something to
+change rather than a magic `360` to reverse-engineer.
+
+What it is worth, measured on the same board: objects hidden behind the property bar fell from five,
+four and three (at 1280, 1440 and 1920) to **one at every size**, chrome-on-chrome overlap went to
+zero, and the share of the canvas covered by chrome at 1280×800 went from 43% to 41% — a small
+number that undersells it, because the change is not how much is covered but *what*: the panel you
+are reading and the card you just clicked.
+
+The durable part is the check. The browser suite now resizes to 1280×800, selects a card, and fails
+if any two pieces of chrome overlap or if the property bar is standing on its own object. None of
+these three bugs is visible to a unit test and all three are obvious in a window; the suite is the
+only place that can see them.
+
+### 5.55 Say it once, and give the canvas edges (v0.2)
+
+§5.54 stopped the chrome landing on itself. This asks the harder question: how much of it should be
+there at all. Measured on the same board at 1280×800, again rather than judged by eye.
+
+**The same facts were on screen three times.** The object count appeared in the topbar, in the map
+card and in a status line along the bottom. The zoom appeared in the topbar, in the map card and in
+the zoom control. "Autosaved" appeared in the status line and, in more detail and in real time, in
+the topbar's save pill. None of it was wrong; all of it was noise, and the reason it accumulated is
+that each piece was added by somebody looking at that piece rather than at the screen.
+
+So each thing is now said once, by whichever piece owns it: the **topbar** counts the objects, the
+**zoom control** owns the zoom because it is the one you can press, and the **map** keeps what only
+it knows — the composition, and how much of the board is in view. The status line is gone entirely.
+
+**Three right-hand cards, three left edges.** The Selection panel, the map and the zoom control were
+234, 174 and 231 wide at margins of 12, 10 and 10 — left edges scattered across sixty pixels. Each
+was individually reasonable, which is exactly why it survived; together they read as three cards
+somebody had dropped rather than as one rail. They now share `--canvas-rail` and
+`--canvas-rail-gap`, and the right side reads as an edge.
+
+**The search bar was 720×53 of the best space on the canvas, empty.** Dead centre at the top, over
+the board, permanently — for a box that advertised **⌘ K** on its own right-hand end. It rests as a
+pill now and opens on ⌘K or a click, in the same place with the same shadow and the same keycap, so
+it reads as the thing that was there rather than as something removed. The documentation already
+told people to press ⌘K; the bar is now what the documentation always said it was.
+
+**The map starts folded away.** It was the largest permanently-open thing on the canvas — 234×268,
+six and a half per cent of a laptop screen — for a view of the board you want occasionally and can
+otherwise get by zooming out. Its toggle is in the tool rail with an on/off badge, so it is one
+press back and visibly off rather than missing. Inventory and Selection stay open: those are the
+product, not a convenience.
+
+Because the reserve a top-anchored panel keeps for the map should not be kept for a map that is not
+there, the canvas carries `data-map` and the custom property follows it. With the map away the
+Selection panel is 600px tall instead of 344 and shows an object's attributes without scrolling —
+the declutter gave the remaining panel its content back, which is the part worth having.
+
+One bug came out of building it, caught by the browser suite rather than by review. The blur that
+folds the bar away is deferred 150ms so that clicking a suggestion lands before the list disappears;
+press Escape and then ⌘K straight away and that *stale* timer fired afterwards, folding the bar up
+under whatever had just been typed. It is cancelled when the bar opens now. Reproduced three times
+out of three before the fix and none out of three after — the second time this session that a
+browser test has caught something no unit test could see.
+
+| At 1280×800, with a card selected | Before §5.54 | Now |
+|---|---|---|
+| Chrome over the canvas | 43% | **32%** |
+| Pieces of chrome | 9 | **7** |
+| Board objects hidden behind the property bar | 5 | **1** |
+| Chrome overlapping other chrome | 3 collisions | **none** |
+
+### 5.56 The meta-model means something (v0.2)
+
+§5.14 built the declaration — node types, fields with data types and required flags, enum options,
+relation rules — and then checked almost none of it. A field could be marked required and be missing
+on every object; an enum could list four options and the data hold nine; a date field could contain
+"Q3"; only relation rules were ever counted, and only as a number. Everything else the modeller
+wrote down was decoration. A model nothing is checked against is a diagram of good intentions.
+
+And a new workspace started from nothing: the model could only grow from whatever got imported
+first, so the vocabulary of an estate ended up being the column headings of somebody else's
+spreadsheet. Ardoq's answer to that — best-practice models you apply on day one — is a good one.
+
+Two halves, then, both on the meta-model page as tabs beside Details and Diagram.
+
+**Conformance** (`src/lib/metamodel-conformance.ts`) checks the estate against every claim the
+declaration makes and names each object that breaks one. Six kinds of breach: an object of a kind
+nobody declared, a missing required field, a value outside its field's vocabulary, a value that is
+not the data type it was declared as, a relation of an undeclared type, and a connection no rule
+allows. The output is not a number. Every breach carries one object, a link to it, and a sentence:
+*"Maximo" has no owner, and Application requires one.* "83% conformant" tells nobody what to do on
+Monday.
+
+Two headline numbers rather than one, because one would lie:
+
+| Number | What it is | Why it is separate |
+|---|---|---|
+| **score** | of instances *of declared types*, the share breaking no rule | It is the only honest denominator: an undeclared kind cannot break rules it was never given. |
+| **typed** | of the whole estate, the share of a declared type at all | Without it, a workspace that declares one type and obeys it scores 100% on 3% of its estate. |
+
+Beside them a sentence, because a percentage is not a verdict — from *"Nothing is declared yet, so
+there is nothing to conform to"* through *"Most of this estate is of types nobody has declared"* to
+*"The declared model and the data disagree more than they agree. One of them needs to change."*
+
+This is deliberately **not** estate health (§5.18). Health asks whether an estate is in good shape
+by general EA standards, on checks nobody in this organisation chose. Conformance asks the narrower
+and more useful question: does the data obey *the rules these people wrote for themselves*. An
+estate can be in poor health and perfectly conformant, or immaculate and conform to nothing. Each
+screen says so and links to the other.
+
+Nothing rejects a write. The premise of the whole product is that the model grows out of the work
+(§2.2, §5.14), and a canvas that refused a card because a field was empty would stop the drawing
+that produces the model in the first place. So conformance reports, names, and leaves the decision
+where it belongs — the data may be wrong, or the model may be.
+
+**Standard models** (`src/lib/metamodel-standards.ts`) are three starter meta-models: an application
+portfolio, a business capability model, and integration and data flow. Three rules kept them honest.
+*Small* — the smallest model that is still useful, not the largest that is still defensible; a
+forty-type starter model is somebody else's opinion imposed as work. *Additive* — applying one never
+renames, never deletes and never touches an entity; it adds only what is missing, so it is safe on a
+workspace that has been running for a year, and applying it twice does nothing the second time.
+*Attributable* — each says where its practice comes from, which is this product's habit everywhere
+else.
+
+The summary above the button is a plan computed against *this* workspace's live model
+(`planApply`), not a description of the standard: *"Adds 5 object types, 9 fields, 5 relation types,
+6 rules."* When there is nothing left to add it says *"Everything in this standard is already
+declared here"* and the button is disabled. The plan is recomputed server-side at write time as
+well, so a stale page cannot double-declare.
+
+Applying a standard usually makes the conformance numbers *worse*, and that is the point. Before,
+nothing was declared, so nothing could be wrong. The breaches were already there; there were simply
+no rules to see them against. On the seeded estate: 100% / 0% before, 48% / 61% after.
+
+One thing that looked like a detail and was not: the sentences embed type names, which are somebody
+else's words, so `article()` picks *a* or *an* from how a name is **said** rather than how it is
+spelt — a leading acronym is read letter by letter (an IT Component, an API, an SLA, but a CRM
+System), and a leading "u" is "yoo" in the words people use for types (a User, a Utility). "is a
+Interface" in a compliance report is the sentence that makes a reader stop trusting the tool.
+
+### 5.57 Modelling frameworks: C4, UML, DDD, MBSE, IT4IT, SAFe (v0.2)
+
+§5.56 shipped three "standard models" — an application portfolio and two neighbours — as somewhere
+to start. Building them made the smaller idea visible: an organisation does not only choose *which
+types* it wants, it chooses **a way of describing things**, and those ways have names people already
+argue about. Ardoq's insight is that such a notation is not a feature of the drawing tool but *a
+metamodel you adopt*. So the three standard models are gone as a separate concept and are three of
+nine **frameworks**, in four families:
+
+| Family | Frameworks |
+|---|---|
+| **Notations** | C4 model · UML class model |
+| **Domain and engineering methods** | Domain-driven design · Model-based systems engineering |
+| **Operating models** | IT4IT · SAFe |
+| **Portfolio models** | Application portfolio · Business capability model · Integration and data flow |
+
+A framework carries what a standard model carried — object types with fields and data types,
+relation types with rules — plus the two things that make it a framework rather than a bag of types:
+
+- **Levels.** Most of these are layered, and a type without its level is half a type. C4's four
+  zoom levels; DDD's strategic and tactical halves; MBSE's requirement / functional / physical /
+  verification spine; IT4IT's four value streams; SAFe's portfolio-to-team. The levels are the
+  first thing the panel shows, because they are how somebody recognises their own framework.
+- **Provenance, carried down.** `node_types.framework`, `node_types.level` and
+  `relation_types.framework` (migration 0026 / pg 0019) mean a year later the model can still answer
+  *who said an Aggregate was a thing here* — us, or Eric Evans. Every type in the tree wears a small
+  tag; the detail pane says "declared by C4 model · Container".
+
+**More than one at a time**, which is the whole reason for adopting rather than choosing:
+`framework_adoptions` is a row per workspace per framework, not a column on the workspace. The
+software in C4, the domain in DDD, the funding in SAFe. Where two frameworks want the same type
+name it is declared once and keeps whatever provenance it already had — a framework does not get to
+claim something the organisation had invented for itself just because the names collide. The page
+says it in a sentence: *Models with C4 model and Domain-driven design.*
+
+**Free form is a real answer** and remains the default. A workspace that adopts nothing and lets the
+model grow out of the drawing is using the product exactly as §2.2 intends; the frameworks are for
+teams who already think in one and should not have to retype it.
+
+Adopting is additive by construction, as §5.56 established: nothing renamed, nothing deleted, no
+object touched, and the summary above the button is a plan computed against *this* workspace's live
+model and recomputed server-side at write time. Adopting the same framework twice does nothing.
+**Stopping** deletes the adoption row and nothing else: by then the types may hold hundreds of
+objects, and a modelling decision reversed must not take the estate with it.
+
+Writing nine templates needed rules, or the catalogue would rot the first time somebody added one in
+a hurry — so the rules are unit tests over the catalogue itself, not prose. Every framework must
+name the question it answers and where its practice comes from; must not constrain a relation
+between types it does not itself declare; must place every one of its types at one of its own
+declared levels, or declare no levels; must give every enum a vocabulary; must give every type a
+colour; and must not require more than two fields on any type. Two of those failed on the first run
+and the *templates* were wrong, not the tests:
+
+- **MBSE required three fields on a Requirement**, including `verification method`. True to the
+  discipline and wrong for the tool: the first import of somebody's requirements register never
+  carries it, so every requirement would arrive non-conformant, and a conformance report that is red
+  on arrival is one people learn to ignore (§5.56). It is a closed vocabulary of the standard four
+  and it is optional.
+- **The business capability model declared "levels" that were not levels.** A capability's depth is
+  a property of the *instance* — the `level` field on Business Capability already carries it — and a
+  framework level groups *types*. Two different ideas wearing one word; the model now declares none.
+
+The two failures are the argument for the whole test file: nobody reviewing nine templates by eye
+catches either.
+
+**What this does not do yet.** Adopting C4 gives you its types, its fields, its rules and its levels
+in the model; it does not yet change how a Container is *drawn*. The shape should follow the
+framework — a C4 container showing its technology, a UML class with three compartments, a DDD
+aggregate inside a dashed consistency boundary — and a board should be able to say which framework
+and which level it is drawn at. That is the next piece, and it is drawn in `docs/design/mocks`
+(direction 4).
+
+### 5.58 Layers: a stack the data can propose (v0.2)
+
+A layering is the one part of an EA model everybody arrives already having an opinion about —
+business over application over technology — and the one most tools make you configure before you
+have any data to configure it from. **Layers** group node types and relation types into an ordered
+stack (`layers`, migration 0027–0028 / pg 0020–0021, with `layer_id` on both type tables).
+
+Three things can create a band, and the row says which:
+
+| Source | |
+|---|---|
+| **By hand** | Somebody typed it. |
+| **A framework** | §5.57's per-framework `levels` were always layers; they are the same idea and are now the same rows. Adopting ArchiMate, C4, IT4IT or SAFe brings its bands and places its types. |
+| **From the data** | The agent read the stack out of the estate. |
+
+The third is why this rev exists. §2.2 says the organisation's data describes its meta-model, and a
+layering is a place where that is unusually easy to mean literally: **direction of dependency is
+already in the graph**. If nineteen connections run Application → Server and none run back, Server
+is underneath — not a guess about names, a fact about edges. `src/lib/layers/infer.ts` sums the
+observed connections between every ordered pair of kinds, keeps the dominant direction, breaks any
+remaining cycle by dropping its weakest edge, and ranks by longest path from the kinds nothing
+points at. Equal rank is the same band.
+
+Every band carries the counts that put it there — *"3 of the 5 connections between this band and the
+one above run downward"* — and the reading reports what it had to decide for itself: a near-tie
+(*"6 connections against 5, close enough to be worth checking"*), an edge dropped to break a loop,
+and any kind nothing connects at all, which the data simply cannot place. Under six connections it
+declines to read a stack rather than doing arithmetic on noise.
+
+**Only the name is guessed, and only when the data agrees with it.** A small word list puts
+Business, Application or Technology on a band so it arrives readable. Two rules keep that from
+becoming a lookup table wearing the vision's clothes:
+
+- The list may never decide *what is in* a band. Naming a band "Technology" because it holds Server
+  and Database is a convenience; putting Server and Database in the same band is a finding.
+- Conventional names are accepted **all or nothing**, top to bottom. If the estate has put
+  infrastructure above the applications — and estates do — then "Technology" at the top would import
+  a claim the data does not make, and dropping only the offending name leaves a stack that still
+  *looks* conventional and is not. So either the whole reading agrees with the conventional order,
+  or every band is named after its own largest type: duller, and always true. On the seeded estate
+  it is the second case, and the bands come out IT Component / Application / Business Capability.
+
+Accepting the reading is additive like everything else that writes a model: a band the workspace
+already has is reused, and a type somebody placed by hand is left alone — an agent that overwrites a
+person's decision is one people turn off. A kind that has never been declared *is* declared as part
+of it, which is the honest consequence rather than a side effect to hide: a kind that is not a type
+cannot be in a layer, and the button says so.
+
+**The mirror is the more useful half.** Once a stack exists, `upwardFlows` lists every connection
+running up it, with counts: *"2 connections run Application → IT Component, which is Application
+reaching up into IT Component."* Either the connection is wrong or a type is in the wrong band. As
+with conformance (§5.56), nothing is blocked.
+
+And the type diagram becomes the stack: with layers present the force simulation decides *x* only
+and the band decides *y*, so an edge pointing upward looks like an edge pointing upward. Types in no
+layer sit below the stack in a dashed band rather than being quietly dropped to the bottom.
+
+**ArchiMate (core)** joins the catalogue with this — ten of its ~60 elements over four bands. It is
+the layered EA language and the reason this section exists; shipping layers without it would have
+been odd.
+
+Two bugs the browser found that no unit test had asked about, both now tests. The word list gave two
+different bands the same name, which a unique index refuses — the bigger band keeps the word and the
+other is named after its largest type. And accepting a reading placed nothing at all, because every
+kind in the seeded estate is undeclared and there was no row to put a `layer_id` on; that is what
+the declaring step above is for.
+
+### 5.59 The tool rail earns its place (v0.2)
+
+The rail down the left had been added to and never looked at. Three things were wrong, and they
+are the three things a rail can get wrong.
+
+**Every button wore a permanent caption.** "frame", "card", "note", "text", "section", "agent",
+"shape", "graph", "on", "off" — ten 8px words, positioned into the four-pixel gap below each button
+so they crowded the one beneath. This is the duplication §5.55 spent a whole revision removing from
+the rest of the canvas, still sitting in the one piece of chrome that rev did not open. They are
+gone. What replaces them is a **tooltip carrying the keycap** — because the shortcut is what a
+returning user actually wants, and it had been hidden in a native `title` attribute where it takes
+a second to appear and cannot be styled.
+
+**The one submenu was pinned to the viewport.** `shape-picker-panel` was a floating card at an
+absolute `left: 74px; top: 250px`, so it pointed at whichever button happened to be at 250px. The
+same class of mistake §5.54 fixed for the property bar, in the place that had been missed. Flyouts
+are now anchored to the button that opens them, and a flyout is no longer a `PanelName` at all: a
+panel persists and other things toggle it, a flyout is component state that closes when you look
+away.
+
+**Two icons described the wrong thing** — a 3D cube for an architecture card and a paragraph-heading
+mark for a section. An icon that describes the wrong thing is worse than a plain square, so those
+two and the dashed connector are drawn: a card is a rounded rectangle with a type stripe, which is
+what a card looks like; a section is a band with a name tab, which is what a section looks like.
+
+Then the part that adds rather than removes: **three flyouts that remember.**
+
+| Flyout | What it offers |
+|---|---|
+| **Card** | The eight card kinds with their colours. The kind is armed *before* placing, so an interface arrives as an interface rather than as an Application you retype. The rail button wears the armed kind's stripe. |
+| **Shape** | Rectangle, oval, rhombus. The button shows the one you picked last and re-arms it on click. |
+| **Connection** | Arrow, plain line, dashed — each saying what it is for, because three arrows look alike and "dashed means proposed" is a convention nobody is born knowing. |
+
+Clicking a flyout button both arms the remembered choice *and* opens the menu, because both
+readings of a split button are right: somebody who wants what they used last wants one click, and
+opening the list costs them nothing since they are already drawing. Arming a shape from the
+keyboard moves the rail button too — otherwise the button shows one thing while the canvas draws
+another.
+
+The rail's contents live in `src/canvas/toolbar.ts` as data, for the same reason the framework
+catalogue does (§5.57): a rail is a list of claims — these are the things you can make, this key
+arms that tool — and claims can be held to invariants. The tests check that every button is in
+exactly one group, that no two buttons share a letter, that every advertised shortcut is one the
+key handler actually honours (`TOOL_KEYS` is deliberately re-typed in the test rather than
+imported, or the test would only agree with itself), and that a toggle says something different in
+its two states — which is the on/off badge problem stated as a rule.
+
+Measured in the browser on the seeded landscape board, the rail is now **44×559** with fifteen
+buttons and no text on any of them. The one it replaces had fourteen buttons carrying ten permanent
+captions between them, in a column 52px wide by its own CSS — the extra eight pixels were there to
+give the captions somewhere to sit.
+
+### 5.60 The wiki: pages that reference the model (v0.2)
+
+Every architecture wiki fails the same way. Somebody writes a good page; the estate moves; the page
+stays where it was; a year later nobody trusts any of it. Confluence does not have a bug — the
+failure is structural, because a page there is a **copy** of what was true on the day it was
+written.
+
+So the wiki in Nexus is built the other way round: a page is markdown, and the parts of it that are
+about the architecture are **references** resolved when the page is read.
+
+| Directive | What the reader gets |
+|---|---|
+| `:::board brd_landscape` | The board itself, drawn from its current document by `documentToSvg`. Change the board and the page changes. |
+| `:::object ent_8f21c40a` | One object with its kind, description and attributes as they are now. |
+| `:::query kind:Application missing:owner` | A live list of whatever matches today, over the same query language as the graph page (§5.13). |
+
+`[[Wiki links]]` resolve against the workspace's pages; a link to a page nobody has written yet is
+shown as unresolved rather than as plain text, so a wiki can see what it has promised itself. And
+an embed whose target has been deleted says so **in place** — a wiki that silently drops a diagram
+is worse than one that admits the diagram is gone, because only the second gets fixed.
+
+**A board writes its own first draft.** Blank pages are how wikis stay empty, so *New page → write
+up a board* produces something already half true (`src/lib/wiki/writeup.ts`): the board embedded
+live, the objects grouped by kind, how they connect from the graph rather than from the drawn
+connectors, and the notes somebody left on the canvas carried across — those being the one part
+that is already prose rather than data. A kind with more than six objects becomes a live query
+instead of a table, because a list of six is worth reading and a list of forty is worth querying.
+If the board has frames, the draft takes its structure from them: your areas become its sections,
+and anything outside every frame is named rather than quietly dropped. It ends with **Still to
+write**, because a generated page that reads as finished is one nobody edits.
+
+The draft is deterministic, not written by a model, which is the same order as everywhere else in
+this product: it works with no provider configured, gives the same answer twice, and a model can
+improve the prose later (§5.31). The deeper reason is that a model asked to describe a board writes
+prose that is true on the day it is written — exactly the failure this section exists to avoid. The
+generated parts are references; the parts that can go stale are the ones a person wrote.
+
+**The markdown is ours** (`src/lib/wiki/markdown.ts`), for the same reason the in-product docs are
+typed blocks (§5.23): it parses to a tree that React renders as elements, so there is no
+`dangerouslySetInnerHTML` on the one surface where people paste out of Word — the single exception
+is the board SVG, which this app generated two calls earlier and which escapes what it draws. Two
+properties are tested harder than the syntax: **nothing may disappear**, because a parser that
+swallows a line it does not recognise loses somebody's writing; and **it must terminate**, because
+a hand-written block loop that consumes zero lines is an infinite loop in a server component. The
+second one was not hypothetical — the fence branch never advanced its cursor, and the first version
+of the property test was too weak to reach it. Both are tests now.
+
+Pages nest, deleting one moves its children up rather than taking them, and renaming keeps the
+slug, because an address somebody pasted into a mail six months ago should still work.
+
+**What is not here yet**, and is worth naming because this is meant to grow: page history and
+diffs; drag to re-file; a review flow for pages that are decisions rather than descriptions (ADRs
+with an approval, which is the wiki's version of a pull request); embedding one page in another;
+and full-text search across pages.
+
+### 5.61 An owner who is not the demo (v0.2)
+
+Nexus has no self-signup, by design: accounts are made by somebody who already has one (§5.41).
+That is right for a workspace tool and leaves exactly one hole — the first real person, who has
+nobody to ask. A fresh deployment could only be entered through the seeded demo account, and an
+operator who had seeded and then changed that password had no way in at all.
+
+Three environment variables, read on **every start** rather than only on an empty database,
+because the case that bites is the already-seeded one:
+
+```
+NEXUS_OWNER_EMAIL=you@example.com
+NEXUS_OWNER_PASSWORD="your password"      # quote it — see below
+NEXUS_OWNER_NAME=Your Name                # optional; derived from the address otherwise
+NEXUS_OWNER_PASSWORD_RESET=1              # only when you mean it
+```
+
+`ensureOwner` creates the account if it is missing, makes it an owner of every workspace, and is
+idempotent. It **will not** reset a password that already exists unless `..._PASSWORD_RESET=1` is
+set as well: a stale value left in a deployment's configuration must not quietly undo every
+password change anybody has made. It never throws — a typo in one variable must not stop the
+application from starting — and it never logs the password, only the address and what it did.
+
+**The floor here is eight characters, not the application's ten**, and that is the one place the
+two differ. Ten is right in the People page, where one person is setting a password somebody else
+has to live with. This is a different act: an operator setting their own password in their own
+deployment's configuration, where the alternative to accepting it is a deployment nobody can sign
+in to. The in-app rule is untouched, which does mean a password accepted here cannot later be
+re-typed in the app — worth knowing rather than worth preventing.
+
+One trap, found by walking into it: **`#` starts a comment in a `.env` file**, so an unquoted
+`NEXUS_OWNER_PASSWORD=abc##` is read as `abc` and the account is created with a password nobody
+can guess — or, as happened here, refused for being too short with no hint as to why. Quote the
+value. The refusal now names the length it saw, which is what made it findable in seconds.
+
+### 5.62 Getting a LeanIX workspace out (v0.2)
+
+Nobody starts from zero. §5.30's catalogue has carried an entry for an incumbent EA repository
+since it was written, on the argument that bringing one in as *data* is the difference between a
+migration and a rebuild. This is the first half of that, for LeanIX: `pnpm leanix:export` reads a
+workspace and writes it to files.
+
+```
+LEANIX_HOST=acme.leanix.net LEANIX_API_TOKEN=… pnpm leanix:export --dry-run
+LEANIX_HOST=acme.leanix.net LEANIX_API_TOKEN=… pnpm leanix:export
+```
+
+It writes `raw.json` (everything as it came back, so nothing is fetched twice), `nexus-import.json`
+(entities and relations in the Import page's own format), `dropped.json` where it applies, and a
+`summary.md` counting what it found by kind — a number somebody can check against LeanIX itself.
+The output directory is git-ignored: an estate export is the most sensitive file this repository
+will ever sit next to.
+
+**The token is read from the environment and never from an argument.** A secret in `argv` is a
+secret in the shell history and in every `ps` on the machine. Nothing in the tool writes it down.
+
+Two rules shape the mapping, which lives in `src/lib/leanix/map.ts` — pure, and separate from the
+fetching, so the half with judgement in it can be tested without a licence or a network:
+
+- **Keep their vocabulary.** An `ITComponent` becomes an "IT Component", not a "Technology". The
+  names an organisation has used for years are the ones its people search for, and a migration
+  that renames everything on the way in is one nobody can check. Only the spelling is normalised.
+  Relation names keep both ends and invent no verb: `relApplicationToITComponent` becomes
+  "application → it component", because a guessed "uses" would be an invention presented as data.
+- **Lose nothing quietly.** Every configured field crosses as an attribute; the LeanIX id is kept
+  so a second import updates rather than duplicates; subscriptions become the ownership fields
+  every health measure asks for first (§5.18). Two fact sheets that share a name — LeanIX allows
+  it, and a large workspace is full of "Reporting" — get the id appended to *both*, because Nexus
+  keys an import on the name and merging two systems into one is the quietest possible data loss.
+  A relation whose other end was not exported is **counted and listed**, not discarded: a relation
+  count that silently shrinks is how somebody concludes the export worked.
+
+Verified end to end against a stub that speaks the real two-step auth and pages the way Pathfinder
+does — the token exchange, two pages, the duplicate names, the dropped relation. It has **not**
+been run against a live LeanIX instance from here; outbound access to that host is closed in this
+environment, so `--dry-run` exists to prove the token, the host and the network in about a second
+before anything is written.
+
+The other half is §5.63.
+
+### 5.63 The fourth door: an EA repository, read straight into a staged import (v0.2)
+
+§5.62 got a LeanIX workspace onto disk. This puts it into the product, and it does so by adding
+**nothing to the pipeline**: the repository is a *door*, exactly like Files, Paste and A connected
+system (§5.35, §5.37), and everything behind the door is the import machinery that already exists.
+Host and API token on the Import page, and the workspace arrives as a staged batch that is then
+mapped, matched against what the graph already holds, decided on a board, approved by a person and
+rolled back if it was wrong (§5.21, §5.36).
+
+That was the design goal and it is worth stating plainly, because the tempting shape here is a
+"LeanIX importer" with its own review screen, its own matching and its own idea of what a conflict
+is. Three months later there are two import pipelines and the second one has none of the first
+one's lessons in it. The translation is 120 lines in `src/lib/leanix/batch.ts` and stops there.
+
+**One file per fact sheet type.** The pipeline reasons per file — a file has a kind — and a
+workspace's Applications and its IT Components are not one kind. It also makes the review legible:
+"342 Applications, 88 IT Components" instead of an undifferentiated pile of 430.
+
+**Declared, not guessed.** `BatchFile.declared` is new, and `stageBatch` skips its column guesser
+for a file that carries it. The mapper exists because a CSV says nothing about itself; a
+repository with an API is the opposite case. Letting the regexes overwrite what LeanIX *stated*
+would turn known facts back into inferences — and would silently lose every relation, whose
+headers are LeanIX's own relation names rather than the English the guesser looks for.
+
+The column roles come out as: the fact sheet name as the name, the description as the description,
+**the LeanIX id as the key** — which is what makes the second read an update rather than a second
+copy of the estate — every configured field as an attribute, every subscription as a person (off
+by default, like every column that names somebody), and every modelled relation as a relation
+named the way LeanIX names it. §5.62's two rules still hold on the way through: their vocabulary
+is kept, and nothing is lost quietly.
+
+The batch records **EA repository** as its origin — a fourth value beside files, paste and a
+connected system — for the reason §5.37 gave for recording it at all: *somebody pasted this* and
+*a repository was read* are different kinds of claim, and the provenance is worth as much as the
+data.
+
+`NEXUS_LEANIX_BASE_URL` overrides where the host is reached, for an enterprise gateway in front of
+the API — and, deliberately, it is server-side only. A caller who could choose the endpoint could
+choose where the token goes. The token itself is used for the one read and never stored; a failed
+read keeps what was typed, because a mistyped host should not also cost you the token.
+
+`pnpm e2e` now starts a LeanIX of its own (`e2e/leanix-stub.mjs`) speaking the real two-step auth
+and a cursor-paged GraphQL, and the suite walks the whole road: a refused token, two pages of fact
+sheets, the declared column roles, two fact sheets that share a name, approve, and roll back. So
+the door is tested rather than merely compiled. Along the way the disambiguator got a real fix:
+it appended the first eight characters of the id, which for two ids sharing a prefix produced the
+*same* name twice — worse than not disambiguating at all. The prefix now grows until it separates
+them.
+
+### 5.64 The platform console: above the tenants (v0.2)
+
+Everything built so far happens **inside** a workspace, and `workspace_members.role` (§5.46)
+answers exactly one question: what may you do here. It cannot answer the questions of the person
+who runs the deployment — how many customers are on it, which of them was created and never used,
+who has an account at all, who cannot sign in and needs a password set. None of those is about a
+workspace, so none of them can be a workspace capability, and inventing one would mean either a
+fake workspace to ask about or a permission that ignores the argument it is given.
+
+So a second, thinner level. One platform role on the account (`users.platform_role`, null for
+everybody normal), one guard of its own in `lib/admin/guard.ts`, and a console at `/admin` outside
+`/w/[slug]` — because this is not *in* a tenant, and framing it inside a workspace sidebar would
+suggest it belonged to whichever one you last looked at.
+
+**To everybody else the console is a page that is not there.** `notFound`, not a refusal: "this
+exists and you may not see it" is itself something a URL should not teach, which is the same
+argument §5.48 made for workspaces a person is not a member of. The sidebar link appears only for
+an operator, for the ordinary reason that a console nobody can find is a console nobody uses.
+
+**Tenants.** Every workspace on the deployment with its people, owners, boards, objects, relations
+and one word for what it is doing: *empty* (created, nothing in it), *dormant* (nothing changed for
+`DORMANT_DAYS`), or *in use*. Sorted by size rather than alphabetically, because the question the
+page is opened with is "who is actually using this" and an alphabetical list buries that under
+whoever is called Acme. "Last activity" is the newest board save, deliberately — a board is what
+somebody has to open and change by hand, so an agent run or a scheduled import cannot make an
+abandoned tenant look busy. Creating one gives it an owner and a single space; nothing else,
+because what a tenant is for is its own to decide. Renaming and re-addressing are separate acts: a
+name is a label, an address is in every link anybody ever shared. Deleting asks the operator to
+type the address back — not because a confirm is hard to click, but because they are the one person
+who cannot see what is inside, and retyping is the step that makes them read which tenant they are
+on. The dialog says what would go with it, counted.
+
+**People.** Every account on the platform with the four facts the workspace People page cannot
+show: operator or not, has a password or not, belongs to no tenant, and how many live sessions
+right now. Memberships can be added, changed and removed from here across any tenant. Setting a
+password **ends every session that person has** — setting one while the laptop that prompted it is
+still signed in achieves nothing at all — and that single action is what this console was asked
+for.
+
+Three rules the schema cannot state, and one the console refuses on principle:
+
+- **The last operator cannot stand down, and cannot be deleted.** A deployment with no operator has
+  no way back except its environment variables, and the person who would have to edit them is not
+  necessarily awake. The same shape as §5.46's last-owner rule, for the same reason.
+- **You cannot delete your own account from here.** Locking yourself out of the console you are
+  standing in is never what you meant.
+- **Deleting a person does not delete their work.** Boards, versions, comments and change sets name
+  whoever made them and those references are `set null`, not cascade. What goes is the ability to
+  sign in and the memberships; the record of what happened is not theirs to take with them.
+- **An operator does not silently join the tenants they can see.** Creating one names its first
+  owner explicitly. Being able to administer a customer is not the same as being in their workspace,
+  and quietly making it so would be the surprise that makes an operator distrust the tool.
+
+`ensureOwner` (§5.61) now also makes the bootstrapped account an operator, by the same argument
+that created it: a console only an operator can open, on a deployment with no operator, is a
+console nobody can ever open. The seeded demo owner is one too, so the console is real in the demo
+rather than a screenshot. An operator can make another from the People page, and should — one
+operator is a single point of failure with a person attached to it.
+
+The guard-coverage test (§5.49) gained a clause of its own here: every action in `admin/actions.ts`
+must call `denyOperator`, and must **not** call the workspace `deny`. A workspace check inside a
+platform action would pass the generic "is it guarded" scan while refusing the very person the
+console exists for — an operator acting on a tenant they are not a member of has no role in it to
+check.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2257,7 +2893,7 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 87)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 98)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2361,12 +2997,42 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
   grouped by domain and can be registered into this workspace's own catalogue
   (`catalog_entries`); entities nothing explains are reported as gaps.
 
+### Wiki (v0.2)
+- `/w/[slug]/wiki`: a tree of markdown pages per workspace, with `:::board`, `:::object` and
+  `:::query` embeds resolved against the model when the page is read, `[[wiki links]]` that show
+  when they point at nothing yet, a contents list from the headings, and an editor with an Insert
+  menu that writes the embed syntax.
+- "Write up a board": a deterministic first draft made of references — the board live, objects by
+  kind, connections from the graph, the board's notes as prose, structured by the board's frames.
+- Guarded by a `wiki.edit` capability; members and above may write.
+
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
   restructure and constrain; declared-vs-observed drift and rule violations surfaced.
+- Tool rail: four groups (point, make, show, undo), no captions, tooltips carrying the keycap, and
+  anchored flyouts for Card, Shape and Connection that remember the last pick and show it on the
+  button. A card is placed as a kind. Rail contents are data, held to invariants by tests.
 - Diagram tab: the meta-model on a canvas — a box per node type, an arc per relation type,
   coloured by rule / observed / violation, with bundled arcs, self-loops, pan-zoom, focus
   highlighting and click-through to the detail pane. Redraws as the model changes.
+- Conformance tab: the estate checked against the declared model — undeclared kinds, missing
+  required fields, values outside an enum's vocabulary, values that are not their declared data
+  type, undeclared relation types and connections no rule allows. Two headline numbers (of what
+  could be checked; of the estate that is typed at all), a plain-English verdict, breaches grouped
+  by kind with every offender named and linked, and a by-type table. Nothing is ever blocked.
+- Layers tab: an ordered stack grouping object types and relation types, brought by a framework,
+  drawn by hand, or **read out of the estate** — the agent ranks the kinds by the direction of the
+  connections that actually exist and shows the counts behind every band, the near-ties, the edges
+  it dropped to break a loop, and the kinds the data cannot place. Accepting it is additive.
+  Once a stack exists, every connection running up it is listed. The type diagram draws the bands.
+- Frameworks tab: ten modelling frameworks in four families — ArchiMate (core), C4 and UML class
+  (notations), domain-driven design and model-based systems engineering (domain and engineering
+  methods), IT4IT and SAFe (operating models), and the three portfolio models. Each carries object types with
+  fields, relation types with rules, ordered levels and its provenance. A workspace can adopt
+  several at once and says which in a sentence; every type it brought wears the tag of the
+  framework that declared it. Adopting adds only what is missing — never renames, deletes or
+  touches an object — and a second adopt is a no-op. Stopping removes the statement and leaves the
+  types, which may by then hold objects. Free form remains the default.
 
 ### Graph explorer (v0.2)
 - `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
@@ -2494,9 +3160,25 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
   people kept what it said — with the verdict in words.
 - Deleting an agent does not erase its record.
 
+### Running the platform (v0.2)
+- `/admin`, for a **platform operator** only — a role on the account, above every workspace.
+  To anybody else the route is 404, and the sidebar does not offer it.
+- **Tenants**: every customer with people, owners, boards, objects, relations, and a state —
+  empty, dormant or in use — with the reason in words. Create (owner + one space), rename,
+  re-address, delete (type the address back; it says what would go with it).
+- **People**: every account on the platform, whichever tenants it is in; operator / no password /
+  in no tenant / signed-in-now flags; add, change or remove a membership in any tenant; set a
+  password (which ends every session that person has); sign somebody out everywhere; make or
+  unmake an operator; delete an account (their work stays).
+- The last operator cannot stand down or be deleted; nobody can delete their own account here.
+- `NEXUS_OWNER_EMAIL`'s account is made an operator on every start; so is the seeded demo owner.
+
 ### Import (v0.2)
-- Three ways in: **files**, a **pasted** block (shape sniffed from the content), or a **connected
-  system** — ask a tool on an MCP server from the import page and stage what it answers.
+- Four ways in: **files**, a **pasted** block (shape sniffed from the content), a **connected
+  system** — ask a tool on an MCP server from the import page and stage what it answers — or an
+  **EA repository**: a LeanIX host and an API token, read into one staged batch, a file per fact
+  sheet type, fields as attributes, subscriptions as people, relations as relations, the LeanIX id
+  as the key (§5.63).
 - `/w/:slug/import`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
   and work on them before anything is written.
 - One object per thing across all the files, with per-field provenance and both values kept where
@@ -2652,6 +3334,23 @@ keeping a comment it never wrote. The fallback now refuses in a sentence.
 - Presence is the union of every replica's peers, refreshed on a heartbeat and forgotten after
   forty-five seconds, so a crashed replica leaves no ghosts.
 - A message too large for `NOTIFY` writes the board down and asks the others to re-read it.
+
+### A canvas with edges (v0.2)
+- Each fact is on screen once: the topbar counts objects, the zoom control owns zoom, the map keeps
+  the composition and how much is in view. The bottom status line is gone.
+- The Selection panel, the map and the zoom control share one width and one margin — a right rail
+  rather than three scattered cards.
+- The search bar rests as a **⌘ K** pill and opens on the shortcut its keycap always advertised.
+- The map starts folded away; its toggle is in the tool rail with an on/off badge. With it away the
+  Selection panel is 600px rather than 344 and shows an object's attributes without scrolling.
+- Chrome over the canvas at 1280×800: 43% → 32%, across seven pieces instead of nine.
+
+### Chrome that keeps out of its own way (v0.2)
+- The property bar sits in the band between the side panels, wrapping rather than sliding under one.
+- It is anchored by the edge facing the selection, so however tall it grows it never covers the
+  object whose controls it holds.
+- One named reserve (`--canvas-bottom-reserve`) keeps a top-anchored panel off the map card.
+- The browser suite fails if any two pieces of canvas chrome overlap at 1280×800.
 
 ### An answer you can keep (v0.2)
 - *Ask about a selection* keeps the exchange on screen and carries it into the next question, so a
@@ -2838,6 +3537,20 @@ pnpm typecheck && pnpm lint && pnpm test
 pnpm e2e            # isolated: its own server, its own database, cleaned up afterwards
 pnpm build && pnpm start
 ```
+
+**Signing in as yourself.** There is no self-signup. Put this in `apps/web/.env.local` (git-ignored)
+or in the deployment's variables, and the account is created — and made an owner of every
+workspace — on the next start (§5.61):
+
+```
+NEXUS_OWNER_EMAIL=you@example.com
+NEXUS_OWNER_PASSWORD="your password"     # quote it: an unquoted # starts a comment
+NEXUS_OWNER_NAME=Your Name               # optional
+```
+
+It never resets an existing password unless `NEXUS_OWNER_PASSWORD_RESET=1` is set too. The seeded
+demo people (all with the password `acme-energy`) stay where they are; the sign-in page stops
+advertising them once that password has been changed.
 
 The SQLite file lives in `apps/web/data/nexus.db` (git-ignored). Migrations in
 `apps/web/drizzle` run automatically on first request; the demo seed runs when the
@@ -3086,6 +3799,66 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | Follow-ups are capped at four turns. | A second question is usually a narrowing of the first and is worth carrying. An unbounded transcript is a chat window bolted to a canvas, which is the thing this product deliberately is not: past a few turns, what the exchange wants is to be an agent on the board with a purpose written down. |
 | 2026-09-09 | Earlier turns are replayed to the model as prose only, without their citations. | The citations were checked against the same objects, and those objects are already the first message in the conversation. Re-sending them would be telling the model what it is looking at, twice. |
 
+| 2026-09-09 | The property bar asks `fitInsets` where the chrome is, rather than clamping to the window. | There was already one function that answered "where is the chrome", used by zoom-to-fit and carrying a comment asking to be kept in step. A second, private answer inside the toolbar is exactly how the two drift apart; asking the same function is the fix and the prevention. |
+| 2026-09-09 | The property bar is anchored by the edge that faces the selection, not by its top. | Positioning it above by `top` needs its height, and that height changes with what is selected — which is how it came to stand on the object it belongs to. Anchoring the bottom edge means the bar grows away from the object and there is no measurement to get wrong. |
+| 2026-09-09 | Overlap is checked in the browser suite rather than reviewed. | Three collisions shipped, all present at every window size, none visible to a unit test and all obvious in a window. This is the same argument as the guard-coverage test in §5.49: a class of mistake that review keeps missing wants a machine, not more care. |
+
+| 2026-09-09 | Each fact on the canvas is shown by exactly one piece of chrome. | The object count was on screen three times and the zoom three times, because each piece was added by somebody looking at that piece rather than at the screen. Choosing an owner for each fact — the control you can press owns the number it changes — is a rule that keeps working as more chrome arrives. |
+| 2026-09-09 | The search bar rests as a pill and opens on ⌘K. | It held 720×53 of the middle of the board, permanently, while displaying the keyboard shortcut that makes it unnecessary. The documentation already said "press ⌘K"; the bar now matches the documentation rather than the other way round. |
+| 2026-09-09 | The map overview starts folded away rather than open. | It was the largest permanently-open thing on the canvas for something you want occasionally and can otherwise get by zooming out. It is one press back from the tool rail, which shows it as off — a default, not a removal. Inventory and Selection stay open because they are the product rather than a convenience. |
+
+| 2026-09-09 | Conformance is a separate idea from estate health, not a seventh health measure. | They answer different questions and a single number would blur both. Health asks whether an estate is in good shape by general standards; conformance asks whether it obeys the rules this organisation wrote for itself. An estate can be in poor health and perfectly conformant, or immaculate and conform to nothing — folding them together would make each less useful and neither actionable. |
+| 2026-09-09 | Conformance reports two numbers instead of one. | A score over declared types alone would let a workspace that declares one type and obeys it claim 100% while describing 3% of its estate. Scoring the whole estate instead would punish an organisation for having a small deliberate model. The only honest answer is both numbers side by side, and a sentence saying which one is the problem. |
+| 2026-09-09 | A breach names one object and links to it, rather than being counted. | "83% conformant" tells nobody what to do on Monday. The deliverable of a compliance check is the list, and the number is only there to be clicked through — which is the same argument that made estate health's measures fixable rather than scolding (§5.18). |
+| 2026-09-09 | Nothing in conformance blocks a write. | The product's premise is that the model grows out of the work; a canvas that refused a card because a required field was empty would stop the drawing that produces the model. When the data and the declaration disagree, which one is wrong is a judgement, and the tool is not in a position to make it. |
+| 2026-09-09 | Standard starter models are additive only — never rename, never delete, never touch an object. | It is what makes them safe to offer at any point in a workspace's life rather than only on day one, and it makes "apply" reversible in the only sense that matters: nothing you had is gone. It also makes applying twice a no-op without any bookkeeping about what was applied before. |
+| 2026-09-09 | The apply summary is a plan computed against the live model, and recomputed server-side at write time. | Describing the standard would be true of an empty workspace and misleading in every other one. Computing the difference means the sentence is about *this* workspace; recomputing it at write time means a page left open for an hour cannot double-declare. |
+| 2026-09-09 | The article in a generated sentence is chosen from how a type name is said, not how it is spelt. | Type names are the user's words and land mid-sentence in every breach. "is a Interface" in a compliance report is the sentence that makes a reader stop trusting the report, and two rules — a leading acronym is read letter by letter, a leading "u" is "yoo" — cover what an estate actually throws at it. |
+
+| 2026-09-09 | A notation (C4, UML) and an operating model (IT4IT, SAFe) are the same kind of thing as a starter type library, and all of them are "frameworks". | They are all answers to "how does this organisation describe things", they all reduce to types, fields, relation types and rules, and treating them separately would mean two panels, two data models and two vocabularies for one idea. Ardoq's framing — a notation is a metamodel you adopt, not a feature of the drawing tool — is the one that makes the product simpler rather than larger. |
+| 2026-09-09 | A workspace adopts frameworks (plural), recorded in a table, rather than choosing one. | Real organisations use several at once and mean it: the software in C4, the domain in DDD, the funding in SAFe. A single choice would force a false decision, and a boolean on the workspace could not carry when it was taken up or by whom. |
+| 2026-09-09 | A type carries the framework that declared it, and a type that already existed keeps its own provenance. | It answers "who said this was a thing here" a year later, which is the question that makes a model defensible. And a framework must not be able to claim a type the organisation invented for itself just because the names collide — provenance is a fact about history, not a land grab. |
+| 2026-09-09 | Stopping a framework deletes the adoption and nothing else. | By the time somebody changes their mind the types it brought may hold hundreds of objects. Deleting them would make an editorial decision destructive, which is the opposite of the additive contract that makes adopting safe in the first place. |
+| 2026-09-09 | Levels group *types*, never instances. | The business capability model's "levels" were the depth of a capability in a map — a property of the instance, already carried by its `level` field. Two different ideas wearing one word; the catalogue test caught it. A framework level is C4's Container or SAFe's Portfolio: a band the types themselves live in. |
+| 2026-09-09 | MBSE's `verification method` is a closed vocabulary but not required. | Requiring it is true to the discipline and wrong for the tool: no imported requirements register carries it, so every requirement would arrive non-conformant and the conformance report would be red on arrival — which is how a metric teaches people to ignore it (§5.56). |
+| 2026-09-09 | The rules a starter template must obey are unit tests over the catalogue, not review. | Nine templates is already more than anybody checks by eye, and two of them broke a rule on the first run. Grounding, no dangling rules, every type levelled, every enum given a vocabulary, no more than two required fields: each is mechanical, and each is exactly what gets skipped when a tenth framework is added in a hurry. |
+
+| 2026-09-09 | A framework's "levels" and a workspace's "layers" are one concept, so §5.57's levels became rows in the new `layers` table. | They were the same idea a week apart: C4's four zoom levels and ArchiMate's four bands are both an ordered grouping of types. Keeping both would have meant a type carrying two kinds of position, and the first person to ask which one the diagram used would have found the answer was "it depends". |
+| 2026-09-09 | The layering an agent proposes is derived from the direction of observed connections, never from type names. | It is the one place where §2.2 — the organisation's data describes its meta-model — can be meant completely literally, because dependency direction is already in the graph and nothing has to be guessed. A layering derived from names would be a lookup table with an agent's name on it. |
+| 2026-09-09 | A conventional layer name is accepted all-or-nothing, top to bottom. | Dropping only the name that contradicts the order leaves a stack that still reads as the conventional one and is not, which is worse than having no familiar names at all. Either the reading confirms the convention throughout — in which case the familiar words are evidence — or every band is named after its own largest type. |
+| 2026-09-09 | Accepting an inferred layering declares the kinds it places. | A kind that only grew from the data has no row to carry a `layer_id`, so placing it means declaring it. Hiding that would make one button do two things silently; saying it makes it the honest consequence of accepting a layering, and it is additive either way. |
+| 2026-09-09 | Deleting a layer unplaces its types rather than deleting them. | A layer is an opinion about the model, and withdrawing an opinion must not delete the things it was about — the same rule as abandoning a framework (§5.57). The foreign key does it with `on delete set null`. |
+| 2026-09-09 | The type diagram takes its vertical position from the layer and only its horizontal from the force simulation. | A layered model's whole claim is that dependencies run downward, and a scatter cannot show that claim being kept or broken. Once the bands are drawn, an upward edge is visible as an upward edge without anybody reading a list. |
+
+| 2026-09-10 | A flyout is not a panel, and stopped being a `PanelName`. | A panel persists, is toggled from more than one place and has a position of its own; a flyout belongs to one button, closes when you look away and nothing else has an opinion about it. Modelling the shape picker as a panel is exactly how it came to be pinned at an absolute `top: 250px` with no relationship to the button that opened it. |
+| 2026-09-10 | A flyout button arms its remembered choice as well as opening the menu. | The two readings of a split button are both right, and doing only one of them makes the other person click twice. Opening the menu costs the person who wanted the remembered choice nothing, because they are already on their way to the canvas. |
+| 2026-09-10 | The card kind is armed before placing rather than edited after. | Placing an interface meant placing an Application and retyping it: two steps for a decision that was already made. The kind is what the graph indexes the object under, so getting it right at birth is worth a menu. |
+| 2026-09-10 | The rail's contents are data in `toolbar.ts`, with catalogue tests. | Two buttons on one letter, a flyout offering a tool the keyboard cannot reach, a rail advertising a shortcut the key handler does not honour — all mechanical, all invisible in review, and all things a rail accumulates as it is added to. The shortcut map is re-typed in the test on purpose: importing it would make the test agree with itself. |
+| 2026-09-10 | Three icons are drawn rather than taken from the icon set. | A 3D cube for an architecture card and a paragraph-heading mark for a section describe the wrong thing, which is worse than a plain square. Where the stock set has no glyph for a domain object, drawing one is cheaper than teaching people to ignore the icon. |
+
+| 2026-09-10 | A wiki page references the model rather than quoting it. | It is the whole reason to have a wiki *inside* the modelling tool rather than beside it in Confluence. A copy is true on the day it is written; a reference cannot go stale. It also means the expensive half of a page — the drawing — is free to maintain. |
+| 2026-09-10 | The board write-up is deterministic rather than model-written. | It works with no provider configured and gives the same answer twice, which matches every other first rung in this product. And a model asked to describe a board produces prose that is true today and wrong next month — the exact failure the section exists to avoid. A model improving prose later is additive; a model *being* the feature is not. |
+| 2026-09-10 | The markdown parser is written rather than installed. | The output is a typed tree React renders as elements, so the one surface where people paste out of Word has no HTML-string path at all. A library would also not understand the two things this wiki is actually for — embed directives and wiki links — so most of the work would remain either way. |
+| 2026-09-10 | A kind with more than six objects is embedded as a query, not tabulated. | A table of six is read; a table of forty is scrolled past, and it is also the part that goes stale fastest. The threshold is a named constant rather than a judgement made once. |
+| 2026-09-10 | An embed whose target is gone says so in the page. | Silence is the failure mode being designed out. A missing diagram that announces itself gets fixed; one that vanishes leaves a page that reads as complete and is not. |
+| 2026-09-10 | Renaming a page keeps its slug; deleting one re-parents its children. | A wiki's addresses are the half of it people share, and a rename that breaks every link is a rename nobody dares perform. Losing a subtree because somebody tidied its parent is not a trade any writer would accept. |
+
+| 2026-09-10 | The first real account comes from environment variables, checked on every start. | A product with no self-signup has to answer "how does the first person get in", and the honest answer for a self-hosted tool is the deployment's own configuration — the one place the operator already controls and nobody else can reach. Checking on every start rather than only on an empty database is the whole point: the case that strands somebody is a database that was seeded months ago. |
+| 2026-09-10 | The bootstrap will not reset an existing password without a second, explicit variable. | A value left behind in a deployment's configuration would otherwise silently undo every password change anybody made, on every restart, with no trace. Requiring `NEXUS_OWNER_PASSWORD_RESET=1` makes resetting an act rather than a side effect. |
+| 2026-09-10 | The operator path accepts eight characters where the People page asks for ten. | They are different acts. Ten is a floor under a password one person is choosing *for somebody else*; this is somebody choosing their own, in their own deployment, where refusing it means nobody can sign in at all. The in-app rule is unchanged, and the difference is written down rather than hidden. |
+| 2026-09-10 | An EA repository is a *door* into the existing import pipeline, not an importer of its own. | The tempting shape is a LeanIX screen with its own review, matching and conflict rules; three months later there are two pipelines and the newer one has none of the older one's lessons in it. Translating a workspace into `BatchFile[]` is 120 lines and everything after it — mapping, matching, the board, approval, rollback — is already built and already tested. |
+| 2026-09-10 | A source that states its own schema is `declared`, and the column guesser leaves it alone. | The mapper exists because a CSV says nothing about itself. An API is the opposite case: letting regexes overwrite what LeanIX stated turns known facts back into inferences, and quietly drops every relation, because relation headers are the source's own names rather than the English the regexes match. |
+| 2026-09-10 | One staged file per fact sheet type, not one file for the workspace. | The pipeline reasons per file — a file has a kind — and Applications and IT Components are not one kind. It is also the difference between a review that says "342 Applications, 88 IT Components" and one that shows a pile of 430. |
+| 2026-09-10 | Where the repository is reached is a server-side environment variable, never a browser input. | An enterprise gateway in front of the API is a real deployment, and the same override is what lets the e2e exercise the real client. But a caller who can choose the endpoint can choose where the token goes, so the endpoint is the operator's to set and the token is all the page sends. |
+| 2026-09-10 | A failed read keeps the host and the token that were typed. | The common failure is a mistyped host, and clearing the field on failure charges the person a second trip to LeanIX's admin page for somebody else's mistake. It is cleared on success, where it has done its one job. |
+| 2026-09-10 | The platform operator is a role on the *account*, not a value of `workspace_members.role`. | Every question the console asks — how many tenants are there, who has an account, whose password needs setting — takes no workspace, so no workspace role can answer it. Folding it in would mean a fake workspace to ask about or a capability that ignores its argument, and would make the workspace matrix a worse description of itself. |
+| 2026-09-10 | The console answers 404 to everybody who is not an operator, not 403. | The same rule §5.48 applied to workspaces: "this exists and you cannot see it" is itself something a URL should not teach. A refusal would confirm to a curious member that a platform console is there to be attacked. |
+| 2026-09-10 | A tenant's "last activity" is its newest board save, not the newest row of anything. | A board is the thing somebody has to open and change by hand. Counting agent runs, scheduled imports or session rows would let an abandoned tenant look busy, which is exactly the signal the list exists to give. |
+| 2026-09-10 | Deleting a tenant or an account requires typing its address back. | Not friction for its own sake: the operator is the one person who cannot see inside a tenant, and a confirm button is clicked without reading. Retyping is the step that makes them read which one they are on. |
+| 2026-09-10 | Creating a tenant names its first owner explicitly; the operator does not join it. | Being able to administer a customer is not the same as being in their workspace. Silently adding yourself to every tenant you create is the kind of surprise that makes an operator stop trusting the tool. |
+| 2026-09-10 | Deleting a person removes their access and memberships, never their work. | Boards, versions, comments and change sets name whoever made them, and those references are `set null` rather than cascading. The record of what happened to an organisation's architecture is not the departing person's to take with them. |
+| 2026-09-10 | The guard-coverage test asserts the console uses `denyOperator` and never the workspace `deny`. | A workspace check inside a platform action would pass the generic "is it guarded" scan while refusing the very person the console exists for — an operator acting on a tenant they are not a member of has no role there to check. The failure would look like a permissions bug, not a missing guard. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3099,6 +3872,210 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 98: a platform console above the tenants.** Everything in Nexus until now
+  happened inside a workspace, and a workspace role answers one question: what may you do here. It
+  cannot answer the operator's — how many customers are on this deployment, which of them was
+  created and never used, who has an account at all, who is locked out and needs a password. So a
+  second, thinner level: one platform role on the account, one guard of its own, and a console at
+  `/admin` outside the workspace shell. Tenants, with people, owners, boards, objects, relations
+  and a state in one word — empty, dormant, in use — sorted by size rather than alphabetically,
+  because the question you open it with is who is actually using it. Create a tenant (an owner and
+  one space, nothing else), rename it, re-address it, delete it by typing its address back while
+  the dialog counts what would go. People: every account on the platform with the four facts the
+  workspace page cannot show — operator, no password, in no tenant, signed in right now — with
+  memberships editable across any tenant, and the action this console was asked for: set somebody
+  a password, which ends every session they have. To everybody who is not an operator the console
+  is 404 rather than a refusal, and the sidebar does not mention it. The last operator cannot stand
+  down or be deleted, nobody can delete their own account from here, and deleting a person removes
+  their access and memberships but never their work. `NEXUS_OWNER_EMAIL`'s account becomes an
+  operator on every start, by the same argument that created it. The guard-coverage test gained a
+  clause: a platform action must use `denyOperator` and must never call the workspace `deny`.
+
+- **2026-09-10 — Rev 97: the EA repository becomes the fourth door into import.** Rev 96 got a
+  LeanIX workspace onto disk; this puts it into the product, and does it by adding nothing to the
+  pipeline. Host and API token on the Import page, and the whole workspace arrives as a staged
+  batch that then takes exactly the road a spreadsheet takes: columns shown with their meanings,
+  objects matched against what the graph already holds, the deciding done on a board, approved by
+  a person, rolled back if it was wrong. One staged file per fact sheet type, so the review says
+  "342 Applications, 88 IT Components" rather than showing a pile of 430; fields as attributes,
+  subscriptions as people (off by default, like every column that names somebody), relations under
+  the names LeanIX gives them, and the LeanIX id as the record's key — which is what makes the
+  second read an update rather than a second copy of the estate. `BatchFile.declared` is the whole
+  mechanism: a source that states its own schema keeps it, because letting the guesser overwrite
+  LeanIX would turn stated facts back into inferences and silently lose every relation. The token
+  is used for the one read and never stored, and a failed read keeps what was typed.
+  `pnpm e2e` now starts a LeanIX of its own speaking the real two-step auth and a cursor-paged
+  GraphQL, and the suite walks the whole road — refused token, two pages, the declared column
+  roles, two fact sheets sharing a name, approve, roll back. That found a real bug in rev 96's
+  disambiguator: it appended the first eight characters of the id, which for two ids sharing a
+  prefix produced the same name twice. The prefix now grows until it separates them.
+
+- **2026-09-10 — Rev 96: getting a LeanIX workspace out.** `pnpm leanix:export` reads a LeanIX
+  workspace over its Pathfinder GraphQL and writes it to files: the raw dump, a `nexus-import.json`
+  in the Import page's own format, the relations it could not map, and a summary counting what it
+  found by kind so the total can be checked against LeanIX itself. The token comes from the
+  environment and never from an argument, and the output directory is git-ignored. The mapping is
+  pure and separate from the fetching, so the half with judgement in it is tested without a licence:
+  it keeps the organisation's own vocabulary rather than renaming everything on the way in, keeps
+  the LeanIX id so a second import updates rather than duplicates, turns subscriptions into
+  ownership, disambiguates two fact sheets that share a name — and counts the relations whose other
+  end was outside the export rather than discarding them, because a relation count that silently
+  shrinks is how somebody concludes an export worked. Verified end to end against a stub speaking
+  the real two-step auth; not yet run against a live instance, which is what `--dry-run` is for.
+
+- **2026-09-10 — Rev 95: an owner who is not the demo.** Nexus has no self-signup, which is right
+  for a workspace tool and leaves exactly one hole: the first real person, who has nobody to ask
+  for an account. `NEXUS_OWNER_EMAIL` and `NEXUS_OWNER_PASSWORD` now create that account on every
+  start — not only on an empty database, because the case that strands somebody is a deployment
+  seeded months ago — and make it an owner of every workspace. It is idempotent, it never throws
+  so a typo cannot stop the app booting, and it never logs the password. It will not reset a
+  password that already exists unless `NEXUS_OWNER_PASSWORD_RESET=1` says so, because a stale
+  variable would otherwise undo every password change on every restart. The floor here is eight
+  characters rather than the People page's ten, and the reason is written down: ten is a floor
+  under a password one person picks for somebody else, this is somebody picking their own in their
+  own deployment. One trap found by walking into it — `#` starts a comment in a `.env` file, so an
+  unquoted password containing one is silently truncated; the refusal now names the length it saw.
+
+- **2026-09-10 — Rev 94: the wiki.** Every architecture wiki fails the same way — somebody writes a
+  good page, the estate moves, the page stays put, and a year later nobody trusts any of it. That is
+  structural rather than a bug: a page in Confluence is a *copy* of what was true when it was
+  written. So this one is built the other way round. A page is markdown, and the parts about the
+  architecture are references resolved when the page is read: `:::board` draws the board from its
+  current document, `:::object` shows an object's attributes as they are now, `:::query` lists
+  whatever matches today over the same query language as the graph page. `[[Wiki links]]` resolve
+  against the workspace's pages and show as unresolved when they point at nothing yet, so a wiki can
+  see what it has promised itself; an embed whose target was deleted says so in place rather than
+  vanishing. Because blank pages are how wikis stay empty, a board writes its own first draft: the
+  board embedded live, objects grouped by kind, connections taken from the graph rather than the
+  drawn lines, the canvas notes carried across as the one part that is already prose, structured by
+  the board's own frames, and ending with "Still to write". It is deterministic rather than
+  model-written — a model asked to describe a board writes prose that is true today and wrong next
+  month, which is the failure being designed out. The markdown is ours, parsing to a typed tree
+  React renders as elements, so the one surface where people paste out of Word has no HTML-string
+  path; two properties are tested harder than the syntax, that nothing disappears and that the
+  parser terminates — the second because the fence branch never advanced its cursor, and the first
+  version of the property test was too weak to reach it. Also in this change: the seeded owner is
+  Jesper Olesen, which is his name.
+
+- **2026-09-10 — Rev 93: the tool rail earns its place.** The rail down the left had been added to
+  and never looked at. Every button wore a permanent 8px caption — "card", "note", "on", "off" —
+  positioned into the gap below it so the column read as crowded, which is the duplication rev 89
+  spent a whole revision removing from everywhere else on the canvas. The shortcuts, the thing a
+  returning user actually wants, were hidden in native `title` attributes. And the single submenu
+  was a floating card pinned at an absolute `top: 250px`, pointing at whichever button happened to
+  be there — the same mistake rev 88 fixed for the property bar, in the one place it had missed.
+  So: four groups, no captions, a styled tooltip carrying the keycap, and flyouts anchored to the
+  button that opens them. A flyout also stopped being a `PanelName`, because a panel persists and a
+  flyout closes when you look away. Two icons described the wrong thing — a 3D cube for an
+  architecture card, a paragraph-heading mark for a section — and are now drawn. The part that adds
+  rather than removes is three flyouts that remember: **Card** offers the eight kinds with their
+  colours and arms the kind *before* placing, so an interface arrives as an interface instead of as
+  an Application you retype; **Shape** and **Connection** show the last thing you picked and re-arm
+  it on one click. The rail's contents are data in `toolbar.ts`, held to invariants by tests — every
+  button in exactly one group, no two on one letter, every advertised shortcut one the key handler
+  honours, and every toggle saying something different in its two states. Measured in the browser,
+  the rail is 44×559 with fifteen buttons and no text on any of them, against fourteen buttons
+  carrying ten captions in a 52px column before.
+
+- **2026-09-09 — Rev 92: layers, and a stack the data can propose.** Layers group object types and
+  relation types into an ordered pile — the business-over-application-over-technology idea everybody
+  arrives with. Three things can create a band and the row says which: somebody typed it, a
+  framework brought it (§5.57's per-framework levels were always layers, and are now the same rows),
+  or **the agent read it out of the estate**. The last is the point. Direction of dependency is
+  already in the graph, so if nineteen connections run Application → Server and none run back, Server
+  is underneath — a fact about edges rather than a guess about names. The engine sums the observed
+  connections between every ordered pair of kinds, keeps the dominant direction, breaks a cycle by
+  dropping its weakest edge, and ranks by longest path; every band shows the counts that put it
+  there, and it reports the near-ties, the edges it had to drop and the kinds nothing connects. Under
+  six connections it declines rather than doing arithmetic on noise. A small word list may put
+  Business or Technology on a band, but it can never decide what is *in* one, and the familiar names
+  are accepted only if the whole reading agrees with the conventional order — otherwise every band is
+  named after its own largest type, which is duller and always true. Accepting is additive: a band
+  you have is reused, a type you placed yourself stays put, and a kind that was never declared is
+  declared, because a kind that is not a type cannot be in a layer. The mirror is the more useful
+  half — once a stack exists, every connection running *up* it is listed with its count, and nothing
+  is blocked. The type diagram now draws the bands, so an upward edge looks upward. ArchiMate (core)
+  joins the framework catalogue as the tenth entry. Two bugs came out of the browser and are now
+  tests: two bands given the same name, which a unique index refuses, and an adoption that placed
+  nothing because every kind in the seed was undeclared.
+
+- **2026-09-09 — Rev 91: modelling frameworks.** Rev 90's three "standard models" turn out to be a
+  small case of a bigger idea, and Ardoq names it: a notation is not a feature of the drawing tool,
+  it is *a metamodel you adopt*. So there are now nine frameworks in four families — C4 and UML class
+  as notations, domain-driven design and model-based systems engineering as domain and engineering
+  methods, IT4IT and SAFe as operating models, and the three portfolio models from rev 90 — each
+  with its object types, fields, relation types, rules, **ordered levels** and a note on where its
+  practice comes from. A workspace adopts as many as it likes, because real organisations use
+  several at once and mean it: the software in C4, the domain in DDD, the funding in SAFe. Every
+  type carries the framework that declared it, so a year later the model can still say who said an
+  Aggregate was a thing here; a type that already existed keeps its own provenance, because a
+  framework does not get to claim what the organisation invented for itself. Free form stays the
+  default and is a real answer. Adopting is additive as before — nothing renamed, nothing deleted,
+  no object touched, a second adopt a no-op — and stopping removes only the statement, never the
+  types, which by then may hold hundreds of objects. Nine templates needed rules rather than review,
+  so the rules are unit tests over the catalogue itself: grounding, no dangling relation rules, every
+  type at one of its own levels, every enum given a vocabulary, no more than two required fields.
+  Two failed on the first run and both times the template was wrong — MBSE required a verification
+  method no imported requirements register carries, and the business capability model declared
+  "levels" that were a property of instances rather than of types. Schema: `framework` and `level`
+  on node types, `framework` on relation types, and a `framework_adoptions` table (migration 0026,
+  pg 0019). What it does not do yet is change how a Container is *drawn* — that is the next piece,
+  and direction 4 of the design mocks shows it.
+
+- **2026-09-09 — Rev 90: the meta-model means something.** §5.14 let an organisation declare its
+  types, fields, data types, required flags, enum vocabularies and relation rules — and then checked
+  almost none of it: only rule violations, and only as a count. A field could be required and missing
+  everywhere, an enum could list four options and the data hold nine, a date field could hold "Q3".
+  Conformance now checks the estate against every claim the declaration makes, in six kinds of
+  breach, and the output is a list rather than a number: each breach names one object, links to it,
+  and says what is wrong in a sentence — *"Maximo" has no owner, and Application requires one.* Two
+  headline numbers rather than one, because either alone lies: the share of *declared-type* instances
+  that break no rule, beside the share of the estate the model describes at all, with a plain-English
+  verdict beneath them. It is deliberately not estate health, which asks whether an estate is in good
+  shape by standards nobody here chose; this asks whether the data obeys the rules these people wrote
+  for themselves, and each screen links to the other. Nothing is ever blocked — the model grows out of
+  the work, and when the data and the declaration disagree either can be the one that is wrong. The
+  other half is where a model starts: three additive starter meta-models (application portfolio,
+  business capability, integration and data flow), each small enough to be useful rather than
+  imposed, each saying what it answers and where the practice comes from. Applying one only ever
+  adds — nothing renamed, nothing deleted, no object touched — and the summary above the button is a
+  plan computed against this workspace's live model, so it says what would change *here* and a
+  second apply is a no-op that says so before you click. On the seeded estate the numbers go from
+  100% / 0% to 48% / 61% on applying one, which is the feature working: the breaches were always
+  there, and until something was declared there were no rules to see them against.
+
+- **2026-09-09 — Rev 89: say it once, and give the canvas edges.** Where rev 88 stopped the chrome
+  landing on itself, this asks how much of it should be there at all — measured again rather than
+  judged. The object count was on screen three times, the zoom three times, and "autosaved" twice;
+  each fact now has one owner, the control that can change it, and the bottom status line is gone.
+  The three right-hand cards were 234, 174 and 231 wide at margins of 12, 10 and 10 — individually
+  reasonable, together three scattered cards rather than a rail; they now share one width and one
+  margin. The search bar held 720×53 of the middle of the board while displaying the ⌘K shortcut
+  that makes it unnecessary, so it rests as a pill in the same place with the same keycap and opens
+  on the shortcut its own documentation already told people to press. And the map — the largest
+  permanently-open thing on the canvas, for a view you can otherwise get by zooming out — starts
+  folded, one press from the tool rail which shows it as off. The reserve a panel keeps for the map
+  follows whether the map is there, so with it away the Selection panel is 600px instead of 344 and
+  shows an object's attributes without scrolling: the declutter gave the remaining panel its content
+  back. At 1280×800 with a card selected, chrome over the canvas went from 43% to 32%, across seven
+  pieces instead of nine.
+
+- **2026-09-09 — Rev 88: the chrome stops landing on itself.** Measuring the canvas at 1280×800
+  rather than looking at it turned up three overlapping pieces of floating chrome — all present at
+  every window size up to 1920×1080, and all three the same shape: a hard-coded offset that assumed
+  a smaller version of something that had since grown. The property bar clamped to the raw window
+  and slid under the Graph panel by up to 184px; the Selection panel reserved 230px for the map
+  card, which grows a *Fit selection* button exactly when something is selected — exactly when the
+  Selection panel is also at its tallest; and the bar was placed 64px above a selection while
+  standing 86px tall, so it sat on the top 22px of the object whose controls it held. Each fix
+  removes a guess: the bar asks `fitInsets`, the one function that already answers "where is the
+  chrome" for zoom-to-fit; it is anchored by the edge facing the selection so its height cannot
+  matter; and the bottom reserve is a named custom property beside the topbar height rather than a
+  magic 360. Objects hidden behind the bar fell from five, four and three to one at every size, and
+  chrome-on-chrome overlap to zero. The durable part is the check: the browser suite now resizes to
+  1280×800 and fails if any two pieces of chrome overlap, or if the property bar is standing on its
+  own object — none of which a unit test can see.
 
 - **2026-09-09 — Rev 87: an answer you can keep.** *Ask about a selection* answered well and then
   threw the answer away: click anywhere else and it was gone. Remarks have had *keep as a note*

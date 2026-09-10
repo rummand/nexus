@@ -154,7 +154,6 @@ export function Canvas() {
   const frameCount = useCanvas((s) => { let n = 0; for (const el of Object.values(s.elements)) if (el.type === "frame") n++; return n; });
   useProposals();
   const isEmpty = useCanvas((s) => Object.keys(s.elements).length === 0);
-  const count = useCanvas((s) => Object.keys(s.elements).length);
 
   const interaction = useCanvasInteraction(rootRef);
   useWheel(rootRef);
@@ -197,6 +196,9 @@ export function Canvas() {
     <main
       ref={rootRef}
       className={`canvas-viewport ${mode} ${dragging ? "is-dragging" : ""} ${preview ? "is-drop-target" : ""}`}
+      /* A panel hanging from the top only has to keep clear of the map when the map is there
+         (§5.55). CSS cannot read the store, so the store says so here and the property follows. */
+      data-map={panels.map ? "on" : "off"}
       aria-label="Nexus canvas"
       onMouseDown={(e) => {
         const t = e.target as HTMLElement;
@@ -253,7 +255,10 @@ export function Canvas() {
       {!presenting && <TimeScrubber />}
       <LensLegend />
       <KindSuggestions />
-      {presenting ? (
+      {/* The status line that used to sit here is gone (§5.55): it said the object count, which the
+          topbar says, and "autosaved", which the topbar's save pill says in more detail and in
+          real time. */}
+      {presenting && (
         <div className="present-bar" data-present-exit onPointerDown={(e) => e.stopPropagation()}>
           {frameCount > 0 && <button type="button" onClick={() => store.getState().presentStep(-1)} aria-label="Previous frame">‹</button>}
           <button type="button" className="present-exit" onClick={() => store.getState().setPresenting(false)}>
@@ -261,8 +266,6 @@ export function Canvas() {
           </button>
           {frameCount > 0 && <button type="button" onClick={() => store.getState().presentStep(1)} aria-label="Next frame">›</button>}
         </div>
-      ) : (
-        <span className="inventory-status">{count} objects on this board · layout and viewport autosaved</span>
       )}
     </main>
   );

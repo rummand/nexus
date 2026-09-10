@@ -104,21 +104,28 @@ export const LANDING: DocPage = {
   slug: "import",
   title: "Importing data",
   summary: "Bring in the exports you actually have — of anything, not just applications — decide on a canvas, and take only what you agree with, reversibly.",
-  keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match"],
+  keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match", "leanix", "ea repository", "fact sheet", "api token"],
   blocks: [
     { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. **Import** takes the files you have — applications, servers, interfaces, capabilities, contracts, whatever the data is about — folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change before anything does." },
     { kind: "note", tone: "why", title: "The canvas is the tool, not the picture", text: "The deciding happens on a board: the batch is laid out in lanes, and **the lane a card is in is the decision**. Drag it into Held and it is held; rename the card and the record is renamed; draw a connector between two cards and the import will make that relation. Four hundred rows in a list is a thing you scroll past — the same four hundred as cards you can sort into piles is a thing two people can settle in an afternoon." },
     { kind: "shot", src: "import-review", alt: "A staged batch of four files with each column's meaning shown and editable, and the objects listed below", caption: "Four files, one review. Every column's meaning is proposed with a reason and can be changed; nothing is in the model yet." },
-    { kind: "heading", text: "Three ways in", id: "doors" },
+    { kind: "heading", text: "Four ways in", id: "doors" },
     {
       kind: "list",
       items: [
         "**Files** — up to twelve at a time, of mixed formats. The usual case.",
         "**Paste** — a header line and rows, in commas, tabs or semicolons, or a JSON list. The most common thing somebody has is not a file: it is forty rows in a mail or a query result from a console, and saving that as a CSV first is a step whose only purpose is to satisfy an import feature.",
         "**A connected system** — pick a system that speaks MCP, ask one of its tools, read the answer, and stage it. Prose from a server goes to intake instead, where it is read for claims.",
+        "**An EA repository** — a LeanIX host and an API token, and the whole workspace is read into one staged batch: a file per fact sheet type, its fields as attributes, its subscriptions as people, its relations as relations.",
       ],
     },
-    { kind: "note", tone: "tip", text: "All three end in the same place: a staged batch, decided on a canvas, approved by a person. The batch remembers which door it came through, because “somebody pasted this” and “a CMDB answered this” are different kinds of claim." },
+    { kind: "note", tone: "tip", text: "All four end in the same place: a staged batch, decided on a canvas, approved by a person. The batch remembers which door it came through, because “somebody pasted this” and “a CMDB answered this” are different kinds of claim." },
+
+    { kind: "heading", text: "Reading an EA repository", id: "leanix" },
+    { kind: "prose", text: "If the organisation already runs LeanIX, its estate is in there, and getting it out should be a read rather than a migration project. Give the host — the address bar of the page you were looking at will do — and an API token from **Administration → API tokens**, and the workspace arrives as a staged batch." },
+    { kind: "prose", text: "What comes with it: every fact sheet type as its own file, so the review says “342 Applications, 88 IT Components” rather than showing one undifferentiated pile; every field the workspace configured, as an attribute; every subscription, as a person — off by default, like every other column that names somebody; and every modelled relation, under the name LeanIX gives it. The LeanIX id comes in as the record's key, which is what makes the *second* read an update instead of a second copy of the estate." },
+    { kind: "shot", src: "import-leanix", alt: "The EA repository door with a host and an API token field", caption: "A host and a token. The token is used for the one read and never stored." },
+    { kind: "note", tone: "why", title: "Nothing special happens after that", text: "The repository is a door, not a pipeline. Once the batch is staged it takes exactly the road a spreadsheet takes: the columns are shown with their meanings, the objects are matched against what you already have, the deciding happens on a board, and approving it can be rolled back. A relation whose other end was not exported is reported, not silently dropped." },
 
     { kind: "heading", text: "What are these rows?", id: "kind" },
     { kind: "prose", text: "Most exports never say what they are *of*: a server list is all servers and the file name is the whole of the metadata. So each file is asked, and the answer is proposed with a reason — from a kind column if the rows carry one, from the file name, from your own vocabulary if you already have that kind. Correct it in one place and every row in that file gets it; a row that carries its own kind always keeps it." },

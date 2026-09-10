@@ -8,6 +8,31 @@
  */
 
 :root {
+  /*
+   * What a top-anchored floating panel must leave alone at the bottom of the canvas (§5.54).
+   *
+   * The map card sits at bottom 54 and the zoom card below it, and the map card grows a second
+   * button — "Fit selection" — exactly when something is selected, which is exactly when the
+   * Selection panel is at its tallest. The old budget reserved the map's shorter state, so the two
+   * landed on each other in the one state where both were big. One number, named, so the next
+   * person to add a row to the map card has something to change rather than a magic 360 to guess at.
+   */
+  --canvas-bottom-reserve: 334px;
+  /*
+   * One width and one margin for everything that hangs off the right of the canvas (§5.55).
+   *
+   * The Selection panel, the map and the zoom control were 234, 174 and 231 wide at margins of 12,
+   * 10 and 10 — three left edges within sixty pixels of each other, which reads as three cards
+   * somebody dropped rather than as one rail. Nothing was wrong with any of them individually,
+   * which is why it survived so long.
+   */
+  --canvas-rail: 234px;
+  --canvas-rail-gap: 12px;
+  /* Where a floating panel hangs from, measured inside the canvas viewport… */
+  --canvas-panel-top: 76px;
+  /* …which itself starts below the topbar, so a `100vh` budget has to subtract that too. This is
+     the grid row in `.miro-studio`; the two are the same number on purpose. */
+  --canvas-topbar: 46px;
   color: #172033;
   background: #f7f9fc;
   font-family: "Aptos", "IBM Plex Sans", "Space Grotesk", "Segoe UI", sans-serif;
@@ -531,6 +556,28 @@ a { color: inherit; text-decoration: none; }
   width: min(720px, calc(100vw - 540px));
   z-index: 8;
 }
+/* The same bar, folded away until ⌘K or a click (§5.55). Same place, same shadow, same keycap —
+   so it reads as the thing that was there, smaller, rather than as something that has gone. */
+.command-pill {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-tight);
+  color: #66809f;
+  display: flex;
+  font-size: 12.5px;
+  font-weight: 700;
+  gap: 8px;
+  left: 50%;
+  padding: 6px 6px 6px 13px;
+  position: absolute;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 8;
+}
+.command-pill:hover { border-color: #b8d7ff; color: var(--blue); }
+.command-pill .keycap { font-size: 11px; padding: 3px 7px; }
 .command-bar > svg { color: #66809f; flex: 0 0 auto; }
 .command-bar input { background: transparent; border: 0; color: var(--ink); flex: 1; font-size: 14px; min-width: 120px; outline: 0; }
 .command-bar input::placeholder { color: #6d778a; }
@@ -573,87 +620,178 @@ a { color: inherit; text-decoration: none; }
 .search-suggestions small { color: #66758b; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .suggestion-empty { background: #f7f9fc; border: 1px dashed #d6e1ef; border-radius: 10px; color: #66758b; font-size: 12px; font-weight: 800; padding: 10px; }
 
+/* ---- the tool rail (§5.59) ------------------------------------------------------------------
+   Four groups, no captions under the buttons, a tooltip that carries the keycap, and flyouts
+   anchored to the button that opens them rather than to the viewport. */
 .canvas-toolbar {
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--line-strong);
-  border-radius: 13px;
+  border-radius: 12px;
   box-shadow: var(--shadow-tight);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   left: 10px;
-  padding: 6px;
+  padding: 5px;
   position: absolute;
   top: 66px;
   z-index: 7;
 }
-.canvas-toolbar hr { border: 0; border-top: 1px solid var(--line); margin: 3px 0; width: 100%; }
+/* At rest the rail sits under the floating panels; an open flyout has to clear them. */
+.canvas-toolbar[data-flyout-open] { z-index: 26; }
+.tool-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.tool-group hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; width: calc(100% - 4px); }
+.tool-slot { position: relative; }
 .tool-button {
   background: transparent;
   border: 0;
-  border-radius: 9px;
-  color: #53627a;
+  border-radius: 8px;
+  color: #55637b;
+  cursor: pointer;
   display: grid;
-  height: 38px;
+  height: 32px;
   place-items: center;
   position: relative;
-  width: 38px;
+  transition: background 110ms ease, color 110ms ease;
+  width: 32px;
 }
-.tool-button.active, .tool-button:hover { background: #eff6ff; color: var(--blue); }
-.tool-button:disabled { opacity: 0.35; }
-.tool-button-badge {
-  background: #eef2f7;
-  border: 1px solid #d5deea;
-  border-radius: 999px;
-  bottom: -4px;
-  color: #607089;
-  font-family: var(--mono);
-  font-size: 8px;
-  font-weight: 900;
-  left: 50%;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  padding: 2px 4px;
+.tool-button:hover:not(:disabled) { background: #eef2f7; color: var(--ink); }
+.tool-button.active { background: #e7f0fd; color: var(--blue); }
+.tool-button:disabled { cursor: default; opacity: 0.3; }
+.tool-button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+/* The "there is more here" mark, in the corner every tool has ever put it. */
+.tool-caret {
+  border-bottom: 4px solid currentColor;
+  border-left: 4px solid transparent;
+  bottom: 3px;
+  height: 0;
+  opacity: 0.5;
   position: absolute;
-  text-transform: uppercase;
-  transform: translateX(-50%);
+  right: 3px;
+  width: 0;
 }
-.tool-button.active .tool-button-badge { background: #dbeafe; border-color: #b8d7ff; color: var(--blue); }
+.tool-button.active .tool-caret { opacity: 0.9; }
 
-.shape-picker-panel {
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid #dbe4ef;
-  border-radius: 18px;
-  box-shadow: 0 18px 44px rgba(31, 45, 70, 0.12);
-  display: grid;
-  gap: 12px;
-  left: 74px;
-  padding: 14px;
-  position: absolute;
-  top: 250px;
-  width: 220px;
-  z-index: 18;
-}
-.shape-picker-group { display: grid; gap: 8px; }
-.shape-picker-group span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
-.shape-picker-group button {
+/* A tooltip rather than a native title: the keycap is the half people are reading. */
+.tool-tip {
   align-items: center;
-  background: #fff;
-  border: 1px solid #dbe4ef;
+  background: #1f2a3d;
+  border-radius: 7px;
+  color: #fff;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 7px;
+  left: calc(100% + 11px);
+  opacity: 0;
+  padding: 5px 9px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) translateX(-3px);
+  transition: opacity 90ms ease 260ms, transform 90ms ease 260ms;
+  white-space: nowrap;
+  z-index: 3;
+}
+.tool-tip::before {
+  border: 4px solid transparent;
+  border-right-color: #1f2a3d;
+  content: "";
+  left: -8px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tool-slot:hover .tool-tip, .tool-slot:focus-within .tool-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+/* While a flyout is open the tooltip would sit on top of it. */
+.canvas-toolbar[data-flyout-open] .tool-tip { display: none; }
+.tool-tip kbd {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+}
+
+/* ---- flyouts ------------------------------------------------------------------------------ */
+.tool-flyout {
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
-  color: #344156;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 2px;
+  left: calc(100% + 10px);
+  min-width: 208px;
+  padding: 7px;
+  position: absolute;
+  top: -6px;
+  z-index: 4;
+}
+.tool-flyout h4 {
+  color: #7c8799;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 2px 4px 4px;
+  text-transform: uppercase;
+}
+.tool-flyout > button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: #2b3547;
+  cursor: pointer;
   display: flex;
   font-size: 13px;
-  font-weight: 900;
-  gap: 9px;
-  justify-content: flex-start;
-  min-height: 38px;
-  padding: 0 12px;
+  font-weight: 600;
+  gap: 10px;
+  padding: 7px 9px;
+  text-align: left;
+  width: 100%;
+}
+.tool-flyout > button:hover { background: #f2f5f9; }
+.tool-flyout > button.active { background: #e7f0fd; color: var(--blue); }
+.tool-flyout > button > span { display: grid; flex: 1; }
+.tool-flyout > button small { color: var(--quiet); font-size: 11px; font-weight: 400; line-height: 1.35; margin-top: 1px; }
+.tool-flyout > button.active small { color: #5a86c4; }
+.tool-flyout > button kbd {
+  background: #eef2f7;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+}
+.tool-flyout p { color: var(--quiet); font-size: 11px; line-height: 1.45; margin: 5px 4px 2px; }
+/* The card kinds: a two-column grid, because eight rows is a menu and eight chips is a palette. */
+/* Wide enough that the longest kind stays on one line: a grid whose rows are different heights
+   because one label wrapped reads as a mistake rather than as a palette. */
+.tool-flyout[data-flyout="card"] { min-width: 274px; }
+.flyout-kinds { display: grid; gap: 2px; grid-template-columns: 1fr 1fr; }
+.flyout-kinds button { white-space: nowrap; }
+.flyout-kinds button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  color: #2b3547;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 7px;
+  padding: 6px 7px;
   text-align: left;
 }
-.shape-picker-group button.active, .shape-picker-group button:hover { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
-.shape-picker-hint { color: #607089; font-size: 11px; line-height: 1.35; }
+.flyout-kinds button:hover { background: #f2f5f9; }
+.flyout-kinds button.active { background: #e7f0fd; color: var(--blue); }
+.flyout-kinds i { border-radius: 3px; flex: 0 0 auto; height: 9px; width: 9px; }
 
 .floating-panel {
   background: var(--panel);
@@ -663,7 +801,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   z-index: 9;
 }
-.inspector-panel { max-height: calc(100vh - 360px); min-height: 110px; overflow: auto; padding: 12px; width: 234px; }
+.inspector-panel { max-height: calc(100vh - var(--canvas-topbar) - var(--canvas-panel-top) - var(--canvas-bottom-reserve)); min-height: 110px; overflow: auto; padding: 12px; width: var(--canvas-rail); }
 .inspector-panel.collapsed { padding-bottom: 12px; }
 .panel-title { align-items: center; color: #6f7b8e; cursor: grab; display: flex; font-size: 11px; font-weight: 900; gap: 10px; letter-spacing: 0.05em; margin: 0; text-transform: uppercase; user-select: none; }
 .panel-title:active { cursor: grabbing; }
@@ -685,14 +823,17 @@ a { color: inherit; text-decoration: none; }
 .mode-banner strong { color: #263349; font-size: 13px; line-height: 1.15; }
 .mode-banner small { color: #68758a; font-size: 11px; line-height: 1.25; }
 
-.map-card { bottom: 54px; padding: 9px; right: 10px; width: 174px; z-index: 6; }
+/* With the map folded away there is only the zoom control down there, so a top-anchored panel
+   gets the height back rather than reserving space for something that is not on screen. */
+.canvas-viewport[data-map="off"] { --canvas-bottom-reserve: 78px; }
+.map-card { bottom: 54px; padding: 9px; right: var(--canvas-rail-gap); width: var(--canvas-rail); z-index: 6; }
 .map-card strong.map-title { color: #6f7b8e; display: block; font-size: 12px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
 .mini-map { background: #f7f9fc; border: 1px solid #dbe4ef; border-radius: 9px; cursor: crosshair; display: block; height: 100px; margin-top: 10px; overflow: hidden; position: relative; width: 100%; }
 .map-readout { color: #66758b; display: grid; font-size: 11px; font-weight: 800; gap: 3px; margin-top: 8px; }
 .map-readout span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-fit-button { background: #eef6ff; border: 1px solid #b8d7ff; border-radius: 9px; color: var(--blue); font-size: 12px; font-weight: 900; margin-top: 8px; min-height: 30px; width: 100%; }
 .map-fit-button.secondary { background: #fff; border-color: #dbe4ef; color: #53627a; }
-.zoom-card { align-items: center; bottom: 10px; display: flex; gap: 9px; padding: 6px 8px; right: 10px; z-index: 6; }
+.zoom-card { align-items: center; bottom: var(--canvas-rail-gap); display: flex; gap: 9px; justify-content: space-between; padding: 6px 8px; right: var(--canvas-rail-gap); width: var(--canvas-rail); z-index: 6; }
 .zoom-card button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: #56647a; display: inline-flex; padding: 4px; }
 .zoom-card button:hover { background: #eff6ff; color: var(--blue); }
 .zoom-card strong { color: #435069; font-size: 12px; min-width: 38px; text-align: center; }
@@ -787,11 +928,19 @@ a { color: inherit; text-decoration: none; }
 
 
 
-/* ---- the three doors into import ------------------------------------------ */
+/* ---- the four doors into import ------------------------------------------- */
 .import-doors { display: flex; gap: 6px; margin: 0 0 12px; }
 .import-doors button { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 9px; color: #56637a; cursor: pointer; display: inline-flex; font-size: 12.5px; font-weight: 700; gap: 6px; padding: 7px 12px; }
 .import-doors button:hover { border-color: #b9d5f2; }
 .import-doors button.on { background: #eef5ff; border-color: var(--blue); color: var(--blue); }
+.import-leanix { background: #fff; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 11px; margin: 0 0 20px; padding: 15px 17px; }
+.import-leanix-lede { color: #56637a; font-size: 12.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+.import-leanix-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+.import-leanix-fields label { display: grid; gap: 3px; }
+.import-leanix-fields span { color: #8b96a9; font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.import-leanix-fields input { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: #253247; font-size: 12.5px; min-height: 32px; outline: 0; padding: 0 9px; width: 260px; }
+.import-leanix-fields input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.import-leanix-note { color: #8b96a9; flex: 1 1 240px; font-size: 11.5px; line-height: 1.45; max-width: 54ch; min-width: 0; }
 .import-paste, .import-server { background: #fff; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 9px; margin: 0 0 20px; padding: 15px 17px; }
 .import-paste input, .import-paste textarea { background: #fff; border: 1px solid #dbe4ef; border-radius: 9px; color: #253247; font-size: 13px; outline: 0; padding: 8px 11px; width: 100%; }
 .import-paste textarea { font-family: var(--mono); font-size: 12px; line-height: 1.55; resize: vertical; }
@@ -1868,6 +2017,8 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-tree-label i.rel { background: transparent; border-top: 2px solid #94a3b8; border-radius: 0; height: 0; width: 12px; }
 .meta-tree-label b { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta-tree-label small { color: #8a95a8; font-variant-numeric: tabular-nums; font-weight: 800; min-width: 20px; text-align: right; }
+/* more specific than `.meta-tree-label i`, which sizes every icon in the row to a 10px swatch */
+.meta-tree-label i.meta-framework-chip { flex: 0 0 auto; height: auto; line-height: 1.5; width: auto; }
 /* more specific than `.meta-tree-label i`, which would otherwise square these off */
 .meta-tree-label i.meta-dot { border-radius: 50%; flex: 0 0 auto; height: 7px; width: 7px; }
 .meta-tree-label i.meta-dot.declared { background: #17794a; }
@@ -3156,3 +3307,390 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .ask-keep button { align-items: center; background: #f2f6fb; border: 1px solid #dbe4ef; border-radius: 8px; color: #53627a; display: inline-flex; font-size: 11px; font-weight: 800; gap: 4px; padding: 4px 9px; }
 .ask-keep button:hover:not(:disabled) { background: #eaf4ff; border-color: #b8d7ff; color: var(--blue); }
 .ask-keep small { color: var(--muted); font-size: 10.5px; }
+
+/* ── Conformance and standard models (§5.56) ──────────────────────────────── */
+.meta-conformance { display: grid; gap: 12px; }
+.conformance-head { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.conformance-head > div { background: #f7f9fc; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
+.conformance-head strong { color: var(--ink); display: block; font-size: 26px; line-height: 1.1; }
+.conformance-head span { color: var(--muted); display: block; font-size: 11.5px; margin-top: 3px; }
+.conformance-verdict { color: var(--ink); font-size: 13px; line-height: 1.5; margin: 0; }
+.conformance-clean { align-items: center; color: #15803d; display: flex; font-size: 13px; font-weight: 700; gap: 7px; margin: 0; }
+
+.conformance-group { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.conformance-group > button { align-items: center; background: #fff; border: 0; display: flex; gap: 9px; padding: 10px 12px; text-align: left; width: 100%; }
+.conformance-group > button:hover { background: #f7f9fc; }
+.conformance-group svg { color: #b45309; flex: 0 0 auto; }
+.conformance-group b { color: var(--ink); flex: 1; font-size: 12.5px; font-weight: 800; }
+.conformance-group i { background: #fef3c7; border-radius: 999px; color: #92400e; font-size: 11px; font-style: normal; font-weight: 900; padding: 2px 9px; }
+.conformance-why { color: var(--muted); font-size: 11.5px; margin: 0; padding: 0 12px 8px; }
+.conformance-group ul { border-top: 1px solid var(--line); display: grid; gap: 0; list-style: none; margin: 0; max-height: 320px; overflow: auto; padding: 0; }
+.conformance-group li { border-bottom: 1px solid #f0f4f9; display: grid; gap: 2px; padding: 8px 12px; }
+.conformance-group li:last-child { border-bottom: 0; }
+.conformance-group li a { color: var(--blue); font-size: 12.5px; font-weight: 700; }
+.conformance-group li > span { color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.conformance-group li small { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+
+.conformance-by-type h4 { color: #6f7b8e; font-size: 11px; font-weight: 900; letter-spacing: 0.05em; margin: 0 0 6px; text-transform: uppercase; }
+.conformance-by-type table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+.conformance-by-type th { color: var(--muted); font-size: 11px; font-weight: 800; padding: 4px 8px; text-align: left; }
+.conformance-by-type td { border-top: 1px solid var(--line); padding: 6px 8px; }
+.conformance-by-type td em { color: var(--muted); font-size: 11px; font-style: normal; }
+.conformance-foot { border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; line-height: 1.55; margin: 0; padding-top: 10px; }
+.tab-count { background: #fef3c7; border-radius: 999px; color: #92400e; font-size: 10px; font-style: normal; font-weight: 900; margin-left: 5px; padding: 1px 6px; }
+
+/* ---- modelling frameworks (§5.57) --------------------------------------------------------
+   The Standards panel of §5.56 grown into a catalogue: families, levels and provenance. Names
+   changed with the concept rather than being kept out of nostalgia — a class called `standard-*`
+   describing a framework is the beginning of a codebase nobody can search. */
+.frameworks { display: grid; gap: 12px; }
+.frameworks > .muted { font-size: 12.5px; line-height: 1.55; margin: 0; }
+.framework-adopted { align-items: center; background: #f2f7fd; border: 1px solid #d6e6f9; border-radius: 10px;
+  color: var(--ink); display: flex; font-size: 12.5px; font-weight: 700; gap: 8px; margin: 0; padding: 9px 12px; }
+.framework-adopted > svg { color: var(--blue); flex: 0 0 auto; }
+.framework-family { display: grid; gap: 8px; }
+.framework-family > h4 { color: var(--ink); font-size: 12px; font-weight: 900; letter-spacing: 0.04em;
+  margin: 6px 0 0; text-transform: uppercase; }
+.framework-family > h4 small { color: var(--muted); display: block; font-size: 11.5px; font-weight: 500;
+  letter-spacing: 0; margin-top: 3px; text-transform: none; }
+.framework { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.framework.open { border-color: #b8d7ff; }
+.framework > button { align-items: center; background: #fff; border: 0; display: flex; gap: 10px;
+  padding: 11px 12px; text-align: left; width: 100%; }
+.framework > button:hover { background: #f7f9fc; }
+.framework > button > svg { color: var(--blue); flex: 0 0 auto; }
+.framework > button > span { flex: 1; }
+.framework b { color: var(--ink); display: block; font-size: 13px; }
+.framework small { color: var(--muted); display: block; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
+.framework-badge { align-items: center; background: #eaf7ee; border-radius: 999px; color: #15803d;
+  display: inline-flex; font-size: 10.5px; font-style: normal; font-weight: 800; gap: 4px; padding: 3px 9px; }
+.framework-body { border-top: 1px solid var(--line); display: grid; gap: 10px; padding: 12px; }
+.framework-answers { color: var(--ink); font-size: 12.5px; line-height: 1.5; margin: 0; }
+.framework-grounding { background: #f7f9fc; border-left: 3px solid #dbe4ef; color: var(--muted);
+  font-size: 11.5px; line-height: 1.5; margin: 0; padding: 7px 10px; }
+.framework-layers { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.framework-layers li { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; }
+.framework-layers i { align-items: center; background: #eef3fa; border-radius: 5px; color: var(--muted);
+  display: flex; font-size: 10px; font-style: normal; font-weight: 800; grid-row: span 2; height: 18px;
+  justify-content: center; margin-top: 2px; }
+.framework-layers b { font-size: 12px; }
+.framework-layers small { grid-column: -2; }
+.framework-lists { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+.framework-lists h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em;
+  margin: 0 0 5px; text-transform: uppercase; }
+.framework-lists ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
+.framework-lists li { display: grid; grid-template-columns: auto auto 1fr; column-gap: 6px; }
+.framework-lists li > span { border-radius: 3px; grid-row: span 2; height: 11px; margin-top: 3px; width: 11px; }
+.framework-lists li b { font-size: 12px; }
+.framework-lists li em { color: var(--quiet); font-size: 10px; font-style: normal; font-weight: 700;
+  letter-spacing: 0.03em; text-transform: uppercase; }
+.framework-lists li small { grid-column: -2; font-size: 11px; }
+.framework-apply { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap;
+  gap: 10px; justify-content: space-between; padding-top: 10px; }
+.framework-apply span { color: var(--ink); font-size: 12px; font-weight: 700; }
+.framework-apply .link-button { align-items: center; display: inline-flex; gap: 5px; }
+.framework-ok { color: #15803d; font-size: 12px; font-weight: 700; margin: 0; }
+.framework-foot { font-size: 11.5px; line-height: 1.5; margin: 0; }
+/* The provenance chip in the type tree: lower-case, quiet, and the id rather than the full name,
+   because the tree row is already carrying a colour, a name, a presence dot and a count. */
+.meta-framework-chip { background: #eef2f7; border-radius: 4px; color: #6f7b8e; font-size: 9.5px;
+  font-style: normal; font-weight: 800; letter-spacing: 0.04em; padding: 2px 5px; text-transform: uppercase; }
+
+/* ---- layers: the stack over the metamodel (§5.58) ----------------------------------------- */
+.meta-layers { display: grid; gap: 14px; }
+.meta-layers > .muted { font-size: 12.5px; line-height: 1.55; margin: 0; }
+.layer-empty { align-items: center; background: #f7f9fc; border: 1px dashed var(--line-strong); border-radius: 10px;
+  color: var(--muted); display: flex; font-size: 12.5px; gap: 8px; margin: 0; padding: 12px 14px; }
+.layer-stack { counter-reset: layer; display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.layer { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.layer-stack.proposed .layer { background: #fbfcfe; border-style: dashed; }
+.layer header { align-items: center; display: flex; gap: 8px; }
+.layer header b { color: var(--ink); font-size: 13px; }
+.layer-count { color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: auto; }
+.layer-controls { display: flex; gap: 2px; }
+.layer-controls button { background: none; border: 0; border-radius: 5px; color: var(--quiet); cursor: pointer;
+  display: grid; height: 22px; place-items: center; width: 22px; }
+.layer-controls button:hover:not(:disabled) { background: #eef2f7; color: var(--ink); }
+.layer-controls button:disabled { opacity: 0.32; }
+.layer-source { border-radius: 999px; font-size: 9.5px; font-style: normal; font-weight: 800; letter-spacing: 0.04em;
+  padding: 2px 7px; text-transform: uppercase; }
+.layer-source.hand { background: #eef2f7; color: #6f7b8e; }
+.layer-source.agent { align-items: center; background: #f2ecfd; color: #6d28d9; display: inline-flex; gap: 3px; }
+.layer-source.fw { background: #e8f1fd; color: #1863b5; }
+.layer-why { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin: 5px 0 0; }
+.layer-types { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.layer-chip { align-items: center; background: #f4f7fb; border: 1px solid var(--line); border-radius: 6px;
+  display: inline-flex; font-size: 11.5px; gap: 5px; padding: 3px 8px; }
+.layer-chip i { border-radius: 2px; height: 8px; width: 8px; }
+.layer-chip small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+.layer-chip.rel { background: #fff; border-style: dashed; color: var(--muted); }
+.layer-unplaced { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.layer-unplaced h5 { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em; margin: 0; text-transform: uppercase; }
+.layer-unplaced .muted { font-size: 11.5px; margin: 8px 0 0; }
+.layer-add { display: flex; gap: 8px; }
+.layer-add input { border: 1px solid var(--line-strong); border-radius: 8px; flex: 1; font-size: 12.5px; padding: 7px 10px; }
+.layer-add button { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer;
+  font-size: 12.5px; font-weight: 700; padding: 7px 12px; }
+.layer-add button:disabled { opacity: 0.5; }
+.layer-reading { border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; padding: 12px; }
+.layer-reading h4, .layer-upward h4 { align-items: center; color: var(--ink); display: flex; font-size: 12.5px;
+  font-weight: 800; gap: 7px; margin: 0; }
+.layer-reading h4 > svg { color: #7c3aed; }
+.layer-upward h4 > svg { color: #b45309; }
+.layer-reading .muted, .layer-upward .muted { font-size: 11.5px; line-height: 1.55; margin: 0; }
+.layer-verdict { color: var(--ink); font-size: 12.5px; font-weight: 700; margin: 0; }
+.layer-caveats { color: var(--muted); display: grid; font-size: 11.5px; gap: 4px; line-height: 1.5; margin: 0; padding-left: 16px; }
+.layer-note { font-size: 11.5px; }
+.layer-adopt { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: space-between; padding-top: 10px; }
+.layer-adopt .muted { flex: 1; font-size: 11px; min-width: 200px; }
+.layer-ok { color: #15803d; font-size: 12px; font-weight: 700; margin: 0; }
+.layer-upward { border: 1px solid #f3e2c4; background: #fffdf7; border-radius: 12px; display: grid; gap: 8px; padding: 12px; }
+.layer-upward ul { color: var(--ink); display: grid; font-size: 12px; gap: 5px; line-height: 1.5; margin: 0; padding-left: 16px; }
+.meta-layer-pick { align-items: center; display: flex; gap: 8px; margin-bottom: 10px; }
+.meta-layer-pick span { color: #6f7b8e; font-size: 10.5px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+.meta-layer-pick select { border: 1px solid var(--line-strong); border-radius: 7px; font-size: 12.5px; padding: 5px 8px; }
+/* The stack drawn behind the type diagram (§5.58). */
+.meta-band-rect { fill: #f4f7fb; stroke: #e4ebf3; stroke-width: 1; }
+.meta-band-rect.loose { fill: transparent; stroke-dasharray: 4 4; }
+.meta-band-label { fill: #8a95a8; font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+
+/* ---- the wiki (§5.60) ---------------------------------------------------------------------- */
+.wiki-shell { display: grid; gap: 0; grid-template-columns: 250px minmax(0, 1fr); height: 100%; overflow: hidden; }
+.wiki-side { border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px;
+  overflow: auto; padding: 14px 10px; }
+.wiki-side h3 { align-items: center; color: #7c8799; display: flex; font-size: 10.5px; font-weight: 900;
+  justify-content: space-between; letter-spacing: 0.08em; margin: 0 4px 2px; text-transform: uppercase; }
+.wiki-side h3 span { color: var(--quiet); font-variant-numeric: tabular-nums; }
+.wiki-tree, .wiki-tree ul { display: grid; gap: 1px; list-style: none; margin: 0; padding: 0; }
+.wiki-tree-row { align-items: center; border-radius: 7px; display: flex; gap: 2px; }
+.wiki-tree-row:hover { background: #f2f5f9; }
+.wiki-tree li.active > .wiki-tree-row { background: #e7f0fd; }
+.wiki-tree li.active > .wiki-tree-row a { color: var(--blue); font-weight: 700; }
+.wiki-tree-row > button { background: none; border: 0; color: var(--quiet); cursor: pointer; display: grid;
+  height: 20px; place-items: center; width: 16px; }
+.wiki-tree-spacer { width: 16px; }
+.wiki-tree-row a { align-items: center; color: #2b3547; display: flex; flex: 1; font-size: 12.5px; gap: 7px;
+  min-width: 0; padding: 5px 8px 5px 0; }
+.wiki-tree-row a i { color: var(--quiet); display: grid; font-size: 13px; font-style: normal; place-items: center; width: 15px; }
+.wiki-tree-row a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wiki-new { align-items: center; background: none; border: 1px dashed var(--line-strong); border-radius: 8px;
+  color: var(--muted); cursor: pointer; display: flex; font-size: 12px; font-weight: 700; gap: 6px;
+  justify-content: center; margin-top: 6px; padding: 8px; }
+.wiki-new:hover { background: #f7f9fc; color: var(--ink); }
+.wiki-new-panel { border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 8px; margin-top: 6px; padding: 10px; }
+.wiki-new-panel form { display: flex; gap: 6px; }
+.wiki-new-panel input { border: 1px solid var(--line-strong); border-radius: 7px; flex: 1; font-size: 12.5px; min-width: 0; padding: 6px 8px; }
+.wiki-new-panel form button { background: var(--blue); border: 0; border-radius: 7px; color: #fff; cursor: pointer;
+  font-size: 12px; font-weight: 700; padding: 6px 10px; }
+.wiki-new-panel h5 { align-items: center; color: #7c8799; display: flex; font-size: 10px; font-weight: 900;
+  gap: 5px; letter-spacing: 0.06em; margin: 4px 0 0; text-transform: uppercase; }
+.wiki-new-panel ul { display: grid; gap: 1px; list-style: none; margin: 0; padding: 0; }
+.wiki-new-panel ul button { background: none; border: 0; border-radius: 6px; color: #2b3547; cursor: pointer;
+  font-size: 12px; padding: 5px 7px; text-align: left; width: 100%; }
+.wiki-new-panel ul button:hover { background: #f2f5f9; }
+.wiki-new-panel p { color: var(--quiet); font-size: 11px; line-height: 1.45; margin: 0; }
+
+.wiki-main { overflow: auto; padding: 22px 30px 60px; }
+.wiki-trail { color: var(--quiet); display: flex; flex-wrap: wrap; font-size: 11.5px; gap: 5px; margin-bottom: 10px; }
+.wiki-trail a { color: var(--muted); }
+.wiki-trail a:hover { color: var(--blue); }
+.wiki-head { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; max-width: 880px; }
+.wiki-head h1 { align-items: center; color: var(--ink); display: flex; font-size: 26px; font-weight: 700;
+  gap: 10px; letter-spacing: -0.024em; margin: 0; }
+.wiki-head .muted { font-size: 12.5px; line-height: 1.55; margin: 8px 0 0; max-width: 660px; }
+.wiki-icon { font-size: 24px; }
+.wiki-head-actions { flex: 0 0 auto; }
+.wiki-body { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); margin-top: 18px; max-width: 880px; }
+.wiki-body:has(.wiki-contents) { grid-template-columns: minmax(0, 1fr) 190px; max-width: 1090px; }
+.wiki-contents { align-self: start; border-left: 1px solid var(--line); grid-column: 2; grid-row: 1;
+  padding-left: 14px; position: sticky; top: 10px; }
+.wiki-contents h4 { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; margin: 0 0 7px; text-transform: uppercase; }
+.wiki-contents ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
+.wiki-contents a { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.wiki-contents a:hover { color: var(--blue); }
+.wiki-contents li[data-depth="2"] { padding-left: 10px; }
+.wiki-contents li[data-depth="3"], .wiki-contents li[data-depth="4"] { padding-left: 20px; }
+.wiki-foot { border-top: 1px solid var(--line); color: var(--quiet); display: flex; font-size: 11.5px; gap: 14px;
+  margin-top: 32px; max-width: 880px; padding-top: 10px; }
+
+/* the prose itself */
+.wiki-prose { color: #1f2937; font-size: 14.5px; line-height: 1.68; }
+.wiki-prose > * + * { margin-top: 14px; }
+.wiki-prose h2 { color: var(--ink); font-size: 19px; font-weight: 700; letter-spacing: -0.014em; margin-top: 30px; }
+.wiki-prose h3 { color: var(--ink); font-size: 15.5px; font-weight: 700; margin-top: 26px; }
+.wiki-prose h4, .wiki-prose h5 { color: var(--ink); font-size: 13.5px; font-weight: 700; margin-top: 20px; }
+.wiki-prose ul, .wiki-prose ol { padding-left: 22px; }
+.wiki-prose li + li { margin-top: 5px; }
+.wiki-prose blockquote { border-left: 3px solid #dbe4ef; color: var(--muted); margin: 0; padding: 2px 0 2px 14px; }
+.wiki-prose code { background: #f2f5f9; border-radius: 4px; font-family: var(--mono); font-size: 12.5px; padding: 1px 5px; }
+.wiki-prose pre { background: #f7f9fc; border: 1px solid var(--line); border-radius: 10px; overflow: auto; padding: 12px 14px; }
+.wiki-prose pre code { background: none; font-size: 12.5px; padding: 0; }
+.wiki-prose hr { border: 0; border-top: 1px solid var(--line); margin: 26px 0; }
+.wiki-prose a { color: var(--blue); }
+.wiki-prose a svg { margin-left: 3px; vertical-align: -1px; }
+.wiki-table-wrap { border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+.wiki-prose table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.wiki-prose th { background: #f7f9fc; border-bottom: 1px solid var(--line); color: #6f7b8e; font-size: 10.5px;
+  font-weight: 900; letter-spacing: 0.05em; padding: 8px 12px; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.wiki-prose td { border-bottom: 1px solid #f0f2f5; padding: 8px 12px; vertical-align: top; }
+.wiki-prose tr:last-child td { border-bottom: 0; }
+.wiki-link { border-bottom: 1px solid #cfe0f7; color: var(--blue); }
+.wiki-link.missing { border-bottom: 1px dashed #e2c9a0; color: #a16207; cursor: help; }
+
+/* embeds: live views of the model */
+.wiki-embed { border: 1px solid var(--line-strong); border-radius: 12px; margin: 18px 0; overflow: hidden; }
+.wiki-embed.board { background: #fbfcfe; }
+.wiki-embed-canvas { display: block; max-height: 460px; overflow: hidden; }
+.wiki-embed-canvas svg { display: block; height: auto; width: 100%; }
+.wiki-embed figcaption { align-items: baseline; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap;
+  gap: 4px 10px; padding: 9px 13px; }
+.wiki-embed figcaption a { color: var(--ink); font-size: 13px; font-weight: 700; }
+.wiki-embed figcaption span { color: var(--quiet); font-size: 11.5px; }
+.wiki-embed.object { background: #fff; padding: 12px 14px; }
+.wiki-embed.object header { display: grid; gap: 2px; }
+.wiki-embed.object header small { color: var(--quiet); font-size: 10px; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
+.wiki-embed.object header a { color: var(--ink); font-size: 15px; font-weight: 700; }
+.wiki-embed.object p { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+.wiki-embed.object dl { display: grid; gap: 0; margin: 10px 0 0; }
+.wiki-embed.object dl div { border-top: 1px solid #f0f2f5; display: grid; grid-template-columns: 130px 1fr; padding: 5px 0; }
+.wiki-embed.object dt { color: var(--quiet); font-family: var(--mono); font-size: 11px; }
+.wiki-embed.object dd { font-size: 13px; margin: 0; }
+.wiki-embed.object footer { color: var(--quiet); font-size: 11.5px; margin-top: 8px; }
+.wiki-embed.query { background: #fff; }
+.wiki-embed.query header { align-items: center; background: #f7f9fc; border-bottom: 1px solid var(--line);
+  display: flex; gap: 8px; padding: 9px 13px; }
+.wiki-embed.query header svg { color: var(--blue); }
+.wiki-embed.query header b { color: var(--ink); flex: 1; font-size: 13px; }
+.wiki-embed.query header span { color: var(--quiet); font-size: 11px; }
+.wiki-embed.query ul { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
+.wiki-embed.query li { align-items: baseline; border-bottom: 1px solid #f0f2f5; display: flex; gap: 10px; padding: 7px 13px; }
+.wiki-embed.query li a { color: var(--ink); font-size: 13px; font-weight: 600; }
+.wiki-embed.query li small { color: var(--quiet); font-size: 11px; }
+.wiki-embed.query .muted { font-size: 12.5px; margin: 0; padding: 10px 13px; }
+.wiki-embed.query footer { border-top: 1px solid var(--line); font-size: 12px; padding: 8px 13px; }
+.wiki-embed-missing { align-items: center; background: #fffbf2; border: 1px solid #f0d9ae; border-radius: 10px;
+  color: #7a5a1a; display: flex; font-size: 12.5px; gap: 8px; margin: 16px 0; padding: 9px 12px; }
+
+/* index and editor */
+.wiki-index { display: grid; gap: 2px; list-style: none; margin: 18px 0 0; max-width: 880px; padding: 0; }
+.wiki-index li { border-bottom: 1px solid #f0f2f5; display: grid; gap: 2px; padding: 11px 4px; }
+.wiki-index a { display: grid; gap: 3px; }
+.wiki-index b { align-items: center; color: var(--ink); display: flex; font-size: 14px; gap: 7px; }
+.wiki-index span { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.wiki-index small { align-items: center; color: var(--quiet); display: flex; font-size: 11px; gap: 10px; }
+.wiki-index small em { align-items: center; display: inline-flex; font-style: normal; gap: 4px; }
+.wiki-empty { border: 1px dashed var(--line-strong); border-radius: 14px; display: grid; gap: 8px;
+  justify-items: center; margin-top: 26px; max-width: 560px; padding: 34px 26px; text-align: center; }
+.wiki-empty h2 { color: var(--ink); font-size: 17px; font-weight: 700; margin: 0; }
+.wiki-empty p { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; }
+.wiki-empty p svg { color: var(--quiet); }
+.wiki-editor { display: grid; gap: 10px; margin-top: 16px; max-width: 1090px; }
+.wiki-editor-bar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.wiki-editor-bar input { border: 1px solid var(--line-strong); border-radius: 8px; flex: 1; font-size: 15px;
+  font-weight: 700; min-width: 200px; padding: 8px 11px; }
+.wiki-insert { display: flex; gap: 4px; }
+.wiki-insert button { align-items: center; background: #fff; border: 1px solid var(--line-strong); border-radius: 7px;
+  color: var(--muted); cursor: pointer; display: flex; font-size: 11.5px; font-weight: 700; gap: 5px; padding: 6px 9px; }
+.wiki-insert button:hover { background: #f2f5f9; color: var(--ink); }
+.wiki-editor textarea { border: 1px solid var(--line-strong); border-radius: 10px; font-family: var(--mono);
+  font-size: 13px; line-height: 1.6; padding: 14px; resize: vertical; width: 100%; }
+.wiki-editor-hint { color: var(--quiet); font-size: 11.5px; line-height: 1.5; margin: 0; }
+.wiki-editor .link-button.danger { color: #b91c1c; justify-self: start; }
+
+/* ---- the platform console (§5.64) ------------------------------------------
+ *
+ * Its own shell, deliberately without the workspace sidebar: this console is not inside a tenant,
+ * and framing it in one would suggest it belonged to whichever you last looked at. Darker top bar
+ * for the same reason — you are somewhere else, and the interface should say so before you act.
+ */
+.admin-shell { background: var(--paper, #f7f9fc); display: flex; flex-direction: column; min-height: 100%; }
+.admin-topbar { align-items: center; background: #101a2b; color: #e8eef7; display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 22px; }
+.admin-brand { align-items: baseline; display: flex; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.admin-brand .admin-back { color: #8fb6e4; font-size: 12.5px; font-weight: 800; letter-spacing: 0.02em; }
+.admin-brand .admin-back:hover { color: #cfe2f7; }
+.admin-brand b { font-size: 14px; letter-spacing: 0.01em; }
+.admin-brand span { color: #93a4bd; font-size: 11.5px; }
+.admin-who { align-items: flex-end; display: flex; flex-direction: column; margin-left: auto; }
+.admin-who em { font-size: 12.5px; font-style: normal; font-weight: 700; }
+.admin-who span { color: #93a4bd; font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.admin-nav { background: #fff; border-bottom: 1px solid var(--line); display: flex; gap: 4px; padding: 0 22px; }
+.admin-nav a { align-items: center; border-bottom: 2px solid transparent; color: #56637a; display: inline-flex; font-size: 12.5px; font-weight: 700; gap: 6px; padding: 10px 12px; }
+.admin-nav a:hover { color: var(--ink); }
+.admin-nav a.on { border-bottom-color: var(--blue); color: var(--blue); }
+
+.admin-main { display: block; margin: 0 auto; max-width: 1180px; padding: 20px 22px 60px; width: 100%; }
+.admin-head { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 12px; }
+.admin-head h1 { font-size: 21px; letter-spacing: -0.01em; margin: 0; }
+.admin-head .primary-home-button { margin-left: auto; }
+.admin-search { background: #fff; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); font-size: 12.5px; min-height: 32px; outline: 0; padding: 0 11px; width: 280px; }
+.admin-search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+
+.admin-totals { align-items: baseline; background: #fff; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 18px 0 8px; padding: 13px 17px; }
+.admin-totals b { font-size: 17px; letter-spacing: -0.01em; }
+.admin-totals span { color: var(--quiet); font-size: 11.5px; margin-right: 6px; }
+.admin-deployment { align-items: center; color: var(--quiet); display: flex; font-size: 11.5px; gap: 6px; margin: 0; }
+
+.admin-new { background: #fff; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0 0 12px; padding: 14px 16px; }
+.admin-new label { display: grid; gap: 3px; }
+.admin-new label > span { color: var(--quiet); font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.admin-new input, .admin-new select { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: var(--ink); font-size: 12.5px; min-height: 32px; outline: 0; padding: 0 9px; width: 220px; }
+.admin-new input:focus, .admin-new select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.admin-hint { color: var(--quiet); flex: 1 1 240px; font-size: 11.5px; line-height: 1.45; min-width: 0; }
+.admin-note { align-items: center; color: #2f7d32; display: flex; font-size: 12px; gap: 6px; margin: 0 0 10px; }
+
+.admin-tenants, .admin-accounts { display: grid; gap: 9px; list-style: none; margin: 0; padding: 0; }
+.admin-tenant, .admin-account { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 15px; }
+.admin-tenant.empty { border-left: 3px solid #f0d9a8; }
+.admin-tenant.dormant { border-left: 3px solid #dbe4ef; }
+.admin-tenant.active { border-left: 3px solid #a8d5b0; }
+.admin-tenant-head { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-tenant-name { background: transparent; border: 1px solid transparent; border-radius: 7px; color: var(--ink); font-size: 14px; font-weight: 700; min-width: 0; outline: 0; padding: 3px 6px; width: 220px; }
+.admin-tenant-slug { background: transparent; border: 1px solid transparent; border-radius: 7px; color: var(--quiet); font-family: var(--mono); font-size: 11.5px; outline: 0; padding: 3px 6px; width: 160px; }
+.admin-tenant-name:hover, .admin-tenant-slug:hover { border-color: var(--line); }
+.admin-tenant-name:focus, .admin-tenant-slug:focus { background: #fff; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.admin-tenant-head .ghost-button { margin-left: 0; }
+.admin-tenant-head .ghost-button:first-of-type { margin-left: auto; }
+.admin-state { border-radius: 999px; font-size: 10.5px; font-style: normal; font-weight: 800; letter-spacing: 0.03em; padding: 2px 9px; text-transform: uppercase; }
+.admin-state.empty { background: #fffbeb; color: #b45309; }
+.admin-state.dormant { background: #f2f5f9; color: #6c7a91; }
+.admin-state.active { background: #eefaf0; color: #2f7d32; }
+.admin-tenant-counts { align-items: baseline; color: #56637a; display: flex; flex-wrap: wrap; font-size: 11.5px; gap: 4px 14px; margin-top: 6px; }
+.admin-tenant-counts i { color: var(--quiet); font-style: italic; }
+
+.admin-account-head { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-account-who { display: grid; gap: 1px; min-width: 200px; }
+.admin-account-who b { font-size: 13.5px; }
+.admin-account-who span { color: var(--quiet); font-size: 11.5px; }
+.admin-account-flags { display: flex; flex-wrap: wrap; gap: 5px; }
+.admin-account-head .ghost-button { margin-left: auto; }
+.admin-flag { align-items: center; border-radius: 999px; display: inline-flex; font-size: 10.5px; font-style: normal; font-weight: 800; gap: 4px; letter-spacing: 0.02em; padding: 2px 8px; }
+.admin-flag.operator { background: #eef2ff; color: #4f46e5; }
+.admin-flag.warn { background: #fffbeb; color: #b45309; }
+.admin-flag.quiet { background: #f2f5f9; color: #6c7a91; }
+.admin-flag.live { background: #eefaf0; color: #2f7d32; }
+
+.admin-memberships { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.admin-memberships i { color: var(--quiet); font-size: 11.5px; }
+.admin-membership { align-items: center; background: #f6f8fb; border: 1px solid var(--line); border-radius: 999px; display: inline-flex; gap: 6px; padding: 2px 4px 2px 10px; }
+.admin-membership b { font-size: 11.5px; }
+.admin-membership select { background: #fff; border: 1px solid var(--line); border-radius: 999px; color: #56637a; font-size: 11px; outline: 0; padding: 1px 4px; }
+.admin-membership button { background: transparent; border: 0; color: var(--quiet); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 6px; }
+.admin-membership button:hover { color: #b91c1c; }
+
+.admin-account-manage { border-top: 1px solid var(--line); display: grid; gap: 11px; margin-top: 11px; padding-top: 11px; }
+.admin-manage-row { align-items: end; display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-manage-row label { display: grid; gap: 3px; }
+.admin-manage-row label > span { color: var(--quiet); font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.admin-manage-row input, .admin-manage-row select { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; color: var(--ink); font-size: 12.5px; min-height: 32px; outline: 0; padding: 0 9px; width: 220px; }
+.admin-manage-row input:focus, .admin-manage-row select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+
+.admin-danger { background: #fff7f7; border: 1px solid #f2d6d6; border-radius: 10px; display: grid; gap: 8px; margin-top: 10px; padding: 11px 13px; }
+.admin-danger p { color: #7f2020; font-size: 12px; line-height: 1.5; margin: 0; max-width: 78ch; }
+.admin-danger code { background: #fff; border: 1px solid #f2d6d6; border-radius: 5px; font-family: var(--mono); font-size: 11.5px; padding: 1px 5px; }
+.admin-danger input { background: #fff; border: 1px solid #e8c4c4; border-radius: 8px; color: var(--ink); font-family: var(--mono); font-size: 12px; min-height: 32px; outline: 0; padding: 0 9px; width: 260px; }
+.danger-button { background: #b91c1c; border: 1px solid #a01818; border-radius: 9px; color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 700; justify-self: start; min-height: 32px; padding: 0 13px; }
+.danger-button:hover:not(:disabled) { background: #a01818; }
+.danger-button:disabled { cursor: not-allowed; opacity: 0.45; }
+.ghost-button.danger { color: #b91c1c; }

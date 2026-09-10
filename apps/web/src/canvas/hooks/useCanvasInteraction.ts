@@ -83,13 +83,18 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
     [rootRef],
   );
 
-  const createForTool = (tool: Tool, at: Point): CanvasElement | null => {
+  /* Memoised because it reads the store — the placement callbacks depend on it. */
+  const createForTool = useCallback((tool: Tool, at: Point): CanvasElement | null => {
     const id = nanoid(10);
     const size = DEFAULT_SIZES[tool] ?? { w: 100, h: 100 };
     const centred = { x: at.x - size.w / 2, y: at.y - size.h / 2, w: size.w, h: size.h };
     switch (tool) {
-      case "card":
-        return { id, type: "card", ...centred, kind: "Application", color: cardColorForKind("Application"), title: "", description: "", z: 0, meta: { entityId: `${ENTITY_ID_PREFIX}${nanoid(12)}` } };
+      case "card": {
+        // The kind armed in the rail's Card flyout (§5.59). Placing an Interface used to mean
+        // placing an Application and then retyping it, which is two steps for a one-step decision.
+        const kind = store.getState().cardKind || "Application";
+        return { id, type: "card", ...centred, kind, color: cardColorForKind(kind), title: "", description: "", z: 0, meta: { entityId: `${ENTITY_ID_PREFIX}${nanoid(12)}` } };
+      }
       case "sticky":
         return { id, type: "sticky", ...centred, title: "", text: "", color: NOTE_COLORS[0], z: 0 };
       case "agent":
@@ -107,7 +112,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
       default:
         return null;
     }
-  };
+  }, [store]);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -207,7 +212,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         }
       }
     },
-    [store, toScreen, capture],
+    [store, toScreen, capture, createForTool],
   );
 
   const onPointerMove = useCallback(
@@ -402,7 +407,7 @@ export function useCanvasInteraction(rootRef: RefObject<HTMLDivElement | null>):
         }
       }
     },
-    [store, toWorld],
+    [store, toWorld, createForTool],
   );
 
   const onContextMenu = useCallback(

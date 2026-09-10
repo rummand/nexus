@@ -1,0 +1,250 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Direction 1 — Blueprint</title>
+<!--
+  Direction 1: BLUEPRINT — the canvas as an engineering drawing.
+  Thesis: architecture is drafting, not sticky notes. Hairlines instead of shadows, 2px corners,
+  stereotype headers, compartments. Colour never fills a shape; it is a 3px rule on one edge.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #f5f4ef; --ink: #1a1c18; --mid: #5d6158; --faint: #8e9288;
+    --rule: #cfd0c6; --rule-soft: #e3e3da; --accent: #1f4f8f;
+    --mono: "SFMono-Regular", "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "Aptos", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  body { width: 1600px; height: 1000px; background: var(--paper); color: var(--ink);
+         font: 12px/1.45 var(--sans); font-feature-settings: "tnum" 1; overflow: hidden; }
+
+  /* --- topbar: one hairline, no shadow, no pills ------------------------- */
+  .top { height: 40px; border-bottom: 1px solid var(--rule); display: flex; align-items: center;
+         gap: 18px; padding: 0 14px; background: #fbfaf6; }
+  .crumb { font: 11px/1 var(--mono); color: var(--mid); letter-spacing: .02em; }
+  .crumb b { color: var(--ink); font-weight: 600; }
+  .crumb i { color: var(--faint); font-style: normal; padding: 0 6px; }
+  .top .spacer { flex: 1; }
+  .top button { font: 11px/1 var(--sans); color: var(--mid); background: none; border: 0;
+                padding: 6px 8px; cursor: pointer; letter-spacing: .01em; }
+  .top button:hover { color: var(--ink); }
+  .kbd { font: 10px/1 var(--mono); border: 1px solid var(--rule); padding: 3px 4px; color: var(--faint); }
+
+  .body { display: grid; grid-template-columns: 232px minmax(0,1fr) 268px; height: 960px; }
+
+  /* --- rails ------------------------------------------------------------- */
+  .rail { border-right: 1px solid var(--rule); background: #fbfaf6; overflow: hidden; }
+  .rail.right { border-right: 0; border-left: 1px solid var(--rule); }
+  .rail h3 { font: 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+             color: var(--faint); padding: 12px 14px 8px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 12px;
+         border-bottom: 1px solid var(--rule-soft); cursor: default; }
+  .row:hover { background: #f0efe8; }
+  .row .sw { width: 3px; height: 13px; }
+  .row .n { flex: 1; }
+  .row .c { font: 10px/1 var(--mono); color: var(--faint); }
+  .prop { display: grid; grid-template-columns: 92px 1fr; gap: 0; border-bottom: 1px solid var(--rule-soft); }
+  .prop dt { font: 10px/1.6 var(--mono); color: var(--faint); padding: 6px 0 6px 14px; }
+  .prop dd { font-size: 12px; padding: 6px 14px 6px 0; }
+  .stereo { font: 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+
+  /* --- canvas ------------------------------------------------------------ */
+  .canvas { position: relative; overflow: hidden;
+    background-image: linear-gradient(var(--rule-soft) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--rule-soft) 1px, transparent 1px);
+    background-size: 96px 96px, 96px 96px; }
+  .canvas::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px);
+    background-size: 16px 16px, 16px 16px; }
+
+  /* the drawing frame, like a title block on a drawing */
+  .sheet { position: absolute; left: 40px; top: 30px; right: 40px; bottom: 30px;
+           border: 1px solid var(--rule); }
+  .sheet .title-block { position: absolute; right: -1px; bottom: -1px; border: 1px solid var(--rule);
+    background: #fbfaf6; padding: 7px 12px; display: flex; gap: 20px; }
+  .title-block span { font: 10px/1.3 var(--mono); color: var(--faint); }
+  .title-block b { display: block; color: var(--ink); font-weight: 600; font-size: 11px; }
+
+  .node { position: absolute; background: #fff; border: 1px solid var(--rule);
+          border-left: 3px solid var(--accent); width: 218px; }
+  .node header { padding: 7px 10px 6px; border-bottom: 1px solid var(--rule-soft); }
+  .node header .stereo { display: block; margin-bottom: 3px; }
+  .node header h4 { font-size: 13px; font-weight: 600; letter-spacing: -.006em; }
+  .node .compartment { padding: 6px 10px; font: 10.5px/1.7 var(--mono); color: var(--mid); }
+  .node .compartment div { display: flex; justify-content: space-between; gap: 10px; }
+  .node .compartment span { color: var(--faint); }
+  .node.sel { border-color: var(--accent); outline: 1px solid var(--accent); }
+
+  svg.wires { position: absolute; inset: 0; overflow: visible; }
+  svg.wires path { fill: none; stroke: #9aa093; stroke-width: 1; }
+  svg.wires path.dash { stroke-dasharray: 4 3; }
+  .wl, .wire-label { position: absolute; font: 9.5px/1 var(--mono); color: var(--mid);
+                background: var(--paper); padding: 2px 4px; letter-spacing: .02em; }
+
+  .legend { position: absolute; left: 56px; bottom: 46px; display: flex; gap: 16px;
+            font: 9.5px/1 var(--mono); color: var(--faint); }
+  .legend i { font-style: normal; display: inline-flex; align-items: center; gap: 5px; }
+  .legend b { width: 12px; height: 3px; display: inline-block; }
+</style>
+
+<div class="top">
+  <div class="crumb"><b>Application landscape</b><i>/</i>Architecture thinking room<i>/</i>Acme Energy</div>
+  <div class="spacer"></div>
+  <div class="crumb">13 objects<i>·</i>saved 14:02</div>
+  <button>Comments</button><button>Compose</button><button>History</button><button>Export</button>
+  <span class="kbd">⌘K</span>
+</div>
+
+<div class="body">
+  <aside class="rail">
+    <h3>Inventory · 28 indexed</h3>
+    <div class="row"><i class="sw" style="background:#b06a1b"></i><span class="n">Application</span><span class="c">2/23</span></div>
+    <div class="row"><i class="sw" style="background:#6b4fa8"></i><span class="n">IT Component</span><span class="c">1/2</span></div>
+    <div class="row"><i class="sw" style="background:#17795a"></i><span class="n">Business Capability</span><span class="c">1/1</span></div>
+    <div class="row"><i class="sw" style="background:#1f6fa8"></i><span class="n">Data Object</span><span class="c">1/1</span></div>
+    <div class="row"><i class="sw" style="background:#1f4f8f"></i><span class="n">Interface</span><span class="c">1/1</span></div>
+    <h3>Relation types</h3>
+    <div class="row"><span class="n">provides</span><span class="c">1</span></div>
+    <div class="row"><span class="n">consumed by</span><span class="c">1</span></div>
+    <div class="row"><span class="n">implements</span><span class="c">1</span></div>
+    <div class="row"><span class="n">supports</span><span class="c">1</span></div>
+    <div class="row"><span class="n">owns</span><span class="c">1</span></div>
+  </aside>
+
+  <main class="canvas">
+    <div class="sheet">
+      <div class="title-block">
+        <span>SHEET<b>Application landscape</b></span>
+        <span>NOTATION<b>Free form</b></span>
+        <span>AS OF<b>2026-09-09</b></span>
+        <span>REV<b>90</b></span>
+      </div>
+    </div>
+
+    <svg class="wires">
+    </svg>
+
+    <div id="n-crm" class="node sel" style="left:104px; top:132px; border-left-color:#b06a1b">
+      <header><span class="stereo">« Application »</span><h4>CRM Cloud</h4></header>
+      <div class="compartment">
+        <div><span>owner</span>Customer Ops</div>
+        <div><span>lifecycle</span>active</div>
+        <div><span>criticality</span>medium</div>
+      </div>
+    </div>
+    <div id="n-api" class="node" style="left:372px; top:132px; border-left-color:#1f4f8f">
+      <header><span class="stereo">« Interface »</span><h4>Customer API</h4></header>
+      <div class="compartment"><div><span>protocol</span>REST / JSON</div><div><span>owner</span>—</div></div>
+    </div>
+    <div id="n-erp" class="node" style="left:640px; top:132px; border-left-color:#b06a1b">
+      <header><span class="stereo">« Application »</span><h4>ERP Core</h4></header>
+      <div class="compartment">
+        <div><span>owner</span>Corporate IT</div>
+        <div><span>lifecycle</span>active</div>
+        <div><span>criticality</span>high</div>
+      </div>
+    </div>
+    <div id="n-workflow" class="node" style="left:104px; top:332px; border-left-color:#6b4fa8">
+      <header><span class="stereo">« IT Component »</span><h4>Workflow Service</h4></header>
+      <div class="compartment"><div><span>runtime</span>Kubernetes</div></div>
+    </div>
+    <div id="n-revenue" class="node" style="left:372px; top:332px; border-left-color:#17795a">
+      <header><span class="stereo">« Business Capability »</span><h4>Revenue Management</h4></header>
+      <div class="compartment"><div><span>level</span>2</div></div>
+    </div>
+    <div id="n-data" class="node" style="left:640px; top:332px; border-left-color:#1f6fa8">
+      <header><span class="stereo">« Data Object »</span><h4>Customer Data</h4></header>
+      <div class="compartment"><div><span>classification</span>personal</div></div>
+    </div>
+
+    <div class="legend">
+      <i><b style="background:#9aa093"></b> declared relation</i>
+      <i><b style="background:#9aa093; background-image:repeating-linear-gradient(90deg,#9aa093 0 4px,transparent 4px 7px)"></b> observed, not declared</i>
+    </div>
+  </main>
+<script>
+const CONNECTOR_INK = "#9aa093";
+const EDGES = [
+  ["n-workflow", "n-crm", "implements"],
+  ["n-crm", "n-api", "provides"],
+  ["n-api", "n-erp", "consumed by"],
+  ["n-api", "n-revenue", "supports"],
+  ["n-erp", "n-data", "owns"],
+];
+</script>
+<script>
+/* Connectors are measured from the real boxes rather than typed in by hand: a mock with lines
+   that miss their shapes is arguing against itself. */
+(function () {
+  const canvas = document.querySelector(".canvas");
+  const svg = canvas.querySelector("svg.wires");
+  const stroke = getComputedStyle(svg.querySelector("path") || svg).stroke;
+  const box = (id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    return { x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height };
+  };
+  const line = (d) => { const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); svg.appendChild(p); };
+  const head = (x, y, dir) => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const s = 5;
+    const d = dir === "down" ? `M${x - s} ${y - s * 2} L${x} ${y} L${x + s} ${y - s * 2} z`
+            : dir === "up" ? `M${x - s} ${y + s * 2} L${x} ${y} L${x + s} ${y + s * 2} z`
+            : dir === "right" ? `M${x - s * 2} ${y - s} L${x} ${y} L${x - s * 2} ${y + s} z`
+            : `M${x + s * 2} ${y - s} L${x} ${y} L${x + s * 2} ${y + s} z`;
+    p.setAttribute("d", d); p.style.fill = CONNECTOR_INK; p.style.stroke = "none";
+    svg.appendChild(p);
+  };
+  const label = (text, x, y) => {
+    const el = document.createElement("span");
+    el.className = "wl"; el.textContent = text;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    canvas.appendChild(el);
+    const r = el.getBoundingClientRect();
+    el.style.left = (x - r.width / 2) + "px";
+    el.style.top = (y - r.height / 2) + "px";
+  };
+  for (const [from, to, text] of EDGES) {
+    const a = box(from), b = box(to);
+    const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 }, bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    let x1, y1, x2, y2, dir;
+    if (Math.abs(bc.x - ac.x) > Math.abs(bc.y - ac.y)) {
+      const right = bc.x > ac.x;
+      x1 = right ? a.x + a.w : a.x; x2 = right ? b.x : b.x + b.w;
+      y1 = ac.y; y2 = bc.y; dir = right ? "right" : "left";
+    } else {
+      const down = bc.y > ac.y;
+      y1 = down ? a.y + a.h : a.y; y2 = down ? b.y : b.y + b.h;
+      x1 = ac.x; x2 = bc.x; dir = down ? "down" : "up";
+    }
+    const shortened = dir === "down" ? [x2, y2 - 1] : dir === "up" ? [x2, y2 + 1]
+                    : dir === "right" ? [x2 - 1, y2] : [x2 + 1, y2];
+    line(x1 === x2 || y1 === y2 ? `M${x1} ${y1} L${shortened[0]} ${shortened[1]}`
+       : `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${shortened[0]} ${shortened[1]}`);
+    head(shortened[0], shortened[1], dir);
+    label(text, (x1 + x2) / 2, (y1 + y2) / 2);
+  }
+})();
+</script>
+
+
+  <aside class="rail right">
+    <h3>CRM Cloud</h3>
+    <dl class="prop"><dt>type</dt><dd>Application</dd></dl>
+    <dl class="prop"><dt>id</dt><dd style="font-family:var(--mono);font-size:11px">ent_8f21c40a</dd></dl>
+    <dl class="prop"><dt>owner</dt><dd>Customer Ops</dd></dl>
+    <dl class="prop"><dt>lifecycle</dt><dd>active</dd></dl>
+    <dl class="prop"><dt>criticality</dt><dd>medium</dd></dl>
+    <dl class="prop"><dt>annual cost</dt><dd>412,000</dd></dl>
+    <dl class="prop"><dt>retires</dt><dd style="color:var(--faint)">no decision</dd></dl>
+    <h3>Conformance</h3>
+    <dl class="prop"><dt>breaks</dt><dd>1 rule</dd></dl>
+    <div style="padding:8px 14px; font-size:11.5px; color:var(--mid); border-bottom:1px solid var(--rule-soft)">
+      <em>retires</em> is empty and Application requires a decision by 2027.
+    </div>
+    <h3>Connections · 5</h3>
+    <div class="row"><span class="n">provides → Customer API</span></div>
+    <div class="row"><span class="n">implements ← Workflow Service</span></div>
+    <div class="row"><span class="n">supports → Revenue Management</span></div>
+  </aside>
+</div>

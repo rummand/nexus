@@ -15,6 +15,8 @@ import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
 import { boardChangedElsewhere } from "@/lib/live/room";
 import { proposeFileKind, proposeMapping } from "./map";
+import { fetchAll, LeanIxError } from "@/lib/leanix/client";
+import { toBatchFiles } from "@/lib/leanix/batch";
 import { readFile, readPasted } from "./read";
 import { stage, type Decision, type FileInput } from "./stage";
 import { claimsFrom, describeProse } from "./prose";
@@ -76,7 +78,7 @@ export async function targetsFor(workspaceId: string): Promise<{ targets: MatchT
  * Whatever arrives is kept whole in the batch, so the mapping can be changed and everything
  * re-staged without asking somebody to fetch a 40MB export twice.
  */
-export type BatchOrigin = "files" | "paste" | "connected system";
+export type BatchOrigin = "files" | "paste" | "connected system" | "EA repository";
 
 async function stageBatch(workspaceId: string, files: BatchFile[], origin: BatchOrigin, name?: string): Promise<{ id: string } | { error: string }> {
   if (!files.length) return { error: "There was nothing readable in that." };
@@ -100,6 +102,8 @@ async function stageBatch(workspaceId: string, files: BatchFile[], origin: Batch
   }
   for (const file of files) {
     if (!file.rows.length) continue;
+    // A source that knows its own schema keeps it. Everything else is guessed, as before.
+    if (file.declared) continue;
     file.columns = proposeMapping(file.headers, file.rows, { knownNames: [...known] });
     /*
      * And what these rows *are*. Most exports never say — a server list is all servers and the
@@ -222,6 +226,61 @@ export async function stageFromServer(workspaceId: string, input: { server: stri
     return { error: "That answer does not read as a table. Keep it as a source instead — intake reads prose for claims." };
   }
   return stageBatch(workspaceId, [asBatchFile(read)], "connected system", name);
+}
+
+/**
+ * Read a LeanIX workspace and stage it (§5.63).
+ *
+ * The whole point is how little is here. LeanIX arrives as batch files and then takes exactly the
+ * road a spreadsheet takes — mapped, matched against what the graph already holds, reviewed row by
+ * row, approved, drawn on a board, rolled back if it was wrong. An EA repository is a large import,
+ * not a new kind of thing, and giving it its own private path would have meant a second review
+ * screen to keep in step with the first.
+ *
+ * The token is used for this one call and never stored. It is a read credential to somebody's
+ * whole estate; keeping it so the button can be pressed again is not worth what it costs to hold.
+ */
+export async function stageFromLeanIx(
+  workspaceId: string,
+  input: { host: string; token: string },
+): Promise<{ id: string } | { error: string }> {
+  const no = await deny(workspaceId, "graph.edit");
+  if (no) return no;
+
+  // People paste the graphiql URL, because that is the page they were looking at.
+  const host = input.host.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!host) return { error: "Which LeanIX host? Something like acme.leanix.net." };
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return { error: `“${host}” does not look like a host name.` };
+  if (!input.token.trim()) return { error: "A LeanIX API token, from Administration → API tokens." };
+
+  /*
+   * An enterprise gateway can sit in front of the API, and the same override is what lets this be
+   * exercised without a licence. Named like `NEXUS_MODEL_BASE_URL` (§5.31), and deliberately not
+   * something the browser can set: a caller who could choose the endpoint could choose where the
+   * token goes.
+   */
+  const baseUrl = process.env.NEXUS_LEANIX_BASE_URL?.trim() || undefined;
+
+  let dump;
+  try {
+    dump = await fetchAll({ host, baseUrl, token: input.token.trim() });
+  } catch (error) {
+    if (error instanceof LeanIxError) {
+      const detail = typeof error.detail === "string" ? error.detail.trim().slice(0, 300) : "";
+      return { error: detail ? `${error.message} It said: “${detail}”.` : error.message };
+    }
+    /*
+     * A network error here is the common case and the confusing one: the server this runs on has
+     * to be able to reach LeanIX, which is not the same question as whether your laptop can.
+     */
+    return {
+      error: `Could not reach ${host}: ${error instanceof Error ? error.message : "unknown error"}. `
+        + `This runs on the server, so it is the server's network that has to reach LeanIX.`,
+    };
+  }
+
+  if (!dump.factSheets.length) return { error: "That workspace answered, but with no fact sheets the token can see." };
+  return stageBatch(workspaceId, toBatchFiles(dump), "EA repository", `LeanIX · ${dump.workspace}`);
 }
 
 /*

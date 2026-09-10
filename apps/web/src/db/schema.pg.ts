@@ -28,6 +28,16 @@ export const users = pgTable("users", {
    */
   passwordHash: text("password_hash"),
   /**
+   * Above the workspace: who runs the deployment itself (§5.64).
+   *
+   * Null for everybody normal. `workspace_members.role` answers "what may you do *here*", and no
+   * value of it can answer "may you create a tenant, or see that this tenant exists at all" —
+   * those questions are not about a workspace, so they cannot be a workspace capability. Kept as
+   * a nullable column rather than a second table because it is one fact about a person, and as
+   * text rather than a flag because "operator" will not be the last value.
+   */
+  platformRole: text("platform_role", { enum: ["operator"] }),
+  /**
    * When this person last read the digest of what happened while they were away (§5.42).
    *
    * Not "last signed in": the question the digest answers is "what have I not seen yet", and
@@ -827,6 +837,13 @@ export const nodeTypes = pgTable(
     color: text("color").notNull().default(""),
     /** Optional parent type, so the modeller can build a hierarchy (Application ⊂ IT Component). */
     parentId: text("parent_id"),
+    /**
+     * Which modelling framework declared this type — "c4", "ddd", "safe" — or "" for a type this
+     * organisation invented (§5.57). Provenance, not ownership: the type is editable either way.
+     */
+    framework: text("framework").notNull().default(""),
+    /** Which band of the stack it sits in (§5.58). Null for a type nobody has placed. */
+    layerId: text("layer_id").references(() => layers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
@@ -863,10 +880,76 @@ export const relationTypes = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
+    /** Which framework declared it — see `nodeTypes.framework` (§5.57). */
+    framework: text("framework").notNull().default(""),
+    /**
+     * The band this relation type belongs to as vocabulary (§5.58). Optional and often empty: most
+     * relation types *cross* layers, and which two they cross is derivable from their rules.
+     */
+    layerId: text("layer_id").references(() => layers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
   (t) => [index("relation_types_workspace_idx").on(t.workspaceId), uniqueIndex("relation_types_name_idx").on(t.workspaceId, t.name)],
+);
+
+/**
+ * A band of the stack (§5.58).
+ *
+ * Layers group node types and relation types into an ordered pile — ArchiMate's Business over
+ * Application over Technology being the case everybody knows. Three things can create one and the
+ * row says which: a framework brought it, somebody drew it, or an agent read it out of the estate's
+ * own dependency directions (§2.2). The third is the one the product is actually about.
+ *
+ * `position` is 0 at the top. Kept as a plain integer rather than a linked list because a stack is
+ * re-ordered wholesale far more often than one band is moved.
+ */
+export const layers = pgTable(
+  "layers",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    color: text("color").notNull().default(""),
+    /** 0 is the top of the stack. */
+    position: integer("position").notNull().default(0),
+    /** "" drawn by hand · a framework id · "agent" when inferred from the data. */
+    source: text("source").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("layers_workspace_idx").on(t.workspaceId), uniqueIndex("layers_name_idx").on(t.workspaceId, t.name)],
+);
+
+/**
+ * Which modelling frameworks this workspace has said it models with (§5.57).
+ *
+ * A separate row rather than a flag on the workspace because a workspace can hold several at once
+ * — C4 for the software, DDD for the domain, SAFe for how the work is funded — and because the
+ * interesting facts are per framework: when it was taken up, and by whom. Abandoning one deletes
+ * this row and nothing else: the types it brought may hold data by then, and a modelling decision
+ * reversed should not take the estate with it.
+ */
+export const frameworkAdoptions = pgTable(
+  "framework_adoptions",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** The catalogue id: "c4", "uml-class", "ddd", "mbse", "it4it", "safe", … */
+    frameworkId: text("framework_id").notNull(),
+    adoptedBy: text("adopted_by"),
+    adoptedByName: text("adopted_by_name").notNull().default(""),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [
+    index("framework_adoptions_workspace_idx").on(t.workspaceId),
+    uniqueIndex("framework_adoptions_one_idx").on(t.workspaceId, t.frameworkId),
+  ],
 );
 
 /** "Application —depends on→ Application": which node types a relation type may join. */
@@ -890,6 +973,51 @@ export type NodeType = typeof nodeTypes.$inferSelect;
 export type NodeTypeField = typeof nodeTypeFields.$inferSelect;
 export type RelationType = typeof relationTypes.$inferSelect;
 export type RelationRule = typeof relationRules.$inferSelect;
+export type LayerRow = typeof layers.$inferSelect;
+export type FrameworkAdoptionRow = typeof frameworkAdoptions.$inferSelect;
+
+// ---- the wiki: pages that reference the model rather than copying it -------
+// A page is markdown, and the parts of it that are about the architecture are *embed directives*
+// resolved when the page is read (§5.60). So a page cannot drift behind the board it describes,
+// which is the failure mode of every architecture wiki anybody has met.
+
+export const wikiPages = pgTable(
+  "wiki_pages",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /**
+     * The parent page, for the tree down the side. Self-referencing, so a moved subtree moves
+     * whole; a page whose parent is deleted is re-parented to the root rather than vanishing with
+     * it — losing a page because somebody tidied its parent is not a trade anybody would accept.
+     */
+    parentId: text("parent_id"),
+    /** Unique per workspace, and what the URL carries. */
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    /** Markdown, with `:::board` / `:::object` / `:::query` lines for the live parts. */
+    body: text("body").notNull().default(""),
+    /** An emoji, for the tree. Optional and entirely cosmetic. */
+    icon: text("icon").notNull().default(""),
+    /** Order among siblings. */
+    position: integer("position").notNull().default(0),
+    /** What drafted it — "" for a page a person started, "board:<id>" for a write-up (§5.60). */
+    source: text("source").notNull().default(""),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedByName: text("updated_by_name").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [
+    index("wiki_pages_workspace_idx").on(t.workspaceId),
+    index("wiki_pages_parent_idx").on(t.parentId),
+    uniqueIndex("wiki_pages_slug_idx").on(t.workspaceId, t.slug),
+  ],
+);
+
+export type WikiPageRow = typeof wikiPages.$inferSelect;
 
 // ---- change sets: the model in time ----------------------------------------
 // The graph is the estate as it is. A *change set* is a named, dated set of intentions about it —

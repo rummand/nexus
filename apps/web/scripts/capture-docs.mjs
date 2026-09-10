@@ -107,7 +107,10 @@ try {
     await prepare();
     await page.waitForTimeout(options.settle ?? 700);
     let clip;
-    if (options.selector) {
+    /* An explicit region, for a picture whose subject overflows its own element — a rail with a
+       flyout hanging off it has a bounding box 44px wide and a picture 340px wide. */
+    if (options.clip) clip = options.clip;
+    else if (options.selector) {
       const box = await page.locator(options.selector).boundingBox();
       if (box) clip = pad(box, options.padding ?? 12);
     } else if (!options.full) {
@@ -170,11 +173,22 @@ try {
     await page.locator(".fact-card").first().click();
     await page.waitForTimeout(600);
   });
+  /* The rail with a flyout open (§5.59): a menu that is shut teaches nobody that it is there. */
+  await shot("board-toolbar", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1500);
+    await page.click('[data-tool="card"]');
+    await page.waitForSelector('[data-flyout="card"]');
+    await page.waitForTimeout(600);
+  }, { clip: { x: 4, y: 58, width: 352, height: 580 }, settle: 200 });
+
   await shot("board-inspector", async () => {}, { selector: ".inspector-panel", padding: 10 });
 
   await shot("board-command-bar", async () => {
     await page.keyboard.press("Escape");
-    await page.click(".command-bar input");
+    // It rests as a pill now (§5.55); the picture is of it in use.
+    await page.click("[data-command-pill]");
+    await page.waitForSelector(".command-bar input", { timeout: 30_000 });
     await page.fill(".command-bar input", "kind:Application criticality:high");
     await page.waitForTimeout(1200);
   });
@@ -290,7 +304,7 @@ try {
   await shot("board-agent-scope", async () => {
     await goto("/b/brd_landscape", "[data-element-id]");
     await page.waitForTimeout(1500);
-    await page.click('[aria-label="Agent — put one where the work is"]');
+    await page.click('[data-tool="agent"]');
     const box = await page.locator(".canvas-viewport").boundingBox();
     await page.mouse.click(box.x + 1150, box.y + 640); // clear of the cards it will outline
     await page.waitForSelector("[data-agent]", { timeout: 60_000 });
@@ -357,11 +371,52 @@ try {
   // ---- the graph's own history --------------------------------------------
   await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });
 
+  // ---- the wiki (§5.60) ---------------------------------------------------
+  // Written from a board, because an empty wiki is a picture of nothing.
+  await shot("wiki-page", async () => {
+    await goto(`${w}/wiki`, "[data-wiki]");
+    await page.click("[data-new-page]");
+    await page.waitForSelector("[data-new-page-panel]");
+    await page.click('[data-writeup="brd_landscape"]');
+    await page.waitForSelector("[data-wiki-page-view]", { timeout: 60_000 });
+    await page.waitForTimeout(1800);
+  }, { settle: 400 });
+
   // ---- the meta-model -----------------------------------------------------
   await shot("meta", () => goto(`${w}/meta`, ".meta-tree"), { settle: 1200 });
   await shot("meta-diagram", async () => {
     await page.click('button:has-text("Diagram")');
     await page.waitForTimeout(2500);
+  });
+  // Standards, then conformance — in that order, because a model nobody declared has nothing to
+  // conform to, and a screenshot of "nothing to report" teaches nobody anything (§5.56).
+  await shot("meta-layers", async () => {
+    await page.click("[data-tab-layers]");
+    await page.waitForSelector("[data-layers]");
+    await page.waitForTimeout(900);
+    // Adopt the reading first: a screenshot of an empty stack teaches nobody what a stack is.
+    if (await page.locator("[data-adopt-layering]").count()) {
+      await page.click("[data-adopt-layering]");
+      await page.waitForSelector("[data-layering-ok]", { timeout: 60_000 });
+      await page.waitForTimeout(2500);
+    }
+  });
+  await shot("meta-frameworks", async () => {
+    await page.click("[data-tab-frameworks]");
+    await page.waitForSelector("[data-frameworks]");
+    await page.click('[data-framework="c4"] > button');
+    await page.waitForSelector('[data-adopt-framework="c4"]');
+    await page.waitForTimeout(500);
+  });
+  await shot("meta-conformance", async () => {
+    await page.click('[data-adopt-framework="c4"]');
+    await page.waitForSelector(".framework-ok", { timeout: 60_000 });
+    await page.waitForTimeout(2500);
+    await page.click("[data-tab-conformance]");
+    await page.waitForSelector("[data-breach-group]", { timeout: 30_000 });
+    await page.locator("[data-breach-group] > button").first().click();
+    await page.waitForSelector("[data-breach-group] li");
+    await page.waitForTimeout(400);
   });
 
   // ---- intake -------------------------------------------------------------
@@ -461,6 +516,16 @@ try {
   // ---- the landing zone -------------------------------------------------------
   // Real files, read by the real pipeline: the fixtures the e2e suite uses.
   const fixtures = path.resolve("e2e/fixtures");
+  // The door itself needs no LeanIX to photograph, which is the honest thing to show: what a
+  // person types. What comes back is described in words rather than staged from a fake workspace.
+  await shot("import-leanix", async () => {
+    await goto(`${w}/import`, '[data-door="leanix"]');
+    await page.click('[data-door="leanix"]');
+    await page.waitForSelector("[data-import-leanix]", { timeout: 30_000 });
+    await page.fill("[data-leanix-host]", "acme.leanix.net");
+    await page.waitForTimeout(400);
+  });
+
   await shot("import-review", async () => {
     await goto(`${w}/import`, "[data-import-upload]");
     await page.setInputFiles("[data-import-files]", [
@@ -482,6 +547,20 @@ try {
     await page.waitForTimeout(1500);
   });
 
+  // ---- the platform console ---------------------------------------------------
+  // The seeded owner runs this deployment (§5.64), so the console is reachable in the demo.
+  await shot("platform-tenants", async () => {
+    await goto("/admin", "[data-admin-tenants]");
+    await page.waitForTimeout(600);
+  });
+
+  await shot("platform-people", async () => {
+    await goto("/admin/people", "[data-admin-accounts]");
+    await page.locator('[data-admin-account="maria@acme-energy.example"] [data-manage-account]').click();
+    await page.waitForSelector("[data-account-manage]", { timeout: 30_000 });
+    await page.waitForTimeout(500);
+  });
+
   // ---- agents ---------------------------------------------------------------
   // Placing an agent and selecting objects need no model, so both of these are the real product.
   // The answering half cannot be photographed honestly without a key, and is described instead.
@@ -500,7 +579,7 @@ try {
   await shot("agent-fleet", async () => {
     await goto("/b/brd_landscape", "[data-element-id]");
     await page.waitForTimeout(1500);
-    await page.click('[aria-label="Agent — put one where the work is"]');
+    await page.click('[data-tool="agent"]');
     const box = await page.locator(".canvas-viewport").boundingBox();
     await page.mouse.click(box.x + 420, box.y + 700);
     await page.waitForSelector("[data-agent]", { timeout: 30_000 });

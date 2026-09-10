@@ -131,3 +131,25 @@ export const CONNECTIONS: DocPage = {
     { kind: "try", href: "/w/:slug/settings/connections", label: "Open connections" },
   ],
 };
+
+export const PLATFORM: DocPage = {
+  slug: "platform",
+  title: "Running the platform",
+  summary: "The console above the tenants: who the customers are, who has an account, and how to set somebody a password when they cannot get in.",
+  keywords: ["platform", "operator", "console", "admin", "tenant", "customer", "organisation", "company", "password", "sessions", "sign out", "delete", "multi-tenant"],
+  blocks: [
+    { kind: "prose", text: "Everything else in Nexus happens **inside** a workspace, and a workspace role answers one question: what may you do here. It cannot answer the questions the person running the deployment has — how many customers are on it, which of them never got started, who has an account at all, and who is locked out and needs a password. Those are not about a workspace, so they are not a workspace permission. They live one level up, in a console only a **platform operator** can open." },
+    { kind: "note", tone: "why", title: "Why it is a separate level", text: "An owner of one tenant must not be able to see that another exists, let alone act on it. Folding these questions into the workspace matrix would mean inventing a workspace to ask about, or a permission that ignores the workspace it is given — either would make the matrix a worse description of itself. So the console has one guard of its own, and to everybody who is not an operator the page is simply not there: 404, not “you may not”, because “this exists and you cannot see it” is itself something a URL should not teach." },
+    { kind: "shot", src: "platform-tenants", alt: "The platform console listing the tenants on the deployment with their size and state", caption: "Sorted by size, not alphabetically: the question you open this with is who is actually using it." },
+    { kind: "heading", text: "Tenants", id: "tenants" },
+    { kind: "prose", text: "Every customer on the deployment, with what is in it and one word for what it is doing — **empty** (created and never used), **dormant** (nothing has changed for a month), or **in use**. The word is there so the list answers “which of these needs me” without opening any of them. Create one and it gets an owner and a single space to put boards in; nothing else, because what a tenant is for is theirs to decide." },
+    { kind: "note", tone: "tip", title: "Renaming and re-addressing are two acts", text: "A name is a label. An address is in every link anybody has ever shared, so it is edited separately and deliberately. Deleting a tenant asks you to type its address back — not because a confirm dialog is hard to click, but because the operator is the one person who cannot see what is inside, and retyping is the step that makes you read which one you are on." },
+    { kind: "heading", text: "People", id: "people" },
+    { kind: "prose", text: "Every account on the platform, whichever tenants it belongs to, with the four facts the workspace People page cannot show: whether they are an operator, whether they have a password at all, whether they belong to no tenant, and how many sessions they have open right now. You can add somebody to a tenant, change what they may do there, or take the membership away." },
+    { kind: "shot", src: "platform-people", alt: "An account expanded in the platform console, with a password field, sessions and memberships", caption: "Setting a password ends every session that person has. That is the point of setting one." },
+    { kind: "note", tone: "warning", title: "Two things the console will not let you do", text: "The **last operator** cannot stand down and cannot be deleted: a deployment with no operator has no way back except its environment variables, and the person who would have to edit them is not necessarily awake. And you cannot delete **your own** account from here — locking yourself out of the console you are standing in is never the thing you meant." },
+    { kind: "note", tone: "why", title: "Deleting a person does not delete their work", text: "Boards, versions, comments and change sets all name whoever made them, and those references are set to null rather than cascading. What goes is the ability to sign in and the memberships; the record of what happened stays, because it is not theirs to take with them." },
+    { kind: "heading", text: "Becoming an operator", id: "operator" },
+    { kind: "prose", text: "The account named by `NEXUS_OWNER_EMAIL` is made an operator on every start — the same argument that created it in the first place: the first person has nobody to ask. After that an operator can make another one from this page, which is the recommended second step, because one operator is a single point of failure with a human attached to it." },
+  ],
+};

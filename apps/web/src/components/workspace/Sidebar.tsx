@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Star, UserCog, Users, Waypoints } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Cpu, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plug, Plus, Shield, Star, UserCog, Users, Waypoints, NotebookText } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { WorkspaceSwitcher, type WorkspaceChoice } from "./WorkspaceSwitcher";
@@ -10,7 +10,7 @@ import { SpaceListItem } from "./SpaceListItem";
 import { NewSpaceDialog } from "./NewSpaceDialog";
 import { NewTeamDialog } from "./NewTeamDialog";
 
-export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces = [] }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[]; workspaces?: WorkspaceChoice[] }) {
+export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces = [], isOperator = false }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[]; workspaces?: WorkspaceChoice[]; isOperator?: boolean }) {
   const base = `/w/${workspace.slug}`;
   return (
     <aside className="studio-home-sidebar">
@@ -39,6 +39,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces 
         <SidebarLink key="explore" href={`${base}/explore`} icon={<Waypoints size={17} />}>Graph explorer</SidebarLink>
         <SidebarLink key="history" href={`${base}/history`} icon={<History size={17} />}>What changed</SidebarLink>
         <SidebarLink key="meta" href={`${base}/meta`} icon={<Boxes size={17} />}>Meta-model</SidebarLink>
+        <SidebarLink key="wiki" href={`${base}/wiki`} icon={<NotebookText size={17} />}>Wiki</SidebarLink>
         <SidebarLink key="intake" href={`${base}/intake`} icon={<Inbox size={17} />}>Intake</SidebarLink>
         <SidebarLink key="import" href={`${base}/import`} icon={<DownloadCloud size={17} />}>Import</SidebarLink>
         <SidebarLink key="roadmap" href={`${base}/roadmap`} icon={<GitBranch size={17} />}>Roadmap</SidebarLink>
@@ -48,6 +49,8 @@ export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces 
         <SidebarLink key="connections" href={`${base}/settings/connections`} icon={<Plug size={17} />}>Connections</SidebarLink>
         <SidebarLink key="people" href={`${base}/settings/people`} icon={<UserCog size={17} />}>People</SidebarLink>
         <SidebarLink key="docs" href={`${base}/docs`} icon={<LifeBuoy size={17} />}>Documentation</SidebarLink>
+        {/* Only an operator sees this, and only because a console nobody can find is one nobody uses (§5.64). */}
+        {isOperator && <SidebarLink key="platform" href="/admin" icon={<Shield size={17} />}>Platform</SidebarLink>}
       </nav>
 
       <div className="studio-spaces-header">

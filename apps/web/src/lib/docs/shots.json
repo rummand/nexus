@@ -49,7 +49,7 @@
   },
   "board-inspector": {
     "width": 254,
-    "height": 660
+    "height": 505
   },
   "board-lens-impact": {
     "width": 1720,
@@ -70,6 +70,10 @@
   "board-together": {
     "width": 1720,
     "height": 1000
+  },
+  "board-toolbar": {
+    "width": 352,
+    "height": 580
   },
   "board-viewpoint": {
     "width": 258,
@@ -109,6 +113,10 @@
   },
   "import-board": {
     "width": 1720,
+    "height": 1000
+  },
+  "import-leanix": {
+    "width": 1452,
     "height": 1000
   },
   "import-review": {
@@ -151,7 +159,19 @@
     "width": 1452,
     "height": 1000
   },
+  "meta-conformance": {
+    "width": 1452,
+    "height": 1000
+  },
   "meta-diagram": {
+    "width": 1452,
+    "height": 1000
+  },
+  "meta-frameworks": {
+    "width": 1452,
+    "height": 1000
+  },
+  "meta-layers": {
     "width": 1452,
     "height": 1000
   },
@@ -167,6 +187,14 @@
     "width": 1452,
     "height": 1000
   },
+  "platform-people": {
+    "width": 1720,
+    "height": 1000
+  },
+  "platform-tenants": {
+    "width": 1720,
+    "height": 1000
+  },
   "roadmap": {
     "width": 1452,
     "height": 1000
@@ -176,6 +204,10 @@
     "height": 1000
   },
   "roadmap-dependencies": {
+    "width": 1452,
+    "height": 1000
+  },
+  "wiki-page": {
     "width": 1452,
     "height": 1000
   }

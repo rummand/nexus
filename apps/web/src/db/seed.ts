@@ -49,7 +49,7 @@ export async function backfillDemoRoadmap(db: Db) {
 
 export async function seed(db: Db) {
   const users = [
-    { id: DEMO_USER_ID, name: "Jes Olsen", email: "jes@acme-energy.example", color: "#1376d4" },
+    { id: DEMO_USER_ID, name: "Jesper Olesen", email: "jes@acme-energy.example", color: "#1376d4" },
     { id: "usr_maria", name: "Maria Lund", email: "maria@acme-energy.example", color: "#0ea5e9" },
     { id: "usr_tobias", name: "Tobias Kjær", email: "tobias@acme-energy.example", color: "#10b981" },
     { id: "usr_anna", name: "Anna Holm", email: "anna@acme-energy.example", color: "#f59e0b" },
@@ -60,7 +60,12 @@ export async function seed(db: Db) {
    * protects a database of invented energy companies is theatre.
    */
   const passwordHash = await hashPassword(DEMO_PASSWORD);
-  await db.insert(s.users).values(users.map((u) => ({ ...u, passwordHash })));
+  /*
+   * The first of them also runs the deployment (§5.64). A demo with a platform console nobody can
+   * open would be a demo of a screenshot; and on a one-tenant installation the person who owns
+   * the tenant is in fact the person who runs the machine.
+   */
+  await db.insert(s.users).values(users.map((u, i) => ({ ...u, passwordHash, platformRole: i === 0 ? ("operator" as const) : null })));
 
   const workspaceId = "ws_acme";
   await db.insert(s.workspaces).values({ id: workspaceId, slug: DEMO_WORKSPACE_SLUG, name: "Acme Energy" });

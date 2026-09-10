@@ -1,14 +1,21 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Network, Plus, Rows3, Spline, Trash2, X } from "lucide-react";
-import type { MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
+import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
+import type { MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
   deleteField, deleteNodeType, deleteRelationType, deleteRule, updateField, updateNodeType, updateRelationType,
 } from "@/lib/metamodel-actions";
 import { MetaModelDiagram } from "./MetaModelDiagram";
+import { Conformance } from "./Conformance";
+import { Frameworks } from "./Frameworks";
+import { Layers } from "./Layers";
+import { framework } from "@/lib/frameworks";
+import { placeNodeType } from "@/lib/layers/actions";
+import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -25,13 +32,14 @@ type Selection = { kind: "node" | "relation"; name: string } | null;
 /** What the corpus says about a type name — precomputed on the server (§5.20). */
 export interface TypeNote { label: string; title: string; url: string; text: string }
 
-export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote> }) {
+export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report, adopted = [] }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote>; report: ConformanceReport; adopted?: string[] }) {
   const [selected, setSelected] = useState<Selection>(model.nodeTypes[0] ? { kind: "node", name: model.nodeTypes[0].name } : null);
   const [openNodes, setOpenNodes] = useState(true);
   const [openRels, setOpenRels] = useState(true);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"details" | "diagram">("details");
+  const [view, setView] = useState<"details" | "diagram" | "layers" | "conformance" | "frameworks">("details");
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +96,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { mod
                 <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "node", name: t.name })}>
                   <i style={{ background: t.color }} />
                   <b>{t.name}</b>
+                  <FrameworkChip id={t.framework} />
                   <PresenceDot presence={t.presence} />
                   <small>{t.instances}</small>
                 </button>
@@ -120,6 +129,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { mod
                 <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "relation", name: t.name })}>
                   <i className="rel" />
                   <b>{t.name}</b>
+                  <FrameworkChip id={t.framework} />
                   <PresenceDot presence={t.presence} />
                   <small>{t.instances}</small>
                 </button>
@@ -149,12 +159,32 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { mod
           <div className="panel-tabs meta-view-tabs" role="tablist" aria-label="Meta-model view">
             <button type="button" role="tab" className={view === "details" ? "active" : ""} onClick={() => setView("details")}><Rows3 size={13} /> Details</button>
             <button type="button" role="tab" className={view === "diagram" ? "active" : ""} onClick={() => setView("diagram")}><Network size={13} /> Diagram</button>
+            <button type="button" role="tab" className={view === "layers" ? "active" : ""} onClick={() => setView("layers")} data-tab-layers>
+              <LayersIcon size={13} /> Layers
+              {model.layers.length > 0 && <i className="tab-count">{model.layers.length}</i>}
+            </button>
+            <button type="button" role="tab" className={view === "conformance" ? "active" : ""} onClick={() => setView("conformance")} data-tab-conformance>
+              <ShieldCheck size={13} /> Conformance
+              {report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
+            </button>
+            <button type="button" role="tab" className={view === "frameworks" ? "active" : ""} onClick={() => setView("frameworks")} data-tab-frameworks>
+              <BookOpen size={13} /> Frameworks
+              {adopted.length > 0 && <i className="tab-count">{adopted.length}</i>}
+            </button>
           </div>
 
           {error && <p className="form-error">{error}</p>}
 
           {view === "diagram" && (
             <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
+          )}
+
+          {view === "layers" && <Layers model={model} workspaceId={workspaceId} onChanged={() => router.refresh()} />}
+
+          {view === "conformance" && <Conformance report={report} slug={slug} />}
+
+          {view === "frameworks" && (
+            <Frameworks model={model} workspaceId={workspaceId} adopted={adopted} onChanged={() => router.refresh()} />
           )}
 
           {view === "details" && !current && <p className="muted">Select a type on the left.</p>}
@@ -164,6 +194,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {} }: { mod
               note={notes[(current as MetaNodeType).name.toLowerCase()]}
               type={current as MetaNodeType}
               allTypeNames={allTypeNames}
+              layers={model.layers}
               pending={pending}
               run={run}
               workspaceId={workspaceId}
@@ -196,6 +227,22 @@ const PRESENCE_TITLE: Record<Presence, string> = {
 };
 
 /** Tree rows are narrow, so presence is a dot there rather than a word. */
+/**
+ * Which framework declared a type (§5.57).
+ *
+ * Provenance, not ownership: the chip says where the type came from, and the type is as editable
+ * as any other. Blank for a type this organisation invented or one that grew from the data, which
+ * is most of them in most workspaces and is not a deficiency.
+ */
+function FrameworkChip({ id }: { id: string }) {
+  if (!id) return null;
+  const fw = framework(id);
+  if (!fw) return null;
+  return <i className="meta-framework-chip" title={`Declared by ${fw.name}`}>{fw.id}</i>;
+}
+
+const frameworkName = (id: string) => framework(id)?.name ?? id;
+
 function PresenceDot({ presence }: { presence: Presence }) {
   return <i className={`meta-dot ${presence}`} title={PRESENCE_TITLE[presence]} aria-label={presence} />;
 }
@@ -205,8 +252,8 @@ function PresenceTag({ presence }: { presence: Presence }) {
   return <i className={`meta-presence ${presence}`} title={PRESENCE_TITLE[presence]}>{label}</i>;
 }
 
-function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenamed, onDeleted, note }: {
-  type: MetaNodeType; allTypeNames: string[]; pending: boolean;
+function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId, onRenamed, onDeleted, note }: {
+  type: MetaNodeType; allTypeNames: string[]; layers: MetaLayer[]; pending: boolean;
   run: (fn: () => Promise<unknown>) => void; workspaceId: string;
   onRenamed: (name: string) => void; onDeleted: () => void;
   /** What the EA corpus says about a type with this name, if anything. */
@@ -222,7 +269,10 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
       <header>
         <i style={{ background: type.color }} />
         <div>
-          <small>Node type · {type.instances} instance{type.instances === 1 ? "" : "s"}</small>
+          <small>
+            Node type · {type.instances} instance{type.instances === 1 ? "" : "s"}
+            {type.framework && <> · declared by <b>{frameworkName(type.framework)}</b></>}
+          </small>
           <h2>{type.name}</h2>
         </div>
         <PresenceTag presence={type.presence} />
@@ -235,12 +285,28 @@ function NodeTypeDetail({ type, allTypeNames, pending, run, workspaceId, onRenam
       */}
       {note && (
         <details className="meta-literature" data-literature>
-          <summary><BookOpen size={12} /> What the literature calls a {type.name.toLowerCase()}</summary>
+          <summary><BookOpen size={12} /> What the literature calls {article(type.name)} {type.name.toLowerCase()}</summary>
           <blockquote>
             {note.text}
             <a href={note.url} target="_blank" rel="noreferrer noopener">{note.label}</a>
           </blockquote>
         </details>
+      )}
+
+      {/* Which band of the stack this type sits in (§5.58). */}
+      {type.id && layers.length > 0 && (
+        <label className="meta-layer-pick">
+          <span>Layer</span>
+          <select
+            value={type.layerId ?? ""}
+            disabled={pending}
+            data-layer-pick
+            onChange={(e) => run(() => placeNodeType(type.id!, e.target.value || null))}
+          >
+            <option value="">not in a layer</option>
+            {layers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </label>
       )}
 
       {/*

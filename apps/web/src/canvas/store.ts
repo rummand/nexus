@@ -32,7 +32,13 @@ export type Tool = "select" | "hand" | "frame" | "sticky" | "text" | "section" |
 
 export type ConnectorPreset = "arrow" | "line" | "dashed";
 
-export type PanelName = "inspector" | "map" | "shapePicker" | "help" | "inventory" | "history" | "compose" | "comments";
+/*
+ * A flyout is not a panel (§5.59): it is anchored to the button that opened it, it closes when you
+ * look away, and nothing outside the rail has an opinion about it. `shapePicker` lived here and
+ * was rendered as a floating card pinned at an absolute top, which is how it came to drift away
+ * from its own button. It is component state now.
+ */
+export type PanelName = "inspector" | "map" | "help" | "inventory" | "history" | "compose" | "comments";
 
 /** "conflict": the server refused the save because the board changed elsewhere. Terminal until reload. */
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
@@ -95,6 +101,17 @@ export interface CanvasState {
   scrollMode: ScrollMode;
   spaceDown: boolean;
   connectorPreset: ConnectorPreset;
+  /**
+   * What the rail's flyout buttons are showing (§5.59).
+   *
+   * A flyout button has to keep displaying the choice you made after you have moved on to the
+   * select tool, or picking "oval" once means picking it again every time. Held here rather than
+   * derived from `tool`, which is "select" most of the time and says nothing about what the shape
+   * button should look like.
+   */
+  lastShape: "rect" | "ellipse" | "diamond";
+  /** The kind a new card is placed as, armed from the Card flyout. */
+  cardKind: string;
   panels: Record<PanelName, boolean>;
   /** Viewpoint: card kinds dimmed on this board (client-side lens, not persisted). */
   hiddenKinds: string[];
@@ -176,6 +193,7 @@ export interface CanvasState {
   applyRemoteDoc(parts: DocParts): void;
   setChangeOverlay(overlay: ChangeOverlay | null): void;
   setConnectorPreset(p: ConnectorPreset): void;
+  setCardKind(kind: string): void;
   togglePanel(name: PanelName, value?: boolean): void;
   /** Remember the script this board was written from. */
   setScript(script: string): void;
@@ -361,12 +379,21 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       scrollMode,
       spaceDown: false,
       connectorPreset: "arrow",
+      lastShape: "rect",
+      cardKind: "Application",
       peers: [],
       live: false,
       following: null,
       myPeerId: "",
       focusedId: null,
-      panels: { inspector: true, map: true, shapePicker: false, help: false, inventory: true, history: false, compose: false, comments: false },
+      /*
+       * The map starts folded away (§5.55). It was the largest permanently-open thing on the
+       * canvas — 234×268, six and a half per cent of a laptop screen — for a view of the board you
+       * want occasionally and can already see by zooming out. The tool rail carries its toggle with
+       * an on/off badge, so turning it back on is one press and it is visible that it is off.
+       * Inventory and Selection stay open: those are the product, not a convenience.
+       */
+      panels: { inspector: true, map: false, help: false, inventory: true, history: false, compose: false, comments: false },
       isDragging: false,
       hiddenKinds: [],
       graphTab: "inventory",
@@ -408,7 +435,14 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         set((s) => ({ camera: { ...s.camera, x: s.viewport.w / 2 - world.x * s.camera.zoom, y: s.viewport.h / 2 - world.y * s.camera.zoom } })),
 
       // ---- ui ----
-      setTool: (tool) => set((s) => ({ tool, editingId: null, pendingConnector: null, panels: { ...s.panels, shapePicker: s.panels.shapePicker && ["rect", "ellipse", "diamond", "connector"].includes(tool) } })),
+      setTool: (tool) => set((s) => ({
+        tool,
+        editingId: null,
+        pendingConnector: null,
+        // Arming a shape from the keyboard has to move the rail's shape button too, or the button
+        // shows one thing while the canvas draws another (§5.59).
+        lastShape: tool === "rect" || tool === "ellipse" || tool === "diamond" ? tool : s.lastShape,
+      })),
       setScrollMode: (scrollMode) => set({ scrollMode }),
       setSpaceDown: (spaceDown) => set({ spaceDown }),
       setHover: (hoverId) => set((s) => (s.hoverId === hoverId ? s : { hoverId })),
@@ -459,6 +493,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
         })),
       setChangeOverlay: (changeOverlay) => set({ changeOverlay }),
       setConnectorPreset: (connectorPreset) => set({ connectorPreset }),
+      setCardKind: (cardKind) => set({ cardKind }),
       setScript: (script) => set((s) => (s.script === script ? {} : { script, revision: s.revision + 1, saveState: s.live ? s.saveState : "dirty" })),
 
       togglePanel: (name, value) => set((s) => {

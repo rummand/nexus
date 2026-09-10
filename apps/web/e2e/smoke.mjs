@@ -181,6 +181,82 @@ try {
   await page.mouse.up();
   assert.equal(await count(), beforeDelete + 3, "connector created");
 
+  // the tool rail: groups, tooltips and flyouts that remember (§5.59)
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("v");
+  assert.equal(await page.locator(".tool-button-badge").count(), 0,
+    "no button wears a permanent caption any more");
+  assert.equal(await page.locator(".canvas-toolbar .tool-group").count(), 4,
+    "the rail is grouped: point, make, show, undo");
+  {
+    // The shortcut moved out of a native title into something a person can actually read.
+    await page.hover('[data-tool="sticky"]');
+    await page.waitForTimeout(500);
+    const tip = await page.locator('.tool-slot:has([data-tool="sticky"]) .tool-tip').innerText();
+    assert.match(tip, /Note/, "the tooltip names the tool");
+    assert.match(tip, /\bN\b/, `the tooltip carries the keycap: ${tip}`);
+  }
+
+  {
+    // A card is placed AS A KIND, which is the flyout's whole reason for existing.
+    await page.click('[data-tool="card"]');
+    await page.waitForSelector('[data-flyout="card"]');
+    assert.equal(await page.locator("[data-card-kind]").count(), 8, "every card kind is offered");
+    await page.click('[data-card-kind="Interface"]');
+    assert.equal(await page.locator('[data-flyout="card"]').count(), 0, "picking closes the flyout");
+    const before = await count();
+    await page.mouse.click(980, 560);
+    await page.waitForTimeout(600);
+    await page.keyboard.press("Escape");
+    assert.equal(await count(), before + 1, "the card is placed");
+    const placed = await page.evaluate(async () => {
+      const r = await fetch(`/api/boards/${location.pathname.split("/").pop()}`);
+      const b = await r.json();
+      const cards = Object.values(b.document.elements).filter((e) => e.type === "card");
+      return cards[cards.length - 1].kind;
+    }).catch(() => null);
+    if (placed) assert.equal(placed, "Interface", "it is placed as the kind that was armed");
+  }
+
+  {
+    // The flyouts remember: pick a rhombus once, and the rail button makes rhombuses from then on.
+    await page.keyboard.press("Escape");
+    await page.click('[data-tool="rect"]');
+    await page.waitForSelector('[data-flyout="shape"]');
+    await page.click('[data-shape="diamond"]');
+    await page.keyboard.press("v");                 // wander off to the pointer
+    await page.click('[data-tool="rect"]');         // and come back: still a rhombus
+    // Escape peels one layer: it closes the menu and leaves the tool armed. The canvas listens for
+    // Escape too and uses it to disarm, so this is the assertion that the two do not both fire.
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator('[data-flyout="shape"]').count(), 0, "Escape closes the menu");
+    const before = await page.locator(".board-shape-object.diamond").count();
+    await page.mouse.move(1120, 640);
+    await page.mouse.down();
+    await page.mouse.move(1240, 720, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator(".board-shape-object.diamond").count(), before + 1,
+      "the shape button keeps making what you picked last, and Escape did not disarm it");
+    // A second Escape, with no menu open, does disarm — the layer underneath.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    assert.equal(await page.locator('.tool-button.active[data-tool="select"]').count(), 1,
+      "a second Escape falls through to the canvas and returns to the pointer");
+  }
+
+  {
+    // Escape closes a flyout without disarming the tool underneath it.
+    await page.keyboard.press("Escape");
+    await page.click('[data-tool="connector"]');
+    await page.waitForSelector('[data-flyout="line"]');
+    assert.equal(await page.locator("[data-line]").count(), 3, "three line styles");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator('[data-flyout="line"]').count(), 0, "Escape closes the flyout");
+  }
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("v");
+
   // context menu on the note
   const cb = await note.boundingBox();
   await page.mouse.click(cb.x + cb.width / 2, cb.y + cb.height / 2, { button: "right" });
@@ -194,18 +270,25 @@ try {
   await page.keyboard.press("Control+z");
   await page.locator(`[data-element-id="${noteId}"].impact-note`).waitFor({ timeout: 5000 });
 
-  // command bar: structured graph query with placement
+  /*
+   * The command bar is a pill until it is wanted (§5.55), so each of these opens it first — which
+   * is also the check that ⌘K still does what its keycap has always claimed.
+   */
   await page.keyboard.press("Escape");
+  assert.equal(await page.locator("[data-command-pill]").count(), 1, "the command bar rests as a pill");
   await page.keyboard.press("Control+k");
+  await page.waitForSelector(".command-bar input", { timeout: 10000 });
   await page.fill(".command-bar input", "kind:Application criticality:high");
   await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
   assert.ok((await page.locator(".search-suggestions .graph-hit").count()) > 0, "graph query returns entities");
-  await page.keyboard.press("Escape");
+  // Escape folds it away again, and an emptied bar does not hold the middle of the board.
   await page.fill(".command-bar input", "");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("[data-command-pill]", { timeout: 10000 });
 
   // command bar finds the note
-  await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
+  await page.waitForSelector(".command-bar input", { timeout: 10000 });
   await page.keyboard.type(TEXT);
   await page.waitForSelector(".search-suggestions button");
   assert.ok((await page.locator(".search-suggestions button", { hasText: TEXT }).count()) >= 1, "command bar finds the note");
@@ -445,6 +528,47 @@ try {
     await page.waitForTimeout(400);
   }
 
+  // the wiki: a board writes its own first draft, and the draft is made of live references (§5.60)
+  await page.goto(`${base}/w/acme-energy/wiki`, { waitUntil: "load" });
+  await page.waitForSelector("[data-wiki]");
+  await page.click("[data-new-page]");
+  await page.waitForSelector("[data-new-page-panel]");
+  assert.ok(await page.locator('[data-writeup="brd_landscape"]').count(),
+    "a board can be written up from the wiki");
+  await page.click('[data-writeup="brd_landscape"]');
+  await page.waitForSelector("[data-wiki-page-view]", { timeout: 60000 });
+  await page.waitForTimeout(1200);
+  {
+    const embed = page.locator('[data-embed="board"]');
+    assert.equal(await embed.count(), 1, "the draft embeds the board it was written from");
+    assert.ok(await embed.locator("svg").count(),
+      "the embed is the board drawn from its current document, not a picture of it");
+    assert.ok((await page.locator(".wiki-prose table").count()) > 0, "the objects are tabulated");
+    assert.ok((await page.locator(".wiki-prose blockquote").count()) > 0,
+      "the notes somebody wrote on the board are carried across as prose");
+    // The page title is the h1; a draft that repeated it would give every page two.
+    assert.equal(await page.locator(".wiki-prose h1").count(), 0, "the draft does not repeat the page title");
+  }
+
+  {
+    // Editing, wiki links, and an embed pointing at something that is gone.
+    await page.click("[data-edit-page]");
+    await page.waitForSelector("[data-wiki-editor]");
+    await page.locator("[data-wiki-editor] textarea").fill(
+      "## Reference\n\nSee [[Nowhere]] and [[Application landscape]].\n\n"
+      + ":::query kind:Application | Applications\n\n:::board brd_gone | missing\n",
+    );
+    await page.click("[data-save-page]");
+    await page.waitForSelector('[data-embed="query"]', { timeout: 60000 });
+    assert.equal(await page.locator(".wiki-link.missing").count(), 1,
+      "a link to a page that does not exist yet is shown as unresolved rather than as text");
+    assert.equal(await page.locator("a.wiki-link").count(), 1, "a link to a page that exists resolves");
+    assert.ok((await page.locator('[data-embed="query"] li').count()) > 0,
+      "a query embed lists what matches now");
+    assert.match(await page.locator('[data-embed="missing"]').innerText(), /not in this workspace/,
+      "an embed pointing at something gone says so rather than disappearing");
+  }
+
   // meta-model builder: the tree lists types, and an undeclared type can be declared
   await page.goto(`${base}/w/acme-energy/meta`, { waitUntil: "load" });
   await page.waitForSelector(".meta-tree");
@@ -503,6 +627,112 @@ try {
   await page.click('.meta-view-tabs button:has-text("Details")');
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
+
+  // conformance: the declared model, checked against the data, object by named object (§5.56)
+  await page.click("[data-tab-conformance]");
+  await page.waitForSelector("[data-conformance]");
+  const numbers = await page.locator(".conformance-head").innerText();
+  assert.match(numbers, /%/, "conformance leads with a number");
+  assert.ok((await page.locator(".conformance-verdict").innerText()).trim().length > 20,
+    "the number is said in words as well, because a percentage is not a verdict");
+
+  // a modelling framework: what adopting it would add, worked out against this workspace (§5.57)
+  await page.click("[data-tab-frameworks]");
+  await page.waitForSelector("[data-frameworks]");
+  assert.match(await page.locator("[data-adopted-line]").innerText(), /Free form/,
+    "a workspace that has adopted nothing says so, because free form is a real answer");
+  assert.ok((await page.locator("[data-family]").count()) >= 3,
+    "the catalogue is grouped by what kind of thing each framework is");
+  const fw = page.locator('[data-framework="c4"]');
+  await fw.locator("> button").click();
+  await page.waitForSelector('[data-adopt-framework="c4"]');
+  assert.equal(await fw.locator(".framework-layers li").count(), 4, "C4 brings its four layers with it");
+  const plan = await fw.locator(".framework-apply span").innerText();
+  assert.match(plan, /Adds .*type/, `the plan says what adopting would add, not just that it would: ${plan}`);
+  {
+    // The property that makes a framework safe on a live workspace: it only ever adds.
+    const before = await page.locator('.meta-tree-item[data-type-kind="node"]').count();
+    await page.click('[data-adopt-framework="c4"]');
+    await page.waitForSelector(".framework-ok", { timeout: 60000 });
+    await page.waitForFunction((n) => document.querySelectorAll('.meta-tree-item[data-type-kind="node"]').length > n,
+      before, { timeout: 30000 });
+    assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model/,
+      "the workspace now says what it models with");
+  }
+
+  // …and adopting it again does nothing, which is what "additive" has to mean in practice. The
+  // panel is still open on the framework just adopted, so this is the same summary recomputing
+  // itself against the model it just changed — no second navigation to confuse it.
+  await page.waitForFunction(
+    () => /already declared/.test(document.querySelector('[data-framework="c4"] .framework-apply span')?.textContent ?? ""),
+    null, { timeout: 30000 });
+  assert.ok(await page.locator('[data-abandon-framework="c4"]').count(),
+    "an adopted framework offers to be dropped rather than adopted twice");
+
+  // a second framework alongside the first: the whole point of adopting rather than choosing
+  await page.locator('[data-framework="ddd"] > button').click();
+  await page.waitForSelector('[data-adopt-framework="ddd"]');
+  await page.click('[data-adopt-framework="ddd"]');
+  await page.waitForSelector(".framework-ok", { timeout: 60000 });
+  await page.waitForFunction(
+    () => /and/.test(document.querySelector("[data-adopted-line]")?.textContent ?? ""),
+    null, { timeout: 30000 });
+  assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model and Domain-driven design/,
+    "a workspace can model with more than one framework at once");
+
+  // every type a framework brought says which one it came from
+  assert.ok((await page.locator(".meta-framework-chip").count()) > 8,
+    "types carry the provenance of the framework that declared them");
+
+  // layers: the stack, and the one the estate itself suggests (§5.58)
+  await page.click("[data-tab-layers]");
+  await page.waitForSelector("[data-layers]");
+  {
+    // The two frameworks adopted above brought their own bands, so there is a stack already.
+    const stack = await page.locator("[data-layer-stack]:not(.proposed) [data-layer]").count();
+    assert.ok(stack >= 4, `frameworks bring their layers with them, got ${stack}`);
+    assert.match(await page.locator("[data-layer-stack] .layer-source.fw").first().innerText(), /C4|Domain/,
+      "a layer says which framework put it there");
+  }
+  assert.ok((await page.locator(".layer-verdict").innerText()).trim().length > 10,
+    "the estate's own reading of the stack says what it found, or why it could not");
+
+  {
+    // The point of the whole feature: the stack is read out of the direction of real connections,
+    // and every band says which counts put it there.
+    const bands = await page.locator("[data-proposed-layer]").count();
+    assert.ok(bands >= 2, `the seeded estate has enough connections to read a stack from, got ${bands}`);
+    const why = await page.locator("[data-proposed-layer] .layer-why").first().innerText();
+    assert.match(why, /\d|Nothing in the estate/, `a band justifies itself with counts: ${why}`);
+
+    const before = await page.locator("[data-layer-stack]:not(.proposed) [data-layer]").count();
+    await page.click("[data-adopt-layering]");
+    await page.waitForSelector("[data-layering-ok]", { timeout: 60000 });
+    assert.match(await page.locator("[data-layering-ok]").innerText(), /placed \d+ type/,
+      "adopting the reading says what it did");
+    await page.waitForFunction((n) => document.querySelectorAll("[data-layer-stack]:not(.proposed) [data-layer]").length > n,
+      before, { timeout: 30000 });
+  }
+
+  // the diagram becomes the stack: bands behind the types, so an upward edge looks upward
+  await page.click('.meta-view-tabs button:has-text("Diagram")');
+  await page.waitForSelector("[data-meta-diagram]");
+  await page.waitForTimeout(1200);
+  assert.ok((await page.locator("[data-band]").count()) >= 2,
+    "a layered model is drawn as bands rather than scattered");
+  await page.click("[data-tab-layers]");
+  await page.waitForSelector("[data-layers]");
+
+  // now that types are declared, conformance has something to check — and names the offenders
+  await page.click("[data-tab-conformance]");
+  await page.waitForSelector("[data-conformance]");
+  assert.ok((await page.locator("[data-breach-group]").count()) > 0,
+    "a declared model over an unaligned estate produces breaches");
+  await page.locator("[data-breach-group] > button").first().click();
+  await page.waitForSelector("[data-breach-group] li");
+  const breach = await page.locator("[data-breach-group] li").first().innerText();
+  assert.match(breach, /\S/, "a breach is a named object, not a count");
+  assert.ok(breach.split("\n").length >= 2, `a breach says what is wrong in a sentence: ${breach}`);
 
   // deleting works: once housekeeping for a shared database, now an assertion of its own
   await page.goto(`${base}/b/brd_capabilities`, { waitUntil: "load" });
@@ -634,7 +864,13 @@ try {
 
   // the words that produced the board are kept with it
   const boardUrl = page.url();
-  await page.waitForTimeout(1500); // let the autosave land
+  /*
+   * Wait for the save to actually land, not for a guess at how long it takes. A fixed 1500ms was
+   * enough on a quiet machine and not on a busy one, and the failure looked like "the script was
+   * not persisted" rather than "the page was reloaded too early" — the worst kind of flake,
+   * because it accuses the feature.
+   */
+  await page.waitForFunction(() => /Saved|Shared/.test(document.body.innerText), null, { timeout: 60000 });
   await page.goto(boardUrl, { waitUntil: "load" });
   await page.waitForSelector(".canvas-viewport");
   await page.click('button:has-text("Compose")');
@@ -903,7 +1139,7 @@ try {
   // configured the agent has to say so on the board rather than fail silently.
   await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
   await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 5, null, { timeout: 45000 });
-  await page.click('[aria-label="Agent — put one where the work is"]');
+  await page.click('[data-tool="agent"]');
   const canvasBox = await page.locator(".canvas-viewport").boundingBox();
   await page.mouse.click(canvasBox.x + 420, canvasBox.y + 700);
   await page.waitForSelector("[data-agent]", { timeout: 20000 });
@@ -943,6 +1179,60 @@ try {
   assert.ok(/ANTHROPIC_API_KEY|NEXUS_MODEL|No model|nothing in this agent/i.test(said),
     `an agent that cannot run says why on the board — got "${said}"`);
 
+
+  /*
+   * The chrome must not land on itself, at the sizes people actually have (§5.54).
+   *
+   * Three separate collisions shipped before this check existed, all the same shape: a hard-coded
+   * offset that assumed a smaller version of something which had since grown. The property bar was
+   * placed 64px above a selection while standing 86px tall; the Selection panel reserved the map
+   * card's height without its second button. None of it is visible in a unit test and all of it is
+   * obvious in a window.
+   */
+  {
+    const before = page.viewportSize();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(700);
+    await page.locator(".fact-card").first().click();
+    await page.waitForSelector(".shape-inspector-bar", { timeout: 15000 });
+    await page.waitForTimeout(500);
+
+    const clashes = await page.evaluate(() => {
+      const sel = ".floating-panel, .canvas-toolbar, .command-bar, .shape-inspector-bar, .time-scrubber, .comments-panel";
+      const boxes = [...document.querySelectorAll(sel)]
+        .map((el) => ({ name: el.className.split(" ").filter((c) => c && c !== "fade-in")[0], r: el.getBoundingClientRect() }))
+        .filter((b) => b.r.width > 2 && b.r.height > 2)
+        // A panel nested inside another is not a collision.
+        .filter((b, _i, all) => !all.some((o) => o !== b && o.r.left <= b.r.left && o.r.top <= b.r.top
+          && o.r.right >= b.r.right && o.r.bottom >= b.r.bottom && o.r.width * o.r.height > b.r.width * b.r.height * 1.2));
+      const out = [];
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i].r, b = boxes[j].r;
+          const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (w > 4 && h > 4) out.push(`${boxes[i].name} over ${boxes[j].name} (${Math.round(w)}×${Math.round(h)})`);
+        }
+      }
+      return out;
+    });
+    assert.deepEqual(clashes, [], "no two pieces of canvas chrome overlap at 1280×800");
+
+    // And the bar of controls for an object must not be standing on that object.
+    const onSelection = await page.evaluate(() => {
+      const bar = document.querySelector(".shape-inspector-bar")?.getBoundingClientRect();
+      const el = document.querySelector("[data-element-id].selected")?.getBoundingClientRect();
+      if (!bar || !el) return null;
+      const w = Math.min(bar.right, el.right) - Math.max(bar.left, el.left);
+      const h = Math.min(bar.bottom, el.bottom) - Math.max(bar.top, el.top);
+      return w > 4 && h > 4 ? `${Math.round(w)}×${Math.round(h)}` : null;
+    });
+    assert.equal(onSelection, null, `the property bar covers the object it belongs to (${onSelection})`);
+
+    await page.keyboard.press("Escape");
+    await page.setViewportSize(before);
+    await page.waitForTimeout(600);
+  }
 
   // ask about a selection: the agent that needs no placing. Selecting is scope.
   await page.keyboard.press("Escape");
@@ -1005,7 +1295,15 @@ try {
   await page.waitForSelector("[data-draw-form]");
   await page.click("[data-draw-form] button[type=submit]");
   await page.waitForURL(/\/b\/brd_/, { timeout: 30000 });
-  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 45000 });
+  /*
+   * Wait for the drawing to settle, not for "more than three objects". The roadmap draws about
+   * nineteen; reading the titles the moment the fourth appears is a race that passes on a quiet
+   * machine and fails on a busy one, which is exactly what it did.
+   */
+  await page.waitForFunction(() => {
+    const titles = [...document.querySelectorAll(".board-object input")].map((e) => e.value);
+    return titles.includes("Retired") && titles.includes("Maximo");
+  }, null, { timeout: 45000 });
   const drawn = await page.$$eval(".board-object input", (els) => els.map((e) => e.value));
   assert.ok(drawn.includes("Retired"), "objects are laned by what happens to them");
   assert.ok(drawn.includes("Maximo"), "the plans' objects are on the board");
@@ -1217,6 +1515,64 @@ try {
   assert.match(await page.locator("[data-import-counts]").innerText(), /unchanged/,
     "the model imported from itself matches itself");
 
+  /*
+   * The fourth door (§5.63): an EA repository read straight into a staged batch. `pnpm e2e`
+   * starts a LeanIX that speaks the real two-step auth and a cursor-paged GraphQL, so what runs
+   * here is the actual client. An attached run has no such server and skips the section.
+   */
+  if (process.env.NEXUS_E2E_LEANIX_TOKEN) {
+    await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+    await page.waitForSelector('[data-door="leanix"]', { timeout: 30000 });
+    await page.click('[data-door="leanix"]');
+    await page.waitForSelector("[data-import-leanix]", { timeout: 30000 });
+
+    // People paste the page they were looking at, so a graphiql URL has to be accepted as a host.
+    await page.fill("[data-leanix-host]", "https://acme.leanix.net/acme/graphiql");
+    await page.fill("[data-leanix-token]", "not-the-token");
+    await page.click("[data-stage-leanix]");
+    await page.waitForSelector("[data-import-leanix] [data-import-error]", { timeout: 60000 });
+    assert.match(await page.locator("[data-import-leanix] [data-import-error]").innerText(), /Authentication failed \(401\)/,
+      "a refused token says so, and says where a working one comes from");
+    assert.equal(await page.locator("[data-leanix-host]").inputValue(), "https://acme.leanix.net/acme/graphiql",
+      "a failed read does not clear what was typed");
+
+    await page.fill("[data-leanix-token]", process.env.NEXUS_E2E_LEANIX_TOKEN);
+    await page.click("[data-stage-leanix]");
+    await page.waitForURL(/\/import\/bat_/, { timeout: 120000 });
+    await page.waitForSelector("[data-import-counts]", { timeout: 60000 });
+    assert.match(await page.locator("[data-import-counts]").innerText(), /4\s+objects staged/,
+      "both pages of fact sheets arrived, so the cursor was followed");
+
+    const kinds = await page.locator("[data-file-kind]").allInnerTexts();
+    assert.equal(kinds.length, 2, "one file per fact sheet type, not one undifferentiated pile");
+    assert.match(kinds.join(" "), /Application/, "LeanIX's own type names the file's kind…");
+    assert.match(kinds.join(" "), /IT Component/, "…in the English a reader uses, not the API's");
+
+    const columns = await page.locator(".import-column").allInnerTexts();
+    const roles = await page.locator(".import-column").evaluateAll((els) => els.map((e) => e.className));
+    assert.ok(roles.some((c) => c.includes("key")), "the LeanIX id comes in as the key, so a second read updates");
+    assert.ok(roles.some((c) => c.includes("relation")), "a modelled relation arrives as a relation column");
+    assert.ok(columns.some((c) => /child/i.test(c)), "…named after what LeanIX calls it");
+
+    const rows = (await page.locator("[data-import-row]").allInnerTexts()).join(" ");
+    assert.match(rows, /Billing \(2b3c4d5e\)/, "two fact sheets with one name are told apart by their id");
+
+    await page.click("[data-approve-batch]");
+    await page.waitForSelector("[data-import-result]", { timeout: 120000 });
+    assert.match(await page.locator("[data-import-result]").innerText(), /4 created, 0 changed, 1 connected/,
+      "approving wrote the relation as well as the objects — and only the relation whose other end came too");
+
+    // And it is still reversible, which is the whole reason this door goes through the pipeline.
+    await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
+    await page.click("[data-rollback-batch]");
+    await page.waitForFunction(() => /deleted/.test(document.querySelector("[data-import-result]")?.textContent ?? ""),
+      null, { timeout: 120000 });
+    assert.match(await page.locator("[data-import-result]").innerText(), /4 deleted/,
+      "rolled back, the repository's fact sheets are out of the graph again");
+  } else {
+    console.log("  (skipped the EA repository door: no LeanIX to read)");
+  }
+
   await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
   await page.waitForSelector("[data-keys]");
   // The dialog handler registered earlier in this run accepts the confirm.
@@ -1266,6 +1622,100 @@ try {
     await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
     await page.waitForSelector("[data-defined-agent]");
     assert.ok((await page.locator("[data-schedule]").count()) > 0, "the fleet shows which agents are on a schedule");
+  }
+
+  // ---- the platform console ------------------------------------------------------------------
+  /*
+   * Above the workspace (§5.64). Two things are worth asserting and only one of them is the
+   * feature: that an operator can run the platform, and that somebody who is not one cannot even
+   * find out the console is there.
+   */
+  {
+    await page.goto(`${base}/admin`, { waitUntil: "load" });
+    await page.waitForSelector("[data-admin-tenants]", { timeout: 60000 });
+    const totals = await page.locator("[data-admin-totals]").innerText();
+    assert.match(totals, /1\s+tenant/, "the console counts the tenants on the deployment");
+    assert.match(await page.locator("[data-admin-deployment]").innerText(), /SQLite|Postgres/,
+      "…and says what this deployment actually is");
+
+    // A tenant, made from nothing, with an owner and somewhere to put a board.
+    await page.click("[data-new-tenant]");
+    await page.fill("[data-tenant-name]", "Nordic Grid A/S");
+    assert.equal(await page.locator("[data-tenant-slug]").inputValue(), "nordic-grid-a-s",
+      "the address is proposed from the name, accents and punctuation handled");
+    await page.click("[data-create-tenant]");
+    await page.waitForFunction(() => document.querySelectorAll("[data-admin-tenant]").length === 2, null, { timeout: 60000 });
+    assert.match(await page.locator('[data-admin-tenant="nordic-grid-a-s"]').innerText(), /empty/i,
+      "a tenant with nothing in it says so, which is the state an operator has to act on");
+
+    // Deleting one means typing its address: the operator is the one person who cannot see inside.
+    await page.locator('[data-admin-tenant="nordic-grid-a-s"] [data-delete-tenant]').click();
+    await page.waitForSelector("[data-delete-confirm]");
+    assert.equal(await page.locator("[data-confirm-delete]").isDisabled(), true,
+      "deleting is refused until the address is typed back");
+    await page.fill("[data-confirm-slug]", "nordic-grid-a-s");
+    await page.click("[data-confirm-delete]");
+    await page.waitForFunction(() => document.querySelectorAll("[data-admin-tenant]").length === 1, null, { timeout: 60000 });
+
+    // Setting a password is the reason the console was asked for, and it ends their sessions.
+    await page.goto(`${base}/admin/people`, { waitUntil: "load" });
+    await page.waitForSelector("[data-admin-accounts]", { timeout: 60000 });
+    const anna = '[data-admin-account="anna@acme-energy.example"]';
+    await page.locator(`${anna} [data-manage-account]`).click();
+    await page.fill(`${anna} [data-new-password]`, "a-brand-new-password");
+    await page.locator(`${anna} [data-set-password]`).click();
+    await page.waitForSelector("[data-admin-note]", { timeout: 60000 });
+    assert.match(await page.locator("[data-admin-note]").innerText(), /every session they had has ended/i,
+      "a new password ends the sessions, or setting one achieves nothing");
+
+    /*
+     * The last operator cannot be demoted. Made deterministic rather than assumed: a developer's
+     * `.env.local` bootstraps its own operator into any database `next dev` opens, so the suite
+     * demotes every operator except the seeded one first — which also exercises the path where
+     * standing down *is* allowed — and only then asserts the refusal.
+     */
+    const me = '[data-admin-account="jes@acme-energy.example"]';
+    const others = await page.locator('[data-admin-account]:has(.admin-flag.operator)').evaluateAll(
+      (els) => els.map((e) => e.getAttribute("data-admin-account")).filter((v) => v !== "jes@acme-energy.example"),
+    );
+    for (const email of others) {
+      await page.locator(`[data-admin-account="${email}"] [data-manage-account]`).click();
+      await page.locator(`[data-admin-account="${email}"] [data-toggle-operator]`).click();
+      await page.waitForFunction(
+        (e) => !document.querySelector(`[data-admin-account="${e}"] .admin-flag.operator`),
+        email, { timeout: 60000 },
+      );
+    }
+    assert.equal(await page.locator('[data-admin-account]:has(.admin-flag.operator)').count(), 1,
+      "one operator is left, and an operator could be removed while there was another");
+
+    await page.locator(`${me} [data-manage-account]`).click();
+    await page.locator(`${me} [data-toggle-operator]`).click();
+    await page.waitForSelector("[data-admin-error]", { timeout: 60000 });
+    assert.match(await page.locator("[data-admin-error]").innerText(), /only operator/i,
+      "the last operator cannot stand down, because nobody could put them back");
+  }
+
+  {
+    // And to everybody else the console is a page that is not there — 404, not 403: "this exists
+    // and you may not see it" is itself something a URL should not teach.
+    const other = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+    const guest = await other.newPage();
+    try {
+      await signIn(guest, "tobias@acme-energy.example");
+      await guest.goto(`${base}/admin`, { waitUntil: "load" });
+      await guest.waitForTimeout(1200);
+      assert.equal(await guest.locator("[data-admin-tenants]").count(), 0, "a non-operator sees no console");
+      assert.doesNotMatch(await guest.locator("body").innerText(), /Operator|Tenants/,
+        "…and is not told one exists");
+      // The way in is not advertised either.
+      await guest.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+      await guest.waitForSelector(".studio-home-nav", { timeout: 60000 });
+      assert.equal(await guest.locator('.studio-home-nav a[href="/admin"]').count(), 0,
+        "and the sidebar does not offer it");
+    } finally {
+      await other.close();
+    }
   }
 
   // ---- two people on one board ---------------------------------------------------------------

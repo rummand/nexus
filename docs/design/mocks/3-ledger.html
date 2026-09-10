@@ -1,0 +1,262 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Direction 3 — Ledger</title>
+<!--
+  Direction 3: LEDGER — the canvas as a system of record.
+  Thesis: an EA repository's job is to be believed. So the interface looks like something you would
+  cite: hairline rules, tabular figures, every fact carrying its source. Cards are rows with a
+  drawing position; the inspector is a property sheet, not a pile of chips. No shadows anywhere.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafbfc; --surface: #ffffff; --line: #e4e7ec; --line-2: #d3d8e0;
+    --ink: #0f1319; --mid: #5a6472; --faint: #909aa8; --accent: #2454d6; --warn: #b26a00;
+    --mono: "SFMono-Regular", "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "Aptos", "Inter", "IBM Plex Sans", system-ui, sans-serif;
+  }
+  body { width: 1600px; height: 1000px; background: var(--bg); color: var(--ink);
+         font: 12px/1.45 var(--sans); font-feature-settings: "tnum" 1, "cv05" 1; overflow: hidden; }
+
+  .top { height: 44px; background: var(--surface); border-bottom: 1px solid var(--line);
+         display: flex; align-items: center; gap: 16px; padding: 0 16px; }
+  .top h1 { font-size: 14px; font-weight: 600; letter-spacing: -.012em; }
+  .top .sub { font: 10.5px/1 var(--mono); color: var(--faint); letter-spacing: .02em; }
+  .top .spacer { flex: 1; }
+  .tbtn { font-size: 12px; color: var(--mid); background: none; border: 0; padding: 6px 8px; cursor: pointer; }
+  .tbtn:hover { color: var(--ink); }
+  .stat { display: flex; align-items: baseline; gap: 6px; padding-right: 14px; border-right: 1px solid var(--line); }
+  .stat b { font-size: 13px; font-weight: 600; }
+  .stat span { font: 9.5px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+
+  .body { display: grid; grid-template-columns: 250px minmax(0,1fr) 300px; height: 956px; }
+  .col { background: var(--surface); border-right: 1px solid var(--line); overflow: hidden; }
+  .col.right { border-right: 0; border-left: 1px solid var(--line); }
+
+  h3.sec { font: 9.5px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--faint);
+           padding: 15px 14px 8px; border-bottom: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; font-weight: 400; }
+  tbody tr { border-bottom: 1px solid #f0f2f5; }
+  tbody tr:hover { background: #f6f8fa; }
+  td.nm { padding: 6px 0 6px 14px; font-size: 12px; }
+  td.st { width: 12px; padding-left: 14px; }
+  td.st i { display: block; width: 3px; height: 14px; }
+  td.num { padding: 6px 14px 6px 0; text-align: right; font: 10.5px/1.4 var(--mono); color: var(--faint); }
+
+  .canvas { position: relative; overflow: hidden; background: var(--bg);
+    background-image: linear-gradient(#eef1f5 1px, transparent 1px), linear-gradient(90deg,#eef1f5 1px, transparent 1px);
+    background-size: 120px 120px; }
+
+  .node { position: absolute; width: 224px; background: var(--surface);
+          border: 1px solid var(--line-2); border-radius: 3px; }
+  .node > i { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+  .node .hd { padding: 9px 11px 7px 14px; }
+  .node .hd .t { font: 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .node .hd h4 { font-size: 13px; font-weight: 600; letter-spacing: -.008em; margin-top: 4px; }
+  .node .facts { border-top: 1px solid var(--line); }
+  .node .facts div { display: grid; grid-template-columns: 92px 1fr; padding: 3px 11px 3px 14px; }
+  .node .facts dt { font: 10px/1.5 var(--mono); color: var(--faint); }
+  .node .facts dd { font-size: 11px; }
+  .node .facts div:first-child { padding-top: 6px; }
+  .node .facts div:last-child { padding-bottom: 7px; }
+  .node.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .node .miss { color: var(--warn); }
+
+  svg.wires { position: absolute; inset: 0; overflow: visible; }
+  svg.wires path { fill: none; stroke: #b6bec9; stroke-width: 1; }
+  .wl { position: absolute; font: 9.5px/1 var(--mono); color: var(--mid); background: var(--bg); padding: 2px 5px; }
+
+  .footnote { position: absolute; left: 46px; bottom: 24px; max-width: 520px;
+              font: 11px/1.6 var(--sans); color: var(--faint); border-left: 2px solid var(--line-2); padding-left: 10px; }
+  .footnote b { color: var(--mid); font-weight: 500; }
+
+  dl.sheet div { display: grid; grid-template-columns: 104px 1fr; border-bottom: 1px solid #f0f2f5; }
+  dl.sheet dt { font: 10.5px/1 var(--mono); color: var(--faint); padding: 8px 0 8px 14px; }
+  dl.sheet dd { font-size: 12px; padding: 8px 14px 8px 0; }
+  dl.sheet dd small { display: block; font: 10px/1.4 var(--mono); color: var(--faint); margin-top: 2px; }
+</style>
+
+<div class="top">
+  <div><h1>Application landscape</h1>
+    <div class="sub">ACME ENERGY / ARCHITECTURE THINKING ROOM · AS OF 2026-09-09</div></div>
+  <div class="spacer"></div>
+  <div class="stat"><b>13</b><span>objects</span></div>
+  <div class="stat"><b>48%</b><span>conformant</span></div>
+  <div class="stat" style="border:0"><b>61%</b><span>typed</span></div>
+  <button class="tbtn">Comments</button><button class="tbtn">Compose</button>
+  <button class="tbtn">History</button><button class="tbtn">Export</button>
+</div>
+
+<div class="body">
+  <aside class="col">
+    <h3 class="sec">Object types · 28 indexed</h3>
+    <table><tbody>
+      <tr><td class="st"><i style="background:#c07414"></i></td><td class="nm">Application</td><td class="num">2 / 23</td></tr>
+      <tr><td class="st"><i style="background:#6b4fc8"></i></td><td class="nm">IT Component</td><td class="num">1 / 2</td></tr>
+      <tr><td class="st"><i style="background:#0f8f68"></i></td><td class="nm">Business Capability</td><td class="num">1 / 1</td></tr>
+      <tr><td class="st"><i style="background:#1c86c4"></i></td><td class="nm">Data Object</td><td class="num">1 / 1</td></tr>
+      <tr><td class="st"><i style="background:#2454d6"></i></td><td class="nm">Interface</td><td class="num">1 / 1</td></tr>
+    </tbody></table>
+    <h3 class="sec">Relation types</h3>
+    <table><tbody>
+      <tr><td class="nm">provides</td><td class="num">1</td></tr>
+      <tr><td class="nm">consumed by</td><td class="num">1</td></tr>
+      <tr><td class="nm">implements</td><td class="num">1</td></tr>
+      <tr><td class="nm">supports</td><td class="num">1</td></tr>
+      <tr><td class="nm">owns</td><td class="num">1</td></tr>
+    </tbody></table>
+    <h3 class="sec">Sources behind this board</h3>
+    <table><tbody>
+      <tr><td class="nm">apps-export.csv</td><td class="num">2026-08-14</td></tr>
+      <tr><td class="nm">Grid platform sync</td><td class="num">2026-08-22</td></tr>
+      <tr><td class="nm">drawn by hand</td><td class="num">4</td></tr>
+    </tbody></table>
+  </aside>
+
+  <main class="canvas">
+    <svg class="wires">
+    </svg>
+
+    <div id="n-crm" class="node sel" style="left:108px; top:126px">
+      <i style="background:#c07414"></i>
+      <div class="hd"><div class="t">Application</div><h4>CRM Cloud</h4></div>
+      <div class="facts">
+        <div><dt>owner</dt><dd>Customer Ops</dd></div>
+        <div><dt>lifecycle</dt><dd>active</dd></div>
+        <div><dt>annual cost</dt><dd>412,000</dd></div>
+      </div>
+    </div>
+    <div id="n-api" class="node" style="left:376px; top:126px">
+      <i style="background:#2454d6"></i>
+      <div class="hd"><div class="t">Interface</div><h4>Customer API</h4></div>
+      <div class="facts">
+        <div><dt>protocol</dt><dd>REST / JSON</dd></div>
+        <div><dt>owner</dt><dd class="miss">required, empty</dd></div>
+      </div>
+    </div>
+    <div id="n-erp" class="node" style="left:652px; top:126px">
+      <i style="background:#c07414"></i>
+      <div class="hd"><div class="t">Application</div><h4>ERP Core</h4></div>
+      <div class="facts">
+        <div><dt>owner</dt><dd>Corporate IT</dd></div>
+        <div><dt>lifecycle</dt><dd>active</dd></div>
+        <div><dt>annual cost</dt><dd>1,940,000</dd></div>
+      </div>
+    </div>
+    <div id="n-workflow" class="node" style="left:108px; top:344px">
+      <i style="background:#6b4fc8"></i>
+      <div class="hd"><div class="t">IT Component</div><h4>Workflow Service</h4></div>
+      <div class="facts"><div><dt>runtime</dt><dd>Kubernetes</dd></div></div>
+    </div>
+    <div id="n-revenue" class="node" style="left:376px; top:344px">
+      <i style="background:#0f8f68"></i>
+      <div class="hd"><div class="t">Business Capability</div><h4>Revenue Management</h4></div>
+      <div class="facts"><div><dt>level</dt><dd>2</dd></div></div>
+    </div>
+    <div id="n-data" class="node" style="left:652px; top:344px">
+      <i style="background:#1c86c4"></i>
+      <div class="hd"><div class="t">Data Object</div><h4>Customer Data</h4></div>
+      <div class="facts"><div><dt>classification</dt><dd>personal</dd></div></div>
+    </div>
+
+    <p class="footnote">
+      <b>Four of the six objects on this board have no source.</b> They were drawn by hand and no
+      import explains them — which is what the 48% above is measuring, and the one thing that decides
+      whether anybody outside this room will use the model.
+    </p>
+  </main>
+<script>
+const CONNECTOR_INK = "#98a2b3";
+const EDGES = [
+  ["n-workflow", "n-crm", "implements"],
+  ["n-crm", "n-api", "provides"],
+  ["n-api", "n-erp", "consumed by"],
+  ["n-api", "n-revenue", "supports"],
+  ["n-erp", "n-data", "owns"],
+];
+</script>
+<script>
+/* Connectors are measured from the real boxes rather than typed in by hand: a mock with lines
+   that miss their shapes is arguing against itself. */
+(function () {
+  const canvas = document.querySelector(".canvas");
+  const svg = canvas.querySelector("svg.wires");
+  const stroke = getComputedStyle(svg.querySelector("path") || svg).stroke;
+  const box = (id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    return { x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height };
+  };
+  const line = (d) => { const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); svg.appendChild(p); };
+  const head = (x, y, dir) => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const s = 5;
+    const d = dir === "down" ? `M${x - s} ${y - s * 2} L${x} ${y} L${x + s} ${y - s * 2} z`
+            : dir === "up" ? `M${x - s} ${y + s * 2} L${x} ${y} L${x + s} ${y + s * 2} z`
+            : dir === "right" ? `M${x - s * 2} ${y - s} L${x} ${y} L${x - s * 2} ${y + s} z`
+            : `M${x + s * 2} ${y - s} L${x} ${y} L${x + s * 2} ${y + s} z`;
+    p.setAttribute("d", d); p.style.fill = CONNECTOR_INK; p.style.stroke = "none";
+    svg.appendChild(p);
+  };
+  const label = (text, x, y) => {
+    const el = document.createElement("span");
+    el.className = "wl"; el.textContent = text;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    canvas.appendChild(el);
+    const r = el.getBoundingClientRect();
+    el.style.left = (x - r.width / 2) + "px";
+    el.style.top = (y - r.height / 2) + "px";
+  };
+  for (const [from, to, text] of EDGES) {
+    const a = box(from), b = box(to);
+    const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 }, bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    let x1, y1, x2, y2, dir;
+    if (Math.abs(bc.x - ac.x) > Math.abs(bc.y - ac.y)) {
+      const right = bc.x > ac.x;
+      x1 = right ? a.x + a.w : a.x; x2 = right ? b.x : b.x + b.w;
+      y1 = ac.y; y2 = bc.y; dir = right ? "right" : "left";
+    } else {
+      const down = bc.y > ac.y;
+      y1 = down ? a.y + a.h : a.y; y2 = down ? b.y : b.y + b.h;
+      x1 = ac.x; x2 = bc.x; dir = down ? "down" : "up";
+    }
+    const shortened = dir === "down" ? [x2, y2 - 1] : dir === "up" ? [x2, y2 + 1]
+                    : dir === "right" ? [x2 - 1, y2] : [x2 + 1, y2];
+    line(x1 === x2 || y1 === y2 ? `M${x1} ${y1} L${shortened[0]} ${shortened[1]}`
+       : `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${shortened[0]} ${shortened[1]}`);
+    head(shortened[0], shortened[1], dir);
+    label(text, (x1 + x2) / 2, (y1 + y2) / 2);
+  }
+})();
+</script>
+
+
+  <aside class="col right">
+    <h3 class="sec">CRM Cloud</h3>
+    <dl class="sheet">
+      <div><dt>type</dt><dd>Application</dd></div>
+      <div><dt>id</dt><dd style="font-family:var(--mono);font-size:11px">ent_8f21c40a</dd></div>
+      <div><dt>owner</dt><dd>Customer Ops<small>from decision · 12 Aug intake</small></dd></div>
+      <div><dt>lifecycle</dt><dd>active<small>apps-export.csv, row 41</small></dd></div>
+      <div><dt>criticality</dt><dd>medium</dd></div>
+      <div><dt>annual cost</dt><dd>412,000</dd></div>
+      <div><dt>retires</dt><dd class="miss">required, empty</dd></div>
+    </dl>
+    <h3 class="sec">Conformance</h3>
+    <div style="padding:10px 14px; font-size:11.5px; line-height:1.6; color:var(--mid)">
+      Breaks <b style="color:var(--ink)">1</b> of the 5 rules Application declares.
+      <div style="margin-top:6px; padding-left:10px; border-left:2px solid #f0c98a">
+        “CRM Cloud” has no <code style="font-family:var(--mono);font-size:11px">retires</code>,
+        and Application requires one.
+      </div>
+    </div>
+    <h3 class="sec">Connections · 5</h3>
+    <table><tbody>
+      <tr><td class="nm" style="font:10.5px/1.4 var(--mono);color:var(--faint);width:78px">provides</td><td class="nm">Customer API</td></tr>
+      <tr><td class="nm" style="font:10.5px/1.4 var(--mono);color:var(--faint)">← implements</td><td class="nm">Workflow Service</td></tr>
+      <tr><td class="nm" style="font:10.5px/1.4 var(--mono);color:var(--faint)">supports</td><td class="nm">Revenue Management</td></tr>
+      <tr><td class="nm" style="font:10.5px/1.4 var(--mono);color:var(--faint)">owns</td><td class="nm">Customer Data</td></tr>
+    </tbody></table>
+  </aside>
+</div>

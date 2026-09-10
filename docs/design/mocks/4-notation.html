@@ -1,0 +1,273 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Direction 4 — Notation-aware</title>
+<!--
+  Direction 4: NOTATION-AWARE — the shape follows the framework.
+  Thesis: the reason the canvas looks like a whiteboard is that every object is the same rounded
+  rectangle. If a workspace has adopted C4, a Container should LOOK like a C4 container — name,
+  technology, description. A UML class should have three compartments. A DDD aggregate should have
+  a dashed boundary with its root marked. This is the visual half of the frameworks feature.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f8fa; --surface: #fff; --line: #dfe3e9; --line-2: #c6ccd6;
+    --ink: #12161c; --mid: #58616e; --faint: #8b95a3; --accent: #2b4fd8;
+    --mono: "SFMono-Regular","IBM Plex Mono",ui-monospace,monospace;
+    --sans: "Aptos","Inter","IBM Plex Sans",system-ui,sans-serif;
+  }
+  body { width: 1600px; height: 1000px; background: var(--bg); color: var(--ink);
+         font: 12px/1.45 var(--sans); overflow: hidden; }
+
+  .top { height: 42px; background: var(--surface); border-bottom: 1px solid var(--line);
+         display: flex; align-items: center; gap: 14px; padding: 0 14px; }
+  .top h1 { font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+  .top .spacer { flex: 1; }
+  /* the framework switcher: what this board is drawn IN */
+  .fw { display: flex; align-items: center; border: 1px solid var(--line-2); border-radius: 4px; overflow: hidden; }
+  .fw b { font: 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+          padding: 7px 10px; color: var(--faint); border-right: 1px solid var(--line); font-weight: 500; }
+  .fw b:last-child { border-right: 0; }
+  .fw b.on { background: var(--ink); color: #fff; }
+  .lvl { font: 10.5px/1 var(--mono); color: var(--mid); border: 1px solid var(--line-2);
+         border-radius: 4px; padding: 7px 9px; }
+  .lvl u { text-decoration: none; color: var(--faint); }
+
+  .body { display: grid; grid-template-columns: 236px minmax(0,1fr); height: 958px; }
+  .rail { background: var(--surface); border-right: 1px solid var(--line); }
+  .rail h3 { font: 9.5px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--faint);
+             padding: 14px 14px 8px; }
+  .rail .fwrow { display: flex; align-items: center; gap: 9px; padding: 7px 14px; border-bottom: 1px solid #eef0f4; }
+  .rail .fwrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
+  .rail .fwrow.on .dot { background: #16a34a; }
+  .rail .fwrow span { flex: 1; font-size: 12px; }
+  .rail .fwrow em { font: 9.5px/1 var(--mono); color: var(--faint); font-style: normal; }
+  .rail .lvls { padding: 6px 14px 12px; }
+  .rail .lvls div { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 11.5px; color: var(--mid); }
+  .rail .lvls i { font: 9.5px/1 var(--mono); color: var(--faint); font-style: normal; width: 14px; }
+  .rail .lvls div.on { color: var(--ink); font-weight: 550; }
+
+  .canvas { position: relative; overflow: hidden;
+    background-image: radial-gradient(circle at 1px 1px, #dfe3e9 1px, transparent 0); background-size: 24px 24px; }
+  .lane { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #dbe0e8; }
+  .lane b { position: absolute; top: 14px; left: 14px; font: 9.5px/1 var(--mono); letter-spacing: .13em;
+            text-transform: uppercase; color: var(--faint); }
+  .lane em { position: absolute; top: 32px; left: 14px; width: 300px; font: 11px/1.5 var(--sans);
+             color: var(--faint); font-style: normal; }
+
+  /* ---- C4 container -------------------------------------------------- */
+  .c4 { position: absolute; width: 232px; background: #1a4d8f; color: #fff; border-radius: 3px; padding: 12px 13px; }
+  .c4 h4 { font-size: 13.5px; font-weight: 600; letter-spacing: -.006em; }
+  .c4 .tech { font: 10px/1 var(--mono); color: #a8c6e8; margin-top: 4px; }
+  .c4 p { font-size: 11px; line-height: 1.5; color: #d3e2f2; margin-top: 8px; }
+  .c4.ext { background: #6b7280; } .c4.ext .tech { color: #d1d5db; } .c4.ext p { color: #e5e7eb; }
+  .c4.person { border-radius: 3px 3px 3px 3px; background: #0f3d73; }
+  .c4.person::before { content: ""; position: absolute; left: 50%; top: -13px; transform: translateX(-50%);
+    width: 22px; height: 22px; border-radius: 50%; background: #0f3d73; }
+
+  /* ---- UML class ------------------------------------------------------ */
+  .uml { position: absolute; width: 214px; background: #fffef6; border: 1px solid #3a3a32; }
+  .uml h4 { font-size: 12.5px; font-weight: 700; text-align: center; padding: 7px 8px; letter-spacing: -.004em; }
+  .uml .st { display: block; font: 9.5px/1 var(--mono); font-weight: 400; color: var(--faint); margin-bottom: 3px; }
+  .uml ul { list-style: none; border-top: 1px solid #3a3a32; padding: 6px 9px; }
+  .uml li { font: 10.5px/1.7 var(--mono); color: #333; }
+  .uml li b { font-weight: 400; color: var(--faint); }
+
+  /* ---- DDD aggregate --------------------------------------------------- */
+  .agg { position: absolute; border: 1.5px dashed #7c3aed; border-radius: 10px; padding: 26px 14px 14px; background: rgba(124,58,237,.035); }
+  .agg > b { position: absolute; top: 8px; left: 14px; font: 9.5px/1 var(--mono); letter-spacing: .12em;
+             text-transform: uppercase; color: #7c3aed; }
+  .ent { background: #fff; border: 1px solid var(--line-2); border-radius: 3px; padding: 8px 11px; margin-bottom: 8px; width: 196px; }
+  .ent h5 { font-size: 12.5px; font-weight: 600; }
+  .ent span { font: 9.5px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .ent.root { border-color: #7c3aed; box-shadow: inset 3px 0 0 #7c3aed; }
+  .ent.root span { color: #7c3aed; }
+  .vo { display: inline-block; background: #fff; border: 1px solid var(--line-2); border-radius: 999px;
+        padding: 4px 10px; font: 10.5px/1 var(--mono); color: var(--mid); margin: 0 5px 5px 0; }
+
+  svg.wires { position: absolute; inset: 0; overflow: visible; }
+  svg.wires path { fill: none; stroke: #9aa4b2; stroke-width: 1.2; }
+  .wl { position: absolute; font: 9.5px/1 var(--mono); color: var(--mid); background: var(--bg); padding: 2px 5px; }
+
+  .caption { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: var(--surface);
+             border-top: 1px solid var(--line); display: flex; align-items: center; gap: 22px; padding: 0 18px;
+             font-size: 11.5px; color: var(--mid); }
+  .caption b { color: var(--ink); font-weight: 600; }
+  .caption code { font: 10.5px/1 var(--mono); background: #eef1f5; padding: 3px 5px; border-radius: 3px; }
+</style>
+
+<div class="top">
+  <h1>Payments platform</h1>
+  <span style="font:10.5px/1 var(--mono); color:var(--faint)">ACME ENERGY / PLATFORM</span>
+  <div class="spacer"></div>
+  <div class="fw"><b class="on">C4</b><b>UML</b><b>DDD</b><b>Free form</b></div>
+  <span class="lvl"><u>Level</u> &nbsp;2 · Container</span>
+</div>
+
+<div class="body">
+  <aside class="rail">
+    <h3>Frameworks adopted</h3>
+    <div class="fwrow on"><i class="dot"></i><span>C4 model</span><em>4 levels</em></div>
+    <div class="fwrow on"><i class="dot"></i><span>Domain-driven design</span><em>7 types</em></div>
+    <div class="fwrow on"><i class="dot"></i><span>UML class</span><em>5 types</em></div>
+    <div class="fwrow"><i class="dot"></i><span>IT4IT</span><em>not adopted</em></div>
+    <div class="fwrow"><i class="dot"></i><span>SAFe</span><em>not adopted</em></div>
+    <div class="fwrow"><i class="dot"></i><span>MBSE / SysML</span><em>not adopted</em></div>
+
+    <h3>C4 levels</h3>
+    <div class="lvls">
+      <div><i>L1</i>System context</div>
+      <div class="on"><i>L2</i>Container &nbsp;· this board</div>
+      <div><i>L3</i>Component</div>
+      <div><i>L4</i>Code</div>
+    </div>
+
+    <h3>Drawn at this level</h3>
+    <div class="lvls">
+      <div><i>◻</i>Container &nbsp;<span style="color:var(--faint);font:10px var(--mono)">3</span></div>
+      <div><i>◻</i>External system &nbsp;<span style="color:var(--faint);font:10px var(--mono)">1</span></div>
+      <div><i>◻</i>Person &nbsp;<span style="color:var(--faint);font:10px var(--mono)">1</span></div>
+    </div>
+  </aside>
+
+  <main class="canvas">
+    <div class="lane" style="left:0; width:520px">
+      <b>C4 · Container</b>
+      <em>Name, the technology it is built with, one line about what it does. The notation says a
+      container is a deployable thing, so the shape says it too.</em>
+    </div>
+    <div class="lane" style="left:520px; width:500px">
+      <b>UML · Class</b>
+      <em>Three compartments, «stereotype» in the header. Attributes carry their declared data type,
+      which is the same data type the metamodel checks conformance against.</em>
+    </div>
+    <div class="lane" style="left:1020px; right:0">
+      <b>DDD · Aggregate</b>
+      <em>A dashed consistency boundary, the aggregate root marked, value objects as capsules.
+      The boundary is a real object in the graph, not a drawing.</em>
+    </div>
+
+    <svg class="wires">
+    </svg>
+
+    <div id="c4-person" class="c4 person" style="left:56px; top:130px; width:196px">
+      <h4>Billing analyst</h4>
+      <div class="tech">Person</div>
+      <p>Reconciles invoices and chases exceptions.</p>
+    </div>
+    <div id="c4-api" class="c4" style="left:56px; top:262px">
+      <h4>Payments API</h4>
+      <div class="tech">[Container: Kotlin, Spring Boot]</div>
+      <p>Accepts payment instructions, validates them and writes to the ledger.</p>
+    </div>
+    <div id="c4-ext" class="c4 ext" style="left:56px; top:412px">
+      <h4>Nordea Corporate</h4>
+      <div class="tech">[External system]</div>
+      <p>Settles the payment files we hand over each evening.</p>
+    </div>
+
+    <div id="uml-payment" class="uml" style="left:576px; top:130px">
+      <h4><span class="st">« aggregate root »</span>Payment</h4>
+      <ul>
+        <li><b>+</b> id : UUID</li>
+        <li><b>+</b> amount : Money</li>
+        <li><b>+</b> raisedOn : Date</li>
+        <li><b>+</b> state : PaymentState</li>
+      </ul>
+      <ul>
+        <li><b>+</b> authorise() : Result</li>
+        <li><b>+</b> settle(ref) : void</li>
+      </ul>
+    </div>
+    <div id="uml-money" class="uml" style="left:576px; top:352px">
+      <h4><span class="st">« value object »</span>Money</h4>
+      <ul><li><b>+</b> amount : Decimal</li><li><b>+</b> currency : ISO4217</li></ul>
+    </div>
+
+    <div class="agg" style="left:1074px; top:130px; width:238px">
+      <b>Aggregate · Payment</b>
+      <div class="ent root"><span>Aggregate root</span><h5>Payment</h5></div>
+      <div class="ent"><span>Entity</span><h5>Settlement attempt</h5></div>
+      <div style="margin-top:2px">
+        <span class="vo">Money</span><span class="vo">Reference</span><span class="vo">PaymentState</span>
+      </div>
+    </div>
+    <div class="agg" style="left:1074px; top:392px; width:238px; border-color:#0891b2; background:rgba(8,145,178,.035)">
+      <b style="color:#0891b2">Bounded context · Ledger</b>
+      <div class="ent" style="border-color:#0891b2; box-shadow:inset 3px 0 0 #0891b2">
+        <span style="color:#0891b2">Published language</span><h5>PaymentPosted</h5></div>
+      <div style="font-size:11px; color:var(--mid); line-height:1.5">
+        Upstream of <b>Billing</b>, conformist downstream of <b>Treasury</b>.
+      </div>
+    </div>
+
+    <div class="caption">
+      <span><b>One graph, three notations.</b> The same Payment object is a C4 container, a UML class
+      and a DDD aggregate root — the shape changes with the framework the board is drawn in.</span>
+      <span style="margin-left:auto">Adopted: <code>c4</code> <code>ddd</code> <code>uml-class</code></span>
+    </div>
+  </main>
+<script>
+const CONNECTOR_INK = "#9aa4b2";
+const EDGES = [
+  ["c4-person", "c4-api", "uses"],
+  ["c4-api", "c4-ext", "sends files to"],
+  ["uml-payment", "uml-money", "1 ── 1 composition"],
+];
+</script>
+<script>
+/* Connectors are measured from the real boxes rather than typed in by hand: a mock with lines
+   that miss their shapes is arguing against itself. */
+(function () {
+  const canvas = document.querySelector(".canvas");
+  const svg = canvas.querySelector("svg.wires");
+  const stroke = getComputedStyle(svg.querySelector("path") || svg).stroke;
+  const box = (id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    return { x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height };
+  };
+  const line = (d) => { const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); svg.appendChild(p); };
+  const head = (x, y, dir) => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const s = 5;
+    const d = dir === "down" ? `M${x - s} ${y - s * 2} L${x} ${y} L${x + s} ${y - s * 2} z`
+            : dir === "up" ? `M${x - s} ${y + s * 2} L${x} ${y} L${x + s} ${y + s * 2} z`
+            : dir === "right" ? `M${x - s * 2} ${y - s} L${x} ${y} L${x - s * 2} ${y + s} z`
+            : `M${x + s * 2} ${y - s} L${x} ${y} L${x + s * 2} ${y + s} z`;
+    p.setAttribute("d", d); p.style.fill = CONNECTOR_INK; p.style.stroke = "none";
+    svg.appendChild(p);
+  };
+  const label = (text, x, y) => {
+    const el = document.createElement("span");
+    el.className = "wl"; el.textContent = text;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    canvas.appendChild(el);
+    const r = el.getBoundingClientRect();
+    el.style.left = (x - r.width / 2) + "px";
+    el.style.top = (y - r.height / 2) + "px";
+  };
+  for (const [from, to, text] of EDGES) {
+    const a = box(from), b = box(to);
+    const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 }, bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    let x1, y1, x2, y2, dir;
+    if (Math.abs(bc.x - ac.x) > Math.abs(bc.y - ac.y)) {
+      const right = bc.x > ac.x;
+      x1 = right ? a.x + a.w : a.x; x2 = right ? b.x : b.x + b.w;
+      y1 = ac.y; y2 = bc.y; dir = right ? "right" : "left";
+    } else {
+      const down = bc.y > ac.y;
+      y1 = down ? a.y + a.h : a.y; y2 = down ? b.y : b.y + b.h;
+      x1 = ac.x; x2 = bc.x; dir = down ? "down" : "up";
+    }
+    const shortened = dir === "down" ? [x2, y2 - 1] : dir === "up" ? [x2, y2 + 1]
+                    : dir === "right" ? [x2 - 1, y2] : [x2 + 1, y2];
+    line(x1 === x2 || y1 === y2 ? `M${x1} ${y1} L${shortened[0]} ${shortened[1]}`
+       : `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${shortened[0]} ${shortened[1]}`);
+    head(shortened[0], shortened[1], dir);
+    label(text, (x1 + x2) / 2, (y1 + y2) / 2);
+  }
+})();
+</script>
+
+</div>
