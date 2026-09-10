@@ -1509,6 +1509,64 @@ try {
   assert.match(await page.locator("[data-import-counts]").innerText(), /unchanged/,
     "the model imported from itself matches itself");
 
+  /*
+   * The fourth door (§5.63): an EA repository read straight into a staged batch. `pnpm e2e`
+   * starts a LeanIX that speaks the real two-step auth and a cursor-paged GraphQL, so what runs
+   * here is the actual client. An attached run has no such server and skips the section.
+   */
+  if (process.env.NEXUS_E2E_LEANIX_TOKEN) {
+    await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+    await page.waitForSelector('[data-door="leanix"]', { timeout: 30000 });
+    await page.click('[data-door="leanix"]');
+    await page.waitForSelector("[data-import-leanix]", { timeout: 30000 });
+
+    // People paste the page they were looking at, so a graphiql URL has to be accepted as a host.
+    await page.fill("[data-leanix-host]", "https://acme.leanix.net/acme/graphiql");
+    await page.fill("[data-leanix-token]", "not-the-token");
+    await page.click("[data-stage-leanix]");
+    await page.waitForSelector("[data-import-leanix] [data-import-error]", { timeout: 60000 });
+    assert.match(await page.locator("[data-import-leanix] [data-import-error]").innerText(), /Authentication failed \(401\)/,
+      "a refused token says so, and says where a working one comes from");
+    assert.equal(await page.locator("[data-leanix-host]").inputValue(), "https://acme.leanix.net/acme/graphiql",
+      "a failed read does not clear what was typed");
+
+    await page.fill("[data-leanix-token]", process.env.NEXUS_E2E_LEANIX_TOKEN);
+    await page.click("[data-stage-leanix]");
+    await page.waitForURL(/\/import\/bat_/, { timeout: 120000 });
+    await page.waitForSelector("[data-import-counts]", { timeout: 60000 });
+    assert.match(await page.locator("[data-import-counts]").innerText(), /4\s+objects staged/,
+      "both pages of fact sheets arrived, so the cursor was followed");
+
+    const kinds = await page.locator("[data-file-kind]").allInnerTexts();
+    assert.equal(kinds.length, 2, "one file per fact sheet type, not one undifferentiated pile");
+    assert.match(kinds.join(" "), /Application/, "LeanIX's own type names the file's kind…");
+    assert.match(kinds.join(" "), /IT Component/, "…in the English a reader uses, not the API's");
+
+    const columns = await page.locator(".import-column").allInnerTexts();
+    const roles = await page.locator(".import-column").evaluateAll((els) => els.map((e) => e.className));
+    assert.ok(roles.some((c) => c.includes("key")), "the LeanIX id comes in as the key, so a second read updates");
+    assert.ok(roles.some((c) => c.includes("relation")), "a modelled relation arrives as a relation column");
+    assert.ok(columns.some((c) => /child/i.test(c)), "…named after what LeanIX calls it");
+
+    const rows = (await page.locator("[data-import-row]").allInnerTexts()).join(" ");
+    assert.match(rows, /Billing \(2b3c4d5e\)/, "two fact sheets with one name are told apart by their id");
+
+    await page.click("[data-approve-batch]");
+    await page.waitForSelector("[data-import-result]", { timeout: 120000 });
+    assert.match(await page.locator("[data-import-result]").innerText(), /4 created, 0 changed, 1 connected/,
+      "approving wrote the relation as well as the objects — and only the relation whose other end came too");
+
+    // And it is still reversible, which is the whole reason this door goes through the pipeline.
+    await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
+    await page.click("[data-rollback-batch]");
+    await page.waitForFunction(() => /deleted/.test(document.querySelector("[data-import-result]")?.textContent ?? ""),
+      null, { timeout: 120000 });
+    assert.match(await page.locator("[data-import-result]").innerText(), /4 deleted/,
+      "rolled back, the repository's fact sheets are out of the graph again");
+  } else {
+    console.log("  (skipped the EA repository door: no LeanIX to read)");
+  }
+
   await page.goto(`${base}/w/acme-energy/settings/connections`, { waitUntil: "load" });
   await page.waitForSelector("[data-keys]");
   // The dialog handler registered earlier in this run accepts the confirm.

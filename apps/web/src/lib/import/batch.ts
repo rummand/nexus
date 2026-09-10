@@ -28,6 +28,15 @@ export interface BatchFile {
   kindWhy?: string;
   /** True when the rows carry their own kind, so a file-level one would be ignored. */
   kindFromRows?: boolean;
+  /**
+   * The source already knew what its columns and its kind were, so do not re-guess them (§5.63).
+   *
+   * The mapper exists because a CSV says nothing about itself. A repository with an API is the
+   * opposite case: LeanIX names every field and every relation type, and having the guesser
+   * overwrite that would turn known facts back into inferences — and quietly lose the relations,
+   * whose headers are the source's own names rather than the English the regexes look for.
+   */
+  declared?: boolean;
   /** Prose files are kept whole, for extraction rather than columns. */
   text?: string;
   /**

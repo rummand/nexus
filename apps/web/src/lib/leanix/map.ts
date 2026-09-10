@@ -67,25 +67,52 @@ export function entityName(fs: FactSheet): string {
   return (fs.displayName || fs.name || "").trim() || `(unnamed ${readableType(fs.type)})`;
 }
 
+/** The shortest id prefix that still tells every fact sheet apart — 8 unless the ids collide. */
+function shortestUnique(ids: string[], from = 8): number {
+  const longest = ids.reduce((n, id) => Math.max(n, id.length), 0);
+  for (let width = from; width < longest; width++) {
+    if (new Set(ids.map((id) => id.slice(0, width))).size === ids.length) return width;
+  }
+  return longest;
+}
+
+/**
+ * The name each fact sheet will be known by, and a lookup from id to it.
+ *
+ * Two fact sheets can share a name — LeanIX does not stop it, and a large workspace is full of
+ * "Reporting". Nexus keys an import on the name, so a duplicate would silently merge two different
+ * systems into one. Where a name repeats, the LeanIX id is appended to every copy of it: uglier,
+ * and the only version that is true.
+ *
+ * Exported because the batch builder needs exactly the same answer — a relation column naming
+ * "Reporting" when there are two of them would point at whichever one the matcher guessed.
+ */
+export function nameIndex(factSheets: FactSheet[]): Map<string, string> {
+  const counts = new Map<string, number>();
+  for (const fs of factSheets) {
+    const n = entityName(fs).toLowerCase();
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  /*
+   * A short id reads better beside a name, but only while it is still an id: two fact sheets
+   * whose ids share a prefix would otherwise get the *same* disambiguated name, which is worse
+   * than not disambiguating at all. So the prefix is grown until it separates them.
+   */
+  const width = shortestUnique(factSheets.map((fs) => fs.id));
+  const out = new Map<string, string>();
+  for (const fs of factSheets) {
+    const base = entityName(fs);
+    out.set(fs.id, (counts.get(base.toLowerCase()) ?? 0) > 1 ? `${base} (${fs.id.slice(0, width)})` : base);
+  }
+  return out;
+}
+
 export function mapExport(dump: LeanIxExport): MappedImport {
   const byId = new Map<string, FactSheet>();
   for (const fs of dump.factSheets) if (fs.id) byId.set(fs.id, fs);
 
-  /*
-   * Two fact sheets can share a name — LeanIX does not stop it, and large workspaces are full of
-   * "Reporting". Nexus keys an import on the name, so a duplicate would silently merge two
-   * different systems into one. Where a name repeats, the LeanIX id is appended to every copy of
-   * it: uglier, and the only version that is true.
-   */
-  const seen = new Map<string, number>();
-  for (const fs of byId.values()) {
-    const n = entityName(fs).toLowerCase();
-    seen.set(n, (seen.get(n) ?? 0) + 1);
-  }
-  const nameOf = (fs: FactSheet): string => {
-    const base = entityName(fs);
-    return (seen.get(base.toLowerCase()) ?? 0) > 1 ? `${base} (${fs.id.slice(0, 8)})` : base;
-  };
+  const names = nameIndex([...byId.values()]);
+  const nameOf = (fs: FactSheet): string => names.get(fs.id) ?? entityName(fs);
 
   const entities: ImportPayload["entities"] = [];
   const counts = new Map<string, number>();

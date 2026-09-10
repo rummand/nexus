@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { entityName, mapExport, readableRelation, readableType, summarise } from "./map";
+import { toBatchFiles } from "./batch";
 import type { FactSheet, LeanIxExport } from "./types";
 
 /**
@@ -89,6 +90,17 @@ describe("the things that lose data if nobody thinks about them", () => {
     expect(names.filter((n) => n.startsWith("Reporting ("))).toHaveLength(2);
   });
 
+  it("grows the id prefix when two ids share the first eight characters", () => {
+    // Not hypothetical for anyone whose ids are generated with a prefix: a short id that is the
+    // same short id disambiguates nothing, and would merge two fact sheets back into one.
+    const m = mapExport(dump({ factSheets: [
+      fs({ id: "app-0000-north", name: "Billing" }),
+      fs({ id: "app-0000-south", name: "Billing" }),
+    ] }));
+    const names = m.entities.map((e) => e.name);
+    expect(new Set(names).size).toBe(2);
+  });
+
   it("uses the disambiguated name on both ends of a relation too", () => {
     const m = mapExport(dump({
       factSheets: [fs({ id: "aaaaaaaa-1", name: "Reporting" }), fs({ id: "bbbbbbbb-2", name: "Reporting" })],
@@ -125,5 +137,86 @@ describe("the things that lose data if nobody thinks about them", () => {
     const d = dump();
     expect(() => summarise(d, mapExport(d))).not.toThrow();
     expect(mapExport(d).entities).toEqual([]);
+  });
+});
+
+describe("staging a workspace through the ordinary import pipeline", () => {
+  it("makes one file per fact sheet type, largest first, with the kind already known", () => {
+    const d = dump({ factSheets: [
+      fs({ id: "1", type: "Application" }), fs({ id: "2", type: "Application" }), fs({ id: "3", type: "ITComponent" }),
+    ] });
+    const files = toBatchFiles(d);
+    expect(files.map((f) => f.name)).toEqual(["LeanIX · Application", "LeanIX · IT Component"]);
+    expect(files[0]!.kind).toBe("Application");
+    expect(files[0]!.rows).toHaveLength(2);
+  });
+
+  it("declares its columns, so the guesser leaves them alone", () => {
+    // The mapper exists because a CSV says nothing about itself. LeanIX names every field, and
+    // letting the regexes re-guess would drop the relations entirely.
+    const files = toBatchFiles(dump({ factSheets: [fs({ id: "1" })] }));
+    expect(files[0]!.declared).toBe(true);
+  });
+
+  it("marks the LeanIX id as the key, not as an attribute", () => {
+    const files = toBatchFiles(dump({ factSheets: [fs({ id: "1" })] }));
+    const key = files[0]!.columns.find((c) => c.header === "leanix id");
+    expect(key?.role).toEqual({ as: "key" });
+  });
+
+  it("turns each relation type into its own relation column", () => {
+    const d = dump({
+      factSheets: [fs({ id: "1", name: "CRM" }), fs({ id: "2", name: "Server" })],
+      relations: [{ fromId: "1", toId: "2", type: "relApplicationToITComponent", fields: {} }],
+    });
+    const file = toBatchFiles(d)[0]!;
+    const col = file.columns.find((c) => c.role.as === "relation");
+    expect(col?.role).toEqual({ as: "relation", kind: "application → it component" });
+    expect(file.rows[0]![file.headers.indexOf("application → it component")]).toBe("Server");
+  });
+
+  it("joins several targets of one relation into one cell", () => {
+    const d = dump({
+      factSheets: [fs({ id: "1", name: "CRM" }), fs({ id: "2", name: "A" }), fs({ id: "3", name: "B" })],
+      relations: [
+        { fromId: "1", toId: "2", type: "relToChild", fields: {} },
+        { fromId: "1", toId: "3", type: "relToChild", fields: {} },
+      ],
+    });
+    const file = toBatchFiles(d)[0]!;
+    expect(file.rows[0]![file.headers.indexOf("→ child")]).toBe("A, B");
+  });
+
+  it("points a relation at the disambiguated name when two targets share one", () => {
+    const d = dump({
+      factSheets: [fs({ id: "src", name: "CRM" }), fs({ id: "aaaaaaaa-1", name: "Reporting" }), fs({ id: "bbbbbbbb-2", name: "Reporting" })],
+      relations: [{ fromId: "src", toId: "aaaaaaaa-1", type: "relToChild", fields: {} }],
+    });
+    const file = toBatchFiles(d)[0]!;
+    const row = file.rows.find((r) => r[0] === "CRM")!;
+    expect(row[file.headers.indexOf("→ child")]).toBe("Reporting (aaaaaaaa)");
+  });
+
+  it("gives a subscription role its own person column", () => {
+    const files = toBatchFiles(dump({ factSheets: [fs({ id: "1", subscriptions: [{ email: "a@x.test", role: "Owner" }] })] }));
+    const col = files[0]!.columns.find((c) => c.header === "owner");
+    expect(col?.role).toEqual({ as: "person", key: "owner" });
+    expect(files[0]!.rows[0]![files[0]!.headers.indexOf("owner")]).toBe("a@x.test");
+  });
+
+  it("leaves out a field no fact sheet of that type actually fills", () => {
+    const files = toBatchFiles(dump({ factSheets: [fs({ id: "1", fields: { used: "yes", blank: "  " } })] }));
+    expect(files[0]!.headers).toContain("used");
+    expect(files[0]!.headers).not.toContain("blank");
+  });
+
+  it("drops a relation whose other end was not exported rather than naming a ghost", () => {
+    const d = dump({ factSheets: [fs({ id: "1" })], relations: [{ fromId: "1", toId: "gone", type: "relToChild", fields: {} }] });
+    const file = toBatchFiles(d)[0]!;
+    expect(file.headers).not.toContain("→ child");
+  });
+
+  it("has nothing to stage for an empty workspace", () => {
+    expect(toBatchFiles(dump())).toEqual([]);
   });
 });

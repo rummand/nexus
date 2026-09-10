@@ -516,6 +516,16 @@ try {
   // ---- the landing zone -------------------------------------------------------
   // Real files, read by the real pipeline: the fixtures the e2e suite uses.
   const fixtures = path.resolve("e2e/fixtures");
+  // The door itself needs no LeanIX to photograph, which is the honest thing to show: what a
+  // person types. What comes back is described in words rather than staged from a fake workspace.
+  await shot("import-leanix", async () => {
+    await goto(`${w}/import`, '[data-door="leanix"]');
+    await page.click('[data-door="leanix"]');
+    await page.waitForSelector("[data-import-leanix]", { timeout: 30_000 });
+    await page.fill("[data-leanix-host]", "acme.leanix.net");
+    await page.waitForTimeout(400);
+  });
+
   await shot("import-review", async () => {
     await goto(`${w}/import`, "[data-import-upload]");
     await page.setInputFiles("[data-import-files]", [

@@ -18,6 +18,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 import path from "node:path";
+import { startLeanIxStub, STUB_TOKEN } from "./leanix-stub.mjs";
 
 const READY_TIMEOUT_MS = 120_000;
 
@@ -55,6 +56,7 @@ async function waitForHealth(base, child) {
 const attached = Boolean(process.env.BASE_URL);
 let dir = null;
 let server = null;
+let leanix = null;
 let base = process.env.BASE_URL;
 
 try {
@@ -65,6 +67,8 @@ try {
     // numeric form had its dev-server chunks and HMR socket intercepted — the canvas then never
     // loaded at all, which looked exactly like a slow test.
     base = `http://localhost:${port}`;
+    // A LeanIX the run can reach, so the import door is tested and not merely compiled (§5.63).
+    leanix = await startLeanIxStub();
     console.log(`e2e: starting a server on ${port} with a database in ${dir}`);
     server = spawn("node", [path.resolve("node_modules/next/dist/bin/next"), "dev", "--port", String(port)], {
       env: {
@@ -75,6 +79,7 @@ try {
         // the suite asserts on the rule compiler's echo; a planner would answer differently
         ANTHROPIC_API_KEY: "",
         NEXUS_MODEL: "",
+        NEXUS_LEANIX_BASE_URL: leanix.baseUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -141,7 +146,9 @@ try {
   }
 
   const smoke = spawn("node", [path.resolve("e2e/smoke.mjs")], {
-    env: { ...process.env, BASE_URL: base },
+    // Only the isolated run has a LeanIX to talk to; attached runs skip that section rather
+    // than fail against whatever the running server is pointed at.
+    env: { ...process.env, BASE_URL: base, NEXUS_E2E_LEANIX_TOKEN: attached ? "" : STUB_TOKEN },
     stdio: "inherit",
   });
   const code = await new Promise((resolve) => smoke.on("exit", resolve));
@@ -152,6 +159,7 @@ try {
     await new Promise((r) => setTimeout(r, 500));
     if (server.exitCode === null) server.kill("SIGKILL");
   }
+  if (leanix) await leanix.close();
   // The database is the point of the exercise: it never outlives the run.
   if (dir) rmSync(dir, { recursive: true, force: true });
 }

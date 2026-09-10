@@ -3,26 +3,28 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ClipboardPaste, FileSpreadsheet, FileText, Server, Trash2, Upload } from "lucide-react";
-import { createBatch, createPastedBatch, deleteBatch, stageFromServer } from "@/lib/import/actions";
+import { AlertTriangle, Check, ClipboardPaste, FileSpreadsheet, FileText, Library, Server, Trash2, Upload } from "lucide-react";
+import { createBatch, createPastedBatch, deleteBatch, stageFromLeanIx, stageFromServer } from "@/lib/import/actions";
 import { askServer } from "@/lib/mcp/server-actions";
 import { simpleFields } from "@/lib/mcp/protocol";
 import type { RemoteTool } from "@/lib/mcp/client";
 
 /**
- * Where data arrives — by any of the three routes it actually arrives by.
+ * Where data arrives — by any of the four routes it actually arrives by.
  *
  * **Files**, because that is what an export is. **Paste**, because the most common thing somebody
  * has is not a file: it is forty rows in a mail, a query result from a console, a list in a chat
  * message, and making them save it as a CSV first is a step whose only purpose is to satisfy the
- * import feature. And **a connected system**, because a CMDB that speaks MCP can be asked directly
- * (§5.35) and its answer is just another table.
+ * import feature. **A connected system**, because a CMDB that speaks MCP can be asked directly
+ * (§5.35) and its answer is just another table. And **an EA repository**, because the organisation
+ * that already has one has its estate in there, and asking it is a read, not a migration project
+ * (§5.63).
  *
- * All three end in the same place: a staged batch, decided on a canvas, approved by a person. The
+ * All four end in the same place: a staged batch, decided on a canvas, approved by a person. The
  * doors differ; nothing behind them does.
  */
 
-type Door = "files" | "paste" | "server";
+type Door = "files" | "paste" | "server" | "leanix";
 
 export interface ServerOption {
   id: string;
@@ -63,6 +65,8 @@ export function ImportZone({ slug, workspaceId, batches, servers }: {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [pasted, setPasted] = useState("");
+  const [lxHost, setLxHost] = useState("");
+  const [lxToken, setLxToken] = useState("");
   const [pastedName, setPastedName] = useState("");
   const [serverId, setServerId] = useState(servers[0]?.id ?? "");
   const [toolName, setToolName] = useState(servers[0]?.tools[0]?.name ?? "");
@@ -105,6 +109,17 @@ export function ImportZone({ slug, workspaceId, batches, servers }: {
     });
   };
 
+  const stageLeanIx = () => {
+    setError(null);
+    start(async () => {
+      const result = await stageFromLeanIx(workspaceId, { host: lxHost, token: lxToken });
+      // Kept on failure: a mistyped host should not cost you the token as well.
+      if ("error" in result) { setError(result.error); return; }
+      setLxToken("");
+      opened(result.id);
+    });
+  };
+
   const stageAnswer = () => {
     if (!answer || !server) return;
     setError(null);
@@ -139,7 +154,62 @@ export function ImportZone({ slug, workspaceId, batches, servers }: {
         <button type="button" className={door === "server" ? "on" : ""} data-door="server" onClick={() => setDoor("server")}>
           <Server size={14} /> A connected system
         </button>
+        <button type="button" className={door === "leanix" ? "on" : ""} data-door="leanix" onClick={() => setDoor("leanix")}>
+          <Library size={14} /> An EA repository
+        </button>
       </nav>
+
+      {door === "leanix" && (
+        <div className="import-leanix" data-import-leanix>
+          <p className="import-leanix-lede">
+            Read a LeanIX workspace straight into a staged batch. It then takes the same road as a
+            spreadsheet — mapped, matched against what is already here, reviewed row by row, and
+            reversible. Nothing enters the model until you approve it.
+          </p>
+          <div className="import-leanix-fields">
+            <label>
+              <span>Host</span>
+              <input
+                value={lxHost}
+                onChange={(e) => setLxHost(e.target.value)}
+                placeholder="acme.leanix.net"
+                aria-label="LeanIX host"
+                disabled={pending}
+                data-leanix-host
+              />
+            </label>
+            <label>
+              <span>API token</span>
+              <input
+                type="password"
+                value={lxToken}
+                onChange={(e) => setLxToken(e.target.value)}
+                placeholder="Administration → API tokens"
+                aria-label="LeanIX API token"
+                autoComplete="off"
+                disabled={pending}
+                data-leanix-token
+              />
+            </label>
+          </div>
+          <div className="import-drop-actions">
+            <button
+              type="button"
+              className="primary-home-button"
+              disabled={pending || !lxHost.trim() || !lxToken.trim()}
+              data-stage-leanix
+              onClick={stageLeanIx}
+            >
+              {pending ? "Reading the workspace…" : "Read the workspace"}
+            </button>
+            <span className="import-leanix-note">
+              The token is used for this one read and never stored. A large workspace takes a
+              minute; the whole estate arrives as one batch you can throw away.
+            </span>
+          </div>
+          {error && <p className="form-error" data-import-error><AlertTriangle size={13} /> {error}</p>}
+        </div>
+      )}
 
       {door === "paste" && (
         <div className="import-paste" data-import-paste>

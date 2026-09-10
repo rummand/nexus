@@ -1604,9 +1604,11 @@ summarising for a person, but "give me that as a table" is a reasonable ask — 
 one Nexus import from another. The e2e uses exactly that: it asks this instance's own endpoint for
 its applications as a table and stages them, and every row matches itself as unchanged.
 
-All three doors converge on one `stageBatch`, so "paste" cannot quietly become a worse import than
-"upload". The batch records which door it came through, because *somebody pasted this* and *a CMDB
-answered this* are different kinds of claim even when the staging is identical.
+All the doors converge on one `stageBatch`, so "paste" cannot quietly become a worse import than
+"upload" — and when a fourth was added for an EA repository (§5.63) it inherited the whole pipeline
+rather than growing a second one. The batch records which door it came through, because *somebody
+pasted this* and *a CMDB answered this* are different kinds of claim even when the staging is
+identical.
 
 
 ### 5.38 Prose and tables as one pipeline (v0.2)
@@ -2738,8 +2740,56 @@ been run against a live LeanIX instance from here; outbound access to that host 
 environment, so `--dry-run` exists to prove the token, the host and the network in about a second
 before anything is written.
 
-The other half — an in-app connector with a scope grant, so the repository is read on a schedule
-rather than dumped by hand — remains where §5.30 put it: planned, and honestly labelled.
+The other half is §5.63.
+
+### 5.63 The fourth door: an EA repository, read straight into a staged import (v0.2)
+
+§5.62 got a LeanIX workspace onto disk. This puts it into the product, and it does so by adding
+**nothing to the pipeline**: the repository is a *door*, exactly like Files, Paste and A connected
+system (§5.35, §5.37), and everything behind the door is the import machinery that already exists.
+Host and API token on the Import page, and the workspace arrives as a staged batch that is then
+mapped, matched against what the graph already holds, decided on a board, approved by a person and
+rolled back if it was wrong (§5.21, §5.36).
+
+That was the design goal and it is worth stating plainly, because the tempting shape here is a
+"LeanIX importer" with its own review screen, its own matching and its own idea of what a conflict
+is. Three months later there are two import pipelines and the second one has none of the first
+one's lessons in it. The translation is 120 lines in `src/lib/leanix/batch.ts` and stops there.
+
+**One file per fact sheet type.** The pipeline reasons per file — a file has a kind — and a
+workspace's Applications and its IT Components are not one kind. It also makes the review legible:
+"342 Applications, 88 IT Components" instead of an undifferentiated pile of 430.
+
+**Declared, not guessed.** `BatchFile.declared` is new, and `stageBatch` skips its column guesser
+for a file that carries it. The mapper exists because a CSV says nothing about itself; a
+repository with an API is the opposite case. Letting the regexes overwrite what LeanIX *stated*
+would turn known facts back into inferences — and would silently lose every relation, whose
+headers are LeanIX's own relation names rather than the English the guesser looks for.
+
+The column roles come out as: the fact sheet name as the name, the description as the description,
+**the LeanIX id as the key** — which is what makes the second read an update rather than a second
+copy of the estate — every configured field as an attribute, every subscription as a person (off
+by default, like every column that names somebody), and every modelled relation as a relation
+named the way LeanIX names it. §5.62's two rules still hold on the way through: their vocabulary
+is kept, and nothing is lost quietly.
+
+The batch records **EA repository** as its origin — a fourth value beside files, paste and a
+connected system — for the reason §5.37 gave for recording it at all: *somebody pasted this* and
+*a repository was read* are different kinds of claim, and the provenance is worth as much as the
+data.
+
+`NEXUS_LEANIX_BASE_URL` overrides where the host is reached, for an enterprise gateway in front of
+the API — and, deliberately, it is server-side only. A caller who could choose the endpoint could
+choose where the token goes. The token itself is used for the one read and never stored; a failed
+read keeps what was typed, because a mistyped host should not also cost you the token.
+
+`pnpm e2e` now starts a LeanIX of its own (`e2e/leanix-stub.mjs`) speaking the real two-step auth
+and a cursor-paged GraphQL, and the suite walks the whole road: a refused token, two pages of fact
+sheets, the declared column roles, two fact sheets that share a name, approve, and roll back. So
+the door is tested rather than merely compiled. Along the way the disambiguator got a real fix:
+it appended the first eight characters of the id, which for two ids sharing a prefix produced the
+*same* name twice — worse than not disambiguating at all. The prefix now grows until it separates
+them.
 
 ## 6. Roadmap
 
@@ -2778,7 +2828,7 @@ rather than dumped by hand — remains where §5.30 put it: planned, and honestl
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 96)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 97)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3046,8 +3096,11 @@ rather than dumped by hand — remains where §5.30 put it: planned, and honestl
 - Deleting an agent does not erase its record.
 
 ### Import (v0.2)
-- Three ways in: **files**, a **pasted** block (shape sniffed from the content), or a **connected
-  system** — ask a tool on an MCP server from the import page and stage what it answers.
+- Four ways in: **files**, a **pasted** block (shape sniffed from the content), a **connected
+  system** — ask a tool on an MCP server from the import page and stage what it answers — or an
+  **EA repository**: a LeanIX host and an API token, read into one staged batch, a file per fact
+  sheet type, fields as attributes, subscriptions as people, relations as relations, the LeanIX id
+  as the key (§5.63).
 - `/w/:slug/import`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
   and work on them before anything is written.
 - One object per thing across all the files, with per-field provenance and both values kept where
@@ -3715,6 +3768,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | The first real account comes from environment variables, checked on every start. | A product with no self-signup has to answer "how does the first person get in", and the honest answer for a self-hosted tool is the deployment's own configuration — the one place the operator already controls and nobody else can reach. Checking on every start rather than only on an empty database is the whole point: the case that strands somebody is a database that was seeded months ago. |
 | 2026-09-10 | The bootstrap will not reset an existing password without a second, explicit variable. | A value left behind in a deployment's configuration would otherwise silently undo every password change anybody made, on every restart, with no trace. Requiring `NEXUS_OWNER_PASSWORD_RESET=1` makes resetting an act rather than a side effect. |
 | 2026-09-10 | The operator path accepts eight characters where the People page asks for ten. | They are different acts. Ten is a floor under a password one person is choosing *for somebody else*; this is somebody choosing their own, in their own deployment, where refusing it means nobody can sign in at all. The in-app rule is unchanged, and the difference is written down rather than hidden. |
+| 2026-09-10 | An EA repository is a *door* into the existing import pipeline, not an importer of its own. | The tempting shape is a LeanIX screen with its own review, matching and conflict rules; three months later there are two pipelines and the newer one has none of the older one's lessons in it. Translating a workspace into `BatchFile[]` is 120 lines and everything after it — mapping, matching, the board, approval, rollback — is already built and already tested. |
+| 2026-09-10 | A source that states its own schema is `declared`, and the column guesser leaves it alone. | The mapper exists because a CSV says nothing about itself. An API is the opposite case: letting regexes overwrite what LeanIX stated turns known facts back into inferences, and quietly drops every relation, because relation headers are the source's own names rather than the English the regexes match. |
+| 2026-09-10 | One staged file per fact sheet type, not one file for the workspace. | The pipeline reasons per file — a file has a kind — and Applications and IT Components are not one kind. It is also the difference between a review that says "342 Applications, 88 IT Components" and one that shows a pile of 430. |
+| 2026-09-10 | Where the repository is reached is a server-side environment variable, never a browser input. | An enterprise gateway in front of the API is a real deployment, and the same override is what lets the e2e exercise the real client. But a caller who can choose the endpoint can choose where the token goes, so the endpoint is the operator's to set and the token is all the page sends. |
+| 2026-09-10 | A failed read keeps the host and the token that were typed. | The common failure is a mistyped host, and clearing the field on failure charges the person a second trip to LeanIX's admin page for somebody else's mistake. It is cleared on success, where it has done its one job. |
 
 ## 8. Open questions for the product owner
 
@@ -3729,6 +3787,25 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 97: the EA repository becomes the fourth door into import.** Rev 96 got a
+  LeanIX workspace onto disk; this puts it into the product, and does it by adding nothing to the
+  pipeline. Host and API token on the Import page, and the whole workspace arrives as a staged
+  batch that then takes exactly the road a spreadsheet takes: columns shown with their meanings,
+  objects matched against what the graph already holds, the deciding done on a board, approved by
+  a person, rolled back if it was wrong. One staged file per fact sheet type, so the review says
+  "342 Applications, 88 IT Components" rather than showing a pile of 430; fields as attributes,
+  subscriptions as people (off by default, like every column that names somebody), relations under
+  the names LeanIX gives them, and the LeanIX id as the record's key — which is what makes the
+  second read an update rather than a second copy of the estate. `BatchFile.declared` is the whole
+  mechanism: a source that states its own schema keeps it, because letting the guesser overwrite
+  LeanIX would turn stated facts back into inferences and silently lose every relation. The token
+  is used for the one read and never stored, and a failed read keeps what was typed.
+  `pnpm e2e` now starts a LeanIX of its own speaking the real two-step auth and a cursor-paged
+  GraphQL, and the suite walks the whole road — refused token, two pages, the declared column
+  roles, two fact sheets sharing a name, approve, roll back. That found a real bug in rev 96's
+  disambiguator: it appended the first eight characters of the id, which for two ids sharing a
+  prefix produced the same name twice. The prefix now grows until it separates them.
 
 - **2026-09-10 — Rev 96: getting a LeanIX workspace out.** `pnpm leanix:export` reads a LeanIX
   workspace over its Pathfinder GraphQL and writes it to files: the raw dump, a `nexus-import.json`
