@@ -7,7 +7,7 @@ import { getDb } from "@/db/client";
 import * as s from "@/db/schema";
 import { currentUser } from "@/lib/session";
 import { deny, viewer } from "./guard";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword, MIN_PASSWORD } from "./password";
 import { isRole, mayGrant, type Role } from "./roles";
 import { revokeAllSessions } from "./session-store";
 
@@ -28,7 +28,7 @@ import { revokeAllSessions } from "./session-store";
  *   signed in achieves nothing, so it revokes every session that person has.
  */
 
-const MIN_PASSWORD = 10;
+/* One statement of the rule, in password.ts, so the two places that enforce it cannot drift. */
 
 async function slugOf(workspaceId: string) {
   const db = await getDb();

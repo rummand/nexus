@@ -92,6 +92,13 @@ export function getDb(): Promise<Db> {
       }
       const { seedIfEmpty } = await import("./seed");
       await seedIfEmpty(db);
+      /*
+       * After the seed, and on every start rather than only an empty database: the case that
+       * bites is an already-seeded deployment whose operator has no account (§5.61).
+       */
+      const { ensureOwner, ownerLine } = await import("./owner");
+      const line = ownerLine(await ensureOwner(db));
+      if (line) console.log(line);
       return db;
     })();
   }

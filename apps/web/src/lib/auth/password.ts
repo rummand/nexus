@@ -89,8 +89,10 @@ export function needsRehash(stored: string | null | undefined): boolean {
  * Deliberately short. Composition rules ("one capital, one digit, one symbol") are known to push
  * people towards `Password1!` and away from length, which is the only thing that reliably helps.
  */
+export const MIN_PASSWORD = 10;
+
 export function passwordProblem(password: string): string | null {
-  if (password.length < 10) return "Use at least 10 characters. Length is the part that matters.";
+  if (password.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters. Length is the part that matters.`;
   if (password.length > 200) return "That is longer than 200 characters.";
   if (!password.trim()) return "That is only whitespace.";
   return null;

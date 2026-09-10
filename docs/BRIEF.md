@@ -2660,6 +2660,41 @@ diffs; drag to re-file; a review flow for pages that are decisions rather than d
 with an approval, which is the wiki's version of a pull request); embedding one page in another;
 and full-text search across pages.
 
+### 5.61 An owner who is not the demo (v0.2)
+
+Nexus has no self-signup, by design: accounts are made by somebody who already has one (§5.41).
+That is right for a workspace tool and leaves exactly one hole — the first real person, who has
+nobody to ask. A fresh deployment could only be entered through the seeded demo account, and an
+operator who had seeded and then changed that password had no way in at all.
+
+Three environment variables, read on **every start** rather than only on an empty database,
+because the case that bites is the already-seeded one:
+
+```
+NEXUS_OWNER_EMAIL=you@example.com
+NEXUS_OWNER_PASSWORD="your password"      # quote it — see below
+NEXUS_OWNER_NAME=Your Name                # optional; derived from the address otherwise
+NEXUS_OWNER_PASSWORD_RESET=1              # only when you mean it
+```
+
+`ensureOwner` creates the account if it is missing, makes it an owner of every workspace, and is
+idempotent. It **will not** reset a password that already exists unless `..._PASSWORD_RESET=1` is
+set as well: a stale value left in a deployment's configuration must not quietly undo every
+password change anybody has made. It never throws — a typo in one variable must not stop the
+application from starting — and it never logs the password, only the address and what it did.
+
+**The floor here is eight characters, not the application's ten**, and that is the one place the
+two differ. Ten is right in the People page, where one person is setting a password somebody else
+has to live with. This is a different act: an operator setting their own password in their own
+deployment's configuration, where the alternative to accepting it is a deployment nobody can sign
+in to. The in-app rule is untouched, which does mean a password accepted here cannot later be
+re-typed in the app — worth knowing rather than worth preventing.
+
+One trap, found by walking into it: **`#` starts a comment in a `.env` file**, so an unquoted
+`NEXUS_OWNER_PASSWORD=abc##` is read as `abc` and the account is created with a password nobody
+can guess — or, as happened here, refused for being too short with no hint as to why. Quote the
+value. The refusal now names the length it saw, which is what made it findable in seconds.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2697,7 +2732,7 @@ and full-text search across pages.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 94)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 95)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3326,6 +3361,20 @@ pnpm e2e            # isolated: its own server, its own database, cleaned up aft
 pnpm build && pnpm start
 ```
 
+**Signing in as yourself.** There is no self-signup. Put this in `apps/web/.env.local` (git-ignored)
+or in the deployment's variables, and the account is created — and made an owner of every
+workspace — on the next start (§5.61):
+
+```
+NEXUS_OWNER_EMAIL=you@example.com
+NEXUS_OWNER_PASSWORD="your password"     # quote it: an unquoted # starts a comment
+NEXUS_OWNER_NAME=Your Name               # optional
+```
+
+It never resets an existing password unless `NEXUS_OWNER_PASSWORD_RESET=1` is set too. The seeded
+demo people (all with the password `acme-energy`) stay where they are; the sign-in page stops
+advertising them once that password has been changed.
+
 The SQLite file lives in `apps/web/data/nexus.db` (git-ignored). Migrations in
 `apps/web/drizzle` run automatically on first request; the demo seed runs when the
 database is empty. Delete the file to reset. Schema changes: edit
@@ -3617,6 +3666,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | An embed whose target is gone says so in the page. | Silence is the failure mode being designed out. A missing diagram that announces itself gets fixed; one that vanishes leaves a page that reads as complete and is not. |
 | 2026-09-10 | Renaming a page keeps its slug; deleting one re-parents its children. | A wiki's addresses are the half of it people share, and a rename that breaks every link is a rename nobody dares perform. Losing a subtree because somebody tidied its parent is not a trade any writer would accept. |
 
+| 2026-09-10 | The first real account comes from environment variables, checked on every start. | A product with no self-signup has to answer "how does the first person get in", and the honest answer for a self-hosted tool is the deployment's own configuration — the one place the operator already controls and nobody else can reach. Checking on every start rather than only on an empty database is the whole point: the case that strands somebody is a database that was seeded months ago. |
+| 2026-09-10 | The bootstrap will not reset an existing password without a second, explicit variable. | A value left behind in a deployment's configuration would otherwise silently undo every password change anybody made, on every restart, with no trace. Requiring `NEXUS_OWNER_PASSWORD_RESET=1` makes resetting an act rather than a side effect. |
+| 2026-09-10 | The operator path accepts eight characters where the People page asks for ten. | They are different acts. Ten is a floor under a password one person is choosing *for somebody else*; this is somebody choosing their own, in their own deployment, where refusing it means nobody can sign in at all. The in-app rule is unchanged, and the difference is written down rather than hidden. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3630,6 +3683,19 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 95: an owner who is not the demo.** Nexus has no self-signup, which is right
+  for a workspace tool and leaves exactly one hole: the first real person, who has nobody to ask
+  for an account. `NEXUS_OWNER_EMAIL` and `NEXUS_OWNER_PASSWORD` now create that account on every
+  start — not only on an empty database, because the case that strands somebody is a deployment
+  seeded months ago — and make it an owner of every workspace. It is idempotent, it never throws
+  so a typo cannot stop the app booting, and it never logs the password. It will not reset a
+  password that already exists unless `NEXUS_OWNER_PASSWORD_RESET=1` says so, because a stale
+  variable would otherwise undo every password change on every restart. The floor here is eight
+  characters rather than the People page's ten, and the reason is written down: ten is a floor
+  under a password one person picks for somebody else, this is somebody picking their own in their
+  own deployment. One trap found by walking into it — `#` starts a comment in a `.env` file, so an
+  unquoted password containing one is silently truncated; the refusal now names the length it saw.
 
 - **2026-09-10 — Rev 94: the wiki.** Every architecture wiki fails the same way — somebody writes a
   good page, the estate moves, the page stays put, and a year later nobody trusts any of it. That is
