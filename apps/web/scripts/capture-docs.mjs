@@ -368,6 +368,9 @@ try {
 
   await shot("explorer", () => goto(`${w}/explore`, "[data-focus-view]"), { settle: 1200 });
 
+  // ---- one type, browsed (§5.72) ------------------------------------------
+  await shot("inventory", () => goto(`${w}/type/Application`, "[data-inventory-table]"), { settle: 800 });
+
   // ---- the graph's own history --------------------------------------------
   await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });
 

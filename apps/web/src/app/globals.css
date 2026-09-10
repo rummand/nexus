@@ -1892,6 +1892,81 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .login-card input[type="password"]:focus { border-color: var(--blue); outline: 0; }
 .login-card .primary-home-button { justify-content: center; margin-top: 4px; width: 100%; }
 
+.kind-card-open { align-items: center; border-radius: 6px; color: #a7b1c1; display: inline-flex; justify-content: center; height: 22px; width: 22px; }
+.kind-card-open:hover { background: #eef6ff; color: var(--blue); }
+.meta-options-row td { background: #f8fafd; padding-top: 0 !important; }
+.meta-options { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 8px; }
+.meta-options label { align-items: center; display: flex; flex: 1; gap: 7px; min-width: 0; }
+.meta-options label span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.meta-options input { background: #fff; border: 1px solid var(--line); border-radius: 6px; flex: 1 1 0; font-size: 12px; min-height: 26px; min-width: 0; padding: 0 7px; width: 100%; }
+.meta-options input:focus { border-color: var(--blue); outline: 0; }
+.meta-options em { color: var(--quiet); font-size: 11px; font-style: normal; }
+
+.meta-browse { justify-content: center; margin: 2px 0 6px; width: 100%; }
+
+/* ---- the inventory (§5.72) -----------------------------------------------------------------
+   One type as a destination: facets that narrow it, the things, and the thing you picked. */
+.inventory { display: grid; gap: 0; grid-template-rows: auto auto 1fr; height: 100%; min-height: 0; overflow: hidden; }
+.inventory-head { align-items: center; background: #fff; border-bottom: 1px solid var(--line); display: flex; gap: 14px; padding: 14px 18px; }
+.inventory-title { align-items: center; display: flex; flex: 1; gap: 11px; min-width: 0; }
+.inventory-title i { border-radius: 5px; flex: 0 0 auto; height: 16px; width: 16px; }
+.inventory-title h1 { font-size: 19px; letter-spacing: -0.02em; margin: 0; }
+.inventory-title p { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+.inventory-search { max-width: 300px; }
+
+.inventory-siblings { background: #fff; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 18px; }
+.inventory-siblings a { align-items: center; background: #f7f9fc; border: 1px solid var(--line); border-radius: 999px; color: #38455a; display: inline-flex; font-size: 12px; font-weight: 700; gap: 5px; min-height: 24px; padding: 0 9px; }
+.inventory-siblings a:hover { border-color: #b8d7ff; color: var(--blue); }
+.inventory-siblings a.on { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
+.inventory-siblings i { border-radius: 50%; height: 8px; width: 8px; }
+.inventory-siblings small { color: #8a95a8; font-weight: 800; }
+
+.inventory-body { display: grid; grid-template-columns: 246px minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.inventory-facets { background: #fff; border-right: 1px solid var(--line); display: grid; gap: 14px; grid-auto-rows: max-content; min-height: 0; overflow: auto; padding: 12px; }
+.inventory-facets-head { align-items: center; display: flex; justify-content: space-between; }
+.inventory-facets-head span { align-items: center; color: #7c8799; display: inline-flex; font-size: 10px; font-weight: 900; gap: 5px; letter-spacing: 0.07em; text-transform: uppercase; }
+.inventory-facets-head button { background: #eef6ff; border: 1px solid #b8d7ff; border-radius: 6px; color: var(--blue); font-size: 11px; font-weight: 800; padding: 2px 7px; }
+.facet h3 { align-items: baseline; color: #253247; display: flex; font-size: 12px; font-weight: 800; gap: 6px; margin: 0 0 5px; }
+.facet h3 em { color: #a7b1c1; font-size: 10px; font-style: normal; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.facet-none { color: var(--quiet); font-size: 11px; margin: 0; }
+.facet-values { display: grid; gap: 2px; }
+.facet-values button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 6px; color: #38455a; display: flex; font-size: 12px; gap: 6px; min-height: 24px; padding: 0 6px; text-align: left; width: 100%; }
+.facet-values button:hover { background: #f5f9ff; border-color: #dbe8f6; }
+.facet-values button.on { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); font-weight: 800; }
+.facet-values button span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.facet-values button b { color: #8a95a8; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 800; }
+.facet-values button.on b { color: var(--blue); }
+.facet-values button.missing { color: #92400e; font-style: italic; }
+.facet-values button.missing:hover { background: #fffbeb; border-color: #f3d79b; }
+.facet-values button.missing.on { background: #fffbeb; border-color: #f3d79b; color: #92400e; }
+.facet-more { color: var(--quiet); font-size: 11px; font-style: normal; padding: 2px 6px; }
+
+.inventory-list { display: grid; gap: 8px; grid-template-rows: auto 1fr; min-height: 0; overflow: hidden; padding: 12px 16px 0; }
+.inventory-count { color: var(--muted); font-size: 12px; font-weight: 700; margin: 0; }
+.inventory-count span { color: var(--quiet); font-weight: 400; }
+.inventory-empty { color: var(--muted); font-size: 13px; margin: 20px 0; }
+.inventory-table-wrap { min-height: 0; overflow: auto; }
+.inventory-table { border-collapse: separate; border-spacing: 0; font-size: 12.5px; width: 100%; }
+.inventory-table th, .inventory-table td { border-bottom: 1px solid var(--rule, #eef2f7); padding: 0 8px; text-align: left; vertical-align: middle; }
+.inventory-table thead th { background: #f7f9fc; color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; padding: 7px 8px; position: sticky; text-transform: uppercase; top: 0; z-index: 1; }
+.inventory-table thead th b { color: #b45309; }
+.inventory-table thead th.num, .inventory-table td.num { text-align: right; }
+.inventory-table td.num { color: #8a95a8; font-variant-numeric: tabular-nums; }
+.inventory-table tbody tr:hover { background: #fafcff; }
+.inventory-table tbody th[scope="row"] { font-weight: 700; max-width: 240px; }
+.inventory-table tbody th button { background: transparent; border: 0; border-radius: 5px; color: #172033; font-size: 12.5px; font-weight: 700; padding: 6px 4px; text-align: left; width: 100%; }
+.inventory-table tbody th button:hover { color: var(--blue); }
+
+.inv-cell { background: transparent; border: 1px solid transparent; border-radius: 6px; color: #38455a; font-size: 12.5px; min-height: 26px; padding: 0 5px; width: 100%; }
+.inv-cell:hover { border-color: #e3e9f2; }
+.inv-cell:focus { background: #fff; border-color: var(--blue); outline: 0; }
+.inv-enum { appearance: auto; cursor: pointer; }
+.inv-cell-wrap { align-items: center; display: flex; gap: 4px; }
+.inv-cell-wrap a { color: #a7b1c1; display: inline-flex; }
+.inv-cell-wrap a:hover { color: var(--blue); }
+.inv-cell-wrap.bad .inv-cell { border-color: #f0c8c3; }
+.inv-cell-wrap em { align-items: center; color: #96322a; display: inline-flex; font-size: 10.5px; font-style: normal; font-weight: 700; gap: 3px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---- containment in the entity drawer (§5.70) ---------------------------------------------- */
 .entity-ancestry { align-items: center; display: flex; flex-wrap: wrap; font-size: 12px; gap: 2px; margin: 0; }
 .entity-ancestry span { align-items: center; display: inline-flex; gap: 2px; }

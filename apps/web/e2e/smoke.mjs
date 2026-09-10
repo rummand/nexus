@@ -612,6 +612,52 @@ try {
   const routes = await page.locator("[data-paths-verdict], [data-paths-none]").first().innerText();
   assert.match(routes, /route|not connected/i, `paths answers for ${fromName}`);
 
+  /*
+   * The inventory (§5.72): a type is a destination, faceted by its own fields, and a declared
+   * enum edits as its declared options rather than as free text — which is the whole difference
+   * between a model that constrains the data and one that only describes it.
+   */
+  await page.goto(`${base}/w/acme-energy/type/Application`, { waitUntil: "load" });
+  await page.waitForSelector("[data-inventory]", { timeout: 30000 });
+  assert.match(await page.locator("[data-inventory-count]").innerText(), /applications/, "the count is pluralised");
+  assert.ok((await page.locator("[data-inventory-row]").count()) > 1, "the inventory lists the type's objects");
+  assert.ok((await page.locator("[data-facet]").count()) > 1, "and offers facets built from what they carry");
+
+  // "Which have no owner" is the question the rail exists to make one click.
+  const missing = page.locator("[data-facet-missing]").first();
+  assert.ok(await missing.count(), "a facet offers its not-set bucket");
+  const rowsBefore = await page.locator("[data-inventory-row]").count();
+  await missing.click();
+  await page.waitForTimeout(300);
+  assert.ok((await page.locator("[data-inventory-row]").count()) < rowsBefore, "selecting not-set narrows the list");
+  assert.match(await page.locator("[data-inventory-count]").innerText(), /narrowed by 1 filter/, "and says what is narrowing it");
+
+  /*
+   * Choosing a value must not zero its own siblings. If a facet counted against its own
+   * selection the filter would be a one-way door, which is the classic faceted-search bug.
+   */
+  await page.click("[data-clear-facets]");
+  await page.waitForTimeout(250);
+  const lifecycle = page.locator('[data-facet="lifecycle"] [data-facet-value]');
+  if ((await lifecycle.count()) > 1) {
+    const others = await lifecycle.count();
+    await lifecycle.first().click();
+    await page.waitForTimeout(300);
+    assert.equal(await lifecycle.count(), others, "the other values of a chosen facet stay reachable");
+    await page.click("[data-clear-facets]");
+  }
+
+  // Search narrows it, and an empty result says so rather than showing an empty table.
+  await page.fill("[data-inventory-search]", "zzzz-no-such-thing");
+  await page.waitForTimeout(300);
+  await page.waitForSelector("[data-inventory-empty]");
+  await page.fill("[data-inventory-search]", "");
+
+  // Opening an item gives the drawer, where the attributes are editable.
+  await page.locator("[data-open-item]").first().click();
+  await page.waitForSelector("[data-entity-drawer] .entity-drawer-body", { timeout: 15000 });
+  await page.keyboard.press("Escape");
+
   // estate health: one number, the measures behind it, and the number leading to the work
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
   await page.waitForSelector("[data-health]");

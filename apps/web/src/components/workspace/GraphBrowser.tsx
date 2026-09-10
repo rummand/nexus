@@ -4,7 +4,7 @@ import Link from "next/link";
 import { renameAttributeKeyAction } from "@/lib/actions";
 import { parseImportText, previewImport } from "@/lib/import-parse";
 import { useMemo, useState, useTransition } from "react";
-import { Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { ArrowRight, Database, LayoutTemplate, Pencil, Search, Trash2, Upload } from "lucide-react";
 import type { Space } from "@/db/schema";
 import type { GraphSnapshot, ImportResult, Proposal } from "@/lib/graph-types";
 import { ProposalsPanel, type AgentState } from "./ProposalsPanel";
@@ -97,7 +97,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
         </div>
         <div className="metamodel-grid">
           {snapshot.kinds.map((k) => (
-            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} attributeKeys={k.attributeKeys} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} onRenameAttribute={(from, to) => start(() => renameAttributeKeyAction(workspaceId, from, to))} />
+            <KindCard key={k.kind} kind={k.kind} count={k.count} color={k.color} slug={slug} attributeKeys={k.attributeKeys} active={kindFilter === k.kind} onSelect={() => setKindFilter(kindFilter === k.kind ? null : k.kind)} onRename={(to) => start(() => renameKind(workspaceId, k.kind, to))} onRenameAttribute={(from, to) => start(() => renameAttributeKeyAction(workspaceId, from, to))} />
           ))}
           {snapshot.kinds.length === 0 && <div className="studio-empty-boards"><Database size={26} /><strong>No kinds yet</strong><span>Add cards to a board or import a CSV to start growing the meta-model.</span></div>}
         </div>
@@ -189,7 +189,7 @@ function kindColor(snapshot: GraphSnapshot, kind: string) {
   return snapshot.kinds.find((k) => k.kind === kind)?.color ?? "#1376d4";
 }
 
-function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRename, onRenameAttribute }: { kind: string; count: number; color: string; attributeKeys: Array<{ key: string; count: number; sample: string }>; active: boolean; onSelect: () => void; onRename: (to: string) => void; onRenameAttribute: (from: string, to: string) => void }) {
+function KindCard({ kind, count, color, slug, attributeKeys, active, onSelect, onRename, onRenameAttribute }: { kind: string; count: number; color: string; slug: string; attributeKeys: Array<{ key: string; count: number; sample: string }>; active: boolean; onSelect: () => void; onRename: (to: string) => void; onRenameAttribute: (from: string, to: string) => void }) {
   const [renaming, setRenaming] = useState(false);
   const [value, setValue] = useState(kind);
   const [attrRename, setAttrRename] = useState<{ from: string; value: string } | null>(null);
@@ -230,6 +230,16 @@ function KindCard({ kind, count, color, attributeKeys, active, onSelect, onRenam
         )}
         <small>{count}</small>
       </button>
+      {/* The type as a destination (§5.72): the card filters this page, the arrow opens the
+          inventory, where the facets come from the type's own declared fields. */}
+      <Link
+        className="kind-card-open"
+        href={`/w/${slug}/type/${encodeURIComponent(kind)}`}
+        title={`Browse all ${count} ${kind || "untyped"} — filter, search and edit`}
+        data-open-inventory={kind}
+      >
+        <ArrowRight size={13} />
+      </Link>
       <button type="button" className="kind-card-rename" title="Rename kind" onClick={() => setRenaming(true)}><Pencil size={13} /></button>
     </div>
   );

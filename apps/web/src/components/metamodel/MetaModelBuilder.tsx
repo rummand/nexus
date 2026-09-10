@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
-import type { MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
+import { AlertTriangle, BookOpen, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Table2, Trash2, X } from "lucide-react";
+import type { MetaField, MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
   deleteField, deleteNodeType, deleteRelationType, deleteRule, updateField, updateNodeType, updateRelationType,
@@ -228,6 +228,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
               pending={pending}
               run={run}
               workspaceId={workspaceId}
+              slug={slug}
               onRenamed={(name) => setSelected({ kind: "node", name })}
               onDeleted={() => setSelected(null)}
             />
@@ -265,9 +266,48 @@ function PresenceTag({ presence }: { presence: Presence }) {
   return <i className={`meta-presence ${presence}`} title={PRESENCE_TITLE[presence]}>{label}</i>;
 }
 
-function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId, onRenamed, onDeleted, note }: {
+/**
+ * What an enum value may be (§5.72).
+ *
+ * Comma-separated, because the alternative is a list widget with add and remove buttons for
+ * something people almost always paste in one go. The options are what the inventory offers as
+ * a dropdown and what `valueProblem` checks against, so this small box is the difference
+ * between a declared type that constrains the data and one that only describes it.
+ */
+function EnumOptions({ field, pending, run }: {
+  field: MetaField;
+  pending: boolean;
+  run: (fn: () => Promise<unknown>) => void;
+}) {
+  const [draft, setDraft] = useState(field.options.join(", "));
+  const parsed = draft.split(",").map((o) => o.trim()).filter(Boolean);
+  const changed = parsed.join("|") !== field.options.join("|");
+
+  return (
+    <div className="meta-options" data-enum-options={field.key}>
+      <label>
+        <span>allowed values</span>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="active, sunset, retired"
+          aria-label={`Allowed values for ${field.key}`}
+          data-enum-input={field.key}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          onBlur={() => { if (changed) run(() => updateField(field.id!, { options: parsed })); }}
+        />
+      </label>
+      {field.options.length === 0 && (
+        <em>Nothing declared yet, so anything is allowed and the inventory edits it as free text.</em>
+      )}
+      {pending && <em>saving…</em>}
+    </div>
+  );
+}
+
+function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId, slug, onRenamed, onDeleted, note }: {
   type: MetaNodeType; allTypeNames: string[]; layers: MetaLayer[]; pending: boolean;
-  run: (fn: () => Promise<unknown>) => void; workspaceId: string;
+  run: (fn: () => Promise<unknown>) => void; workspaceId: string; slug: string;
   onRenamed: (name: string) => void; onDeleted: () => void;
   /** What the EA corpus says about a type with this name, if anything. */
   note?: TypeNote;
@@ -290,6 +330,13 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
         </div>
         <PresenceTag presence={type.presence} />
       </header>
+
+      {/* A type with data is a place you can go (§5.72): the inventory, faceted by these fields. */}
+      {type.instances > 0 && (
+        <Link className="ghost-button meta-browse" href={`/w/${slug}/type/${encodeURIComponent(type.name)}`} data-browse-type>
+          <Table2 size={13} /> Browse the {type.instances.toLocaleString()} {type.instances === 1 ? "object" : "objects"}
+        </Link>
+      )}
 
       {/*
         The literature on this type, from the knowledge base. A meta-model is a set of claims about
@@ -370,6 +417,19 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
                       {f.id
                         ? <button type="button" className="meta-icon danger" title="Remove the declaration (values stay on instances)" disabled={pending} onClick={() => run(() => deleteField(f.id!))}><Trash2 size={13} /></button>
                         : <button type="button" className="meta-icon" title="Declare this field" disabled={pending} onClick={() => run(() => addField(type.id!, f.key))}><Plus size={13} /></button>}
+                    </td>
+                  </tr>
+                ))}
+                {/*
+                  * An enum's options had no interface at all: they could only arrive by adopting a
+                  * framework, which left a workspace that invented its own types unable to say
+                  * what a value may be — and the inventory's typed editing (§5.72) unreachable on
+                  * exactly the path §2.2 calls the default one.
+                  */}
+                {type.fields.filter((f) => f.id && f.dataType === "enum").map((f) => (
+                  <tr key={`${f.key}-options`} className="meta-options-row">
+                    <td colSpan={4}>
+                      <EnumOptions field={f} pending={pending} run={run} />
                     </td>
                   </tr>
                 ))}

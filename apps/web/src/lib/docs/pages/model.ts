@@ -69,6 +69,33 @@ export const EXPLORER: DocPage = {
   ],
 };
 
+export const INVENTORY: DocPage = {
+  slug: "inventory",
+  title: "The inventory: browsing one type",
+  summary: "Every type with data is a destination — filter it, search it, and edit values as the things the model says they are.",
+  keywords: ["inventory", "fact sheet", "factsheet", "browse", "list", "filter", "facet", "search", "attributes", "edit", "bulk", "leanix", "applications"],
+  blocks: [
+    { kind: "prose", text: "A kind used to be a filter chip on a page of everything. It is a place now: **/w/…/type/Application** is the application inventory, with its own address, so it can be linked, bookmarked and sent to somebody." },
+    { kind: "shot", src: "inventory", alt: "The application inventory with a facet rail on the left and a table of applications", caption: "Facets on the left, built from the type's own fields. Every value carries its count — including the things that have none." },
+    { kind: "heading", text: "The facets", id: "facets" },
+    {
+      kind: "list",
+      items: [
+        "**Fields the meta-model declares come first**, in the order it declares them — that order is somebody's considered opinion about what matters. Keys that only exist in the data follow, commonest first.",
+        "**“not set” is a value.** *Which applications have no owner* is the most useful question an inventory answers, and a rail that only lists the values present hides it.",
+        "**A declared field with nothing in it still appears.** An empty facet is a finding: the model asked for something and nobody filled it in.",
+        "Values inside one facet are ORed; separate facets are ANDed.",
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why choosing a value does not empty the rest of its facet", text: "Each facet counts against every *other* facet's selection, never its own. If it counted against itself, picking “active” would show every other lifecycle as zero and the filter would be a one-way door — you could narrow but never switch. It is a small rule and it is the difference between a rail you can explore with and one you have to keep resetting." },
+    { kind: "heading", text: "Editing", id: "editing" },
+    { kind: "prose", text: "Cells edit in place, as the thing the meta-model says they are: a declared enum is a dropdown of its options, a boolean is yes/no, a number takes numbers, a web address gets a link beside it. A key the model does not declare stays free text, because the model has no opinion about it." },
+    { kind: "note", tone: "why", title: "Why the type matters here", text: "Editing a declared enum as free text is exactly how “Active” and “active” both end up in the column — and then Nexus needs a whole proposals system to normalise a mess it allowed in the first place. A model that declares a type and then ignores it when the value is typed is decoration. Set an enum's allowed values on the field, in the meta-model." },
+    { kind: "note", tone: "tip", text: "A value already in the data that the model does not allow is shown, never blanked — the mismatch is a finding, and silently discarding it would destroy it. Clearing a field is always allowed, including a required one: requiredness is a statement about a finished record, not about a keystroke." },
+    { kind: "try", href: "/w/:slug/graph", label: "Pick a type to browse" },
+  ],
+};
+
 export const HIERARCHY: DocPage = {
   slug: "hierarchy",
   title: "Containment: what sits inside what",

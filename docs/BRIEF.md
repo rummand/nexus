@@ -3223,6 +3223,57 @@ The catalogue's own tests caught a real inconsistency while this was being writt
 `horizon` was marked required while its own description said an empty value means nobody has
 committed to a date. Forcing one produces a fictional date, which is worse than an empty one.
 
+### 5.72 The inventory: browsing one type (v0.2)
+
+Nexus could already filter entities by kind, search them, show them as a table and edit them
+inline. What it could not do was the thing LeanIX gets right: **a type is a destination.** A
+kind was a chip on a page of everything, so "the application portfolio" was a filter somebody
+had to remember to apply rather than a place you go.
+
+`/w/[slug]/type/[kind]` is that place — linkable, bookmarkable, sendable — reachable from the
+kind cards on the knowledge graph and from the meta-model's type inspector. An undeclared kind
+gets one too: the meta-model grows out of the data (§2.2), so an inventory available only for
+declared types would be missing exactly when somebody is trying to make sense of an import.
+
+**The facet rail is built from the type's own fields.** Three rules in it are the difference
+between a rail that works and one that quietly misleads:
+
+- **"not set" is a value.** *Which applications have no owner* is the single most useful
+  question an inventory answers, and a rail listing only the values present hides it. On the
+  demo estate this is immediately the loudest thing on the page: 9 of 23 applications with no
+  owner, 9 with no lifecycle, 10 with no end-of-support date.
+- **A facet counts against every *other* facet's selection, never its own.** Get this wrong and
+  choosing `lifecycle = active` shows every other lifecycle as zero: you can narrow but never
+  switch, and the filter is a one-way door. It is the classic faceted-search bug.
+- **A declared field with no data still appears.** The model asked for something and nobody
+  filled it in; dropping the row because it has no values is how a model and its data drift
+  apart unnoticed.
+
+**Values edit as the thing the model says they are.** A declared enum is a dropdown of its
+options, a boolean is yes/no, a number takes numbers, a web address gets a link beside it; an
+undeclared key stays free text, because the model has no opinion about it. This is the part
+that matters most, and the reasoning is uncomfortable: the entity table edited *everything* as
+free text, including fields declared as an enum with four options — which is precisely how
+`Active` and `active` end up in the same column, and why Nexus grew a proposals system to
+normalise a mess it had allowed. **A model that declares a type and then ignores it when the
+value is typed is decoration.**
+
+Two things the cell deliberately does not do. It never refuses to clear a value — requiredness
+is a statement about a finished record, not about a keystroke, and a field you cannot empty is
+a field that stays wrong. And it never silently corrects: a value the model disallows stays in
+the box with the reason beside it, and a stored value outside the declared options is shown as
+"not a declared option" rather than blanked, because the mismatch is a finding and discarding
+it destroys it.
+
+**A gap this exposed.** An enum's allowed values had no interface at all — they could only
+arrive by adopting a framework (§5.57), which left a workspace that invented its own types
+unable to say what a value may be, and made the typed editing above unreachable on exactly the
+path §2.2 calls the default one. The meta-model's field table now carries an allowed-values box
+for any declared enum.
+
+Also fixed: `plural()`, because "23 application" is the first thing a reader sees and naive
+`+ "s"` turns Business Capability into Business Capabilitys.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3260,7 +3311,7 @@ committed to a date. Forcing one produces a fictional date, which is worse than 
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 108)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 109)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3433,6 +3484,16 @@ committed to a date. Forcing one produces a fictional date, which is worse than 
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
   warnings. Card kind fields suggest the workspace's kinds.
+
+### The inventory (v0.2, rev 109 — §5.72)
+- `/w/[slug]/type/[kind]`: one type as a destination, with its own address. Reachable from the
+  kind cards and from the meta-model's type inspector.
+- A facet rail from the type's declared fields then its discovered keys, each value with a
+  count, each facet with a **not set** bucket, counted against the other facets but not itself.
+- Search across names, descriptions and values; an empty result says so.
+- Cells edit as the type the meta-model declares — enum as a dropdown, boolean as yes/no,
+  number as a number, url as a link — and an undeclared key stays free text.
+- Allowed values for an enum are editable on the field, which had no interface before.
 
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
@@ -4308,6 +4369,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | A **Key Result is a type**, not a field on the Objective | An aim is measured several ways, the measures change while the aim does not, and a measure has a target and a current value of its own. A text field cannot carry any of that, and folding it in is how "how would we know" stops being answered. §5.71 |
 | 2026-09-10 | Strategy is its **own family**, after the portfolio models | The catalogue's ordering is a reading order — how you draw a system, how you decompose the problem, how the organisation is run, the estate itself, and finally what the estate is for. Objectives are not a portfolio model, and filing them as one would make the family label a lie. §5.71 |
 
+| 2026-09-10 | A type is a **destination**, not a filter chip | "The application portfolio" should be a place you go, with an address you can send somebody, rather than a filter somebody has to remember to apply. Taken from LeanIX, which gets this right. §5.72 |
+| 2026-09-10 | **"not set" is a facet value** | *Which applications have no owner* is the most useful question an inventory answers, and a rail listing only the values present hides it. §2.2 again: an absence is a finding, not a blank. §5.72 |
+| 2026-09-10 | A facet counts against the **other** facets, never itself | Otherwise choosing a value shows every sibling as zero: you can narrow but never switch, and the filter is a one-way door. The classic faceted-search bug. §5.72 |
+| 2026-09-10 | A value edits as the **type the model declares** | Editing a declared enum as free text is exactly how "Active" and "active" both reach the column — and Nexus then needs a proposals system to clean up a mess it allowed. A model that declares a type and ignores it at the keystroke is decoration. §5.72 |
+| 2026-09-10 | A disallowed value is **shown, never blanked**; any field can be cleared | The mismatch is a finding and discarding it destroys it. And requiredness is a statement about a finished record, not about a keystroke — a field you cannot empty is one that stays wrong. §5.72 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4322,6 +4389,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 109: the inventory.** Every type with data is now a destination —
+  `/w/[slug]/type/[kind]` — with a facet rail built from its own declared fields, a **not set**
+  bucket on every facet (9 of 23 applications have no owner, and that is now one click), search,
+  and a table whose cells edit as the type the meta-model declares: an enum as a dropdown of its
+  options, a boolean as yes/no, a number as a number, a url with a link. The entity table used
+  to edit a declared four-option enum as free text, which is exactly how "Active" and "active"
+  both reach the column and why Nexus grew a proposals system to normalise a mess it allowed.
+  Each facet counts against the *other* facets and never itself, so choosing a value does not
+  zero its siblings and the filter is not a one-way door. Building it exposed that an enum's
+  allowed values had no interface at all outside adopting a framework, so the meta-model's field
+  table gained one. New pure `lib/inventory.ts` with 29 tests, `Inventory` and `InventoryCell`,
+  e2e coverage, a docs page, brief §5.72 and five decision rows.
 
 - **2026-09-10 — Rev 108: Objectives.** A fifth framework family, **Strategy**, with
   *Objectives and initiatives*: Objective, Key Result and Initiative, plus Business Capability
