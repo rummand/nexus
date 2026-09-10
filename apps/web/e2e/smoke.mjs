@@ -569,23 +569,53 @@ try {
       "an embed pointing at something gone says so rather than disappearing");
   }
 
-  // meta-model builder: the tree lists types, and an undeclared type can be declared
+  /*
+   * Open a meta-model drawer, whichever state it is in.
+   *
+   * The drawer buttons toggle now (§5.66) where the old tabs were idempotent — clicking the
+   * active tab kept it active, clicking an open drawer closes it. That is the right behaviour and
+   * it means a test cannot just click and assume.
+   */
+  const openDrawer = async (name) => {
+    if (!(await page.locator(`[data-meta-drawer="${name}"]`).count())) {
+      await page.click(`[data-tab-${name}]`);
+    }
+    await page.waitForSelector(`[data-meta-drawer="${name}"]`, { timeout: 30000 });
+  };
+
+  /*
+   * The meta-model board (§5.66). The tree and its five tabs are gone; what is asserted here is
+   * the design's own promise — that the page says how healthy the model is before anybody clicks,
+   * that declared and emergent are told apart on sight, and that acting on a card changes both.
+   */
   await page.goto(`${base}/w/acme-energy/meta`, { waitUntil: "load" });
-  await page.waitForSelector(".meta-tree");
-  assert.ok((await page.locator(".meta-tree-label").count()) > 0, "meta-model lists node and relation types");
-  // node types only — a relation type's detail pane has rules, not fields
-  const undeclared = page.locator('.meta-tree-item[data-type-kind="node"]', { has: page.locator(".meta-dot.undeclared") }).first();
+  await page.waitForSelector("[data-meta-health]");
+  assert.ok((await page.locator("[data-meta-card]").count()) > 0, "the model is a board of types");
+  assert.match(await page.locator("[data-meta-verdict]").innerText(), /\w+/, "and it says how healthy it is without being asked");
+  {
+    // Conformance over nothing is undefined, not perfect: a fresh seed declares no types at all.
+    const gauges = await page.locator(".meta-gauge-value").allInnerTexts();
+    assert.equal(gauges[1], "—", "conformance over an undescribed estate is undefined, not 100%");
+  }
+
   // The seed always grows kinds from its boards without declaring them, so this is not optional:
   // before the suite had a database of its own, earlier runs declared them all and the coverage
   // silently disappeared.
+  const undeclared = page.locator('[data-meta-card][data-declared="no"]').first();
   assert.ok(await undeclared.count(), "the seed has kinds that grew from data and were never declared");
   {
-    await undeclared.locator(".meta-tree-label").click();
+    const name = await undeclared.locator("b").first().innerText();
+    await undeclared.click();
     await page.waitForSelector(".meta-detail-body");
     await page.click(".meta-callout button");
     await page.waitForTimeout(1500);
     // innerText reflects the CSS uppercase transform, so compare case-insensitively
     assert.match(await page.locator(".meta-detail-body header .meta-presence").innerText(), /^declared$/i, "declaring a type promotes it out of 'from data'");
+    // …and the board says so too: the card stops being dashed, and the coverage figure moves.
+    assert.equal(await page.locator(`[data-meta-card="${name}"]`).getAttribute("data-declared"), "yes",
+      "the card the declaration came from now reads as declared");
+    assert.notEqual((await page.locator(".meta-gauge-value").allInnerTexts())[0], "0%",
+      "and describing something moves the coverage figure");
     // the declare above runs in a transition that disables the form while pending
     await page.waitForSelector('.meta-add input[aria-label="New field key"]:not([disabled])', { timeout: 30000 });
     const beforeFields = await page.locator(".meta-table tbody tr").count();
@@ -605,7 +635,7 @@ try {
 
   // meta-model diagram: the type-level abstraction, one box per node type and one arc per
   // relation type, laid out so nothing overlaps
-  await page.click('.meta-view-tabs button:has-text("Diagram")');
+  await page.click('[data-shape="diagram"]');
   await page.waitForSelector("[data-meta-diagram]");
   await page.waitForTimeout(600);
   const typeBoxes = await page.locator("[data-type-box]").count();
@@ -624,12 +654,12 @@ try {
   const firstBox = page.locator("[data-type-box]").first();
   const boxName = (await firstBox.locator(".meta-type-name").textContent()) ?? "";
   await firstBox.click();
-  await page.click('.meta-view-tabs button:has-text("Details")');
+  // The inspector opens on selection now; there is no Details tab to return to (§5.66).
   await page.waitForSelector(".meta-detail-body");
   assert.equal(await page.locator(".meta-detail-body h2").textContent(), boxName, "selecting in the diagram drives the detail pane");
 
   // conformance: the declared model, checked against the data, object by named object (§5.56)
-  await page.click("[data-tab-conformance]");
+  await openDrawer("conformance");
   await page.waitForSelector("[data-conformance]");
   const numbers = await page.locator(".conformance-head").innerText();
   assert.match(numbers, /%/, "conformance leads with a number");
@@ -637,7 +667,7 @@ try {
     "the number is said in words as well, because a percentage is not a verdict");
 
   // a modelling framework: what adopting it would add, worked out against this workspace (§5.57)
-  await page.click("[data-tab-frameworks]");
+  await openDrawer("frameworks");
   await page.waitForSelector("[data-frameworks]");
   assert.match(await page.locator("[data-adopted-line]").innerText(), /Free form/,
     "a workspace that has adopted nothing says so, because free form is a real answer");
@@ -650,11 +680,18 @@ try {
   const plan = await fw.locator(".framework-apply span").innerText();
   assert.match(plan, /Adds .*type/, `the plan says what adopting would add, not just that it would: ${plan}`);
   {
-    // The property that makes a framework safe on a live workspace: it only ever adds.
-    const before = await page.locator('.meta-tree-item[data-type-kind="node"]').count();
+    /*
+     * The property that makes a framework safe on a live workspace: it only ever adds.
+     *
+     * Back to the board first. Shape and drawer are independent now (§5.66) — a drawer opens
+     * *over* whichever shape you were looking at — so the diagram switched on earlier in this
+     * section is still switched on, and there would be no cards to count.
+     */
+    await page.click('[data-shape="board"]');
+    const before = await page.locator("[data-meta-card]").count();
     await page.click('[data-adopt-framework="c4"]');
     await page.waitForSelector(".framework-ok", { timeout: 60000 });
-    await page.waitForFunction((n) => document.querySelectorAll('.meta-tree-item[data-type-kind="node"]').length > n,
+    await page.waitForFunction((n) => document.querySelectorAll("[data-meta-card]").length > n,
       before, { timeout: 30000 });
     assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model/,
       "the workspace now says what it models with");
@@ -680,12 +717,12 @@ try {
   assert.match(await page.locator("[data-adopted-line]").innerText(), /C4 model and Domain-driven design/,
     "a workspace can model with more than one framework at once");
 
-  // every type a framework brought says which one it came from
-  assert.ok((await page.locator(".meta-framework-chip").count()) > 8,
+  // Every type a framework brought says which one it came from — on its card now (§5.66).
+  assert.ok((await page.locator(".meta-card-fw").count()) > 8,
     "types carry the provenance of the framework that declared them");
 
   // layers: the stack, and the one the estate itself suggests (§5.58)
-  await page.click("[data-tab-layers]");
+  await openDrawer("layers");
   await page.waitForSelector("[data-layers]");
   {
     // The two frameworks adopted above brought their own bands, so there is a stack already.
@@ -715,16 +752,16 @@ try {
   }
 
   // the diagram becomes the stack: bands behind the types, so an upward edge looks upward
-  await page.click('.meta-view-tabs button:has-text("Diagram")');
+  await page.click('[data-shape="diagram"]');
   await page.waitForSelector("[data-meta-diagram]");
   await page.waitForTimeout(1200);
   assert.ok((await page.locator("[data-band]").count()) >= 2,
     "a layered model is drawn as bands rather than scattered");
-  await page.click("[data-tab-layers]");
+  await openDrawer("layers");
   await page.waitForSelector("[data-layers]");
 
   // now that types are declared, conformance has something to check — and names the offenders
-  await page.click("[data-tab-conformance]");
+  await openDrawer("conformance");
   await page.waitForSelector("[data-conformance]");
   assert.ok((await page.locator("[data-breach-group]").count()) > 0,
     "a declared model over an unaligned estate produces breaches");
@@ -1624,6 +1661,35 @@ try {
     assert.ok((await page.locator("[data-schedule]").count()) > 0, "the fleet shows which agents are on a schedule");
   }
 
+  // ---- the sidebar shows the work, not the plumbing --------------------------------------------
+  /*
+   * The rail had grown to nineteen flat entries (§5.65). These two assertions are the rule, not
+   * the current arrangement: it stays scannable, and administrative screens do not creep back in
+   * one revision at a time — which is exactly how it got to nineteen.
+   */
+  {
+    await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+    await page.waitForSelector(".studio-home-nav", { timeout: 60000 });
+    const rail = await page.locator(".studio-home-nav a").count();
+    assert.ok(rail <= 14, `the rail is ${rail} entries; past about a dozen it is searched, not scanned`);
+    const groups = await page.locator(".studio-nav-label").allInnerTexts();
+    assert.ok(groups.length >= 3, "the rail is grouped rather than one undifferentiated run");
+
+    const hrefs = await page.locator(".studio-home-nav a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    assert.equal(hrefs.filter((h) => h?.includes("/settings")).length, 0, "settings are not in the rail");
+    assert.equal(hrefs.filter((h) => h === "/admin").length, 0, "nor is the platform console");
+
+    /*
+     * Settings is one entry, and it leads somewhere rather than to an empty index. Waiting on the
+     * URL rather than on the nav: the shell renders for the redirecting page too, so a selector
+     * wait succeeds before the redirect has landed and proves nothing.
+     */
+    await page.click('.studio-nav-utility a[href$="/settings"]');
+    await page.waitForURL(/\/settings\/\w+/, { timeout: 60000 });
+    await page.waitForSelector(".settings-nav", { timeout: 60000 });
+    assert.ok(await page.locator("[data-settings-nav]").count(), "…and the settings nav is there when it lands");
+  }
+
   // ---- the platform console ------------------------------------------------------------------
   /*
    * Above the workspace (§5.64). Two things are worth asserting and only one of them is the
@@ -1697,6 +1763,14 @@ try {
   }
 
   {
+    // The operator reaches it from the settings area, which is where it moved (§5.65).
+    await page.goto(`${base}/w/acme-energy/settings`, { waitUntil: "load" });
+    await page.waitForSelector(".settings-nav", { timeout: 60000 });
+    assert.ok(await page.locator('[data-settings-nav="platform"]').count(),
+      "an operator is offered the platform console from settings");
+  }
+
+  {
     // And to everybody else the console is a page that is not there — 404, not 403: "this exists
     // and you may not see it" is itself something a URL should not teach.
     const other = await browser.newContext({ viewport: { width: 1100, height: 800 } });
@@ -1708,11 +1782,17 @@ try {
       assert.equal(await guest.locator("[data-admin-tenants]").count(), 0, "a non-operator sees no console");
       assert.doesNotMatch(await guest.locator("body").innerText(), /Operator|Tenants/,
         "…and is not told one exists");
-      // The way in is not advertised either.
-      await guest.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
-      await guest.waitForSelector(".studio-home-nav", { timeout: 60000 });
-      assert.equal(await guest.locator('.studio-home-nav a[href="/admin"]').count(), 0,
-        "and the sidebar does not offer it");
+      /*
+       * The way in is not advertised either. Checked where the link actually lives (§5.65): it
+       * left the sidebar for the settings nav, and an assertion still pointing at the rail would
+       * pass for everybody and prove nothing.
+       */
+      await guest.goto(`${base}/w/acme-energy/settings`, { waitUntil: "load" });
+      await guest.waitForSelector(".settings-nav", { timeout: 60000 });
+      assert.equal(await guest.locator('[data-settings-nav="platform"]').count(), 0,
+        "and the settings nav does not offer it");
+      assert.ok(await guest.locator('[data-settings-nav="people"]').count(),
+        "…while the settings they may see are still there");
     } finally {
       await other.close();
     }

@@ -3,7 +3,6 @@ import { Sidebar } from "@/components/workspace/Sidebar";
 import { getWorkspaceBySlug, getWorkspaceShell, getWorkspacesFor } from "@/lib/data";
 import { currentUser } from "@/lib/session";
 import { viewer } from "@/lib/auth/guard";
-import { operatorOrNull } from "@/lib/admin/guard";
 
 /**
  * The shell every workspace page sits in.
@@ -17,16 +16,15 @@ export default async function WorkspaceLayout({ children, params }: { children: 
   const { slug } = await params;
   const [workspace, user] = await Promise.all([getWorkspaceBySlug(slug), currentUser()]);
   if (!workspace) notFound();
-  const [v, shell, workspaces, operator] = await Promise.all([
+  const [v, shell, workspaces] = await Promise.all([
     viewer(workspace.id),
     getWorkspaceShell(workspace.id, user.id),
     getWorkspacesFor(user.id),
-    operatorOrNull(),
   ]);
   if (!v.role) notFound();
   return (
     <main className="studio-home-shell">
-      <Sidebar workspace={workspace} user={user} workspaces={workspaces} isOperator={Boolean(operator)} {...shell} />
+      <Sidebar workspace={workspace} user={user} workspaces={workspaces} {...shell} />
       {children}
     </main>
   );

@@ -2000,7 +2000,6 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-topbar { align-items: center; background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--line); display: flex; gap: 12px; padding: 0 14px; }
 .meta-title { flex: 1; min-width: 0; }
 .meta-title h1 { color: var(--ink); font-size: 13px; line-height: 1.1; margin: 0 0 2px; }
-.meta-title p { color: var(--muted); font-size: 11px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta-topbar .ghost-button { height: 30px; min-height: 30px; width: auto; }
 .meta-body { display: grid; grid-template-columns: 288px 1fr; min-height: 0; }
 
@@ -2018,7 +2017,6 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-tree-label b { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta-tree-label small { color: #8a95a8; font-variant-numeric: tabular-nums; font-weight: 800; min-width: 20px; text-align: right; }
 /* more specific than `.meta-tree-label i`, which sizes every icon in the row to a 10px swatch */
-.meta-tree-label i.meta-framework-chip { flex: 0 0 auto; height: auto; line-height: 1.5; width: auto; }
 /* more specific than `.meta-tree-label i`, which would otherwise square these off */
 .meta-tree-label i.meta-dot { border-radius: 50%; flex: 0 0 auto; height: 7px; width: 7px; }
 .meta-tree-label i.meta-dot.declared { background: #17794a; }
@@ -3694,3 +3692,143 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .danger-button:hover:not(:disabled) { background: #a01818; }
 .danger-button:disabled { cursor: not-allowed; opacity: 0.45; }
 .ghost-button.danger { color: #b91c1c; }
+
+/* ---- the sidebar, grouped (§5.65) ------------------------------------------
+ *
+ * Four quiet headings turn thirteen entries into four things to choose between. The label is
+ * small, wide-tracked and uppercase — the same treatment SPACES and TEAMS already had further
+ * down, so the rail reads as one system rather than two.
+ */
+.studio-nav-group { display: grid; gap: 1px; }
+.studio-nav-group + .studio-nav-group { margin-top: 10px; }
+.studio-nav-label { color: #97a2b4; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; padding: 0 9px 3px; text-transform: uppercase; }
+/* Pinned below the spaces: always reachable, and out of the rail's budget. */
+.studio-nav-utility { border-top: 1px solid #eaeff6; display: grid; gap: 1px; margin-top: 10px; padding-top: 10px; }
+.studio-nav-utility a { color: #56637a; font-weight: 600; }
+
+/* ---- the settings area ------------------------------------------------------ */
+.settings-shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100%; width: 100%; }
+.settings-nav { border-right: 1px solid var(--line); display: grid; align-content: start; gap: 2px; padding: 20px 12px; }
+.settings-nav-head { display: grid; gap: 1px; padding: 0 9px 10px; }
+.settings-nav-head span { color: #97a2b4; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.settings-nav-head b { font-size: 14px; letter-spacing: -0.01em; }
+.settings-nav a { align-items: center; border-radius: 8px; color: #3b465c; display: flex; font-size: 13px; font-weight: 600; gap: 9px; padding: 7px 9px; }
+.settings-nav a:hover { background: #f4f7fb; color: var(--ink); }
+.settings-nav a.on { background: #eaf1fb; color: var(--blue); font-weight: 700; }
+.settings-nav a svg { color: #8592a8; }
+.settings-nav a.on svg { color: var(--blue); }
+.settings-nav hr { background: #eaeff6; border: 0; height: 1px; margin: 12px 9px 6px; }
+.settings-nav-note { color: #97a2b4; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; padding: 0 9px 3px; text-transform: uppercase; }
+.settings-body { min-width: 0; }
+
+/* ---- the meta-model, as one surface (§5.66) ---------------------------------
+ *
+ * A tree beside five tabs became a health strip, a board of cards and an inspector that appears
+ * only when something is selected. The card is where the design lives: declared types are solid,
+ * emergent ones dashed, and that single distinction — the one this product is actually about —
+ * is legible across the whole model without reading a word.
+ */
+.meta-shell { display: flex; flex-direction: column; min-height: 100%; min-width: 0; }
+.meta-topbar { align-items: flex-start; border-bottom: 1px solid var(--line); display: flex; gap: 16px; padding: 16px 22px; }
+.meta-title h1 { font-size: 20px; letter-spacing: -0.015em; margin: 0 0 2px; }
+.meta-title p { color: var(--quiet); font-size: 12.5px; line-height: 1.5; margin: 0; max-width: 78ch; }
+.meta-topbar .ghost-button { margin-left: auto; white-space: nowrap; }
+
+/* The two numbers, at the top, where the question is asked. */
+.meta-health { align-items: center; background: #fbfcfe; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px 22px; padding: 13px 22px; }
+.meta-health-bars { display: flex; gap: 20px; }
+.meta-gauge { display: grid; gap: 3px; grid-template-columns: auto auto; min-width: 132px; }
+.meta-gauge-label { color: var(--quiet); font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.meta-gauge-value { font-size: 15px; font-weight: 700; justify-self: end; letter-spacing: -0.01em; }
+.meta-gauge-track { background: #e7edf5; border-radius: 999px; grid-column: 1 / -1; height: 5px; overflow: hidden; }
+.meta-gauge-track i { border-radius: 999px; display: block; height: 100%; }
+.meta-gauge.good .meta-gauge-track i { background: #2f9e46; }
+.meta-gauge.fair .meta-gauge-track i { background: #d99b23; }
+.meta-gauge.poor .meta-gauge-track i { background: #c9483a; }
+.meta-verdict { color: #3b465c; flex: 1 1 320px; font-size: 12.5px; line-height: 1.5; margin: 0; min-width: 0; }
+.meta-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.meta-chip { background: #fff; border: 1px solid var(--line); border-radius: 999px; color: #6c7a91; cursor: pointer; font-size: 11.5px; padding: 3px 11px; }
+.meta-chip b { color: #3b465c; font-weight: 800; }
+.meta-chip.live { border-color: #f0d9a8; }
+.meta-chip.live b { color: #b45309; }
+.meta-chip:hover:not(:disabled) { border-color: var(--blue); }
+.meta-chip.on { background: #eaf1fb; border-color: var(--blue); color: var(--blue); }
+.meta-chip.on b { color: var(--blue); }
+.meta-chip:disabled { cursor: default; opacity: 0.5; }
+
+.meta-toolbar { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 22px; }
+.meta-toolbar-gap { flex: 1 1 auto; }
+.meta-search { background: #fff; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font-size: 12.5px; min-height: 30px; outline: 0; padding: 0 10px; width: 210px; }
+.meta-search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+.meta-seg { background: #f2f5f9; border-radius: 8px; display: inline-flex; gap: 2px; padding: 2px; }
+.meta-seg button { align-items: center; background: transparent; border: 0; border-radius: 6px; color: #6c7a91; cursor: pointer; display: inline-flex; font-size: 12px; font-weight: 700; gap: 5px; padding: 4px 10px; }
+.meta-seg button:hover:not(:disabled) { color: var(--ink); }
+.meta-seg button.on { background: #fff; box-shadow: 0 1px 2px rgba(16, 26, 43, 0.08); color: var(--ink); }
+.meta-seg button:disabled { cursor: not-allowed; opacity: 0.4; }
+.meta-toolbar .ghost-button.on { background: #eaf1fb; border-color: var(--blue); color: var(--blue); }
+.meta-error { margin: 10px 22px 0; }
+
+.meta-drawer { background: #fbfcfe; border-bottom: 1px solid var(--line); padding: 14px 22px 18px; position: relative; }
+.meta-drawer-close { background: #fff; border: 1px solid var(--line); border-radius: 7px; color: #6c7a91; cursor: pointer; padding: 4px 6px; position: absolute; right: 16px; top: 12px; z-index: 2; }
+.meta-drawer-close:hover { border-color: var(--blue); color: var(--blue); }
+
+.meta-body { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+.meta-body.with-inspector { grid-template-columns: minmax(0, 1fr) 380px; }
+.meta-main { min-width: 0; padding: 18px 22px 60px; }
+
+.meta-band + .meta-band { margin-top: 22px; }
+.meta-band-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.meta-band-head h2 { font-size: 12px; font-weight: 800; letter-spacing: 0.05em; margin: 0; text-transform: uppercase; }
+.meta-band-head em { background: #eef2f8; border-radius: 999px; color: #7b8799; font-size: 10.5px; font-style: normal; font-weight: 800; padding: 1px 7px; }
+.meta-band-head span { color: var(--quiet); font-size: 11.5px; }
+.meta-band-swatch { border-radius: 3px; height: 10px; width: 10px; }
+.meta-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); }
+
+.meta-card { background: #fff; border: 1px solid var(--line); border-radius: 11px; cursor: pointer; display: grid; gap: 6px; padding: 12px 13px; text-align: left; transition: border-color 90ms ease, box-shadow 90ms ease; }
+.meta-card:hover { border-color: #b9d5f2; }
+.meta-card.on { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(19, 118, 212, 0.1); }
+/* The distinction the product is about: declared is solid, grown-from-the-data is dashed. */
+.meta-card.emergent { background: #fffdf7; border-style: dashed; border-color: #e6d3a8; }
+.meta-card.emergent:hover { border-color: #d9b978; }
+.meta-card-head { align-items: center; display: flex; gap: 7px; min-width: 0; }
+.meta-card-head b { font-size: 13.5px; letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta-card-swatch { border-radius: 3px; flex: 0 0 auto; height: 11px; width: 11px; }
+.meta-card-rel { color: #8592a8; flex: 0 0 auto; }
+.meta-card-fw { background: #eef2ff; border-radius: 999px; color: #4f46e5; font-size: 9.5px; font-style: normal; font-weight: 800; letter-spacing: 0.03em; margin-left: auto; padding: 1px 6px; text-transform: uppercase; }
+.meta-card-counts { color: #6c7a91; display: flex; flex-wrap: wrap; font-size: 11.5px; gap: 3px 12px; }
+.meta-card-counts b { color: #3b465c; font-weight: 700; }
+.meta-card-desc { color: var(--quiet); font-size: 11.5px; line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.meta-card-nudge { align-items: center; border-radius: 7px; display: flex; font-size: 11px; gap: 5px; line-height: 1.4; margin-top: 2px; padding: 5px 7px; }
+.meta-card-nudge.undeclared { background: #fff8e8; color: #92650e; }
+.meta-card-nudge.breaches { background: #fdf1f0; color: #a3372c; }
+.meta-card-nudge.undeclared-fields { background: #f2f5f9; color: #56637a; }
+.meta-card-nudge.no-fields { background: #f2f5f9; color: #56637a; }
+.meta-card-nudge.ok { background: transparent; color: #8b96a9; padding-left: 0; }
+
+.meta-empty { color: var(--quiet); font-size: 13px; line-height: 1.6; margin: 24px 0; max-width: 62ch; }
+.meta-new { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+
+.meta-detail { border-left: 1px solid var(--line); min-width: 0; overflow-y: auto; }
+.meta-detail-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 10px 14px; position: sticky; top: 0; background: #fff; z-index: 2; }
+.meta-detail-head span { color: var(--quiet); font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.meta-detail-head button { background: transparent; border: 0; border-radius: 6px; color: #8592a8; cursor: pointer; padding: 4px; }
+.meta-detail-head button:hover { background: #f2f5f9; color: var(--ink); }
+
+@media (max-width: 1100px) {
+  .meta-body.with-inspector { grid-template-columns: minmax(0, 1fr); }
+  .meta-detail { border-left: 0; border-top: 1px solid var(--line); }
+}
+.meta-gauge.none .meta-gauge-value { color: var(--quiet); }
+.meta-gauge.none .meta-gauge-track { background: #eef2f8; }
+/* Said once for the whole band, so eighteen cards stop repeating it (§5.66). */
+.meta-band-shared { border-radius: 8px; font-size: 11.5px; line-height: 1.5; margin: 0 0 10px; max-width: 84ch; padding: 7px 10px; }
+.meta-band-shared.undeclared { background: #fff8e8; color: #92650e; }
+.meta-band-shared.breaches { background: #fdf1f0; color: #a3372c; }
+.meta-band-shared.undeclared-fields, .meta-band-shared.no-fields { background: #f2f5f9; color: #56637a; }
+/*
+ * The detail body was written for a full-width tab pane; in the 380px inspector its header ran
+ * the presence tag off the right edge (§5.66). Let it wrap rather than clip.
+ */
+.meta-detail .meta-detail-body { padding: 14px; }
+.meta-detail .meta-detail-body > header { flex-wrap: wrap; }
+.meta-detail .meta-detail-body > header .meta-presence { flex: 0 0 auto; }

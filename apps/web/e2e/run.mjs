@@ -115,7 +115,7 @@ try {
       { path: "/w/acme-energy", ready: ".studio-home-nav" },
       { path: "/w/acme-energy/graph", ready: "[data-health]" },
       { path: "/w/acme-energy/explore", ready: ".explorer-canvas" },
-      { path: "/w/acme-energy/meta", ready: ".meta-tree" },
+      { path: "/w/acme-energy/meta", ready: "[data-meta-health]" },
       { path: "/w/acme-energy/intake", ready: ".intake-shell" },
       { path: "/w/acme-energy/intake?view=catalog", ready: ".catalog" },
       { path: "/w/acme-energy/knowledge", ready: ".knowledge" },
@@ -123,6 +123,7 @@ try {
       { path: "/w/acme-energy/docs", ready: ".doc-index-grid" },
       { path: "/w/acme-energy/docs/roadmap", ready: ".doc-article" },
       { path: "/w/acme-energy/teams", ready: ".studio-home-main" },
+      { path: "/w/acme-energy/settings/people", ready: ".settings-nav" },
       { path: "/w/acme-energy/spaces/space_sandbox", ready: ".studio-starters" },
       // last and slowest: the canvas is client-only, so "load" fires long before it is usable
       { path: "/b/brd_capabilities", ready: "[data-element-id]" },

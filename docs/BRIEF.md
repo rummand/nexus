@@ -2856,6 +2856,102 @@ platform action would pass the generic "is it guarded" scan while refusing the v
 console exists for — an operator acting on a tenant they are not a member of has no role in it to
 check.
 
+### 5.65 The sidebar shows the work, not the plumbing (v0.2)
+
+The rail had reached nineteen entries in one undifferentiated run — Home next to Models next to
+Documentation next to the platform console. Nobody decided that; every revision that added a
+surface added a line, and no revision ever read the whole list. Nineteen things with no grouping
+is not a navigation, it is an inventory, and the cost falls on whoever scans it several times a
+day looking for the four they use.
+
+Two rules, and they are the whole design.
+
+**Frequency is the axis.** Boards, the model and the data coming in are daily. Which model
+provider is configured, who is in the workspace, what an MCP key may reach — monthly, and usually
+because something is wrong. Giving each of those a permanent slot charged the daily work for the
+monthly work, so they moved behind one **Settings** entry and got a screen of their own.
+
+**A group is worth a label or it is not a group.** Four quiet headings — *Model*, *Data*, *Work*,
+and an unlabelled first group for Home/Recent/Starred/Teams — turn thirteen entries into four
+things to choose between. That is a scan rather than a search. The first group is deliberately
+unnamed: calling it "the workspace" states the obvious.
+
+The rail is now 14 entries in 4 groups; Documentation and Settings are pinned below the spaces,
+reachable everywhere and costing the rail nothing.
+
+`/w/:slug/settings` is a shell with its own nav over the three pages that were already at that
+address and had nothing in common but the URL — somebody who came to change a password and then
+wanted to check a key had to leave through the sidebar to find it. It redirects to the first entry
+rather than rendering a menu of the links already visible beside it.
+
+The **platform console** (§5.64) sits in that nav under a divider labelled *Above this workspace*,
+for operators only. It is not this tenant's configuration — it is the deployment every tenant is
+on — and an operator arriving from inside one workspace must not be able to mistake the two.
+
+The structure is data in `components/workspace/nav.ts`, held to rules by a test rather than by
+eye: the rail stays at or under fourteen, no group exceeds five, nothing sits in two groups, every
+entry has its own address, and **nothing under `/settings` or `/admin` may appear in the rail**.
+That last one is the regression this exists to catch — the next revision that adds a settings
+screen and reaches for the rail because that is where the last one went. Which is precisely how it
+got to nineteen.
+
+### 5.66 The meta-model becomes one surface (v0.2)
+
+The page was a file tree beside a five-tab inspector: Details, Diagram, Layers, Conformance,
+Frameworks. Measured at 1440×900 it was 81 controls, 50 of them buttons, with the tab strip
+wrapping into a ragged three-row block and half the viewport empty. Eighteen types were eighteen
+identical rows — a caret, a dash, a name, a dot, a count — which is a list you read once and never
+scan again, because nothing in a row tells you which one matters.
+
+Worse than the clutter was what it hid. The two facts somebody opens this page to learn were both
+behind a click: **which of our types are real declarations rather than accidents of the data**, and
+**does the data obey them**. Forty-one conformance breaches were a badge on the fourth tab.
+
+**The model is a board of cards.** Five to thirty types is exactly the range where cards beat both
+a tree and a diagram: a card can carry state, and a row cannot. Each one shows what it is called,
+how much of the estate it accounts for, whether it was declared, and **one** thing to do about it.
+
+**Declared or emergent is the strongest signal on the card** — solid border against dashed, on a
+warm ground. That distinction is what this product is *about*, and it is now legible across the
+whole model without reading a word.
+
+**One nudge, never four.** A card listing everything wrong with it is a report, and nobody works
+from a report. The order is an argument: an undeclared type outranks a broken rule, because until
+somebody says what a thing is there is no rule to break; a breach outranks an undeclared field,
+because a breach is the data contradicting a decision already made. And when *every* card in a
+band says the same thing — as they all do in a workspace that has declared nothing — the sentence
+is hoisted into the band heading and said once. Eighteen copies of a good prompt is wallpaper.
+
+**The two numbers, at the top.** Described and Conforming, as bars, with a sentence naming which
+is the binding constraint. Both are needed and either alone lies: a model describing four per cent
+of the estate perfectly reports 100% conformance. Each number is a filter, because a figure you
+cannot act on is decoration.
+
+**Five tabs became one view with three drawers.** Layers is a *grouping* of the board, since
+banding the model by its layers is the same act as looking at the layers. Conformance and
+Frameworks are drawers you consult about the model on screen, not separate screens showing the
+same types again. The diagram is a shape toggle. The inspector appears on selection and gives the
+space back when nothing is selected — a permanent panel reading "select a type on the left" is a
+third of the screen spent saying nothing.
+
+Two honesty bugs found by looking at the result rather than by reasoning about it:
+
+- **Conformance over an undescribed estate is undefined, not perfect.** A full green 100% bar sat
+  beside "0% described". There are no conforming instances and no breaking ones; the ratio does
+  not exist. It renders as `—`.
+- **An undeclared kind is not a broken rule.** The verdict read "100% of that obeys the rules. The
+  breaches are listed" — contradicting itself in one sentence, because `kind-undeclared` and
+  `relation-undeclared` were counted as breaches while coverage already accounted for them. The
+  strip now excludes exactly the two kinds `conformance()` excludes from its own score: two
+  definitions of "a breach" on one screen is how the numbers stop agreeing.
+
+The judgements live in `lib/metamodel-board.ts` — pure, and tested, because "which complaint does
+this card show" and "which number is the problem" are the design, and a design worth arguing with
+belongs somewhere it can be argued with.
+
+Measured after: 62 controls against 81, the page 995px tall against 1170, and the health of the
+model readable before a single click.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2893,7 +2989,7 @@ check.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 98)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 100)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2908,8 +3004,12 @@ check.
   space page reuses the home shell scoped to that space (starters create boards there).
 - **Teams** (`/teams`, `/teams/[teamId]`): create with colour, rename inline, add/remove
   members, delete; team page lists its spaces and members.
-- **Sidebar**: brand, search (→ home with `?q=`), Home / Recent / Starred / Teams with
-  counts, SPACES list with hover actions (new board, open), TEAMS list, current user.
+- **Sidebar** (§5.65): brand, search (→ home with `?q=`), then 14 entries in 4 labelled groups —
+  Home/Recent/Starred/Teams, **Model** (knowledge graph, explorer, meta-model, what changed),
+  **Data** (intake, import), **Work** (wiki, roadmap, agents, EA knowledge) — SPACES list with
+  hover actions, TEAMS list, then Documentation and Settings pinned above the current user.
+- **Settings** (`/w/:slug/settings`): its own shell and nav over People, Models and Connections,
+  with the platform console below a divider for operators. The rail carries none of them.
 - Seeded demo tenant "Acme Energy" (an energy-grid operator): 4 users, 3 teams, 4 spaces,
   6 boards built from the templates.
 
@@ -3172,6 +3272,15 @@ check.
   unmake an operator; delete an account (their work stays).
 - The last operator cannot stand down or be deleted; nobody can delete their own account here.
 - `NEXUS_OWNER_EMAIL`'s account is made an operator on every start; so is the seeded demo owner.
+
+### The meta-model (v0.2, §5.66)
+- `/w/:slug/meta` is one surface: a **health strip** (Described / Conforming as bars, a verdict
+  naming the binding constraint, and three filter chips), a **board of type cards**, and an
+  inspector that appears on selection.
+- A card carries name, instance count, declared fields or rules, and **one** nudge. Declared types
+  are solid; ones that grew from the data are dashed on a warm ground.
+- Group by kind, by layer, or flat; toggle the board for the diagram; Layers, Conformance and
+  Frameworks open as drawers over the same view.
 
 ### Import (v0.2)
 - Four ways in: **files**, a **pasted** block (shape sniffed from the content), a **connected
@@ -3858,6 +3967,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | Creating a tenant names its first owner explicitly; the operator does not join it. | Being able to administer a customer is not the same as being in their workspace. Silently adding yourself to every tenant you create is the kind of surprise that makes an operator stop trusting the tool. |
 | 2026-09-10 | Deleting a person removes their access and memberships, never their work. | Boards, versions, comments and change sets name whoever made them, and those references are `set null` rather than cascading. The record of what happened to an organisation's architecture is not the departing person's to take with them. |
 | 2026-09-10 | The guard-coverage test asserts the console uses `denyOperator` and never the workspace `deny`. | A workspace check inside a platform action would pass the generic "is it guarded" scan while refusing the very person the console exists for — an operator acting on a tenant they are not a member of has no role there to check. The failure would look like a permissions bug, not a missing guard. |
+| 2026-09-10 | The sidebar is grouped by how often something is used, not by what kind of thing it is. | Frequency is the axis a person actually navigates on. Models, Connections and People are each perfectly good screens and each was visited monthly; between them they took four of nineteen slots from the work somebody opens the tool to do. |
+| 2026-09-10 | Settings is one rail entry that redirects to its first page, not a landing page. | A landing page whose only content is the navigation already visible beside it charges a click for nothing. The redirect means "Settings" lands somewhere useful and the nav does the choosing from there. |
+| 2026-09-10 | The sidebar's structure is data with a test over it, not JSX. | It reached nineteen entries because nothing said it could not, and each addition looked reasonable on its own. A rule — at most fourteen, nothing administrative, nothing in two groups — is the only thing that survives twenty more revisions of well-meaning additions. |
+| 2026-09-10 | The platform console appears in the settings nav under "Above this workspace", never as a peer of the workspace's own settings. | An operator opens settings from inside one tenant. Listing the deployment's console flush with that tenant's People page invites exactly the confusion that ends with somebody administering the wrong thing. |
+| 2026-09-10 | The meta-model is cards, not a tree. | A tree is navigation, and five to thirty types do not need navigating. What they need is comparing, and a card can carry state — declared, size, what it needs — where a row can only carry a name. |
+| 2026-09-10 | A card shows one nudge, never a list of everything wrong with it. | A card enumerating four problems is a report, and nobody works from a report. Naming the single next action turns the page into a worklist, which is what a meta-model in this state actually is. |
+| 2026-09-10 | A nudge every card in a band shares is hoisted into the band heading. | Eighteen copies of a good prompt is wallpaper. Repetition destroys the thing that makes a prompt work, which is that it stands out. |
+| 2026-09-10 | Conformance renders as "—" when nothing is described, not as 100%. | There are no conforming instances and no breaking ones, so the ratio is undefined. A full green bar beside "0% described" is the page telling its most flattering possible lie. |
+| 2026-09-10 | An undeclared kind is not counted as a breach, matching `conformance()` exactly. | Coverage already says a type is undeclared; counting it again as a broken rule double-counts, and produced a verdict that contradicted itself inside one sentence. Two definitions of "breach" on one screen is how two numbers stop agreeing. |
+| 2026-09-10 | Layers became a grouping of the board rather than a tab. | Banding the model by its layers *is* looking at the layers. A tab that shows the same types again in a different arrangement is a second screen maintaining a second copy of the first one's ideas. |
+| 2026-09-10 | The inspector appears on selection and takes its space back when nothing is selected. | A permanent right-hand panel whose empty state reads "select a type on the left" spends a third of the screen saying nothing, on the view where the remaining two thirds are what you came for. |
 
 ## 8. Open questions for the product owner
 
@@ -3872,6 +3992,39 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 100: the meta-model becomes one surface.** A file tree beside a five-tab
+  inspector — 81 controls at 1440×900, the tab strip wrapping into a ragged three-row block, half
+  the viewport empty, and eighteen types rendered as eighteen identical rows. The two facts
+  somebody opens the page for were both behind a click: which types are real declarations rather
+  than accidents of the data, and whether the data obeys them; forty-one breaches were a badge on
+  the fourth tab. It is a **board of cards** now. Declared versus emergent is the strongest signal
+  on a card — solid against dashed — because that distinction is what this product is about. Each
+  card names **one** next action, ordered by an argument (an undeclared type outranks a broken
+  rule, because until something is declared there is no rule to break), and a nudge every card in
+  a band shares is hoisted into the heading and said once, since eighteen copies of a good prompt
+  is wallpaper. The two numbers moved to the top as bars with a verdict naming which one is the
+  constraint, each one a filter. Five tabs became one view: layers are a *grouping* of the board,
+  the diagram a shape toggle, and Conformance and Frameworks drawers over the same types. Looking
+  at the result found two honesty bugs reasoning had not: conformance over an undescribed estate
+  rendered as a green 100% when it is undefined, and undeclared kinds were counted as broken rules
+  while coverage already accounted for them — which made the verdict contradict itself inside a
+  single sentence. 62 controls now, 995px against 1170, and the model's health readable before
+  anybody clicks.
+
+- **2026-09-10 — Rev 99: the sidebar shows the work, not the plumbing.** The rail had reached
+  nineteen entries in one flat run, because every revision that added a surface added a line and
+  none ever read the whole list. It is 14 now, in four groups with quiet labels — Model, Data,
+  Work, and an unlabelled first group for the workspace itself — which turns a search into a scan.
+  Models, Connections and People left the rail for a **settings area** with its own shell and nav
+  at `/w/:slug/settings`; they were already at that address and shared nothing but the URL, so
+  changing a password and then checking a key meant going back out through the sidebar. The
+  platform console sits in that nav under a divider reading *Above this workspace*, for operators
+  only, because it is the deployment rather than the tenant. Documentation and Settings are pinned
+  below the spaces: reachable everywhere, costing the rail nothing. The structure is data with a
+  test over it — at most fourteen entries, no group past five, nothing in two groups, and nothing
+  under `/settings` or `/admin` in the rail — which is the regression that matters, since nineteen
+  is what you get when each addition is reasonable on its own.
 
 - **2026-09-10 — Rev 98: a platform console above the tenants.** Everything in Nexus until now
   happened inside a workspace, and a workspace role answers one question: what may you do here. It

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Trash2, X } from "lucide-react";
 import type { MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
@@ -16,6 +16,9 @@ import { Layers } from "./Layers";
 import { framework } from "@/lib/frameworks";
 import { placeNodeType } from "@/lib/layers/actions";
 import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
+import { bands, cards, filterCards, health, type Only, type TypeCard } from "@/lib/metamodel-board";
+import { TypeCardTile } from "./TypeCard";
+import { HealthStrip } from "./HealthStrip";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -33,12 +36,17 @@ type Selection = { kind: "node" | "relation"; name: string } | null;
 export interface TypeNote { label: string; title: string; url: string; text: string }
 
 export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report, adopted = [] }: { model: MetaModel; workspaceId: string; slug: string; notes?: Record<string, TypeNote>; report: ConformanceReport; adopted?: string[] }) {
-  const [selected, setSelected] = useState<Selection>(model.nodeTypes[0] ? { kind: "node", name: model.nodeTypes[0].name } : null);
-  const [openNodes, setOpenNodes] = useState(true);
-  const [openRels, setOpenRels] = useState(true);
-  const [expanded, setExpanded] = useState<string[]>([]);
+  /*
+   * Nothing is selected to begin with (§5.66). The old page opened with the first node type
+   * expanded in an inspector, which answered a question nobody had asked yet; the board answers
+   * "what is our architecture made of" before anybody clicks.
+   */
+  const [selected, setSelected] = useState<Selection>(null);
   const [filter, setFilter] = useState("");
-  const [view, setView] = useState<"details" | "diagram" | "layers" | "conformance" | "frameworks">("details");
+  const [only, setOnly] = useState<Only>("all");
+  const [groupBy, setGroupBy] = useState<"none" | "layer" | "kind">("kind");
+  const [shape, setShape] = useState<"board" | "diagram">("board");
+  const [drawer, setDrawer] = useState<"layers" | "conformance" | "frameworks" | null>(null);
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +59,10 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
     });
   };
 
-  const q = filter.trim().toLowerCase();
-  const nodeTypes = useMemo(() => model.nodeTypes.filter((t) => !q || t.name.toLowerCase().includes(q)), [model.nodeTypes, q]);
-  const relationTypes = useMemo(() => model.relationTypes.filter((t) => !q || t.name.toLowerCase().includes(q)), [model.relationTypes, q]);
+  const all = useMemo(() => cards(model, report), [model, report]);
+  const shown = useMemo(() => filterCards(all, filter, only), [all, filter, only]);
+  const grouped = useMemo(() => bands(shown, model, groupBy), [shown, model, groupBy]);
+  const state = useMemo(() => health(all, report), [all, report]);
 
   const current = selected?.kind === "node"
     ? model.nodeTypes.find((t) => t.name === selected.name) ?? null
@@ -62,7 +71,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
       : null;
 
   const allTypeNames = model.nodeTypes.map((t) => t.name);
-  const toggle = (key: string) => setExpanded((e) => (e.includes(key) ? e.filter((x) => x !== key) : [...e, key]));
+  const pick = (card: TypeCard) => setSelected({ kind: card.kind, name: card.name });
 
   return (
     <div className="meta-shell">
@@ -70,126 +79,138 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
         <div className="meta-title">
           <h1>Meta-model</h1>
           <p>
-            {model.nodeTypes.length} node types · {model.relationTypes.length} relation types ·
-            {" "}{model.totals.entities} nodes · {model.totals.relations} edges
-            {model.totals.violations > 0 ? ` · ${model.totals.violations} rule violation${model.totals.violations === 1 ? "" : "s"}` : ""}
+            The vocabulary this organisation uses for its own architecture —
+            {" "}{model.nodeTypes.length} object {model.nodeTypes.length === 1 ? "type" : "types"},
+            {" "}{model.relationTypes.length} relationship {model.relationTypes.length === 1 ? "type" : "types"},
+            {" "}over {model.totals.entities.toLocaleString()} objects.
           </p>
         </div>
         <Link className="ghost-button" href={`/w/${slug}/explore`}>Open explorer →</Link>
       </header>
 
-      <div className="meta-body">
-        {/* ---- left: the hierarchy ---- */}
-        <nav className="meta-tree" aria-label="Meta-model hierarchy">
-          <input className="meta-filter" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter types" aria-label="Filter types" />
+      <HealthStrip state={state} only={only} onOnly={setOnly} />
 
-          <button type="button" className="meta-tree-section" onClick={() => setOpenNodes((v) => !v)}>
-            {openNodes ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            <Boxes size={13} /> Node types <small>{model.nodeTypes.length}</small>
+      {/*
+        One toolbar over one view (§5.66). What used to be five tabs is a shape toggle, a grouping
+        and three drawers: Layers, Conformance and Frameworks are things you consult *about* the
+        model on screen, not separate screens showing the same types again.
+      */}
+      <div className="meta-toolbar">
+        <input
+          className="meta-search"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search types"
+          aria-label="Search types"
+          data-meta-search
+        />
+        <div className="meta-seg" role="group" aria-label="How to show the model">
+          <button type="button" className={shape === "board" ? "on" : ""} onClick={() => setShape("board")} data-shape="board"><Rows3 size={13} /> Types</button>
+          <button type="button" className={shape === "diagram" ? "on" : ""} onClick={() => setShape("diagram")} data-shape="diagram"><Network size={13} /> Diagram</button>
+        </div>
+        <div className="meta-seg" role="group" aria-label="Group by">
+          <button type="button" className={groupBy === "kind" ? "on" : ""} onClick={() => setGroupBy("kind")} data-group="kind">Kind</button>
+          <button
+            type="button"
+            className={groupBy === "layer" ? "on" : ""}
+            onClick={() => setGroupBy("layer")}
+            disabled={model.layers.length === 0}
+            title={model.layers.length === 0 ? "No layers yet — read a stack from the data in Layers" : "Band the model by its layers"}
+            data-group="layer"
+          >
+            Layer
           </button>
-          {openNodes && nodeTypes.map((t) => (
-            <div key={`n-${t.name}`}>
-              <div className={`meta-tree-item ${selected?.kind === "node" && selected.name === t.name ? "active" : ""}`} data-type-kind="node">
-                <button type="button" className="meta-tree-caret" onClick={() => toggle(`n-${t.name}`)} aria-label={`Fields of ${t.name}`}>
-                  {expanded.includes(`n-${t.name}`) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-                <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "node", name: t.name })}>
-                  <i style={{ background: t.color }} />
-                  <b>{t.name}</b>
-                  <FrameworkChip id={t.framework} />
-                  <PresenceDot presence={t.presence} />
-                  <small>{t.instances}</small>
-                </button>
-              </div>
-              {expanded.includes(`n-${t.name}`) && (
-                <ul className="meta-tree-fields">
-                  {t.fields.length === 0 && <li className="muted">no fields</li>}
-                  {t.fields.map((f) => (
-                    <li key={f.key} className={f.presence}>
-                      <span>{f.key}</span>
-                      <em>{f.dataType}</em>
-                      <small>{f.usage}</small>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          <button type="button" className={groupBy === "none" ? "on" : ""} onClick={() => setGroupBy("none")} data-group="none">Flat</button>
+        </div>
+        <span className="meta-toolbar-gap" />
+        <button type="button" className={`ghost-button ${drawer === "layers" ? "on" : ""}`} onClick={() => setDrawer(drawer === "layers" ? null : "layers")} data-tab-layers>
+          <LayersIcon size={14} /> Layers{model.layers.length > 0 && <i className="tab-count">{model.layers.length}</i>}
+        </button>
+        <button type="button" className={`ghost-button ${drawer === "conformance" ? "on" : ""}`} onClick={() => setDrawer(drawer === "conformance" ? null : "conformance")} data-tab-conformance>
+          <ShieldCheck size={14} /> Conformance{report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
+        </button>
+        <button type="button" className={`ghost-button ${drawer === "frameworks" ? "on" : ""}`} onClick={() => setDrawer(drawer === "frameworks" ? null : "frameworks")} data-tab-frameworks>
+          <BookOpen size={14} /> Frameworks{adopted.length > 0 && <i className="tab-count">{adopted.length}</i>}
+        </button>
+      </div>
 
-          <button type="button" className="meta-tree-section" onClick={() => setOpenRels((v) => !v)}>
-            {openRels ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            <Spline size={13} /> Relation types <small>{model.relationTypes.length}</small>
-          </button>
-          {openRels && relationTypes.map((t) => (
-            <div key={`r-${t.name}`}>
-              <div className={`meta-tree-item ${selected?.kind === "relation" && selected.name === t.name ? "active" : ""}`} data-type-kind="relation">
-                <button type="button" className="meta-tree-caret" onClick={() => toggle(`r-${t.name}`)} aria-label={`Rules of ${t.name}`}>
-                  {expanded.includes(`r-${t.name}`) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-                <button type="button" className="meta-tree-label" onClick={() => setSelected({ kind: "relation", name: t.name })}>
-                  <i className="rel" />
-                  <b>{t.name}</b>
-                  <FrameworkChip id={t.framework} />
-                  <PresenceDot presence={t.presence} />
-                  <small>{t.instances}</small>
-                </button>
-              </div>
-              {expanded.includes(`r-${t.name}`) && (
-                <ul className="meta-tree-fields">
-                  {t.observedPairs.length === 0 && <li className="muted">no edges yet</li>}
-                  {t.observedPairs.map((p) => (
-                    <li key={`${p.fromType}-${p.toType}`} className={p.declared ? "declared" : t.rules.length ? "violation" : "undeclared"}>
-                      <span>{p.fromType} → {p.toType}</span>
-                      <small>{p.count}</small>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+      {error && <p className="form-error meta-error">{error}</p>}
 
-          <div className="meta-tree-actions">
-            <NewTypeButton label="New node type" onCreate={(name) => run(() => createNodeType(workspaceId, name))} disabled={pending} />
-            <NewTypeButton label="New relation type" onCreate={(name) => run(() => createRelationType(workspaceId, name))} disabled={pending} />
-          </div>
-        </nav>
+      {drawer && (
+        <div className="meta-drawer" data-meta-drawer={drawer}>
+          <button type="button" className="meta-drawer-close" onClick={() => setDrawer(null)} aria-label="Close"><X size={14} /></button>
+          {drawer === "layers" && <Layers model={model} workspaceId={workspaceId} onChanged={() => router.refresh()} />}
+          {drawer === "conformance" && <Conformance report={report} slug={slug} />}
+          {drawer === "frameworks" && <Frameworks workspaceId={workspaceId} adopted={adopted} model={model} onChanged={() => router.refresh()} />}
+        </div>
+      )}
 
-        {/* ---- right: the selected type, or the whole model as a diagram ---- */}
-        <section className="meta-detail" aria-label="Type details">
-          <div className="panel-tabs meta-view-tabs" role="tablist" aria-label="Meta-model view">
-            <button type="button" role="tab" className={view === "details" ? "active" : ""} onClick={() => setView("details")}><Rows3 size={13} /> Details</button>
-            <button type="button" role="tab" className={view === "diagram" ? "active" : ""} onClick={() => setView("diagram")}><Network size={13} /> Diagram</button>
-            <button type="button" role="tab" className={view === "layers" ? "active" : ""} onClick={() => setView("layers")} data-tab-layers>
-              <LayersIcon size={13} /> Layers
-              {model.layers.length > 0 && <i className="tab-count">{model.layers.length}</i>}
-            </button>
-            <button type="button" role="tab" className={view === "conformance" ? "active" : ""} onClick={() => setView("conformance")} data-tab-conformance>
-              <ShieldCheck size={13} /> Conformance
-              {report.breaches.length > 0 && <i className="tab-count">{report.breaches.length}</i>}
-            </button>
-            <button type="button" role="tab" className={view === "frameworks" ? "active" : ""} onClick={() => setView("frameworks")} data-tab-frameworks>
-              <BookOpen size={13} /> Frameworks
-              {adopted.length > 0 && <i className="tab-count">{adopted.length}</i>}
-            </button>
-          </div>
-
-          {error && <p className="form-error">{error}</p>}
-
-          {view === "diagram" && (
+      <div className={`meta-body ${selected ? "with-inspector" : ""}`}>
+        <div className="meta-main">
+          {shape === "diagram" ? (
             <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
+          ) : grouped.length === 0 ? (
+            <p className="meta-empty" data-meta-empty>
+              {all.length === 0
+                ? "Nothing is modelled yet. Declare a type, or adopt a framework to start from one somebody else has already argued about."
+                : "Nothing matches. Clear the search, or the filter above it."}
+            </p>
+          ) : (
+            grouped.map((band) => (
+              <section key={band.id} className="meta-band" data-meta-band={band.id}>
+                {band.label && (
+                  <header className="meta-band-head">
+                    {band.color && <i className="meta-band-swatch" style={{ background: band.color }} />}
+                    <h2>{band.label}</h2>
+                    <em>{band.cards.length}</em>
+                    {band.note && <span>{band.note}</span>}
+                  </header>
+                )}
+                {band.shared && <p className={`meta-band-shared ${band.shared.kind}`}>{band.shared.text}</p>}
+                <div className="meta-grid">
+                  {band.cards.map((card) => (
+                    <TypeCardTile
+                      key={card.id}
+                      card={card}
+                      selected={selected?.kind === card.kind && selected.name === card.name}
+                      onSelect={() => pick(card)}
+                      quiet={Boolean(band.shared)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
           )}
 
-          {view === "layers" && <Layers model={model} workspaceId={workspaceId} onChanged={() => router.refresh()} />}
+          <div className="meta-new">
+            <button type="button" className="ghost-button" disabled={pending} onClick={() => run(async () => {
+              const r = await createNodeType(workspaceId, "New type");
+              router.refresh();
+              return r;
+            })} data-new-node-type><Plus size={14} /> New object type</button>
+            <button type="button" className="ghost-button" disabled={pending} onClick={() => run(async () => {
+              const r = await createRelationType(workspaceId, "relates to");
+              router.refresh();
+              return r;
+            })} data-new-relation-type><Plus size={14} /> New relationship type</button>
+          </div>
+        </div>
 
-          {view === "conformance" && <Conformance report={report} slug={slug} />}
+        {/*
+          The inspector appears when something is selected and takes the space back when it is
+          not (§5.66). A permanent right-hand panel showing "select a type on the left" is a
+          third of the screen spent saying nothing.
+        */}
+        {selected && (
+        <section className="meta-detail" aria-label="Type details">
+          <header className="meta-detail-head">
+            <span>{selected.kind === "node" ? "Object type" : "Relationship type"}</span>
+            <button type="button" onClick={() => setSelected(null)} aria-label="Close" data-close-inspector><X size={14} /></button>
+          </header>
 
-          {view === "frameworks" && (
-            <Frameworks model={model} workspaceId={workspaceId} adopted={adopted} onChanged={() => router.refresh()} />
-          )}
+          {!current && <p className="muted">That type is gone.</p>}
 
-          {view === "details" && !current && <p className="muted">Select a type on the left.</p>}
-
-          {view === "details" && current && selected?.kind === "node" && (
+          {current && selected?.kind === "node" && (
             <NodeTypeDetail
               note={notes[(current as MetaNodeType).name.toLowerCase()]}
               type={current as MetaNodeType}
@@ -203,7 +224,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
             />
           )}
 
-          {view === "details" && current && selected?.kind === "relation" && (
+          {current && selected?.kind === "relation" && (
             <RelationTypeDetail
               type={current as MetaRelationType}
               allTypeNames={allTypeNames}
@@ -215,6 +236,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
             />
           )}
         </section>
+        )}
       </div>
     </div>
   );
@@ -226,26 +248,8 @@ const PRESENCE_TITLE: Record<Presence, string> = {
   unused: "Declared but nothing uses it yet",
 };
 
-/** Tree rows are narrow, so presence is a dot there rather than a word. */
-/**
- * Which framework declared a type (§5.57).
- *
- * Provenance, not ownership: the chip says where the type came from, and the type is as editable
- * as any other. Blank for a type this organisation invented or one that grew from the data, which
- * is most of them in most workspaces and is not a deficiency.
- */
-function FrameworkChip({ id }: { id: string }) {
-  if (!id) return null;
-  const fw = framework(id);
-  if (!fw) return null;
-  return <i className="meta-framework-chip" title={`Declared by ${fw.name}`}>{fw.id}</i>;
-}
 
 const frameworkName = (id: string) => framework(id)?.name ?? id;
-
-function PresenceDot({ presence }: { presence: Presence }) {
-  return <i className={`meta-dot ${presence}`} title={PRESENCE_TITLE[presence]} aria-label={presence} />;
-}
 
 function PresenceTag({ presence }: { presence: Presence }) {
   const label = presence === "declared" ? "declared" : presence === "undeclared" ? "from data" : "unused";
@@ -473,14 +477,3 @@ function RelationTypeDetail({ type, allTypeNames, pending, run, workspaceId, onR
   );
 }
 
-function NewTypeButton({ label, onCreate, disabled }: { label: string; onCreate: (name: string) => void; disabled: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
-  if (!open) return <button type="button" className="ghost-button" onClick={() => setOpen(true)} disabled={disabled}><Plus size={14} /> {label}</button>;
-  return (
-    <form className="meta-add" onSubmit={(e) => { e.preventDefault(); onCreate(value); setValue(""); setOpen(false); }}>
-      <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder={label} aria-label={label} onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
-      <button type="submit" className="ghost-button" disabled={!value.trim()}>Add</button>
-    </form>
-  );
-}
