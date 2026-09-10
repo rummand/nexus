@@ -4,7 +4,7 @@ export const CANVAS: DocPage = {
   slug: "canvas",
   title: "The canvas",
   summary: "Navigating, drawing, arranging, presenting and exporting a board.",
-  keywords: ["zoom", "pan", "frame", "note", "shape", "align", "present", "export", "png", "svg"],
+  keywords: ["zoom", "pan", "frame", "note", "shape", "align", "present", "export", "png", "svg", "toolbar", "tool rail", "tools", "shortcuts", "flyout", "menu", "card kind"],
   blocks: [
     { kind: "prose", text: "The canvas is infinite and everything on it lives in world coordinates, so a board never runs out of room and the zoom level is only ever about what you are looking at." },
     { kind: "heading", text: "Getting around", id: "navigating" },
@@ -32,6 +32,20 @@ export const CANVAS: DocPage = {
         ["Connector", "L", "A line between two things. Label it and, between two cards, it becomes a relation."],
       ],
     },
+    { kind: "shot", src: "board-toolbar", alt: "The tool rail with the Card flyout open, showing the eight card kinds with their colours", caption: "The rail, with the Card flyout open. Three buttons carry a small caret: Card, Shape and Connection." },
+    { kind: "heading", text: "The tool rail", id: "toolbar" },
+    { kind: "prose", text: "The rail down the left is in four groups: how you point, what you make, what you look at, and undo. Hover any button for its name and its key — the key is the faster route once you know it, and every tool has one." },
+    {
+      kind: "list",
+      items: [
+        "**Card**, **Shape** and **Connection** open a small menu. They remember: pick a rhombus once and the button makes rhombuses until you say otherwise, and the button's icon shows what it is about to make.",
+        "The **Card** menu picks the *kind* before you place it — Application, Interface, Data Object and the rest — so an interface arrives as an interface rather than as something you retype.",
+        "The **Connection** menu chooses arrow, plain line or dashed. Dashed is the convention here for something proposed rather than real.",
+        "Clicking a menu button also arms whatever it is showing, so one click is enough when you want the same thing again.",
+        "**Escape** closes a menu and leaves the tool armed.",
+      ],
+    },
+    { kind: "note", tone: "tip", text: "The three buttons under the second divider show and hide the graph inventory, the selection panel and the map. They are toggles: the tooltip says which way pressing will take you." },
     { kind: "note", tone: "why", title: "Why notes are not objects", text: "A note is deliberately outside the model. Not everything on a whiteboard is a claim about the organisation, and a tool that treats every scribble as an entity produces a graph nobody trusts. When a note turns out to matter, right-click it and promote it to a card." },
     { kind: "heading", text: "Arranging", id: "arranging" },
     {

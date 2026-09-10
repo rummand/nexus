@@ -49,7 +49,7 @@
   },
   "board-inspector": {
     "width": 254,
-    "height": 820
+    "height": 505
   },
   "board-lens-impact": {
     "width": 1720,
@@ -70,6 +70,10 @@
   "board-together": {
     "width": 1720,
     "height": 1000
+  },
+  "board-toolbar": {
+    "width": 352,
+    "height": 580
   },
   "board-viewpoint": {
     "width": 258,

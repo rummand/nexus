@@ -620,87 +620,178 @@ a { color: inherit; text-decoration: none; }
 .search-suggestions small { color: #66758b; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .suggestion-empty { background: #f7f9fc; border: 1px dashed #d6e1ef; border-radius: 10px; color: #66758b; font-size: 12px; font-weight: 800; padding: 10px; }
 
+/* ---- the tool rail (§5.59) ------------------------------------------------------------------
+   Four groups, no captions under the buttons, a tooltip that carries the keycap, and flyouts
+   anchored to the button that opens them rather than to the viewport. */
 .canvas-toolbar {
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--line-strong);
-  border-radius: 13px;
+  border-radius: 12px;
   box-shadow: var(--shadow-tight);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   left: 10px;
-  padding: 6px;
+  padding: 5px;
   position: absolute;
   top: 66px;
   z-index: 7;
 }
-.canvas-toolbar hr { border: 0; border-top: 1px solid var(--line); margin: 3px 0; width: 100%; }
+/* At rest the rail sits under the floating panels; an open flyout has to clear them. */
+.canvas-toolbar[data-flyout-open] { z-index: 26; }
+.tool-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.tool-group hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; width: calc(100% - 4px); }
+.tool-slot { position: relative; }
 .tool-button {
   background: transparent;
   border: 0;
-  border-radius: 9px;
-  color: #53627a;
+  border-radius: 8px;
+  color: #55637b;
+  cursor: pointer;
   display: grid;
-  height: 38px;
+  height: 32px;
   place-items: center;
   position: relative;
-  width: 38px;
+  transition: background 110ms ease, color 110ms ease;
+  width: 32px;
 }
-.tool-button.active, .tool-button:hover { background: #eff6ff; color: var(--blue); }
-.tool-button:disabled { opacity: 0.35; }
-.tool-button-badge {
-  background: #eef2f7;
-  border: 1px solid #d5deea;
-  border-radius: 999px;
-  bottom: -4px;
-  color: #607089;
-  font-family: var(--mono);
-  font-size: 8px;
-  font-weight: 900;
-  left: 50%;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  padding: 2px 4px;
+.tool-button:hover:not(:disabled) { background: #eef2f7; color: var(--ink); }
+.tool-button.active { background: #e7f0fd; color: var(--blue); }
+.tool-button:disabled { cursor: default; opacity: 0.3; }
+.tool-button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+/* The "there is more here" mark, in the corner every tool has ever put it. */
+.tool-caret {
+  border-bottom: 4px solid currentColor;
+  border-left: 4px solid transparent;
+  bottom: 3px;
+  height: 0;
+  opacity: 0.5;
   position: absolute;
-  text-transform: uppercase;
-  transform: translateX(-50%);
+  right: 3px;
+  width: 0;
 }
-.tool-button.active .tool-button-badge { background: #dbeafe; border-color: #b8d7ff; color: var(--blue); }
+.tool-button.active .tool-caret { opacity: 0.9; }
 
-.shape-picker-panel {
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid #dbe4ef;
-  border-radius: 18px;
-  box-shadow: 0 18px 44px rgba(31, 45, 70, 0.12);
-  display: grid;
-  gap: 12px;
-  left: 74px;
-  padding: 14px;
-  position: absolute;
-  top: 250px;
-  width: 220px;
-  z-index: 18;
-}
-.shape-picker-group { display: grid; gap: 8px; }
-.shape-picker-group span { color: #7c8799; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
-.shape-picker-group button {
+/* A tooltip rather than a native title: the keycap is the half people are reading. */
+.tool-tip {
   align-items: center;
-  background: #fff;
-  border: 1px solid #dbe4ef;
+  background: #1f2a3d;
+  border-radius: 7px;
+  color: #fff;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 7px;
+  left: calc(100% + 11px);
+  opacity: 0;
+  padding: 5px 9px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) translateX(-3px);
+  transition: opacity 90ms ease 260ms, transform 90ms ease 260ms;
+  white-space: nowrap;
+  z-index: 3;
+}
+.tool-tip::before {
+  border: 4px solid transparent;
+  border-right-color: #1f2a3d;
+  content: "";
+  left: -8px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tool-slot:hover .tool-tip, .tool-slot:focus-within .tool-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+/* While a flyout is open the tooltip would sit on top of it. */
+.canvas-toolbar[data-flyout-open] .tool-tip { display: none; }
+.tool-tip kbd {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+}
+
+/* ---- flyouts ------------------------------------------------------------------------------ */
+.tool-flyout {
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
-  color: #344156;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 2px;
+  left: calc(100% + 10px);
+  min-width: 208px;
+  padding: 7px;
+  position: absolute;
+  top: -6px;
+  z-index: 4;
+}
+.tool-flyout h4 {
+  color: #7c8799;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 2px 4px 4px;
+  text-transform: uppercase;
+}
+.tool-flyout > button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: #2b3547;
+  cursor: pointer;
   display: flex;
   font-size: 13px;
-  font-weight: 900;
-  gap: 9px;
-  justify-content: flex-start;
-  min-height: 38px;
-  padding: 0 12px;
+  font-weight: 600;
+  gap: 10px;
+  padding: 7px 9px;
+  text-align: left;
+  width: 100%;
+}
+.tool-flyout > button:hover { background: #f2f5f9; }
+.tool-flyout > button.active { background: #e7f0fd; color: var(--blue); }
+.tool-flyout > button > span { display: grid; flex: 1; }
+.tool-flyout > button small { color: var(--quiet); font-size: 11px; font-weight: 400; line-height: 1.35; margin-top: 1px; }
+.tool-flyout > button.active small { color: #5a86c4; }
+.tool-flyout > button kbd {
+  background: #eef2f7;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+}
+.tool-flyout p { color: var(--quiet); font-size: 11px; line-height: 1.45; margin: 5px 4px 2px; }
+/* The card kinds: a two-column grid, because eight rows is a menu and eight chips is a palette. */
+/* Wide enough that the longest kind stays on one line: a grid whose rows are different heights
+   because one label wrapped reads as a mistake rather than as a palette. */
+.tool-flyout[data-flyout="card"] { min-width: 274px; }
+.flyout-kinds { display: grid; gap: 2px; grid-template-columns: 1fr 1fr; }
+.flyout-kinds button { white-space: nowrap; }
+.flyout-kinds button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  color: #2b3547;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 7px;
+  padding: 6px 7px;
   text-align: left;
 }
-.shape-picker-group button.active, .shape-picker-group button:hover { background: #eef6ff; border-color: #b8d7ff; color: var(--blue); }
-.shape-picker-hint { color: #607089; font-size: 11px; line-height: 1.35; }
+.flyout-kinds button:hover { background: #f2f5f9; }
+.flyout-kinds button.active { background: #e7f0fd; color: var(--blue); }
+.flyout-kinds i { border-radius: 3px; flex: 0 0 auto; height: 9px; width: 9px; }
 
 .floating-panel {
   background: var(--panel);

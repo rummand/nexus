@@ -107,7 +107,10 @@ try {
     await prepare();
     await page.waitForTimeout(options.settle ?? 700);
     let clip;
-    if (options.selector) {
+    /* An explicit region, for a picture whose subject overflows its own element — a rail with a
+       flyout hanging off it has a bounding box 44px wide and a picture 340px wide. */
+    if (options.clip) clip = options.clip;
+    else if (options.selector) {
       const box = await page.locator(options.selector).boundingBox();
       if (box) clip = pad(box, options.padding ?? 12);
     } else if (!options.full) {
@@ -170,6 +173,15 @@ try {
     await page.locator(".fact-card").first().click();
     await page.waitForTimeout(600);
   });
+  /* The rail with a flyout open (§5.59): a menu that is shut teaches nobody that it is there. */
+  await shot("board-toolbar", async () => {
+    await goto("/b/brd_landscape", "[data-element-id]");
+    await page.waitForTimeout(1500);
+    await page.click('[data-tool="card"]');
+    await page.waitForSelector('[data-flyout="card"]');
+    await page.waitForTimeout(600);
+  }, { clip: { x: 4, y: 58, width: 352, height: 580 }, settle: 200 });
+
   await shot("board-inspector", async () => {}, { selector: ".inspector-panel", padding: 10 });
 
   await shot("board-command-bar", async () => {
@@ -292,7 +304,7 @@ try {
   await shot("board-agent-scope", async () => {
     await goto("/b/brd_landscape", "[data-element-id]");
     await page.waitForTimeout(1500);
-    await page.click('[aria-label="Agent — put one where the work is"]');
+    await page.click('[data-tool="agent"]');
     const box = await page.locator(".canvas-viewport").boundingBox();
     await page.mouse.click(box.x + 1150, box.y + 640); // clear of the cards it will outline
     await page.waitForSelector("[data-agent]", { timeout: 60_000 });
@@ -532,7 +544,7 @@ try {
   await shot("agent-fleet", async () => {
     await goto("/b/brd_landscape", "[data-element-id]");
     await page.waitForTimeout(1500);
-    await page.click('[aria-label="Agent — put one where the work is"]');
+    await page.click('[data-tool="agent"]');
     const box = await page.locator(".canvas-viewport").boundingBox();
     await page.mouse.click(box.x + 420, box.y + 700);
     await page.waitForSelector("[data-agent]", { timeout: 30_000 });

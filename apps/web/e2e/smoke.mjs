@@ -181,6 +181,82 @@ try {
   await page.mouse.up();
   assert.equal(await count(), beforeDelete + 3, "connector created");
 
+  // the tool rail: groups, tooltips and flyouts that remember (§5.59)
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("v");
+  assert.equal(await page.locator(".tool-button-badge").count(), 0,
+    "no button wears a permanent caption any more");
+  assert.equal(await page.locator(".canvas-toolbar .tool-group").count(), 4,
+    "the rail is grouped: point, make, show, undo");
+  {
+    // The shortcut moved out of a native title into something a person can actually read.
+    await page.hover('[data-tool="sticky"]');
+    await page.waitForTimeout(500);
+    const tip = await page.locator('.tool-slot:has([data-tool="sticky"]) .tool-tip').innerText();
+    assert.match(tip, /Note/, "the tooltip names the tool");
+    assert.match(tip, /\bN\b/, `the tooltip carries the keycap: ${tip}`);
+  }
+
+  {
+    // A card is placed AS A KIND, which is the flyout's whole reason for existing.
+    await page.click('[data-tool="card"]');
+    await page.waitForSelector('[data-flyout="card"]');
+    assert.equal(await page.locator("[data-card-kind]").count(), 8, "every card kind is offered");
+    await page.click('[data-card-kind="Interface"]');
+    assert.equal(await page.locator('[data-flyout="card"]').count(), 0, "picking closes the flyout");
+    const before = await count();
+    await page.mouse.click(980, 560);
+    await page.waitForTimeout(600);
+    await page.keyboard.press("Escape");
+    assert.equal(await count(), before + 1, "the card is placed");
+    const placed = await page.evaluate(async () => {
+      const r = await fetch(`/api/boards/${location.pathname.split("/").pop()}`);
+      const b = await r.json();
+      const cards = Object.values(b.document.elements).filter((e) => e.type === "card");
+      return cards[cards.length - 1].kind;
+    }).catch(() => null);
+    if (placed) assert.equal(placed, "Interface", "it is placed as the kind that was armed");
+  }
+
+  {
+    // The flyouts remember: pick a rhombus once, and the rail button makes rhombuses from then on.
+    await page.keyboard.press("Escape");
+    await page.click('[data-tool="rect"]');
+    await page.waitForSelector('[data-flyout="shape"]');
+    await page.click('[data-shape="diamond"]');
+    await page.keyboard.press("v");                 // wander off to the pointer
+    await page.click('[data-tool="rect"]');         // and come back: still a rhombus
+    // Escape peels one layer: it closes the menu and leaves the tool armed. The canvas listens for
+    // Escape too and uses it to disarm, so this is the assertion that the two do not both fire.
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator('[data-flyout="shape"]').count(), 0, "Escape closes the menu");
+    const before = await page.locator(".board-shape-object.diamond").count();
+    await page.mouse.move(1120, 640);
+    await page.mouse.down();
+    await page.mouse.move(1240, 720, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator(".board-shape-object.diamond").count(), before + 1,
+      "the shape button keeps making what you picked last, and Escape did not disarm it");
+    // A second Escape, with no menu open, does disarm — the layer underneath.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    assert.equal(await page.locator('.tool-button.active[data-tool="select"]').count(), 1,
+      "a second Escape falls through to the canvas and returns to the pointer");
+  }
+
+  {
+    // Escape closes a flyout without disarming the tool underneath it.
+    await page.keyboard.press("Escape");
+    await page.click('[data-tool="connector"]');
+    await page.waitForSelector('[data-flyout="line"]');
+    assert.equal(await page.locator("[data-line]").count(), 3, "three line styles");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator('[data-flyout="line"]').count(), 0, "Escape closes the flyout");
+  }
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("v");
+
   // context menu on the note
   const cb = await note.boundingBox();
   await page.mouse.click(cb.x + cb.width / 2, cb.y + cb.height / 2, { button: "right" });
@@ -1016,7 +1092,7 @@ try {
   // configured the agent has to say so on the board rather than fail silently.
   await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
   await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 5, null, { timeout: 45000 });
-  await page.click('[aria-label="Agent — put one where the work is"]');
+  await page.click('[data-tool="agent"]');
   const canvasBox = await page.locator(".canvas-viewport").boundingBox();
   await page.mouse.click(canvasBox.x + 420, canvasBox.y + 700);
   await page.waitForSelector("[data-agent]", { timeout: 20000 });

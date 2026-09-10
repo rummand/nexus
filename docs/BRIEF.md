@@ -2553,6 +2553,58 @@ other is named after its largest type. And accepting a reading placed nothing at
 kind in the seeded estate is undeclared and there was no row to put a `layer_id` on; that is what
 the declaring step above is for.
 
+### 5.59 The tool rail earns its place (v0.2)
+
+The rail down the left had been added to and never looked at. Three things were wrong, and they
+are the three things a rail can get wrong.
+
+**Every button wore a permanent caption.** "frame", "card", "note", "text", "section", "agent",
+"shape", "graph", "on", "off" — ten 8px words, positioned into the four-pixel gap below each button
+so they crowded the one beneath. This is the duplication §5.55 spent a whole revision removing from
+the rest of the canvas, still sitting in the one piece of chrome that rev did not open. They are
+gone. What replaces them is a **tooltip carrying the keycap** — because the shortcut is what a
+returning user actually wants, and it had been hidden in a native `title` attribute where it takes
+a second to appear and cannot be styled.
+
+**The one submenu was pinned to the viewport.** `shape-picker-panel` was a floating card at an
+absolute `left: 74px; top: 250px`, so it pointed at whichever button happened to be at 250px. The
+same class of mistake §5.54 fixed for the property bar, in the place that had been missed. Flyouts
+are now anchored to the button that opens them, and a flyout is no longer a `PanelName` at all: a
+panel persists and other things toggle it, a flyout is component state that closes when you look
+away.
+
+**Two icons described the wrong thing** — a 3D cube for an architecture card and a paragraph-heading
+mark for a section. An icon that describes the wrong thing is worse than a plain square, so those
+two and the dashed connector are drawn: a card is a rounded rectangle with a type stripe, which is
+what a card looks like; a section is a band with a name tab, which is what a section looks like.
+
+Then the part that adds rather than removes: **three flyouts that remember.**
+
+| Flyout | What it offers |
+|---|---|
+| **Card** | The eight card kinds with their colours. The kind is armed *before* placing, so an interface arrives as an interface rather than as an Application you retype. The rail button wears the armed kind's stripe. |
+| **Shape** | Rectangle, oval, rhombus. The button shows the one you picked last and re-arms it on click. |
+| **Connection** | Arrow, plain line, dashed — each saying what it is for, because three arrows look alike and "dashed means proposed" is a convention nobody is born knowing. |
+
+Clicking a flyout button both arms the remembered choice *and* opens the menu, because both
+readings of a split button are right: somebody who wants what they used last wants one click, and
+opening the list costs them nothing since they are already drawing. Arming a shape from the
+keyboard moves the rail button too — otherwise the button shows one thing while the canvas draws
+another.
+
+The rail's contents live in `src/canvas/toolbar.ts` as data, for the same reason the framework
+catalogue does (§5.57): a rail is a list of claims — these are the things you can make, this key
+arms that tool — and claims can be held to invariants. The tests check that every button is in
+exactly one group, that no two buttons share a letter, that every advertised shortcut is one the
+key handler actually honours (`TOOL_KEYS` is deliberately re-typed in the test rather than
+imported, or the test would only agree with itself), and that a toggle says something different in
+its two states — which is the on/off badge problem stated as a rule.
+
+Measured in the browser on the seeded landscape board, the rail is now **44×559** with fifteen
+buttons and no text on any of them. The one it replaces had fourteen buttons carrying ten permanent
+captions between them, in a column 52px wide by its own CSS — the extra eight pixels were there to
+give the captions somewhere to sit.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2590,7 +2642,7 @@ the declaring step above is for.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-09 — rev 92)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 93)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2697,6 +2749,9 @@ the declaring step above is for.
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
   restructure and constrain; declared-vs-observed drift and rule violations surfaced.
+- Tool rail: four groups (point, make, show, undo), no captions, tooltips carrying the keycap, and
+  anchored flyouts for Card, Shape and Connection that remember the last pick and show it on the
+  button. A card is placed as a kind. Rail contents are data, held to invariants by tests.
 - Diagram tab: the meta-model on a canvas — a box per node type, an arc per relation type,
   coloured by rule / observed / violation, with bundled arcs, self-loops, pan-zoom, focus
   highlighting and click-through to the detail pane. Redraws as the model changes.
@@ -3485,6 +3540,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-09 | Deleting a layer unplaces its types rather than deleting them. | A layer is an opinion about the model, and withdrawing an opinion must not delete the things it was about — the same rule as abandoning a framework (§5.57). The foreign key does it with `on delete set null`. |
 | 2026-09-09 | The type diagram takes its vertical position from the layer and only its horizontal from the force simulation. | A layered model's whole claim is that dependencies run downward, and a scatter cannot show that claim being kept or broken. Once the bands are drawn, an upward edge is visible as an upward edge without anybody reading a list. |
 
+| 2026-09-10 | A flyout is not a panel, and stopped being a `PanelName`. | A panel persists, is toggled from more than one place and has a position of its own; a flyout belongs to one button, closes when you look away and nothing else has an opinion about it. Modelling the shape picker as a panel is exactly how it came to be pinned at an absolute `top: 250px` with no relationship to the button that opened it. |
+| 2026-09-10 | A flyout button arms its remembered choice as well as opening the menu. | The two readings of a split button are both right, and doing only one of them makes the other person click twice. Opening the menu costs the person who wanted the remembered choice nothing, because they are already on their way to the canvas. |
+| 2026-09-10 | The card kind is armed before placing rather than edited after. | Placing an interface meant placing an Application and retyping it: two steps for a decision that was already made. The kind is what the graph indexes the object under, so getting it right at birth is worth a menu. |
+| 2026-09-10 | The rail's contents are data in `toolbar.ts`, with catalogue tests. | Two buttons on one letter, a flyout offering a tool the keyboard cannot reach, a rail advertising a shortcut the key handler does not honour — all mechanical, all invisible in review, and all things a rail accumulates as it is added to. The shortcut map is re-typed in the test on purpose: importing it would make the test agree with itself. |
+| 2026-09-10 | Three icons are drawn rather than taken from the icon set. | A 3D cube for an architecture card and a paragraph-heading mark for a section describe the wrong thing, which is worse than a plain square. Where the stock set has no glyph for a domain object, drawing one is cheaper than teaching people to ignore the icon. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3498,6 +3559,26 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 93: the tool rail earns its place.** The rail down the left had been added to
+  and never looked at. Every button wore a permanent 8px caption — "card", "note", "on", "off" —
+  positioned into the gap below it so the column read as crowded, which is the duplication rev 89
+  spent a whole revision removing from everywhere else on the canvas. The shortcuts, the thing a
+  returning user actually wants, were hidden in native `title` attributes. And the single submenu
+  was a floating card pinned at an absolute `top: 250px`, pointing at whichever button happened to
+  be there — the same mistake rev 88 fixed for the property bar, in the one place it had missed.
+  So: four groups, no captions, a styled tooltip carrying the keycap, and flyouts anchored to the
+  button that opens them. A flyout also stopped being a `PanelName`, because a panel persists and a
+  flyout closes when you look away. Two icons described the wrong thing — a 3D cube for an
+  architecture card, a paragraph-heading mark for a section — and are now drawn. The part that adds
+  rather than removes is three flyouts that remember: **Card** offers the eight kinds with their
+  colours and arms the kind *before* placing, so an interface arrives as an interface instead of as
+  an Application you retype; **Shape** and **Connection** show the last thing you picked and re-arm
+  it on one click. The rail's contents are data in `toolbar.ts`, held to invariants by tests — every
+  button in exactly one group, no two on one letter, every advertised shortcut one the key handler
+  honours, and every toggle saying something different in its two states. Measured in the browser,
+  the rail is 44×559 with fifteen buttons and no text on any of them, against fourteen buttons
+  carrying ten captions in a 52px column before.
 
 - **2026-09-09 — Rev 92: layers, and a stack the data can propose.** Layers group object types and
   relation types into an ordered pile — the business-over-application-over-technology idea everybody
