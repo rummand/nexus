@@ -366,7 +366,7 @@ try {
     await page.waitForTimeout(900);
   });
 
-  await shot("explorer", () => goto(`${w}/explore`, ".explorer-canvas"), { settle: 3000 });
+  await shot("explorer", () => goto(`${w}/explore`, "[data-focus-view]"), { settle: 1200 });
 
   // ---- the graph's own history --------------------------------------------
   await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });

@@ -114,7 +114,7 @@ try {
     const routes = [
       { path: "/w/acme-energy", ready: ".studio-home-nav" },
       { path: "/w/acme-energy/graph", ready: "[data-health]" },
-      { path: "/w/acme-energy/explore", ready: ".explorer-canvas" },
+      { path: "/w/acme-energy/explore", ready: "[data-focus-view]" },
       { path: "/w/acme-energy/meta", ready: "[data-meta-health]" },
       { path: "/w/acme-energy/intake", ready: ".intake-shell" },
       { path: "/w/acme-energy/intake?view=catalog", ready: ".catalog" },

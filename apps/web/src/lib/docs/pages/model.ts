@@ -37,21 +37,34 @@ export const GRAPH: DocPage = {
 export const EXPLORER: DocPage = {
   slug: "explorer",
   title: "The graph explorer",
-  summary: "The whole model as a graph you can walk, when a board is the wrong shape for the question.",
-  keywords: ["explorer", "navigate", "force layout", "neighbourhood", "path"],
+  summary: "Three ways to walk the model, when a board is the wrong shape for the question.",
+  keywords: ["explorer", "navigate", "focus", "hops", "neighbourhood", "path", "route", "blast radius", "impact", "upstream", "downstream", "isolated", "orphan", "map"],
   blocks: [
-    { kind: "prose", text: "Boards are curated. Sometimes you want the opposite: everything, laid out automatically, so you can follow a thread from one system to another without deciding in advance what the picture is." },
-    { kind: "shot", src: "explorer", alt: "The graph explorer with a force-directed layout of the workspace", caption: "The explorer lays the whole workspace out by force, then lets you filter and focus." },
+    { kind: "prose", text: "Boards are curated. The explorer is the opposite: the whole workspace graph, with three views over it, because “show me everything at once” answers no question anybody actually asks." },
+    { kind: "shot", src: "explorer", alt: "The graph explorer showing one entity and its neighbourhood in concentric hop rings", caption: "Focus: one entity in the middle, its neighbourhood in rings. Radius is hop count, so distance means something." },
+    { kind: "heading", text: "Three views", id: "views" },
+    {
+      kind: "table",
+      columns: ["View", "The question it answers"],
+      rows: [
+        ["Focus", "What does this touch? One entity in the middle, everything within one, two or three hops in concentric rings. Arrows show which way each relation points."],
+        ["Map", "What is the shape of the whole thing? Every connected entity at once, laid out by force. Entities connected to nothing are not here — they are a finding, and the rail lists them."],
+        ["Paths", "How are these two connected? Pick two entities and every equally short route between them appears, not just one."],
+      ],
+    },
+    { kind: "heading", text: "Blast radius", id: "impact" },
+    { kind: "prose", text: "Relations point somewhere, and direction is the question. “What is downstream of this” — what goes with it if it is removed — and “what is upstream” — what would have to change for this to change — are opposite answers. The panel asks for one or the other, never both at once." },
     {
       kind: "list",
       items: [
-        "Click a node to focus it; its neighbourhood stays lit and the rest recedes.",
-        "Filter by kind or relation type to strip the picture back to one layer.",
-        "Adjust the hop depth to widen or narrow what counts as “near”.",
+        "Search the rail, or click anything in the picture, to stand on it.",
+        "Every step you take is recorded as a walk; click a step to go back and branch from there.",
+        "Filter by kind or by relationship type to strip the picture back to one layer.",
         "Found the view you wanted? Lay it out on a board to keep it.",
       ],
     },
-    { kind: "note", tone: "why", title: "Why it is separate from boards", text: "A force layout is good at showing you structure you did not know about, and bad at being a diagram you present. Keeping them apart means the explorer can rearrange itself freely without ever moving something on a board somebody made deliberately." },
+    { kind: "note", tone: "why", title: "Why it opens on one entity, not on everything", text: "Overview-first is the wrong default for a graph. You always arrive with something in mind, and a force-directed cloud of the whole estate is the picture that is hardest to read and least likely to be what you wanted. So the explorer starts on the most connected entity — the least arbitrary opening move — and every other view is one click away." },
+    { kind: "note", tone: "why", title: "Why unconnected entities are in a list, not on the canvas", text: "A force layout spreads things with no relationships evenly across the view, where they take up most of the picture and read as structure. They are the absence of structure, and usually the sign of something imported and never modelled — which is worth saying in words." },
     { kind: "try", href: "/w/:slug/explore", label: "Open the explorer" },
   ],
 };

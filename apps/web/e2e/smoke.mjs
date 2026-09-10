@@ -461,11 +461,55 @@ try {
   await page.waitForSelector(".modal-card .mode-banner");
   await page.click('.modal-card button:text-is("Done")');
 
-  // graph explorer: whole-graph view loads, paints, and selects a node
+  // graph explorer (§5.68): three views over one graph, focus-first
   await page.goto(`${base}/w/acme-energy/explore`, { waitUntil: "load" });
-  await page.waitForSelector(".explorer-canvas");
-  assert.ok((await page.locator(".explorer-legend button").count()) > 0, "explorer lists kinds");
-  await page.waitForTimeout(3500); // let the force layout settle
+  await page.waitForSelector("[data-focus-view]");
+  assert.ok((await page.locator("[data-kind-filter]").count()) > 0, "the rail lists kinds");
+  assert.ok((await page.locator("[data-rail-entity]").count()) > 0, "the rail lists entities");
+  // Unconnected entities are a finding with their own section, not confetti on a canvas.
+  assert.match(
+    await page.locator("[data-rail-isolated]").innerText(),
+    /Connected to nothing/i,
+    "the rail names the entities connected to nothing",
+  );
+  // Focus opens on the busiest entity, with its neighbourhood in rings.
+  const subject = await page.locator("[data-subject-name]").innerText();
+  assert.ok(subject.length > 0, "focus opens on an entity");
+  assert.ok((await page.locator('[data-focus-node][data-ring="1"]').count()) > 0, "the first hop ring is drawn");
+  assert.match(await page.locator("[data-focus-caption]").innerText(), /within 1 hop/, "the caption counts the neighbourhood");
+
+  // Two hops shows strictly more, because radius is hop count.
+  const oneHop = await page.locator("[data-focus-node]").count();
+  await page.click('[data-depth="2"]');
+  await page.waitForTimeout(300);
+  assert.ok((await page.locator("[data-focus-node]").count()) >= oneHop, "two hops shows at least as much as one");
+  await page.click('[data-depth="1"]');
+  await page.waitForTimeout(200);
+
+  // Blast radius is directed: downstream and upstream are different answers.
+  await page.click('[data-impact="out"]');
+  await page.waitForTimeout(300);
+  const downstream = await page.locator("[data-impact-count]").innerText();
+  assert.match(downstream, /downstream|Nothing is downstream/, "downstream impact is reported");
+  await page.click('[data-impact="in"]');
+  await page.waitForTimeout(300);
+  assert.match(await page.locator("[data-impact-count]").innerText(), /upstream/, "upstream impact is a different question");
+  await page.click('[data-impact="in"]');
+
+  // Walking a neighbour leaves a trail you can step back into.
+  const neighbour = page.locator("[data-neighbour]").first();
+  if (await neighbour.count()) {
+    const walkedTo = await neighbour.locator("b").innerText();
+    await neighbour.click();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator("[data-subject-name]").innerText(), walkedTo, "clicking a connection walks to it");
+    assert.ok((await page.locator("[data-trail-step]").count()) >= 1, "the walk is recorded");
+  }
+
+  // Map: the whole connected graph, painted.
+  await page.click('[data-view="map"]');
+  await page.waitForSelector("[data-map-view]");
+  await page.waitForTimeout(3500); // let the force layout settle and pack
   const painted = await page.evaluate(() => {
     const c = document.querySelector(".explorer-canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -473,32 +517,21 @@ try {
     for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) n++;
     return n;
   });
-  assert.ok(painted > 0, "explorer canvas painted the graph");
-  const firstKind = await page.locator(".explorer-legend button b").first().innerText();
-  await page.fill(".explorer-search input", firstKind.slice(0, 4));
-  await page.waitForSelector(".explorer-results button", { timeout: 10000 });
-  await page.locator(".explorer-results button").first().click();
-  await page.waitForSelector(".explorer-detail", { timeout: 10000 });
-  assert.ok((await page.locator(".explorer-detail header strong").innerText()).length > 0, "explorer opens an entity");
-  // trace a path: arm from the selected entity, then shift-click a neighbour that is centred by focus
-  const neighbourName = await page.locator(".explorer-neighbours button b").first().innerText().catch(() => "");
-  if (neighbourName) {
-    await page.click(".explorer-topbar button:has-text('Trace from')");
-    await page.waitForSelector("[data-explorer-path]");
-    await page.fill(".explorer-search input", neighbourName.slice(0, 8));
-    await page.waitForSelector(".explorer-results button");
-    await page.locator(".explorer-results button").first().click();
-    await page.waitForTimeout(600);
-    await page.fill(".explorer-search input", "");
-    await page.waitForTimeout(300);
-    const cbox = await page.locator(".explorer-canvas").boundingBox();
-    await page.keyboard.down("Shift");
-    await page.mouse.click(cbox.x + cbox.width / 2, cbox.y + cbox.height / 2);
-    await page.keyboard.up("Shift");
-    await page.waitForTimeout(500);
-    assert.ok(/hop|not connected/.test(await page.locator("[data-explorer-path]").innerText()), "explorer traces a path between two entities");
-    await page.click("[data-explorer-path] button");
-  }
+  assert.ok(painted > 0, "the map paints the graph");
+
+  // Paths: two named pickers, and every shortest route rather than one.
+  await page.click('[data-view="paths"]');
+  await page.waitForSelector("[data-paths-view]");
+  await page.fill('[data-path-input="From"]', "");
+  await page.waitForSelector("[data-path-option]");
+  const fromName = await page.locator("[data-path-option] b").first().innerText();
+  await page.locator("[data-path-option]").first().click();
+  await page.fill('[data-path-input="To"]', "");
+  await page.waitForSelector("[data-path-option]");
+  await page.locator("[data-path-option]").first().click();
+  await page.waitForTimeout(400);
+  const routes = await page.locator("[data-paths-verdict], [data-paths-none]").first().innerText();
+  assert.match(routes, /route|not connected/i, `paths answers for ${fromName}`);
 
   // estate health: one number, the measures behind it, and the number leading to the work
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });

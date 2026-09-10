@@ -1,432 +1,271 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { Crosshair, Maximize2, Pause, Play, Route, Search, X } from "lucide-react";
-import type { ExplorerGraph, ExplorerNode } from "@/lib/explorer";
-import { initialLayout, layoutBounds, tick, type ForceNode } from "@/lib/force";
-import { buildAdjacency, components, shortestPath, withinHops } from "@/lib/graph-algo";
+import { useCallback, useMemo, useState } from "react";
+import { ChevronRight, Network, Route, Target } from "lucide-react";
+import type { ExplorerGraph } from "@/lib/explorer";
+import { buildAdjacency, withinHops } from "@/lib/graph-algo";
+import {
+  connectionsOf, groupConnections, isolated, radialLayout, reachable, walkTo,
+  type Direction, type DirectedEdge,
+} from "@/lib/explorer-views";
+import { EntityRail } from "./EntityRail";
+import { FocusView } from "./FocusView";
+import { MapView } from "./MapView";
+import { PathsView } from "./PathsView";
+import { SubjectPanel } from "./SubjectPanel";
 
 /**
- * Whole-graph explorer. Rendered on a <canvas>: at several hundred nodes a DOM element each is
- * far too slow (the same lesson as the board's grid and minimap, see docs/BRIEF.md §5.3).
+ * The graph explorer (§5.68).
  *
- * The layout runs live — one simulation tick per animation frame, cooling to a stop — so the
- * structure visibly settles instead of appearing pre-arranged.
+ * It used to be one view — the whole workspace as a force-directed cloud — and one view is the
+ * problem. A cloud of everything answers no question anybody asks. The questions are *what does
+ * this touch*, *what breaks if it goes*, *how are these two connected*, and *what is connected
+ * to nothing at all*; a single layout cannot be the best answer to all four, and a force layout
+ * is the best answer to none.
+ *
+ * So: three views over one graph, and the default is **Focus** — one entity in the middle, its
+ * neighbourhood in concentric hop rings. Overview-first was the wrong default. You always come
+ * to a graph with something in mind, and the tool should start where you are looking.
+ *
+ * Everything the old version hid in a line of grey text at the bottom of the canvas is now
+ * something you can see: the entity directory is a permanent rail, tracing is two named pickers
+ * instead of a modifier key, hop depth and blast-radius direction are buttons on the panel, and
+ * the walk you have taken is a breadcrumb you can step back into.
  */
 
-const NODE_MIN = 5;
-const NODE_MAX = 20;
+const VIEWS = [
+  { key: "focus", label: "Focus", icon: Target, hint: "One entity and its neighbourhood, in hop rings" },
+  { key: "map", label: "Map", icon: Network, hint: "Everything that is connected, at once" },
+  { key: "paths", label: "Paths", icon: Route, hint: "Every shortest route between two entities" },
+] as const;
 
-export function GraphExplorer({ graph, title = "Graph explorer", subtitle, embedded = false }: {
+type View = (typeof VIEWS)[number]["key"];
+
+/** Most nodes on one ring of the focus view before it stops being readable. */
+const MAX_PER_RING = 42;
+
+export function GraphExplorer({ graph, slug, title = "Graph explorer", subtitle, embedded = false }: {
   graph: ExplorerGraph;
   workspaceId?: string;
   slug?: string;
   /** Heading, so the same explorer can be shown scoped to a subject (intake, a space, a lens). */
   title?: string;
   subtitle?: string;
-  /** Embedded in another screen: no page topbar, and the controls move into the canvas. */
+  /** Embedded in another screen: no page topbar, and the rail collapses. */
   embedded?: boolean;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
-  /**
-   * Mutable simulation state. It is seeded in an effect (never during render) because a ref
-   * cannot be initialised from props at render time, and the React compiler forbids mutating a
-   * memo's result — which this must do on every frame.
-   */
-  const simRef = useRef<{ nodes: ForceNode[]; alpha: number; ready: boolean; settled: boolean } | null>(null);
-  const hoverRef = useRef<string | null>(null);
-  const dragRef = useRef<{ id: string | null; startX: number; startY: number; camX: number; camY: number; moved: boolean } | null>(null);
-
-  const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<View>("focus");
+  const [trail, setTrail] = useState<string[]>([]);
+  const [depth, setDepth] = useState(1);
   const [query, setQuery] = useState("");
   const [hiddenKinds, setHiddenKinds] = useState<string[]>([]);
-  const [running, setRunning] = useState(true);
-  /** Path tracing: pick a source, then a target, and the shortest route between them lights up. */
+  const [hiddenRelations, setHiddenRelations] = useState<string[]>([]);
+  const [impact, setImpact] = useState<Direction | null>(null);
   const [pathFrom, setPathFrom] = useState<string | null>(null);
   const [pathTo, setPathTo] = useState<string | null>(null);
-  /** Hop-limited focus: show only what is within N hops of the selection. 0 = show everything. */
-  const [focusHops, setFocusHops] = useState(0);
 
   const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph.nodes]);
-  const adjacency = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    for (const e of graph.edges) {
-      (m.get(e.from) ?? m.set(e.from, new Set()).get(e.from)!).add(e.to);
-      (m.get(e.to) ?? m.set(e.to, new Set()).get(e.to)!).add(e.from);
-    }
-    return m;
-  }, [graph.edges]);
+  const hiddenKindSet = useMemo(() => new Set(hiddenKinds), [hiddenKinds]);
+  const hiddenRelSet = useMemo(() => new Set(hiddenRelations), [hiddenRelations]);
 
-  const algoAdj = useMemo(() => buildAdjacency(graph.edges.map((e) => ({ id: e.id, from: e.from, to: e.to }))), [graph.edges]);
+  /** Filters apply to everything at once, so every view is looking at the same graph. */
+  const nodes = useMemo(() => graph.nodes.filter((n) => !hiddenKindSet.has(n.kind)), [graph.nodes, hiddenKindSet]);
+  const visibleIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
+  const edges = useMemo(
+    () => graph.edges.filter((e) => !hiddenRelSet.has(e.kind) && visibleIds.has(e.from) && visibleIds.has(e.to)),
+    [graph.edges, hiddenRelSet, visibleIds],
+  );
+  const directed: DirectedEdge[] = edges;
 
-  /** Shortest route between the two picked entities — the "how are these connected?" question. */
-  const path = useMemo(() => {
-    if (!pathFrom || !pathTo) return null;
-    return shortestPath(algoAdj, pathFrom, pathTo);
-  }, [algoAdj, pathFrom, pathTo]);
-  const pathNodes = useMemo(() => new Set(path?.nodes ?? []), [path]);
-  const pathEdges = useMemo(() => new Set(path?.edges ?? []), [path]);
+  const adjacency = useMemo(() => buildAdjacency(edges.map((e) => ({ id: e.id, from: e.from, to: e.to }))), [edges]);
+  const isolatedIds = useMemo(() => new Set(isolated(nodes.map((n) => n.id), directed)), [nodes, directed]);
 
-  /** Nodes within `focusHops` of the selection; null when the limit is off. */
-  const focusSet = useMemo(() => {
-    if (!selected || focusHops === 0) return null;
-    return withinHops(algoAdj, [selected], focusHops);
-  }, [algoAdj, selected, focusHops]);
+  /**
+   * Where the walk starts. The most connected entity is the least arbitrary opening move: it is
+   * the one whose neighbourhood explains the most of the estate, and on a landscape nobody has
+   * seen before it is very often the right thing to look at first.
+   */
+  const busiest = useMemo(
+    () => [...nodes].sort((a, b) => b.degree - a.degree || a.name.localeCompare(b.name))[0]?.id ?? null,
+    [nodes],
+  );
+  const subject = trail.at(-1) ?? busiest;
+  const subjectNode = subject ? byId.get(subject) : undefined;
 
-  /** How fragmented the graph is — a portfolio of isolated islands is itself a finding. */
-  const fragments = useMemo(() => components(algoAdj, graph.nodes.map((n) => n.id)), [algoAdj, graph.nodes]);
-
-  const hidden = useMemo(() => new Set(hiddenKinds), [hiddenKinds]);
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return null;
-    return new Set(graph.nodes.filter((n) => `${n.name} ${n.kind}`.toLowerCase().includes(q)).map((n) => n.id));
-  }, [query, graph.nodes]);
-
-  const maxDegree = useMemo(() => Math.max(1, ...graph.nodes.map((n) => n.degree)), [graph.nodes]);
-  const radiusOf = useCallback((n: ExplorerNode) => NODE_MIN + (NODE_MAX - NODE_MIN) * Math.sqrt(n.degree / maxDegree), [maxDegree]);
-
-  /** A node is off the view when its kind is hidden or a hop limit excludes it. */
-  const isHiddenNode = useCallback((id: string, kind: string) => hidden.has(kind) || (focusSet ? !focusSet.has(id) : false), [hidden, focusSet]);
-
-  const fit = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const sim = simRef.current;
-    if (!sim) return;
-    const b = layoutBounds(sim.nodes);
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    const pad = 90;
-    const zoom = Math.min(4, Math.max(0.05, Math.min((w - pad * 2) / b.w, (h - pad * 2) / b.h)));
-    cameraRef.current = { zoom, x: w / 2 - (b.x + b.w / 2) * zoom, y: h / 2 - (b.y + b.h / 2) * zoom };
+  const pick = useCallback((id: string) => {
+    setTrail((t) => walkTo(t, id));
+    setView((v) => (v === "paths" ? "focus" : v));
   }, []);
 
-  // Seed (and re-seed) the layout whenever the graph itself changes.
-  useEffect(() => {
-    simRef.current = { nodes: initialLayout(graph.nodes.map((n) => n.id), 1), alpha: 1, ready: false, settled: false };
-  }, [graph.nodes]);
+  const rank = useCallback((id: string) => -(byId.get(id)?.degree ?? 0), [byId]);
 
-  // Simulation + render loop.
-  useEffect(() => {
-    let raf = 0;
-    const edges = graph.edges.map((e) => ({ from: e.from, to: e.to }));
+  const placed = useMemo(
+    () => (subject && subjectNode ? radialLayout(adjacency, subject, depth, { rank, maxPerRing: MAX_PER_RING }) : []),
+    [adjacency, subject, subjectNode, depth, rank],
+  );
+  /** The real neighbourhood, so the view can admit what it left off the rings. */
+  const omitted = useMemo(() => {
+    if (!subject) return 0;
+    return Math.max(0, withinHops(adjacency, [subject], depth).size - placed.length);
+  }, [adjacency, subject, depth, placed.length]);
 
-    const draw = () => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      const sim = simRef.current;
-      if (!canvas || !ctx || !sim) return;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
+  const groups = useMemo(
+    () => (subject ? groupConnections(connectionsOf(directed, subject)) : []),
+    [directed, subject],
+  );
 
-      const cam = cameraRef.current;
-      const pos = new Map(sim.nodes.map((n) => [n.id, n]));
-      const sx = (x: number) => x * cam.zoom + cam.x;
-      const sy = (y: number) => y * cam.zoom + cam.y;
+  const impactSet = useMemo(
+    () => (subject && impact ? reachable(directed, [subject], impact) : null),
+    [directed, subject, impact],
+  );
 
-      const focus = selected ?? hoverRef.current;
-      const near = focus ? adjacency.get(focus) ?? new Set<string>() : null;
+  const railNodes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return nodes
+      .filter((n) => !q || `${n.name} ${n.kind}`.toLowerCase().includes(q))
+      .sort((a, b) => b.degree - a.degree || a.name.localeCompare(b.name));
+  }, [nodes, query]);
 
-      // Edges first, so nodes sit on top.
-      ctx.lineWidth = Math.max(1, cam.zoom * 1.2);
-      for (const e of graph.edges) {
-        const a = pos.get(e.from), b = pos.get(e.to);
-        if (!a || !b) continue;
-        const na = byId.get(e.from), nb = byId.get(e.to);
-        if (!na || !nb || isHiddenNode(e.from, na.kind) || isHiddenNode(e.to, nb.kind)) continue;
-        const onPath = pathEdges.has(e.id);
-        const lit = onPath || (focus ? e.from === focus || e.to === focus : false);
-        ctx.lineWidth = onPath ? Math.max(3, cam.zoom * 3) : Math.max(1, cam.zoom * 1.2);
-        ctx.strokeStyle = onPath
-          ? "rgba(217,119,6,0.95)"
-          : lit ? "rgba(19,118,212,0.9)"
-          : (focus || path) ? "rgba(148,163,184,0.16)" : "rgba(100,116,139,0.6)";
-        ctx.beginPath();
-        ctx.moveTo(sx(a.x), sy(a.y));
-        ctx.lineTo(sx(b.x), sy(b.y));
-        ctx.stroke();
-      }
+  const connectedNodes = useMemo(() => nodes.filter((n) => !isolatedIds.has(n.id)), [nodes, isolatedIds]);
 
-      for (const n of sim.nodes) {
-        const meta = byId.get(n.id);
-        if (!meta || isHiddenNode(n.id, meta.kind)) continue;
-        const r = radiusOf(meta) * Math.max(0.55, Math.min(1.6, cam.zoom));
-        const onPath = pathNodes.has(n.id);
-        const dim = !onPath && (
-          (matches && !matches.has(n.id)) ||
-          (path ? true : false) ||
-          (focus && n.id !== focus && !near?.has(n.id))
-        );
-        ctx.globalAlpha = dim ? 0.16 : 1;
-        ctx.beginPath();
-        ctx.arc(sx(n.x), sy(n.y), r, 0, Math.PI * 2);
-        ctx.fillStyle = meta.color;
-        ctx.fill();
-        if (onPath || n.id === selected || n.id === hoverRef.current) {
-          ctx.lineWidth = onPath ? 3 : 2.5;
-          ctx.strokeStyle = onPath ? "#d97706" : "#1376d4";
-          ctx.stroke();
-        }
-        // Labels only where they will be readable, or the view becomes a wall of text.
-        if (!dim && (cam.zoom > 0.55 || r > 11 || n.id === selected || onPath)) {
-          ctx.globalAlpha = dim ? 0.2 : 0.92;
-          ctx.font = "600 11px Aptos, 'IBM Plex Sans', system-ui, sans-serif";
-          ctx.fillStyle = "#334155";
-          ctx.textAlign = "center";
-          ctx.fillText(meta.name.length > 26 ? meta.name.slice(0, 25) + "…" : meta.name, sx(n.x), sy(n.y) + r + 12);
-        }
-        ctx.globalAlpha = 1;
-      }
-    };
+  const startTrace = useCallback((id: string) => {
+    setPathFrom(id);
+    setPathTo(null);
+    setView("paths");
+  }, []);
 
-    const loop = () => {
-      const sim = simRef.current;
-      if (sim && running && sim.alpha > 0.02) {
-        tick(sim.nodes, edges, sim.alpha);
-        sim.alpha *= 0.985;
-        // Fit once the shape is readable, then again when it stops moving: the layout keeps
-        // spreading after the first fit, and a graph that drifts off the edge is worse than one
-        // that appears a moment later.
-        if (!sim.ready && sim.alpha < 0.55) { fit(); sim.ready = true; }
-        if (!sim.settled && sim.alpha < 0.06) { fit(); sim.settled = true; }
-      }
-      draw();
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [graph.edges, byId, adjacency, isHiddenNode, matches, selected, radiusOf, running, fit, path, pathNodes, pathEdges]);
-
-  // Fit once the first layout has cooled, and on resize.
-  useEffect(() => {
-    const onResize = () => fit();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [fit]);
-
-  const nodeAt = (clientX: number, clientY: number): string | null => {
-    const canvas = canvasRef.current;
-    const sim = simRef.current;
-    if (!canvas || !sim) return null;
-    const rect = canvas.getBoundingClientRect();
-    const cam = cameraRef.current;
-    const x = (clientX - rect.left - cam.x) / cam.zoom;
-    const y = (clientY - rect.top - cam.y) / cam.zoom;
-    let best: string | null = null;
-    let bestDist = Infinity;
-    for (const n of sim.nodes) {
-      const meta = byId.get(n.id);
-      if (!meta || isHiddenNode(n.id, meta.kind)) continue;
-      const r = radiusOf(meta) / cam.zoom + 4 / cam.zoom;
-      const d = Math.hypot(n.x - x, n.y - y);
-      if (d <= r && d < bestDist) { best = n.id; bestDist = d; }
-    }
-    return best;
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    const id = nodeAt(e.clientX, e.clientY);
-    dragRef.current = { id, startX: e.clientX, startY: e.clientY, camX: cameraRef.current.x, camY: cameraRef.current.y, moved: false };
-    if (id) {
-      const n = simRef.current?.nodes.find((x) => x.id === id);
-      if (n) n.fixed = true;
-    }
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag) {
-      const id = nodeAt(e.clientX, e.clientY);
-      if (id !== hoverRef.current) hoverRef.current = id;
-      return;
-    }
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
-    if (drag.id) {
-      const n = simRef.current?.nodes.find((x) => x.id === drag.id);
-      if (n) {
-        const cam = cameraRef.current;
-        n.x += (e.movementX || 0) / cam.zoom;
-        n.y += (e.movementY || 0) / cam.zoom;
-      }
-      if (simRef.current) simRef.current.alpha = Math.max(simRef.current.alpha, 0.25); // let neighbours react
-    } else {
-      cameraRef.current.x = drag.camX + dx;
-      cameraRef.current.y = drag.camY + dy;
-    }
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (drag && !drag.moved) {
-      if (e.shiftKey && drag.id) {
-        // shift-click: first pick starts a trace, second completes it
-        if (!pathFrom || (pathFrom && pathTo)) { setPathFrom(drag.id); setPathTo(null); }
-        else setPathTo(drag.id);
-      } else {
-        setSelected(drag.id);
-      }
-    }
-    if (drag?.id) {
-      const n = simRef.current?.nodes.find((x) => x.id === drag.id);
-      if (n) n.fixed = false;
-    }
-    dragRef.current = null;
-  };
-
-  const onWheel = (e: React.WheelEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const cam = cameraRef.current;
-    const px = e.clientX - rect.left, py = e.clientY - rect.top;
-    const factor = Math.exp(-e.deltaY * 0.0015);
-    const zoom = Math.min(4, Math.max(0.05, cam.zoom * factor));
-    // keep the point under the cursor stationary
-    cameraRef.current = { zoom, x: px - ((px - cam.x) / cam.zoom) * zoom, y: py - ((py - cam.y) / cam.zoom) * zoom };
-  };
-
-  const focusNode = (id: string) => {
-    const n = simRef.current?.nodes.find((x) => x.id === id);
-    const canvas = canvasRef.current;
-    if (!n || !canvas) return;
-    const zoom = Math.max(cameraRef.current.zoom, 1.1);
-    cameraRef.current = { zoom, x: canvas.clientWidth / 2 - n.x * zoom, y: canvas.clientHeight / 2 - n.y * zoom };
-    setSelected(id);
-  };
-
-  const clearPath = () => { setPathFrom(null); setPathTo(null); };
-  const detail = selected ? byId.get(selected) : null;
-  const pathFromNode = pathFrom ? byId.get(pathFrom) : null;
-  const pathToNode = pathTo ? byId.get(pathTo) : null;
-  const neighbours = selected ? [...(adjacency.get(selected) ?? [])].map((id) => byId.get(id)).filter((n): n is ExplorerNode => !!n).sort((a, b) => b.degree - a.degree) : [];
-  const searchHits = matches ? graph.nodes.filter((n) => matches.has(n.id)).slice(0, 12) : [];
+  /** Memoised: a fresh Set each render would restart the map's animation loop every frame. */
+  const highlight = useMemo(() => (impactSet ? new Set(impactSet.keys()) : undefined), [impactSet]);
 
   return (
-    <div className={`explorer-shell ${embedded ? "embedded" : ""}`}>
+    <div className={`explorer-shell ${embedded ? "embedded" : ""}`} data-explorer>
       <header className="explorer-topbar">
         <div className="explorer-title">
           {embedded ? <strong>{title}</strong> : <h1>{title}</h1>}
-          <p>{subtitle ?? `${graph.nodes.length} entities · ${graph.edges.length} relations${graph.truncated ? ` · showing the ${graph.nodes.length} most connected of ${graph.totalNodes}` : ""}`}</p>
+          <p>
+            {subtitle ??
+              `${graph.nodes.length} entities · ${graph.edges.length} relations · ${isolatedIds.size} connected to nothing${
+                graph.truncated ? ` · showing the ${graph.nodes.length} most connected of ${graph.totalNodes}` : ""
+              }`}
+          </p>
         </div>
-        <label className="studio-home-search explorer-search">
-          <Search size={15} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find an entity" aria-label="Find an entity" />
-        </label>
-        <button type="button" className="ghost-button" onClick={() => setRunning((r) => !r)} title={running ? "Pause the layout" : "Resume the layout"}>
-          {running ? <Pause size={15} /> : <Play size={15} />} {running ? "Pause" : "Resume"}
-        </button>
-        <button type="button" className="ghost-button" onClick={fit} title="Fit the whole graph"><Maximize2 size={15} /> Fit</button>
-        <button type="button" className={pathFrom ? "ghost-button active" : "ghost-button"} onClick={() => (pathFrom ? clearPath() : setPathFrom(selected))} disabled={!pathFrom && !selected} title={pathFrom ? "Clear the traced path" : "Trace from the selected entity — then shift-click a second one"}>
-          <Route size={15} /> {pathFrom ? "Clear path" : "Trace from"}
-        </button>
-        <button type="button" className="ghost-button" onClick={() => { if (simRef.current) simRef.current.alpha = 1; setRunning(true); }} title="Re-run the layout"><Crosshair size={15} /> Relayout</button>
-      </header>
 
-      <div className="explorer-body" ref={wrapRef}>
-        <canvas
-          ref={canvasRef}
-          className="explorer-canvas"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={() => { hoverRef.current = null; dragRef.current = null; }}
-          onWheel={onWheel}
-        />
-
-        <aside className="explorer-legend" aria-label="Kinds">
-          <span>Kinds · click to hide</span>
-          {graph.kinds.map((k) => (
-            <button key={k.kind} type="button" className={hidden.has(k.kind) ? "hidden-entry" : ""} onClick={() => setHiddenKinds((h) => (h.includes(k.kind) ? h.filter((x) => x !== k.kind) : [...h, k.kind]))}>
-              <i style={{ background: k.color }} />
-              <b>{k.kind || "Untyped"}</b>
-              <small>{k.count}</small>
+        <div className="explorer-views" role="group" aria-label="View">
+          {VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              className={view === v.key ? "on" : ""}
+              onClick={() => setView(v.key)}
+              title={v.hint}
+              data-view={v.key}
+            >
+              <v.icon size={13} /> {v.label}
             </button>
           ))}
-        </aside>
+        </div>
+      </header>
 
-        {query.trim() && (
-          <div className="explorer-results" aria-label="Search results">
-            <span>{searchHits.length === 0 ? "No match" : `${matches?.size} match${matches?.size === 1 ? "" : "es"}`}</span>
-            {searchHits.map((n) => (
-              <button key={n.id} type="button" onClick={() => focusNode(n.id)}>
-                <i style={{ background: n.color }} />
-                <b>{n.name}</b>
-                <small>{n.kind || "Untyped"}</small>
+      {trail.length > 0 && (
+        <nav className="explorer-trail" aria-label="Where you have been" data-explorer-trail>
+          <em>Walk</em>
+          {trail.map((id, i) => (
+            <span key={id}>
+              {i > 0 && <ChevronRight size={12} />}
+              <button
+                type="button"
+                className={id === subject ? "on" : ""}
+                onClick={() => setTrail((t) => walkTo(t, id))}
+                data-trail-step={id}
+              >
+                {byId.get(id)?.name ?? "(gone)"}
               </button>
-            ))}
-          </div>
-        )}
+            </span>
+          ))}
+          <button type="button" className="trail-clear" onClick={() => setTrail([])}>Clear</button>
+        </nav>
+      )}
 
-        {detail && (
-          <aside className="explorer-detail" aria-label="Selected entity">
-            <header>
-              <i style={{ background: detail.color }} />
-              <div>
-                <small>{detail.kind || "Untyped"}</small>
-                <strong>{detail.name || "(unnamed)"}</strong>
-              </div>
-              <button type="button" onClick={() => { setSelected(null); setFocusHops(0); }} aria-label="Close">×</button>
-            </header>
-            {Object.keys(detail.attributes).length > 0 && (
-              <div className="explorer-attrs">
-                {Object.entries(detail.attributes).map(([k, v]) => <span key={k}><b>{k}</b> {v}</span>)}
-              </div>
-            )}
-            <p className="explorer-degree">{detail.degree} relation{detail.degree === 1 ? "" : "s"}</p>
-            <div className="explorer-hops" role="group" aria-label="Limit the view to hops from this entity">
-              <em>Show within</em>
-              {[0, 1, 2, 3].map((d) => (
-                <button key={d} type="button" className={focusHops === d ? "active" : ""} onClick={() => setFocusHops(d)} title={d === 0 ? "Show the whole graph" : `Show only what is within ${d} hop${d === 1 ? "" : "s"}`}>
-                  {d === 0 ? "All" : `${d}`}
-                </button>
-              ))}
-              {focusHops > 0 && focusSet && <small>{focusSet.size} shown</small>}
-            </div>
-            <div className="explorer-neighbours">
-              {neighbours.slice(0, 40).map((n) => (
-                <button key={n.id} type="button" onClick={() => focusNode(n.id)}>
-                  <i style={{ background: n.color }} />
-                  <b>{n.name}</b>
-                  <small>{n.kind || "Untyped"}</small>
-                </button>
-              ))}
-              {neighbours.length > 40 && <em>+{neighbours.length - 40} more</em>}
-            </div>
-            <Link className="ghost-button explorer-open" href={`/e/${detail.id}`}>Open in graph →</Link>
-          </aside>
-        )}
+      <div className="explorer-body">
+        <EntityRail
+          graph={graph}
+          nodes={railNodes}
+          isolatedIds={isolatedIds}
+          subject={subject}
+          query={query}
+          onQuery={setQuery}
+          hiddenKinds={hiddenKindSet}
+          onToggleKind={(k) => setHiddenKinds((h) => (h.includes(k) ? h.filter((x) => x !== k) : [...h, k]))}
+          hiddenRelations={hiddenRelSet}
+          onToggleRelation={(k) => setHiddenRelations((h) => (h.includes(k) ? h.filter((x) => x !== k) : [...h, k]))}
+          onPick={pick}
+        />
 
-        {pathFrom && (
-          <div className="explorer-path" data-explorer-path>
-            <Route size={14} />
-            {!pathTo ? (
-              <span>Tracing from <b>{pathFromNode?.name}</b> — shift-click another entity</span>
-            ) : path ? (
-              <span><b>{path.nodes.length - 1}</b> hop{path.nodes.length === 2 ? "" : "s"}: {path.nodes.map((id) => byId.get(id)?.name ?? "?").join(" → ")}</span>
+        <main className="explorer-stage">
+          {view === "focus" && (
+            subjectNode ? (
+              <FocusView
+                placed={placed}
+                byId={byId}
+                edges={edges}
+                subject={subjectNode.id}
+                onPick={pick}
+                highlight={highlight}
+                highlightKind="impact"
+                omitted={omitted}
+                depth={depth}
+              />
             ) : (
-              <span><b>{pathFromNode?.name}</b> and <b>{pathToNode?.name}</b> are not connected</span>
-            )}
-            <button type="button" onClick={clearPath} aria-label="Clear path"><X size={13} /></button>
-          </div>
-        )}
+              <p className="explorer-blank">Nothing to explore yet. Import something, or draw a board.</p>
+            )
+          )}
 
-        <span className="explorer-hint">
-          Drag to pan · scroll to zoom · drag a node to pull it · click to focus · shift-click two entities to trace a path
-          {fragments.length > 1 ? ` · ${fragments.length} disconnected groups (largest ${fragments[0]!.length})` : ""}
-        </span>
+          {view === "map" && (
+            connectedNodes.length > 0 ? (
+              <MapView
+                nodes={connectedNodes}
+                edges={edges}
+                selected={subject}
+                onPick={pick}
+                highlight={highlight}
+                dimOthers={Boolean(highlight)}
+              />
+            ) : (
+              <p className="explorer-blank">
+                Nothing here is connected to anything. The rail lists all {isolatedIds.size} of them.
+              </p>
+            )
+          )}
+
+          {view === "paths" && (
+            <PathsView
+              nodes={nodes}
+              edges={edges}
+              adjacency={adjacency}
+              from={pathFrom}
+              to={pathTo}
+              onFrom={setPathFrom}
+              onTo={setPathTo}
+              onPick={pick}
+            />
+          )}
+        </main>
+
+        {subjectNode && view !== "paths" && (
+          <SubjectPanel
+            node={subjectNode}
+            groups={groups}
+            byId={byId}
+            depth={depth}
+            onDepth={setDepth}
+            onPick={pick}
+            onTrace={startTrace}
+            impact={impact}
+            onImpact={setImpact}
+            impactSet={impactSet}
+            slug={slug}
+          />
+        )}
       </div>
     </div>
   );

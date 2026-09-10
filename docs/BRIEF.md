@@ -535,6 +535,12 @@ not *who* you are. Real auth (§6 roadmap) replaces it.
 
 ### 5.13 Graph explorer (v0.2)
 
+> **Superseded in part by §5.68 (rev 102).** The data layer, the force simulation and the
+> canvas rendering described here are unchanged and still power the **Map** view. The single
+> whole-graph view, the floating legend/search/detail cards, the dim-on-select behaviour and
+> shift-click path tracing described below were replaced by three views, a permanent rail and
+> named pickers. Read §5.68 for what the explorer is now.
+
 Boards are *curated* slices: you choose what goes on them. The explorer is the complement — the
 whole workspace graph at once, as a navigable node-link view at `/w/[slug]/explore`.
 
@@ -2998,6 +3004,79 @@ decides whether the data is wrong or the model is. If enforcement is added later
 reader the number Ardoq's does not — how many existing connections a rule would put in breach,
 computed before the switch is thrown, which §5.56's conformance report already knows.
 
+### 5.68 The graph explorer becomes an instrument (v0.2)
+
+The explorer had one view — the whole workspace as a force-directed cloud — and one view is the
+problem. A cloud of everything answers no question anybody asks. The questions are *what does
+this touch*, *what breaks if it goes*, *how are these two connected*, and *what is connected to
+nothing at all*; no single layout is the best answer to all four, and a force layout is the best
+answer to none of them.
+
+Measured before the rewrite, on the demo workspace: 28 entities, 13 relations, **15 disconnected
+groups scattered across the canvas as confetti**, labels overprinting into names of things that
+do not exist ("CustomerCRMCloud", "Asset RegisterAsset Register"), 23 of 28 nodes the same
+orange so colour carried nothing, and six affordances explained in a single line of 8pt grey at
+the bottom of the screen.
+
+**Three views over one graph, and the default is Focus.**
+
+| View | The question |
+| --- | --- |
+| **Focus** | *What does this touch?* One entity at the centre, its neighbourhood in concentric hop rings, arrows showing which way each relation points. |
+| **Map** | *What is the shape of it?* Every connected entity at once, force-directed. |
+| **Paths** | *How are these two connected?* Two named pickers, and **every** equally short route, not one. |
+
+Overview-first was the wrong default. You always arrive at a graph with something in mind, so the
+explorer opens on the most connected entity — the least arbitrary opening move, and on an estate
+nobody has seen before very often the right thing to look at first.
+
+**Focus is SVG, not canvas, and has no camera.** Below the sixty-node ceiling of a bounded
+neighbourhood the DOM wins on every axis that matters: real kerned text, hover and click without
+hand-written hit-testing, tooltips for free, the app's own stylesheet, and a picture an
+end-to-end test can assert against. The viewBox is computed from the layout, so the
+neighbourhood is always framed — "Fit" was a button because the old view could be lost; this one
+cannot be.
+
+**Radius is hop count**, which is the fact you came for, and each ring grows until every node on
+it has room, so nothing can overlap. Nodes on a ring are ordered by their parent's angle so
+families stay together and edges mostly stop crossing. A ring's caption goes in its widest gap,
+because "the top" is occupied whenever the ring's population divides four.
+
+**Direction is the question, and the old explorer threw it away.** Every edge was undirected, so
+"what the CRM depends on" and "what depends on the CRM" produced the same picture. They are
+opposite answers and confusing them is how you decommission the wrong system. Connections in the
+panel are now grouped by relationship type *and* split into incoming and outgoing, and blast
+radius asks for downstream, upstream or either — never all three at once.
+
+**Unconnected entities are a finding, not confetti.** Eleven of this workspace's 28 entities have
+no relationships. Laid out with everything else, repulsion spread them evenly and they became
+most of the picture, drawn with the same weight as the structure — while being its absence, and
+usually the trace of something imported and never modelled. They now have their own section in
+the rail, phrased as the finding it is, and the map does not draw them at all.
+
+Four smaller repairs, each of which was quietly making the old view lie:
+
+- **Labels no longer overprint.** Names that would collide with a better-connected one are
+  dropped. A missing label is honest; two names printed on top of each other read as one name
+  that does not exist.
+- **Separately-connected clusters are packed.** A force simulation has no attraction between
+  components, so clusters sharing no edge repel each other forever and "fit" ends up framing
+  mostly ocean. Once the layout settles the clusters are gathered and the simulation *stops* —
+  continuing to tick would shove them apart again in front of the reader.
+- **Selecting something no longer greys out the map.** The old view dimmed everything but the
+  selection to 16%, in the one view whose whole job is showing the estate. Only a deliberate
+  question — a blast radius, a traced route — dims anything now.
+- **A repeated name is disambiguated.** Three entities called "Asset Register" is a real estate's
+  reality and three identical rows is unnavigable; where a name repeats, the kind is shown.
+
+**Every step is a walk.** Reading a graph is a sequence of hops, and what makes it navigation
+rather than wandering is seeing the sequence and stepping back into it. Returning to somewhere
+you have been truncates the trail rather than appending, so it never records a journey nobody
+took.
+
+Deferred deliberately: an adjacency matrix for dense regions, and layered columns by meta-model
+layer. Both are real, and neither is the thing that was wrong.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3035,7 +3114,7 @@ computed before the switch is thrown, which §5.56's conformance report already 
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 101)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 102)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3180,10 +3259,20 @@ computed before the switch is thrown, which §5.56's conformance report already 
   touches an object — and a second adopt is a no-op. Stopping removes the statement and leaves the
   types, which may by then hold objects. Free form remains the default.
 
-### Graph explorer (v0.2)
-- `/w/[slug]/explore`: the whole graph as a force-directed, canvas-rendered node-link view with
-  pan/zoom, node dragging, focus-and-neighbours highlighting, kind legend, search and a detail
-  panel. Sidebar entry next to Knowledge graph.
+### Graph explorer (v0.2, rebuilt rev 102 — §5.68)
+- `/w/[slug]/explore`: **three views over one graph**, in a three-column shell — the entity
+  directory, the view, the subject — none of which floats over the picture it describes.
+- **Focus** (the default): one entity at the centre and its neighbourhood in concentric hop
+  rings, in SVG with no camera, so it is always framed. Radius is hop count; rings grow until
+  nothing overlaps; arrows show direction; 1, 2 or 3 hops.
+- **Map**: every *connected* entity at once, force-directed on a canvas, with overprinting
+  labels dropped and separately-connected clusters packed rather than flung apart.
+- **Paths**: two named pickers and **every** equally short route between them, written out.
+- **Blast radius**: downstream, upstream or either way, with hop depth — the directed question
+  the old undirected explorer could not ask.
+- **The rail**: every entity ordered by connectedness, searchable, filterable by kind and by
+  relationship type, with the entities connected to nothing in their own section as a finding.
+- **The walk**: every step recorded as a breadcrumb you can step back into and branch from.
 
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
@@ -4034,6 +4123,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | Promoting a triple is refused while its relationship type is undeclared, with the reason. | A rule constrains a type; an undeclared type has nothing to hang one on. It is an order of operations, not a technicality — you cannot constrain a word the model has not agreed is a word — and saying so beats a button that fails. |
 | 2026-09-10 | Nexus still blocks nothing, where Ardoq offers Guided and Strict enforcement. | A connection the model disallows is still real, and the honest response is to show it rather than refuse it. If enforcement is added it owes the reader the number Ardoq's does not: how many existing connections a rule would put in breach, computed before the switch is thrown. §5.56 already knows it. |
 
+| 2026-09-10 | The graph explorer opens on **one entity**, not on the whole graph | Overview-first is the wrong default for a graph: you always arrive with something in mind, and a force-directed cloud of the whole estate is simultaneously the hardest picture to read and the least likely to be the one you wanted. Focus opens on the most connected entity, which is the least arbitrary opening move. §5.68 |
+| 2026-09-10 | The focus view is **SVG with no camera**; the map stays canvas | Below the sixty-node ceiling of a bounded neighbourhood the DOM wins on every axis: kerned text, hit-testing, tooltips, the app's stylesheet, and assertions an e2e test can make. Canvas is only worth its hand-written label metrics and hit-testing at the map's 1 500-node cap. Computing the viewBox from the layout removes pan, zoom and "Fit" entirely — the view cannot be lost. §5.68 |
+| 2026-09-10 | **Radius is hop count**, and rings grow until nothing overlaps | A force layout places nodes by an accident of physics; a radial one places them by distance from the thing you asked about, which is the fact you came for. Growing the ring to give each node a minimum arc makes overlap impossible by construction rather than by tuning. §5.68 |
+| 2026-09-10 | Entities connected to nothing are **listed, not drawn** | Repulsion spreads unconnected nodes evenly across the canvas, where they became most of the picture on the demo workspace (11 of 28) and read as structure while being its absence. A list can also say what they usually mean — imported and never modelled. §5.68 |
+| 2026-09-10 | A label that would overlap is **dropped**, never overprinted | Two names printed on top of each other read as one name that does not exist ("CustomerCRMCloud"). A missing label is honest; an invented one is not. §5.68 |
+| 2026-09-10 | Separately-connected clusters are **packed once the layout settles, and then the simulation stops** | A force simulation has no attraction between components, so clusters sharing no edge repel each other forever and "fit" frames mostly emptiness. Continuing to tick after packing would shove them apart again in front of the reader. §5.68 |
+| 2026-09-10 | Selection **emphasises**; only a question **dims** | The old map dimmed everything but the selection to 16% — in the one view whose entire job is showing the whole estate. A blast radius or a traced route is a question and may dim; clicking something is not. §5.68 |
+| 2026-09-10 | Paths returns **every** shortest route, capped | Returning one implies it is *the* one. "These two are connected through the ESB" and "connected three ways, one of which is the ESB" are different findings, and the second is the one that matters when somebody is about to retire the ESB. §5.68 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4048,6 +4146,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 102: the graph explorer becomes an instrument.** Replaced the single
+  force-directed cloud with three views over one graph — **Focus** (one entity and its
+  neighbourhood in concentric hop rings, SVG, no camera, radius = hop count), **Map** (every
+  connected entity at once, labels de-collided and clusters packed) and **Paths** (two named
+  pickers and every equally short route, not one). Direction, which the old undirected view
+  threw away, is now the question: connections are split into incoming and outgoing under each
+  relationship type, and blast radius asks downstream, upstream or either way. A permanent
+  entity rail replaces the floating search card, filters by kind *and* relationship type, and
+  gives the eleven entities connected to nothing their own section as the finding they are. Every
+  step is recorded as a walk you can step back into. New pure module `lib/explorer-views.ts`
+  (rings, radial layout, directed reachability, all-shortest-paths, greedy label placement,
+  component packing, the walk) with 33 tests; `MapView`, `FocusView`, `PathsView`, `EntityRail`
+  and `SubjectPanel` split out of the old 433-line component. Brief §5.68, decision log, in-product
+  docs page rewritten.
 - **2026-09-10 — Rev 101: the triple becomes the unit.** Taken, with attribution, from Ardoq's
   constraints table — their best idea. The unit of a meta-model's relationship half is not the
   relationship *type* but the **triple**: source → relationship → target. "An Application uses an
