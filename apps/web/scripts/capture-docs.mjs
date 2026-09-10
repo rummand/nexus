@@ -547,6 +547,20 @@ try {
     await page.waitForTimeout(1500);
   });
 
+  // ---- the platform console ---------------------------------------------------
+  // The seeded owner runs this deployment (§5.64), so the console is reachable in the demo.
+  await shot("platform-tenants", async () => {
+    await goto("/admin", "[data-admin-tenants]");
+    await page.waitForTimeout(600);
+  });
+
+  await shot("platform-people", async () => {
+    await goto("/admin/people", "[data-admin-accounts]");
+    await page.locator('[data-admin-account="maria@acme-energy.example"] [data-manage-account]').click();
+    await page.waitForSelector("[data-account-manage]", { timeout: 30_000 });
+    await page.waitForTimeout(500);
+  });
+
   // ---- agents ---------------------------------------------------------------
   // Placing an agent and selecting objects need no model, so both of these are the real product.
   // The answering half cannot be photographed honestly without a key, and is described instead.

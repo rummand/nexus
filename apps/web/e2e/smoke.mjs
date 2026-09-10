@@ -864,7 +864,13 @@ try {
 
   // the words that produced the board are kept with it
   const boardUrl = page.url();
-  await page.waitForTimeout(1500); // let the autosave land
+  /*
+   * Wait for the save to actually land, not for a guess at how long it takes. A fixed 1500ms was
+   * enough on a quiet machine and not on a busy one, and the failure looked like "the script was
+   * not persisted" rather than "the page was reloaded too early" — the worst kind of flake,
+   * because it accuses the feature.
+   */
+  await page.waitForFunction(() => /Saved|Shared/.test(document.body.innerText), null, { timeout: 60000 });
   await page.goto(boardUrl, { waitUntil: "load" });
   await page.waitForSelector(".canvas-viewport");
   await page.click('button:has-text("Compose")');
@@ -1616,6 +1622,100 @@ try {
     await page.goto(`${base}/w/acme-energy/agents`, { waitUntil: "load" });
     await page.waitForSelector("[data-defined-agent]");
     assert.ok((await page.locator("[data-schedule]").count()) > 0, "the fleet shows which agents are on a schedule");
+  }
+
+  // ---- the platform console ------------------------------------------------------------------
+  /*
+   * Above the workspace (§5.64). Two things are worth asserting and only one of them is the
+   * feature: that an operator can run the platform, and that somebody who is not one cannot even
+   * find out the console is there.
+   */
+  {
+    await page.goto(`${base}/admin`, { waitUntil: "load" });
+    await page.waitForSelector("[data-admin-tenants]", { timeout: 60000 });
+    const totals = await page.locator("[data-admin-totals]").innerText();
+    assert.match(totals, /1\s+tenant/, "the console counts the tenants on the deployment");
+    assert.match(await page.locator("[data-admin-deployment]").innerText(), /SQLite|Postgres/,
+      "…and says what this deployment actually is");
+
+    // A tenant, made from nothing, with an owner and somewhere to put a board.
+    await page.click("[data-new-tenant]");
+    await page.fill("[data-tenant-name]", "Nordic Grid A/S");
+    assert.equal(await page.locator("[data-tenant-slug]").inputValue(), "nordic-grid-a-s",
+      "the address is proposed from the name, accents and punctuation handled");
+    await page.click("[data-create-tenant]");
+    await page.waitForFunction(() => document.querySelectorAll("[data-admin-tenant]").length === 2, null, { timeout: 60000 });
+    assert.match(await page.locator('[data-admin-tenant="nordic-grid-a-s"]').innerText(), /empty/i,
+      "a tenant with nothing in it says so, which is the state an operator has to act on");
+
+    // Deleting one means typing its address: the operator is the one person who cannot see inside.
+    await page.locator('[data-admin-tenant="nordic-grid-a-s"] [data-delete-tenant]').click();
+    await page.waitForSelector("[data-delete-confirm]");
+    assert.equal(await page.locator("[data-confirm-delete]").isDisabled(), true,
+      "deleting is refused until the address is typed back");
+    await page.fill("[data-confirm-slug]", "nordic-grid-a-s");
+    await page.click("[data-confirm-delete]");
+    await page.waitForFunction(() => document.querySelectorAll("[data-admin-tenant]").length === 1, null, { timeout: 60000 });
+
+    // Setting a password is the reason the console was asked for, and it ends their sessions.
+    await page.goto(`${base}/admin/people`, { waitUntil: "load" });
+    await page.waitForSelector("[data-admin-accounts]", { timeout: 60000 });
+    const anna = '[data-admin-account="anna@acme-energy.example"]';
+    await page.locator(`${anna} [data-manage-account]`).click();
+    await page.fill(`${anna} [data-new-password]`, "a-brand-new-password");
+    await page.locator(`${anna} [data-set-password]`).click();
+    await page.waitForSelector("[data-admin-note]", { timeout: 60000 });
+    assert.match(await page.locator("[data-admin-note]").innerText(), /every session they had has ended/i,
+      "a new password ends the sessions, or setting one achieves nothing");
+
+    /*
+     * The last operator cannot be demoted. Made deterministic rather than assumed: a developer's
+     * `.env.local` bootstraps its own operator into any database `next dev` opens, so the suite
+     * demotes every operator except the seeded one first — which also exercises the path where
+     * standing down *is* allowed — and only then asserts the refusal.
+     */
+    const me = '[data-admin-account="jes@acme-energy.example"]';
+    const others = await page.locator('[data-admin-account]:has(.admin-flag.operator)').evaluateAll(
+      (els) => els.map((e) => e.getAttribute("data-admin-account")).filter((v) => v !== "jes@acme-energy.example"),
+    );
+    for (const email of others) {
+      await page.locator(`[data-admin-account="${email}"] [data-manage-account]`).click();
+      await page.locator(`[data-admin-account="${email}"] [data-toggle-operator]`).click();
+      await page.waitForFunction(
+        (e) => !document.querySelector(`[data-admin-account="${e}"] .admin-flag.operator`),
+        email, { timeout: 60000 },
+      );
+    }
+    assert.equal(await page.locator('[data-admin-account]:has(.admin-flag.operator)').count(), 1,
+      "one operator is left, and an operator could be removed while there was another");
+
+    await page.locator(`${me} [data-manage-account]`).click();
+    await page.locator(`${me} [data-toggle-operator]`).click();
+    await page.waitForSelector("[data-admin-error]", { timeout: 60000 });
+    assert.match(await page.locator("[data-admin-error]").innerText(), /only operator/i,
+      "the last operator cannot stand down, because nobody could put them back");
+  }
+
+  {
+    // And to everybody else the console is a page that is not there — 404, not 403: "this exists
+    // and you may not see it" is itself something a URL should not teach.
+    const other = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+    const guest = await other.newPage();
+    try {
+      await signIn(guest, "tobias@acme-energy.example");
+      await guest.goto(`${base}/admin`, { waitUntil: "load" });
+      await guest.waitForTimeout(1200);
+      assert.equal(await guest.locator("[data-admin-tenants]").count(), 0, "a non-operator sees no console");
+      assert.doesNotMatch(await guest.locator("body").innerText(), /Operator|Tenants/,
+        "…and is not told one exists");
+      // The way in is not advertised either.
+      await guest.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+      await guest.waitForSelector(".studio-home-nav", { timeout: 60000 });
+      assert.equal(await guest.locator('.studio-home-nav a[href="/admin"]').count(), 0,
+        "and the sidebar does not offer it");
+    } finally {
+      await other.close();
+    }
   }
 
   // ---- two people on one board ---------------------------------------------------------------

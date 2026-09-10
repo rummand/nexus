@@ -115,6 +115,22 @@ describe("the guard covers the write boundary", () => {
     expect(unguarded, `these change something and ask nobody — guard them, or add them to OPEN with a reason:\n  ${unguarded.join("\n  ")}`).toEqual([]);
   });
 
+  /*
+   * The platform console is above the workspace, so the workspace guard cannot cover it: an
+   * operator acting on a tenant they are not a member of has no role there to check. Its actions
+   * must therefore use `denyOperator` specifically — a `deny(workspaceId, …)` that happened to
+   * appear in one would pass the check above while refusing the very person it is built for.
+   */
+  it("guards the platform console with the operator guard, not the workspace one", () => {
+    const console_ = all.filter((a) => a.file === "admin/actions.ts");
+    expect(console_.length).toBeGreaterThan(5);
+    const sources = new Map(serverModules().map((f) => [path.relative(path.join(SRC, "lib"), f), readFileSync(f, "utf8")]));
+    const body = sources.get("admin/actions.ts") ?? "";
+    expect(body).toMatch(/denyOperator/);
+    expect(body, "an admin action must not ask the workspace matrix — the operator is not a member")
+      .not.toMatch(/\bdeny\(/);
+  });
+
   it("has no stale entries in the list of deliberate exceptions", () => {
     // An exception for an action that no longer exists is an exception nobody is checking.
     const known = new Set(all.map((a) => a.key));

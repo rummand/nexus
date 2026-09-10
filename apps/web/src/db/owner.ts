@@ -99,6 +99,18 @@ export async function ensureOwner(db: Db, env: Record<string, string | undefined
       status = "reset";
     }
 
+    /*
+     * The bootstrapped account also runs the deployment (§5.64).
+     *
+     * It is the same argument that put this file here: the first person has nobody to ask. A
+     * platform console that only an operator can reach, on a deployment with no operator, is a
+     * console nobody can ever open — so the one account the operator of the machine can already
+     * prove they control is the one that gets it.
+     */
+    if (existing?.platformRole !== "operator") {
+      await db.update(s.users).set({ platformRole: "operator" }).where(eq(s.users.id, userId));
+    }
+
     for (const w of workspaces) {
       const [member] = await db.select().from(s.workspaceMembers)
         .where(and(eq(s.workspaceMembers.workspaceId, w.id), eq(s.workspaceMembers.userId, userId)));

@@ -79,6 +79,15 @@ try {
         // the suite asserts on the rule compiler's echo; a planner would answer differently
         ANTHROPIC_API_KEY: "",
         NEXUS_MODEL: "",
+        /*
+         * And the run is the seed, not the operator of whatever machine it runs on: a
+         * NEXUS_OWNER_EMAIL in the environment would bootstrap a second account, and a second
+         * platform operator (§5.64), into the test database. This covers the environment; a
+         * developer's `.env.local` is read by `next dev` regardless, so the suite's own
+         * last-operator check makes itself deterministic rather than trusting this.
+         */
+        NEXUS_OWNER_EMAIL: "",
+        NEXUS_OWNER_PASSWORD: "",
         NEXUS_LEANIX_BASE_URL: leanix.baseUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],

@@ -2791,6 +2791,71 @@ it appended the first eight characters of the id, which for two ids sharing a pr
 *same* name twice — worse than not disambiguating at all. The prefix now grows until it separates
 them.
 
+### 5.64 The platform console: above the tenants (v0.2)
+
+Everything built so far happens **inside** a workspace, and `workspace_members.role` (§5.46)
+answers exactly one question: what may you do here. It cannot answer the questions of the person
+who runs the deployment — how many customers are on it, which of them was created and never used,
+who has an account at all, who cannot sign in and needs a password set. None of those is about a
+workspace, so none of them can be a workspace capability, and inventing one would mean either a
+fake workspace to ask about or a permission that ignores the argument it is given.
+
+So a second, thinner level. One platform role on the account (`users.platform_role`, null for
+everybody normal), one guard of its own in `lib/admin/guard.ts`, and a console at `/admin` outside
+`/w/[slug]` — because this is not *in* a tenant, and framing it inside a workspace sidebar would
+suggest it belonged to whichever one you last looked at.
+
+**To everybody else the console is a page that is not there.** `notFound`, not a refusal: "this
+exists and you may not see it" is itself something a URL should not teach, which is the same
+argument §5.48 made for workspaces a person is not a member of. The sidebar link appears only for
+an operator, for the ordinary reason that a console nobody can find is a console nobody uses.
+
+**Tenants.** Every workspace on the deployment with its people, owners, boards, objects, relations
+and one word for what it is doing: *empty* (created, nothing in it), *dormant* (nothing changed for
+`DORMANT_DAYS`), or *in use*. Sorted by size rather than alphabetically, because the question the
+page is opened with is "who is actually using this" and an alphabetical list buries that under
+whoever is called Acme. "Last activity" is the newest board save, deliberately — a board is what
+somebody has to open and change by hand, so an agent run or a scheduled import cannot make an
+abandoned tenant look busy. Creating one gives it an owner and a single space; nothing else,
+because what a tenant is for is its own to decide. Renaming and re-addressing are separate acts: a
+name is a label, an address is in every link anybody ever shared. Deleting asks the operator to
+type the address back — not because a confirm is hard to click, but because they are the one person
+who cannot see what is inside, and retyping is the step that makes them read which tenant they are
+on. The dialog says what would go with it, counted.
+
+**People.** Every account on the platform with the four facts the workspace People page cannot
+show: operator or not, has a password or not, belongs to no tenant, and how many live sessions
+right now. Memberships can be added, changed and removed from here across any tenant. Setting a
+password **ends every session that person has** — setting one while the laptop that prompted it is
+still signed in achieves nothing at all — and that single action is what this console was asked
+for.
+
+Three rules the schema cannot state, and one the console refuses on principle:
+
+- **The last operator cannot stand down, and cannot be deleted.** A deployment with no operator has
+  no way back except its environment variables, and the person who would have to edit them is not
+  necessarily awake. The same shape as §5.46's last-owner rule, for the same reason.
+- **You cannot delete your own account from here.** Locking yourself out of the console you are
+  standing in is never what you meant.
+- **Deleting a person does not delete their work.** Boards, versions, comments and change sets name
+  whoever made them and those references are `set null`, not cascade. What goes is the ability to
+  sign in and the memberships; the record of what happened is not theirs to take with them.
+- **An operator does not silently join the tenants they can see.** Creating one names its first
+  owner explicitly. Being able to administer a customer is not the same as being in their workspace,
+  and quietly making it so would be the surprise that makes an operator distrust the tool.
+
+`ensureOwner` (§5.61) now also makes the bootstrapped account an operator, by the same argument
+that created it: a console only an operator can open, on a deployment with no operator, is a
+console nobody can ever open. The seeded demo owner is one too, so the console is real in the demo
+rather than a screenshot. An operator can make another from the People page, and should — one
+operator is a single point of failure with a person attached to it.
+
+The guard-coverage test (§5.49) gained a clause of its own here: every action in `admin/actions.ts`
+must call `denyOperator`, and must **not** call the workspace `deny`. A workspace check inside a
+platform action would pass the generic "is it guarded" scan while refusing the very person the
+console exists for — an operator acting on a tenant they are not a member of has no role in it to
+check.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2828,7 +2893,7 @@ them.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 97)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 98)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3094,6 +3159,19 @@ them.
 - `/w/:slug/agents`: every agent in the workspace, what it watches, what is waiting, and how often
   people kept what it said — with the verdict in words.
 - Deleting an agent does not erase its record.
+
+### Running the platform (v0.2)
+- `/admin`, for a **platform operator** only — a role on the account, above every workspace.
+  To anybody else the route is 404, and the sidebar does not offer it.
+- **Tenants**: every customer with people, owners, boards, objects, relations, and a state —
+  empty, dormant or in use — with the reason in words. Create (owner + one space), rename,
+  re-address, delete (type the address back; it says what would go with it).
+- **People**: every account on the platform, whichever tenants it is in; operator / no password /
+  in no tenant / signed-in-now flags; add, change or remove a membership in any tenant; set a
+  password (which ends every session that person has); sign somebody out everywhere; make or
+  unmake an operator; delete an account (their work stays).
+- The last operator cannot stand down or be deleted; nobody can delete their own account here.
+- `NEXUS_OWNER_EMAIL`'s account is made an operator on every start; so is the seeded demo owner.
 
 ### Import (v0.2)
 - Four ways in: **files**, a **pasted** block (shape sniffed from the content), a **connected
@@ -3773,6 +3851,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | One staged file per fact sheet type, not one file for the workspace. | The pipeline reasons per file — a file has a kind — and Applications and IT Components are not one kind. It is also the difference between a review that says "342 Applications, 88 IT Components" and one that shows a pile of 430. |
 | 2026-09-10 | Where the repository is reached is a server-side environment variable, never a browser input. | An enterprise gateway in front of the API is a real deployment, and the same override is what lets the e2e exercise the real client. But a caller who can choose the endpoint can choose where the token goes, so the endpoint is the operator's to set and the token is all the page sends. |
 | 2026-09-10 | A failed read keeps the host and the token that were typed. | The common failure is a mistyped host, and clearing the field on failure charges the person a second trip to LeanIX's admin page for somebody else's mistake. It is cleared on success, where it has done its one job. |
+| 2026-09-10 | The platform operator is a role on the *account*, not a value of `workspace_members.role`. | Every question the console asks — how many tenants are there, who has an account, whose password needs setting — takes no workspace, so no workspace role can answer it. Folding it in would mean a fake workspace to ask about or a capability that ignores its argument, and would make the workspace matrix a worse description of itself. |
+| 2026-09-10 | The console answers 404 to everybody who is not an operator, not 403. | The same rule §5.48 applied to workspaces: "this exists and you cannot see it" is itself something a URL should not teach. A refusal would confirm to a curious member that a platform console is there to be attacked. |
+| 2026-09-10 | A tenant's "last activity" is its newest board save, not the newest row of anything. | A board is the thing somebody has to open and change by hand. Counting agent runs, scheduled imports or session rows would let an abandoned tenant look busy, which is exactly the signal the list exists to give. |
+| 2026-09-10 | Deleting a tenant or an account requires typing its address back. | Not friction for its own sake: the operator is the one person who cannot see inside a tenant, and a confirm button is clicked without reading. Retyping is the step that makes them read which one they are on. |
+| 2026-09-10 | Creating a tenant names its first owner explicitly; the operator does not join it. | Being able to administer a customer is not the same as being in their workspace. Silently adding yourself to every tenant you create is the kind of surprise that makes an operator stop trusting the tool. |
+| 2026-09-10 | Deleting a person removes their access and memberships, never their work. | Boards, versions, comments and change sets name whoever made them, and those references are `set null` rather than cascading. The record of what happened to an organisation's architecture is not the departing person's to take with them. |
+| 2026-09-10 | The guard-coverage test asserts the console uses `denyOperator` and never the workspace `deny`. | A workspace check inside a platform action would pass the generic "is it guarded" scan while refusing the very person the console exists for — an operator acting on a tenant they are not a member of has no role there to check. The failure would look like a permissions bug, not a missing guard. |
 
 ## 8. Open questions for the product owner
 
@@ -3787,6 +3872,25 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 98: a platform console above the tenants.** Everything in Nexus until now
+  happened inside a workspace, and a workspace role answers one question: what may you do here. It
+  cannot answer the operator's — how many customers are on this deployment, which of them was
+  created and never used, who has an account at all, who is locked out and needs a password. So a
+  second, thinner level: one platform role on the account, one guard of its own, and a console at
+  `/admin` outside the workspace shell. Tenants, with people, owners, boards, objects, relations
+  and a state in one word — empty, dormant, in use — sorted by size rather than alphabetically,
+  because the question you open it with is who is actually using it. Create a tenant (an owner and
+  one space, nothing else), rename it, re-address it, delete it by typing its address back while
+  the dialog counts what would go. People: every account on the platform with the four facts the
+  workspace page cannot show — operator, no password, in no tenant, signed in right now — with
+  memberships editable across any tenant, and the action this console was asked for: set somebody
+  a password, which ends every session they have. To everybody who is not an operator the console
+  is 404 rather than a refusal, and the sidebar does not mention it. The last operator cannot stand
+  down or be deleted, nobody can delete their own account from here, and deleting a person removes
+  their access and memberships but never their work. `NEXUS_OWNER_EMAIL`'s account becomes an
+  operator on every start, by the same argument that created it. The guard-coverage test gained a
+  clause: a platform action must use `denyOperator` and must never call the workspace `deny`.
 
 - **2026-09-10 — Rev 97: the EA repository becomes the fourth door into import.** Rev 96 got a
   LeanIX workspace onto disk; this puts it into the product, and does it by adding nothing to the

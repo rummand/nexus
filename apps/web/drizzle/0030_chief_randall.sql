@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `platform_role` text;

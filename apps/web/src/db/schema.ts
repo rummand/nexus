@@ -26,6 +26,16 @@ export const users = sqliteTable("users", {
    */
   passwordHash: text("password_hash"),
   /**
+   * Above the workspace: who runs the deployment itself (§5.64).
+   *
+   * Null for everybody normal. `workspace_members.role` answers "what may you do *here*", and no
+   * value of it can answer "may you create a tenant, or see that this tenant exists at all" —
+   * those questions are not about a workspace, so they cannot be a workspace capability. Kept as
+   * a nullable column rather than a second table because it is one fact about a person, and as
+   * text rather than a flag because "operator" will not be the last value.
+   */
+  platformRole: text("platform_role", { enum: ["operator"] }),
+  /**
    * When this person last read the digest of what happened while they were away (§5.42).
    *
    * Not "last signed in": the question the digest answers is "what have I not seen yet", and

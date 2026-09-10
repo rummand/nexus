@@ -3,7 +3,7 @@ import { BOARDS_AND_GRAPH, BOARD_AGENTS, CANVAS, COMMENTS, COMPOSE, SEARCH, TIME
 import { AGENT, DESCRIBED, EXPLORER, FLEET, GRAPH, HEALTH, META_MODEL, UNATTENDED, WHAT_CHANGED } from "./pages/model";
 import { CATALOGUE, INTAKE, KNOWLEDGE, LANDING } from "./pages/data";
 import { PLATEAUS, ROADMAP } from "./pages/time";
-import { CONNECTIONS, MODELS } from "./pages/settings";
+import { CONNECTIONS, MODELS, PLATFORM } from "./pages/settings";
 import { WIKI } from "./pages/wiki";
 import { CONCEPTS, FAQ, SHORTCUTS } from "./pages/reference";
 import { pageText, type DocPage, type DocSection } from "./types";
@@ -24,6 +24,7 @@ export const SECTIONS: DocSection[] = [
   { title: "Agents", pages: [BOARD_AGENTS, AGENT, DESCRIBED, UNATTENDED, FLEET, MODELS, CONNECTIONS] },
   { title: "Bringing data in", pages: [LANDING, INTAKE, CATALOGUE, KNOWLEDGE] },
   { title: "Planning ahead", pages: [ROADMAP, PLATEAUS] },
+  { title: "Running it", pages: [PLATFORM] },
   { title: "Reference", pages: [SHORTCUTS, CONCEPTS, FAQ] },
 ];
 
