@@ -3187,6 +3187,42 @@ batch and staging format. The explorer rail is still a flat list, and a board ca
 or collapse a parent into its children. The meta-model has nothing to say about which types may
 nest inside which; that belongs with the governance work in #128.
 
+### 5.71 Objectives: what the estate is for (v0.2)
+
+The framework catalogue (§5.57) could describe an estate six ways and a strategy in none. That
+left a real hole, because most of what an architecture team is actually asked is a question
+about the line between an aim and the estate — *why are we spending this*, *what happens to the
+plan if this slips*, *which of these applications is anybody funding a change to* — and Nexus
+could model both ends and not the line.
+
+**Objectives and initiatives** is a fifth family, **Strategy**, sitting after the portfolio
+models in the catalogue for the reason the ordering already implies: how you draw a system, how
+you decompose the problem, how the organisation is run, the estate itself, and finally what the
+estate is *for*.
+
+Five types — **Objective**, **Key Result**, **Initiative**, and Business Capability and
+Application so the rules have somewhere to land — and four relationship types: `measured by`,
+`contributes to`, `needs`, `changes`.
+
+Two shape decisions:
+
+- **A Key Result is its own type, not a field on the objective.** An aim is measured several
+  ways, the measures change while the aim does not, and a measure has a target and a current
+  value of its own. Folding it into a text field is how "how would we know" quietly stops being
+  answered.
+- **The estate link is the point.** `needs` (Objective → Business Capability) and `changes`
+  (Initiative → Application / Business Capability) are what make an objective checkable against
+  reality. An objective naming no capability and no system is a sentence in a slide deck, and a
+  strategy model that cannot reach the estate is the thing every OKR tool already is.
+
+`contributes to` lets an Objective roll up into another **many-to-one**: several parents is a
+tree nobody can read.
+
+The catalogue's own tests caught a real inconsistency while this was being written. The rule is
+"no more than two required fields — never require something nobody can know on day one", and
+`horizon` was marked required while its own description said an empty value means nobody has
+committed to a date. Forcing one produces a fictional date, which is worse than an empty one.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3224,7 +3260,7 @@ nest inside which; that belongs with the governance work in #128.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 107)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 108)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -4269,6 +4305,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | An item whose parent is **outside the current filter is a root**, not dropped | A filtered tree that loses those children under-reports while looking perfectly correct — the failure nobody notices. §5.70 |
 | 2026-09-10 | Move candidates carry their **full path** | Three entities called "Asset Register" is ordinary in a real estate; a flat list of identical names cannot be chosen from. The same lesson as rev 102's explorer rail, applied to a `<select>`. §5.70 |
 
+| 2026-09-10 | A **Key Result is a type**, not a field on the Objective | An aim is measured several ways, the measures change while the aim does not, and a measure has a target and a current value of its own. A text field cannot carry any of that, and folding it in is how "how would we know" stops being answered. §5.71 |
+| 2026-09-10 | Strategy is its **own family**, after the portfolio models | The catalogue's ordering is a reading order — how you draw a system, how you decompose the problem, how the organisation is run, the estate itself, and finally what the estate is for. Objectives are not a portfolio model, and filing them as one would make the family label a lie. §5.71 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4283,6 +4322,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 108: Objectives.** A fifth framework family, **Strategy**, with
+  *Objectives and initiatives*: Objective, Key Result and Initiative, plus Business Capability
+  and Application so the rules reach the estate. `measured by`, `contributes to` (an objective
+  rolls up into one parent, not several), `needs` and `changes`. A Key Result is its own type
+  rather than a field, because an aim is measured several ways and a measure has a target and a
+  current value. The estate link is the point: an objective naming no capability and no system
+  is a sentence in a slide deck. The catalogue's existing tests caught `horizon` marked required
+  against its own description — the rule is never to require something nobody can know on day
+  one, and a forced date is a fictional one. Brief §5.71, two decision rows, two new tests.
 
 - **2026-09-10 — Rev 107: containment.** The graph was flat, so a capability map, C4's levels or
   an organisation chart could only be faked as ordinary relations. `entities.parent_id` makes a

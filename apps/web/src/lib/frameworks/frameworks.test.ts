@@ -33,9 +33,33 @@ const c4 = framework("c4")!;
 
 describe("the catalogue", () => {
   it("covers the ways of working people actually name", () => {
-    for (const id of ["c4", "uml-class", "ddd", "mbse", "it4it", "safe"]) {
+    for (const id of ["c4", "uml-class", "ddd", "mbse", "it4it", "safe", "objectives"]) {
       expect(framework(id), id).toBeTruthy();
     }
+  });
+
+  it("can describe what the estate is for, not only what it is", () => {
+    /*
+     * The catalogue could model an estate six ways and a strategy in none, which left every
+     * "why are we spending this" question unanswerable. An objective has to reach the estate
+     * or it is a sentence in a slide deck.
+     */
+    const objectives = framework("objectives")!;
+    const names = objectives.nodeTypes.map((t) => t.name);
+    expect(names).toContain("Objective");
+    expect(names).toContain("Key Result");
+    const reaches = objectives.relationTypes.flatMap((r) => r.rules).filter(
+      (r) => r.from === "Initiative" && (r.to === "Application" || r.to === "Business Capability"),
+    );
+    expect(reaches.length, "an initiative must be able to name what it changes").toBeGreaterThan(0);
+  });
+
+  it("keeps a measure as its own type rather than a field on the aim", () => {
+    // An aim is measured several ways, the measures change while the aim does not, and a
+    // measure has a target and a current value. A text field cannot carry that.
+    const objectives = framework("objectives")!;
+    const kr = objectives.nodeTypes.find((t) => t.name === "Key Result")!;
+    expect(kr.fields.map((f) => f.key)).toContain("target");
   });
 
   it("has one entry per id and lists every one of them under a family", () => {

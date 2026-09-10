@@ -22,13 +22,14 @@ import type { MetaModel } from "../metamodel";
  * is what §2.2 means by letting the model grow out of the work.
  */
 
-export type FrameworkFamily = "notation" | "domain" | "operating-model" | "portfolio";
+export type FrameworkFamily = "notation" | "domain" | "operating-model" | "portfolio" | "strategy";
 
 export const FAMILIES: Array<{ id: FrameworkFamily; name: string; blurb: string }> = [
   { id: "notation", name: "Notations", blurb: "Ways of drawing a system so another engineer reads it the same way." },
   { id: "domain", name: "Domain and engineering methods", blurb: "Ways of decomposing a problem before deciding what to build." },
   { id: "operating-model", name: "Operating models", blurb: "Ways of running and funding the organisation that builds it." },
   { id: "portfolio", name: "Portfolio models", blurb: "The estate itself: what we own, what it costs, what it supports." },
+  { id: "strategy", name: "Strategy", blurb: "What we are trying to achieve, and the work meant to achieve it." },
 ];
 
 export interface FrameworkField {
