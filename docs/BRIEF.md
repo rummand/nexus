@@ -3274,6 +3274,61 @@ for any declared enum.
 Also fixed: `plural()`, because "23 application" is the first thing a reader sees and naive
 `+ "s"` turns Business Capability into Business Capabilitys.
 
+### 5.73 Reading a real LeanIX workspace (v0.2)
+
+Rev 97 built the EA-repository door and it had never once run against a real workspace. It was
+exercised against a stub written to match its own query — the most comfortable and least useful
+kind of test — and the query was wrong in three separate ways, each of which killed the entire
+export. Pointed at Energinet's workspace it failed immediately:
+
+1. **`...on FactSheet { updatedAt }` — there is no type called `FactSheet`.** The interface is
+   `BaseFactSheet`, and `updatedAt` is on it directly. LeanIX answered
+   *Validation error (UnknownType) : Unknown type 'FactSheet'* and returned nothing at all.
+2. **Relations were asked for at node level.** `relToChild` and `relToParent` are not on the
+   interface; every relation field is named after the pair of types it joins —
+   `relApplicationToITComponent`, `relObjectiveToInitiative` — and exists only inside a fragment
+   on the concrete type. Every relation in a real workspace was therefore lost.
+3. **Per-type fields collide.** `technicalSuitability` returns an
+   `ApplicationTechnicalSuitability` on one type and an `ITComponentTechnicalSuitability` on
+   another, and GraphQL refuses a query that selects the same field name for two different
+   types. Three such conflicts rejected the whole 455-fact-sheet export.
+
+The fix is the one the old comment already claimed and the old code never did: **ask the
+workspace what it is shaped like, then build the query from the answer.** `discoverShape` reads
+the concrete types off `BaseFactSheet` and, for each, which of its fields are scalars and which
+are relation connections; `pageQuery` and `relationsQuery` build fragments from that, aliasing
+every per-type selection with its type so nothing can conflict. Introspection refused falls back
+to the common fields — a workspace that will not describe itself is still worth reading.
+
+**And the same edge, twice.** LeanIX exposes every relation from both ends under two names, so
+Energinet's 1,242 relation rows describe **621 edges**. Importing all of them would put every
+connection in the graph twice — visible immediately as doubled degrees in the explorer and
+doubled counts on every triple in the meta-model. `dedupeRelations` pairs a name with its
+inverse (`relToChild`/`relToParent`, and `relXToY`/`relYToX` derived from the name) and keeps
+one direction, chosen by sort order so it is stable: an unstable choice would make a re-import
+look like every relation had been reversed. A relation whose inverse cannot be worked out is
+kept as it is, because losing a real edge is far worse than keeping a duplicate.
+
+**What Energinet's workspace actually holds**, read on 2026-09-10: 455 fact sheets across 11
+types — 192 Business Capability, 86 Application, **55 Objective**, 36 Initiative, 36 IT
+Component, 17 Business Context, 8 Platform, 7 each of Interface, Organization and Provider, 4
+Technical Stack — and 621 relations, none dropped. Two things worth noting: their metamodel has
+**Objective** in it, which rev 108 added a week's worth of coincidence early; and 236 of the
+edges are parent/child, which is the capability hierarchy rev 107's containment exists to hold.
+
+`pnpm leanix:read` is the same pull from a terminal. It **reads the token from the environment
+and never from argv** — a command line ends up in shell history, in `ps` output for every user
+on the box and in the container platform's process listing. It never writes to the graph, and
+deliberately does not stage a batch either: staging re-maps every column against the names the
+workspace already knows, reads the prose for claims and builds the review record, and
+reimplementing a fraction of that would produce a batch the app could not review. `--save`
+writes the export to `leanix-export/` (gitignored) as CSVs for the Files door instead.
+
+One more thing this exposed: a `LeanIxError`'s detail is usually the GraphQL `errors` array, and
+both the CLI and the in-app door only rendered detail that was already a string — so the one
+piece of information the reader needed was dropped, and every failure read as a bare "GraphQL
+reported errors."
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3311,7 +3366,7 @@ Also fixed: `plural()`, because "23 application" is the first thing a reader see
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 109)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 110)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -4375,6 +4430,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | A value edits as the **type the model declares** | Editing a declared enum as free text is exactly how "Active" and "active" both reach the column — and Nexus then needs a proposals system to clean up a mess it allowed. A model that declares a type and ignores it at the keystroke is decoration. §5.72 |
 | 2026-09-10 | A disallowed value is **shown, never blanked**; any field can be cleared | The mismatch is a finding and discarding it destroys it. And requiredness is a statement about a finished record, not about a keystroke — a field you cannot empty is one that stays wrong. §5.72 |
 
+| 2026-09-10 | The LeanIX query is **built from introspection**, not hard-coded | Every tenant configures its own metamodel, so a fixed field list is right for one workspace and wrong for the next. The old comment said exactly this; the old code asked for two generic relation fields that do not exist and lost every relation in a real workspace. §5.73 |
+| 2026-09-10 | Every per-type selection is **aliased with its type** | GraphQL refuses a query selecting the same field name for two types that return different types, and LeanIX does this constantly. One alias rule sidesteps every such conflict at once. §5.73 |
+| 2026-09-10 | Mirrored relations are **deduplicated, with a stable direction** | LeanIX returns each edge from both ends; 1,242 rows were 621 edges. Importing both would double every degree and every triple count. Sort order picks the survivor so a re-import is not a reversal, and an unrecognised inverse is kept rather than risk losing a real edge. §5.73 |
+| 2026-09-10 | A stub that agrees with the query is not a test | Rev 97 passed against a stub built to match its own query, and failed on the first real workspace in three independent ways. The stub still earns its place for the plumbing; it cannot vouch for the schema. §5.73 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4389,6 +4449,21 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 110: the LeanIX importer meets a real workspace.** Rev 97's EA-repository
+  door had only ever run against a stub written to match its own query, and failed against
+  Energinet's workspace three ways: it asked for `...on FactSheet`, a type that does not exist;
+  it asked for relations at node level, where none of them live; and it selected per-type fields
+  that collide across types, which GraphQL refuses outright. Replaced with the introspection the
+  old comment already promised — `discoverShape` asks the workspace for its types, fields and
+  relation fields, and the queries are built from the answer with every per-type selection
+  aliased. Mirrored relations are deduplicated with a stable direction: Energinet's 1,242 rows
+  are 621 edges, and importing both halves would double every degree in the explorer. Adds
+  `pnpm leanix:read`, a terminal pull that takes the token from the environment and never from
+  argv, never writes to the graph, and can `--save` the export as CSVs. Error details that
+  arrive as a GraphQL `errors` array are now rendered instead of dropped. 15 new tests, brief
+  §5.73, four decision rows. First real read: 455 fact sheets, 11 types, 621 relations, none
+  dropped.
 
 - **2026-09-10 — Rev 109: the inventory.** Every type with data is now a destination —
   `/w/[slug]/type/[kind]` — with a facet rail built from its own declared fields, a **not set**

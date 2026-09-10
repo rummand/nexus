@@ -12,6 +12,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/db/seed.ts",
+    "leanix:read": "tsx scripts/leanix-import.ts",
     "db:reset": "node scripts/reset-db.mjs",
     "db:transfer": "tsx src/db/transfer-cli.ts",
     "fonts:vendor": "node scripts/vendor-fonts.mjs",
