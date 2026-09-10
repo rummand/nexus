@@ -1892,6 +1892,25 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .login-card input[type="password"]:focus { border-color: var(--blue); outline: 0; }
 .login-card .primary-home-button { justify-content: center; margin-top: 4px; width: 100%; }
 
+/* ---- containment in the entity drawer (§5.70) ---------------------------------------------- */
+.entity-ancestry { align-items: center; display: flex; flex-wrap: wrap; font-size: 12px; gap: 2px; margin: 0; }
+.entity-ancestry span { align-items: center; display: inline-flex; gap: 2px; }
+.entity-ancestry svg { color: #b6c1d1; }
+.entity-ancestry button { background: transparent; border: 0; border-radius: 5px; color: var(--blue); font-size: 12px; font-weight: 700; padding: 2px 4px; }
+.entity-ancestry button:hover { background: #eef6ff; }
+.entity-ancestry b { color: var(--ink); font-weight: 800; padding: 2px 4px; }
+.entity-children { display: grid; gap: 1px; list-style: none; margin: 6px 0 0; padding: 0; }
+.entity-children li { align-items: center; display: flex; gap: 5px; min-height: 24px; }
+.entity-children li svg { color: #b6c1d1; flex: 0 0 auto; }
+.entity-children button { background: transparent; border: 0; border-radius: 5px; color: #253247; font-size: 12px; font-weight: 700; padding: 2px 4px; text-align: left; }
+.entity-children button:hover { background: #f1f6fd; color: var(--blue); }
+.entity-children small { color: #a7b1c1; font-weight: 700; }
+.entity-move { display: flex; gap: 6px; margin-top: 8px; }
+/* A select sizes itself to its longest option, and these options carry a full path — so it has
+   to be told, twice, that it may not push the drawer wider than the drawer. */
+.entity-move select { background: #fff; border: 1px solid var(--line); border-radius: 7px; color: #253247; flex: 1 1 0; font-size: 12px; min-height: 28px; min-width: 0; padding: 0 6px; text-overflow: ellipsis; width: 100%; }
+.entity-move .ghost-button { height: 28px; min-height: 28px; width: auto; }
+
 /* ---- evidence gaps (§5.69) -----------------------------------------------------------------
    An unanswerable question is a finding about the model, not a failure of the query, so it is
    rendered as one: a statement, a reason, and the nearest questions that do have answers. */

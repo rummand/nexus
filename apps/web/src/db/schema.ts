@@ -202,12 +202,26 @@ export const entities = sqliteTable(
     description: text("description").notNull().default(""),
     /** Free-form attributes, JSON-encoded. */
     attributes: text("attributes").notNull().default("{}"),
+    /**
+     * The entity this one sits inside (§5.70). Null for a root.
+     *
+     * Containment is not an ordinary relation and modelling it as one loses the two things it
+     * is for: a capability is *part of* its parent, so counts roll up through it, and a thing
+     * has exactly one parent, so the structure is a tree that can be walked. No foreign key —
+     * a self-reference here would cascade a delete through a whole subtree, and orphaning the
+     * children of a deleted parent is the survivable failure. `reparentOrphans` handles it.
+     */
+    parentId: text("parent_id"),
     /** Where the entity came from: canvas, import:<name>, connector:<name> … */
     source: text("source").notNull().default("canvas"),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
-  (t) => [index("entities_workspace_idx").on(t.workspaceId), index("entities_kind_idx").on(t.workspaceId, t.kind)],
+  (t) => [
+    index("entities_workspace_idx").on(t.workspaceId),
+    index("entities_kind_idx").on(t.workspaceId, t.kind),
+    index("entities_parent_idx").on(t.parentId),
+  ],
 );
 
 export const relations_ = sqliteTable(

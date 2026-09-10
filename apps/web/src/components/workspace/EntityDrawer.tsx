@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowLeft, GitMerge, Plus, Trash2, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, ChevronRight, CornerDownRight, GitMerge, Plus, Trash2, X } from "lucide-react";
 import type { EntityDetail } from "@/lib/graph-types";
 import { attributeIsRisk } from "@/canvas/document";
 import { Timeline } from "@/components/history/Timeline";
-import { createRelationAction, deleteEntity, deleteRelationAction, mergeEntitiesAction, setEntityAttributeAction, updateEntity } from "@/lib/actions";
+import { createRelationAction, deleteEntity, deleteRelationAction, mergeEntitiesAction, setEntityAttributeAction, setEntityParentAction, updateEntity } from "@/lib/actions";
 
 /**
  * Entity detail drawer on the Knowledge graph page: the one place to see and edit everything the
@@ -23,6 +23,8 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
   const [tick, setTick] = useState(0);
   const [rel, setRel] = useState<{ direction: "out" | "in"; kind: string; target: string }>({ direction: "out", kind: "", target: "" });
   const [relError, setRelError] = useState<string | null>(null);
+  const [moveTo, setMoveTo] = useState("");
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!entityId) return;
@@ -136,6 +138,79 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
                 <button type="submit" className="ghost-button" disabled={pending || !rel.target.trim()} aria-label="Add relation"><Plus size={14} /></button>
               </form>
               {relError && <p className="form-error" style={{ margin: 0 }}>{relError}</p>}
+            </section>
+
+            {/*
+              * Where it sits (§5.70). Containment is a column, not a relation, so it gets its own
+              * section rather than hiding among the relations — and the roll-up is the number a
+              * capability map exists for: a parent with nothing of its own is not empty.
+              */}
+            <section className="entity-drawer-section" data-drawer-hierarchy>
+              <span>
+                Where it sits
+                {detail!.beneath > 0 && <small>{detail!.beneath} beneath</small>}
+              </span>
+
+              {detail!.ancestry.length > 1 ? (
+                <p className="entity-ancestry" data-ancestry>
+                  {detail!.ancestry.slice(0, -1).map((a) => (
+                    <span key={a.id}>
+                      <button type="button" onClick={() => onNavigate(a.id)} data-ancestor={a.id}>{a.name}</button>
+                      <ChevronRight size={11} />
+                    </span>
+                  ))}
+                  <b>{detail!.entity.name || "(unnamed)"}</b>
+                </p>
+              ) : (
+                <p className="muted">At the top level — nothing contains it.</p>
+              )}
+
+              {detail!.children.length > 0 && (
+                <ul className="entity-children" data-children>
+                  {detail!.children.map((c) => (
+                    <li key={c.id}>
+                      <CornerDownRight size={11} />
+                      <button type="button" onClick={() => onNavigate(c.id)} data-child={c.id}>{c.name}</button>
+                      <small>{c.kind || "untyped"}{c.beneath > 0 ? ` · ${c.beneath} beneath` : ""}</small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="entity-move">
+                <select
+                  value={moveTo}
+                  onChange={(e) => setMoveTo(e.target.value)}
+                  aria-label="Move inside"
+                  data-move-parent
+                >
+                  <option value="">Move inside…</option>
+                  {detail!.ancestry.length > 1 && <option value="__top">↑ To the top level</option>}
+                  {detail!.parentOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.path ? `${o.path} › ` : ""}{o.name}{o.kind ? ` · ${o.kind}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={!moveTo || pending}
+                  data-move-apply
+                  onClick={() => {
+                    setMoveError(null);
+                    start(async () => {
+                      const r = (await setEntityParentAction(detail!.entity.id, moveTo === "__top" ? null : moveTo)) as { error?: string } | undefined;
+                      if (r?.error) { setMoveError(r.error); return; }
+                      setMoveTo("");
+                      setTick((t) => t + 1);
+                    });
+                  }}
+                >
+                  Move
+                </button>
+              </div>
+              {moveError && <p className="form-error" data-move-error>{moveError}</p>}
             </section>
 
             <section className="entity-drawer-section">

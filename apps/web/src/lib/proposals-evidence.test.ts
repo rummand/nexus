@@ -3,6 +3,7 @@ import { evidenceProposals, lifecycleProposals, ownershipProposals } from "./pro
 import type * as s from "@/db/schema";
 
 const entity = (id: string, kind: string, name: string, attributes: Record<string, string> = {}): s.Entity => ({
+  parentId: null,
   id, workspaceId: "ws", kind, name, description: "", attributes: JSON.stringify(attributes),
   source: "intake:src1", createdAt: "", updatedAt: "",
 });

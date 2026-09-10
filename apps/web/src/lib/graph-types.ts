@@ -44,6 +44,21 @@ export interface EntityDetail {
   relations: Array<{ id: string; kind: string; direction: "out" | "in"; other: { id: string; name: string; kind: string } }>;
   /** Other entities with the same name — candidates for a merge. */
   duplicates: Array<{ id: string; kind: string; name: string; description: string }>;
+  /**
+   * Where it sits (§5.70): the chain from the root down to and including itself, and what is
+   * directly inside it. `beneath` counts everything below at any depth, which is the number a
+   * capability map is for — a parent with nothing of its own and forty things under it is not
+   * empty.
+   */
+  ancestry: Array<{ id: string; name: string; kind: string }>;
+  children: Array<{ id: string; name: string; kind: string; beneath: number }>;
+  beneath: number;
+  /** Candidates for "move inside": everything in the workspace that would not make a loop. */
+  /**
+   * Each carries the path it sits on. Not decoration: three entities called "Asset Register" is
+   * ordinary in a real estate, and a flat list of identical names cannot be chosen from.
+   */
+  parentOptions: Array<{ id: string; name: string; kind: string; path: string }>;
   /** What has happened to it, newest first (§5.43). */
   history: GraphEvent[];
 }

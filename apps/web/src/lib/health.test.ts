@@ -3,6 +3,7 @@ import { healthLabel, healthReport } from "./health";
 import type * as s from "@/db/schema";
 
 const entity = (over: Partial<s.Entity> & { id: string }): s.Entity => ({
+  parentId: null,
   workspaceId: "ws", kind: "Application", name: "X", description: "", attributes: "{}",
   source: "canvas", createdAt: "", updatedAt: "", ...over,
 });

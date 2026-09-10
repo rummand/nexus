@@ -111,8 +111,76 @@ export async function seed(db: Db) {
   // index the seeded boards into the knowledge graph
   for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId, name: b.name }, b.document);
 
+  await seedCapabilityTree(db, workspaceId);
   await seedRoadmap(db, workspaceId);
   await seedHistory(db, workspaceId);
+}
+
+/**
+ * A capability hierarchy over the seeded estate (§5.70).
+ *
+ * The capability map board draws six L1 capabilities as frames, which was as much structure as a
+ * flat graph could hold. With containment on the entity itself the same six become a real tree:
+ * two levels, with the applications that realise them sitting underneath — so the roll-up in the
+ * entity drawer has something to add up, and a demo workspace shows what a capability map is
+ * actually for.
+ *
+ * The L1 rows are created here rather than drawn, because a capability that exists only as a
+ * frame on one board is a picture, not a thing the graph knows about.
+ */
+async function seedCapabilityTree(db: Db, workspaceId: string) {
+  const ts = new Date().toISOString();
+  const L1: Array<{ id: string; name: string; children: Array<{ id: string; name: string; realisedBy: string[] }> }> = [
+    {
+      id: "cap_grid", name: "Grid Operations",
+      children: [
+        { id: "cap_grid_control", name: "Real-time control", realisedBy: ["SCADA / EMS", "Historian"] },
+        { id: "cap_grid_outage", name: "Outage management", realisedBy: ["Outage Mgmt"] },
+      ],
+    },
+    {
+      id: "cap_asset", name: "Asset Management",
+      children: [
+        { id: "cap_asset_register", name: "Asset records", realisedBy: ["Asset Register", "Maximo"] },
+        { id: "cap_asset_work", name: "Work orders", realisedBy: ["Maximo"] },
+      ],
+    },
+    {
+      id: "cap_market", name: "Market & Settlement",
+      children: [{ id: "cap_market_settle", name: "Settlement", realisedBy: ["Settlement Engine"] }],
+    },
+    {
+      id: "cap_customer", name: "Customer & Connections",
+      children: [{ id: "cap_customer_service", name: "Customer service", realisedBy: ["CRM", "CRM Cloud", "Connection Portal"] }],
+    },
+  ];
+
+  const rows = await db
+    .select({ id: s.entities.id, name: s.entities.name, kind: s.entities.kind })
+    .from(s.entities)
+    .where(eq(s.entities.workspaceId, workspaceId));
+  const appNamed = (name: string) =>
+    rows.filter((r) => r.kind === "Application" && r.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+  const created: Array<typeof s.entities.$inferInsert> = [];
+  for (const l1 of L1) {
+    created.push({ id: l1.id, workspaceId, kind: "Business Capability", name: l1.name, description: "", attributes: "{}", parentId: null, source: "seed", createdAt: ts, updatedAt: ts });
+    for (const l2 of l1.children) {
+      created.push({ id: l2.id, workspaceId, kind: "Business Capability", name: l2.name, description: "", attributes: "{}", parentId: l1.id, source: "seed", createdAt: ts, updatedAt: ts });
+    }
+  }
+  await db.insert(s.entities).values(created);
+
+  // The applications sit inside the capability they realise, so the roll-up has real weight.
+  for (const l1 of L1) {
+    for (const l2 of l1.children) {
+      for (const name of l2.realisedBy) {
+        for (const app of appNamed(name)) {
+          await db.update(s.entities).set({ parentId: l2.id, updatedAt: ts }).where(eq(s.entities.id, app.id));
+        }
+      }
+    }
+  }
 }
 
 /**

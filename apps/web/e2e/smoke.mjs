@@ -461,6 +461,52 @@ try {
   assert.ok(page.url().includes(`/graph?entity=${firstEntityId}`), "deep link lands on the graph page");
 
   /*
+   * Containment (§5.70): the seed builds a real capability tree, so the drawer must show where a
+   * thing sits, what is inside it, and how much is beneath — the number a capability map is for.
+   */
+  const capId = await page.evaluate(async () => {
+    const g = await (await fetch("/api/workspaces/ws_acme/graph")).json();
+    return g.entities.find((e) => e.name === "Grid Operations" && e.kind === "Business Capability")?.id;
+  });
+  assert.ok(capId, "the seed has an L1 capability");
+  await page.goto(`${base}/e/${capId}`, { waitUntil: "load" });
+  await page.waitForSelector("[data-drawer-hierarchy]", { timeout: 15000 });
+  const beneath = await page.locator("[data-drawer-hierarchy] > span").innerText();
+  assert.match(beneath, /beneath/i, "a parent reports how much is under it, at any depth");
+  assert.ok((await page.locator("[data-child]").count()) >= 2, "and lists what is directly inside it");
+
+  // A child knows its way home, and the breadcrumb walks there.
+  const childId = await page.locator("[data-child]").first().getAttribute("data-child");
+  await page.goto(`${base}/e/${childId}`, { waitUntil: "load" });
+  await page.waitForSelector("[data-ancestry]", { timeout: 15000 });
+  assert.ok((await page.locator("[data-ancestor]").count()) >= 1, "a child shows the chain above it");
+
+  /*
+   * A loop is the one corruption that makes containment unwalkable, and the interface must not
+   * be able to propose one: from a parent, its own descendants are simply not offered. (The
+   * rule itself is proved in hierarchy.test.ts; this is the check that the UI honours it.)
+   */
+  await page.goto(`${base}/e/${capId}`, { waitUntil: "load" });
+  await page.waitForSelector("[data-move-parent]", { timeout: 15000 });
+  const options = await page.locator("[data-move-parent] option").allTextContents();
+  assert.ok(options.length > 1, "there is somewhere to move it to");
+  const childNames = await page.locator("[data-child]").allInnerTexts();
+  for (const child of childNames) {
+    assert.ok(
+      !options.some((o) => o.startsWith(child)),
+      `“${child}” is inside this, so moving into it would make a loop and must not be offered`,
+    );
+  }
+
+  // Moving to the top level is offered only for something that is not already there.
+  await page.goto(`${base}/e/${childId}`, { waitUntil: "load" });
+  await page.waitForSelector("[data-move-parent]", { timeout: 15000 });
+  assert.ok(
+    (await page.locator("[data-move-parent] option").allTextContents()).some((o) => /top level/i.test(o)),
+    "a nested thing can be lifted out",
+  );
+
+  /*
    * The graph remembers (§5.43). Two facts, on one object, without leaving anything behind: an
    * attribute set shows up in that object's timeline, and taking it straight off again leaves no
    * trace at all — because nothing happened, and a history that says otherwise is noise.

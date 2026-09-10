@@ -3133,6 +3133,60 @@ survives onto a board and into exports. That wants somewhere to live, and the ty
 layer (#114) is where it belongs; building private storage for it here would only have to be
 torn out. Diagnosis and pivots ship now; the pin follows the annotation layer.
 
+### 5.70 Containment: the one relationship that is not a relation (v0.2)
+
+The Nexus graph was flat. Anything wanting a tree — a capability map, C4's levels, an
+organisation, ArchiMate composition — had to express it as an ordinary relation, which loses the
+two things containment is actually for:
+
+- **Counts roll up through it.** A capability's weight is its own plus everything beneath it, at
+  any depth. No ordinary relation implies that, because no ordinary relation means *part of*.
+- **A thing has exactly one parent**, so the structure is a tree: walkable, indentable,
+  collapsible, summable. A relation kind called "contains" is a graph edge with none of those
+  guarantees — nothing stops two parents, and nothing stops a ring.
+
+So containment is a **column on the entity**, not an edge: `entities.parent_id`, indexed, with
+migrations for both dialects. Note the type-level hierarchy on `node_types.parent_id` has existed
+since §5.5; this is the missing instance-level twin.
+
+`lib/hierarchy.ts` is the arithmetic, pure and tested: `forest`, `flatten`, `ancestry`,
+`descendants`, `reparentProblem`, `reparentOrphans`, `rollUp`, `depth`. Four rules in it are
+worth stating, because each is a real corruption rather than a matter of taste:
+
+- **A cycle never hangs the reader.** `forest` and `ancestry` both stop on a revisit. Corrupt
+  data should render as something odd, never as a frozen tab.
+- **An item whose parent is outside the current filter becomes a root, not a casualty.** A
+  filtered tree that silently drops those children under-reports without ever looking wrong,
+  which is the failure nobody notices.
+- **Deleting a parent lifts its children to the grandparent.** There is deliberately no cascade
+  on the column: removing a capability must remove the level, not the estate underneath it. Both
+  the single and the bulk delete do this.
+- **A move that would make a ring is refused, and says why** — and the interface does not even
+  offer it, because a candidate list that contains impossible choices is a list that has to be
+  read twice.
+
+In the entity drawer this is **Where it sits**: the chain above, what is directly inside with
+each child's own roll-up, the total beneath, and a **Move inside…** control. Every candidate in
+that control carries its full path, because three entities called "Asset Register" is ordinary
+in a real estate and a list of identical names cannot be chosen from — the same lesson as
+rev 102's explorer rail.
+
+The seed now builds a real two-level capability tree over the demo estate, with the applications
+sitting inside the capability they realise, so the roll-up has something to add up and the demo
+shows what a capability map is for.
+
+Two things were caught by looking at the running app rather than by reasoning about it: the
+`<select>` sized itself to its longest option and pushed the drawer's contents past its own
+edge (a select must be told twice — `flex: 1 1 0; min-width: 0; width: 100%`), and a stale dev
+server served the old `entityDetail` for several minutes while the file on disk was already
+correct. **After editing a server module, restart before judging the UI.**
+
+**Not yet, and tracked on #110:** the LeanIX importer still flattens `relToParent` into an
+ordinary relation instead of setting the column — that needs a parent column carried through the
+batch and staging format. The explorer rail is still a flat list, and a board cannot yet expand
+or collapse a parent into its children. The meta-model has nothing to say about which types may
+nest inside which; that belongs with the governance work in #128.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3170,7 +3224,7 @@ torn out. Diagnosis and pivots ship now; the pin follows the annotation layer.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 106)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 107)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3235,6 +3289,16 @@ torn out. Diagnosis and pivots ship now; the pin follows the annotation layer.
 
 ### Entity deep links (v0.2)
 - `/e/:id` opens the entity drawer; inspector and home "Recently changed" chips link to it.
+
+### Containment (v0.2, rev 107 — §5.70)
+- `entities.parent_id`: a thing sits inside exactly one other thing, so capability maps, C4
+  levels and organisation trees are expressible at last.
+- **Where it sits** in the entity drawer: the chain above, the children with their own roll-ups,
+  the total beneath, and a move control whose candidates carry their full path.
+- Counts roll up at any depth. Deleting a parent lifts its children to the grandparent. A move
+  that would make a ring is neither offered nor accepted.
+- The seed builds a two-level capability tree with the applications that realise each capability
+  sitting inside it.
 
 ### Entity drawer (v0.2)
 - Detail drawer for any entity on the Knowledge graph page: edit fields and attributes, navigate
@@ -4200,6 +4264,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | The query matcher became **pure**, and `runQuery` now always loads relations | Diagnosing an empty result means re-running the match with one clause removed, which is trivial against a pure function over loaded data and impossible against one that also does the loading. Skipping the relations read unless the query mentioned one was a sound optimisation for answering and fatal for explaining. §5.69 |
 | 2026-09-10 | Pinning an evidence gap waits for the annotation layer | LeanFlow lets a gap become a follow-up note that survives onto a board and into exports. It needs somewhere to live, and #114's typed annotation layer is where it belongs; private storage built here would only be torn out. §5.69 |
 
+| 2026-09-10 | Containment is a **column**, not a relation kind called "contains" | Two things follow from *part of* that no ordinary relation gives: counts roll up through it, and one parent means the structure is a tree that can be walked, indented and summed. A "contains" edge permits two parents and permits a ring. §5.70 |
+| 2026-09-10 | **No database cascade** on `parent_id`; children are lifted to the grandparent | Deleting a capability must remove the level, not the estate underneath it. A cascade would be silent data loss nobody notices for a week. The rule lives in the action, where it is readable and testable. §5.70 |
+| 2026-09-10 | An item whose parent is **outside the current filter is a root**, not dropped | A filtered tree that loses those children under-reports while looking perfectly correct — the failure nobody notices. §5.70 |
+| 2026-09-10 | Move candidates carry their **full path** | Three entities called "Asset Register" is ordinary in a real estate; a flat list of identical names cannot be chosen from. The same lesson as rev 102's explorer rail, applied to a `<select>`. §5.70 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4214,6 +4283,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 107: containment.** The graph was flat, so a capability map, C4's levels or
+  an organisation chart could only be faked as ordinary relations. `entities.parent_id` makes a
+  thing sit inside exactly one other thing, which is what lets counts roll up and lets the
+  structure be walked. New pure `lib/hierarchy.ts` with 21 tests covering the rules that keep it
+  a tree — cycles never hang a reader, a filtered tree does not lose the children of things
+  outside the filter, deleting a parent lifts its children to the grandparent rather than taking
+  them with it, and a move that would make a ring is refused with the reason. **Where it sits**
+  in the entity drawer shows the chain above, the children with their own roll-ups and the total
+  beneath, with a move control whose candidates carry their full path. The seed builds a real
+  two-level capability tree over the demo estate. Migrations for both dialects; guard coverage,
+  e2e, a new docs page, brief §5.70. Part of #110 — the LeanIX importer, the explorer rail tree
+  and board expand/collapse are still to come, and are listed there.
 
 - **2026-09-10 — Rev 106: evidence gaps.** A graph question that finds nothing now says what the
   *model* does not know instead of "no results": the name is not a thing here, no relationship

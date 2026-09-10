@@ -9,6 +9,7 @@ import { parseAttributes } from "./attributes";
 import { entityHistory, recordRelationEvent, remembering } from "./history/record";
 import * as who from "./history/actor";
 import type { Actor } from "./history/events";
+import { ancestry, descendants } from "./hierarchy";
 
 // Re-exported so the many callers that reach for it through the graph module keep working.
 export { parseAttributes };
@@ -270,7 +271,39 @@ export async function entityDetail(db: Db, entityId: string): Promise<EntityDeta
   const sameKind = await db.select({ attributes: s.entities.attributes }).from(s.entities).where(and(eq(s.entities.workspaceId, entity.workspaceId), eq(s.entities.kind, entity.kind)));
   const keyCounts = new Map<string, number>();
   for (const row of sameKind) for (const k of Object.keys(parseAttributes(row.attributes))) keyCounts.set(k, (keyCounts.get(k) ?? 0) + 1);
+
+  /*
+   * Where it sits (§5.70). One read of the workspace's shape — id, parent, name, kind — which
+   * is small enough to hold at the explorer's cap and is needed three times over: for the
+   * breadcrumb up, the children below, and for working out which parents a move may offer
+   * without making a loop.
+   */
+  const shape = await db
+    .select({ id: s.entities.id, parentId: s.entities.parentId, name: s.entities.name, kind: s.entities.kind })
+    .from(s.entities)
+    .where(eq(s.entities.workspaceId, entity.workspaceId));
+  const chain = ancestry(shape, entityId).map((e) => ({ id: e.id, name: e.name, kind: e.kind }));
+  const below = new Set(descendants(shape, entityId));
+  const kids = shape
+    .filter((e) => e.parentId === entityId)
+    .map((e) => ({ id: e.id, name: e.name, kind: e.kind, beneath: descendants(shape, e.id).length }))
+    .sort((a, b) => b.beneath - a.beneath || a.name.localeCompare(b.name));
+  const parentOptions = shape
+    .filter((e) => e.id !== entityId && !below.has(e.id) && e.id !== entity.parentId)
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      kind: e.kind,
+      // Where it sits, so the three things called "Asset Register" can be told apart.
+      path: ancestry(shape, e.id).slice(0, -1).map((a) => a.name).join(" › "),
+    }))
+    .sort((a, b) => `${a.path} ${a.name}`.localeCompare(`${b.path} ${b.name}`));
+
   return {
+    ancestry: chain,
+    children: kids,
+    beneath: below.size,
+    parentOptions,
     entity: { id: entity.id, kind: entity.kind, name: entity.name, description: entity.description, attributes: parseAttributes(entity.attributes), source: entity.source, updatedAt: entity.updatedAt },
     kindAttributeKeys: [...keyCounts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k),
     duplicates: dupes.map((d) => ({ id: d.id, kind: d.kind, name: d.name, description: d.description })),
@@ -317,7 +350,7 @@ export async function importGraph(db: Db, workspaceId: string, payload: ImportPa
         result.entitiesUpdated++;
       }
     } else {
-      const row: s.Entity = { id: `${ENTITY_ID_PREFIX}${nanoid(12)}`, workspaceId, kind, name, description, attributes: JSON.stringify(incoming), source, createdAt: ts, updatedAt: ts };
+      const row: s.Entity = { id: `${ENTITY_ID_PREFIX}${nanoid(12)}`, workspaceId, kind, name, description, attributes: JSON.stringify(incoming), parentId: null, source, createdAt: ts, updatedAt: ts };
       await db.insert(s.entities).values(row);
       byKey.set(key, row);
       byName.set(norm(name), [...(byName.get(norm(name)) ?? []), row]);

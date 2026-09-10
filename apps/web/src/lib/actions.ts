@@ -14,6 +14,7 @@ import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, p
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
 import { createRelation, deleteRelation } from "./relations";
+import { reparentProblem } from "./hierarchy";
 import { recordRelationEvent, remembering } from "./history/record";
 import { currentActor } from "./history/current";
 import * as who from "./history/actor";
@@ -440,9 +441,17 @@ export async function bulkDeleteEntities(entityIds: string[]) {
   }
   const [any] = await db.select({ workspaceId: s.entities.workspaceId }).from(s.entities).where(inArray(s.entities.id, entityIds));
   if (!any) return { deleted: 0 };
-  const rows = await remembering(db, { workspaceId: any.workspaceId, actor: await currentActor(), context: `a bulk delete of ${entityIds.length} entities` }, { ids: entityIds }, () =>
-    db.delete(s.entities).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId }),
-  );
+  const rows = await remembering(db, { workspaceId: any.workspaceId, actor: await currentActor(), context: `a bulk delete of ${entityIds.length} entities` }, { ids: entityIds }, async () => {
+    // Same rule as a single delete (§5.70): the level goes, what was under it does not.
+    const going = await db
+      .select({ id: s.entities.id, parentId: s.entities.parentId })
+      .from(s.entities)
+      .where(inArray(s.entities.id, entityIds));
+    for (const g of going) {
+      await db.update(s.entities).set({ parentId: g.parentId ?? null, updatedAt: now() }).where(eq(s.entities.parentId, g.id));
+    }
+    return db.delete(s.entities).where(inArray(s.entities.id, entityIds)).returning({ workspaceId: s.entities.workspaceId });
+  });
   if (rows[0]) revalidatePath(`/w/${await workspaceSlug(rows[0].workspaceId)}`, "layout");
   return { deleted: rows.length };
 }
@@ -483,9 +492,53 @@ export async function deleteEntity(entityId: string) {
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return;
   await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+    /*
+     * Lift the children to the grandparent before the row goes (§5.70). There is no cascade on
+     * `parent_id` on purpose: deleting a capability must remove the level, not the estate
+     * underneath it. Doing it here rather than in the database keeps the rule in one readable
+     * place and testable.
+     */
+    await db
+      .update(s.entities)
+      .set({ parentId: row.parentId ?? null, updatedAt: now() })
+      .where(eq(s.entities.parentId, entityId));
     await db.delete(s.entities).where(eq(s.entities.id, entityId));
   });
   revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+}
+
+/**
+ * Move an entity inside another, or out to the top (§5.70).
+ *
+ * Containment is a column rather than a relation, so the rules that keep it a tree — no self,
+ * no loop, no missing parent — are enforced here against `reparentProblem` and reported to the
+ * reader rather than silently corrected.
+ */
+export async function setEntityParentAction(entityId: string, parentId: string | null) {
+  const no = await denyEntity(entityId, "graph.edit");
+  if (no) return no;
+  const db = await getDb();
+  const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
+  if (!row) return { error: "Entity not found" };
+  if (parentId) {
+    const [parent] = await db.select().from(s.entities).where(eq(s.entities.id, parentId));
+    if (!parent) return { error: "That parent is not here." };
+    if (parent.workspaceId !== row.workspaceId) return { error: "A thing cannot sit inside another workspace." };
+  }
+
+  const all = await db
+    .select({ id: s.entities.id, parentId: s.entities.parentId })
+    .from(s.entities)
+    .where(eq(s.entities.workspaceId, row.workspaceId));
+  const problem = reparentProblem(all, entityId, parentId);
+  if (problem) return { error: problem };
+
+  const context = parentId ? "moved inside another object" : "moved to the top level";
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context }, { ids: [entityId] }, async () => {
+    await db.update(s.entities).set({ parentId, updatedAt: now() }).where(eq(s.entities.id, entityId));
+  });
+  revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
+  return {};
 }
 
 /** Lay the (optionally kind-filtered) graph out on a new board in the given space. */

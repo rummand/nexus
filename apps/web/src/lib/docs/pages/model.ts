@@ -69,6 +69,36 @@ export const EXPLORER: DocPage = {
   ],
 };
 
+export const HIERARCHY: DocPage = {
+  slug: "hierarchy",
+  title: "Containment: what sits inside what",
+  summary: "Capability trees, C4 levels and organisation charts need one relationship that is not a relation.",
+  keywords: ["hierarchy", "containment", "parent", "child", "tree", "capability map", "level", "nested", "roll up", "rollup", "breakdown", "decompose"],
+  blocks: [
+    { kind: "prose", text: "Most things in Nexus are connected by relations, which go anywhere and mean whatever the relationship type says. Containment is the exception: a thing sits **inside** exactly one other thing, and that single constraint is what makes a capability map, a C4 breakdown or an organisation chart possible." },
+    { kind: "heading", text: "Why it is not just a relation called “contains”", id: "why" },
+    {
+      kind: "list",
+      items: [
+        "**Counts roll up through it.** A capability's weight is its own plus everything beneath it, at any depth. No ordinary relation implies that, because no ordinary relation means *part of*.",
+        "**One parent, so it is a tree.** A tree can be walked, indented, collapsed and summed. A relation kind called “contains” is a graph edge with none of those guarantees: nothing stops two parents, and nothing stops a ring.",
+      ],
+    },
+    { kind: "heading", text: "Doing it", id: "doing" },
+    {
+      kind: "steps",
+      steps: [
+        { do: "Open an object. **Where it sits** shows the chain above it, what is directly inside it, and how much is beneath in total." },
+        { do: "Use **Move inside…** to put it somewhere else, or lift it to the top level.", note: "The list shows each candidate's full path, because three things called “Asset Register” is ordinary in a real estate and a list of identical names cannot be chosen from." },
+        { do: "Click anything in the chain or the children list to walk there." },
+      ],
+    },
+    { kind: "note", tone: "why", title: "What happens when you delete a parent", text: "The children are lifted to the grandparent, not deleted with it. Removing a capability should remove the level, not the estate underneath it — and losing everything below would be the kind of data loss nobody notices until a week later. There is deliberately no database cascade on the column for the same reason." },
+    { kind: "note", tone: "tip", text: "A move that would put something inside itself, or inside something it already contains, is not offered at all — a ring has no top and nothing can walk it. The rule is enforced on the server too, so an agent or an import cannot make one either." },
+    { kind: "try", href: "/w/:slug/graph", label: "Open the knowledge graph" },
+  ],
+};
+
 export const META_MODEL: DocPage = {
   slug: "meta-model",
   title: "The meta-model",

@@ -68,7 +68,7 @@ describe("proposals", () => {
   });
 
   it("proposes attribute key / value normalisation and missing attributes", async () => {
-    const ent = (id: string, kind: string, attributes: Record<string, string>): s.Entity => ({ id, workspaceId: "ws", kind, name: id, description: "", source: "test", attributes: JSON.stringify(attributes), createdAt: "2026-01-01", updatedAt: "2026-01-01" });
+    const ent = (id: string, kind: string, attributes: Record<string, string>): s.Entity => ({ id, workspaceId: "ws", kind, name: id, description: "", source: "test", parentId: null, attributes: JSON.stringify(attributes), createdAt: "2026-01-01", updatedAt: "2026-01-01" });
     const props = attributeProposals([
       ent("a1", "Application", { lifecycle: "Active", owner: "IT", tier: "1" }),
       ent("a2", "Application", { lifecycle: "active", owner: "IT", Tier: "2" }),

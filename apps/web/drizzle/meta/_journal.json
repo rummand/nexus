@@ -218,6 +218,13 @@
       "when": 1789033508145,
       "tag": "0030_chief_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1789053136151,
+      "tag": "0031_common_white_queen",
+      "breakpoints": true
     }
   ]
 }

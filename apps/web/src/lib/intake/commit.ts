@@ -86,6 +86,7 @@ export async function commitExtraction(
     const row: s.Entity = {
       id: `${ENTITY_ID_PREFIX}${nanoid(12)}`,
       workspaceId,
+      parentId: null,
       kind,
       name,
       description,
