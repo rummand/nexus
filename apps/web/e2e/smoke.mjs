@@ -721,6 +721,47 @@ try {
   assert.ok((await page.locator(".meta-card-fw").count()) > 8,
     "types carry the provenance of the framework that declared them");
 
+  /*
+   * Relationship rules: the triple as the unit (§5.67).
+   *
+   * The property worth asserting is the one the product is about — a pairing the data does and
+   * nobody declared is a *proposal*, promotable in one click, not a violation to be scolded for.
+   */
+  {
+    await page.click('[data-shape="rules"]');
+    await page.waitForSelector("[data-meta-rules]", { timeout: 60000 });
+    const rows = await page.locator("[data-triple]").count();
+    assert.ok(rows > 0, "every source-relationship-target the estate exhibits is a row");
+    assert.match(await page.locator("[data-rules-verdict]").innerText(), /connection|relationship/i,
+      "and the table says what the rules add up to");
+
+    const observed = page.locator('[data-triple].observed').first();
+    if (await observed.count()) {
+      const before = await page.locator('[data-triple].observed').count();
+      const button = observed.locator("[data-declare-rule]");
+      if (await button.isDisabled()) {
+        // Blocked only ever for one reason, and it has to say which.
+        assert.match((await button.getAttribute("title")) ?? "", /relationship type first/,
+          "a triple whose relationship type is undeclared says so rather than failing");
+      } else {
+        await button.click();
+        await page.waitForFunction((n) => document.querySelectorAll("[data-triple].observed").length < n,
+          before, { timeout: 30000 });
+        assert.ok((await page.locator('[data-triple].in-use').count()) > 0,
+          "promoting an observed pairing makes it a rule the model holds");
+      }
+    }
+
+    // Filtering by status, which is the whole point of having three of them.
+    await page.click('[data-rule-filter="observed"]');
+    await page.waitForTimeout(400);
+    const shown = await page.locator("[data-triple]").count();
+    assert.ok(shown > 0 && shown <= rows, "the observed filter narrows to the pairings nobody declared");
+    await page.click('[data-rule-filter="observed"]');
+    await page.click('[data-shape="board"]');
+    await page.waitForSelector("[data-meta-card]", { timeout: 30000 });
+  }
+
   // layers: the stack, and the one the estate itself suggests (§5.58)
   await openDrawer("layers");
   await page.waitForSelector("[data-layers]");

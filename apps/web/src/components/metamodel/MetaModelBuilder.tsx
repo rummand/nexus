@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Layers as LayersIcon, Network, Plus, Rows3, ShieldCheck, Spline, Trash2, X } from "lucide-react";
 import type { MetaLayer, MetaModel, MetaNodeType, MetaRelationType, Presence } from "@/lib/metamodel";
 import {
   addField, addRule, createNodeType, createRelationType, declareNodeType,
@@ -19,6 +19,7 @@ import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-
 import { bands, cards, filterCards, health, type Only, type TypeCard } from "@/lib/metamodel-board";
 import { TypeCardTile } from "./TypeCard";
 import { HealthStrip } from "./HealthStrip";
+import { Rules } from "./Rules";
 
 /**
  * Meta-model builder — the technical view of the graph's schema.
@@ -45,7 +46,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
   const [filter, setFilter] = useState("");
   const [only, setOnly] = useState<Only>("all");
   const [groupBy, setGroupBy] = useState<"none" | "layer" | "kind">("kind");
-  const [shape, setShape] = useState<"board" | "diagram">("board");
+  const [shape, setShape] = useState<"board" | "rules" | "diagram">("board");
   const [drawer, setDrawer] = useState<"layers" | "conformance" | "frameworks" | null>(null);
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -96,18 +97,23 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
         model on screen, not separate screens showing the same types again.
       */}
       <div className="meta-toolbar">
-        <input
-          className="meta-search"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search types"
-          aria-label="Search types"
-          data-meta-search
-        />
+        {shape === "board" && (
+          <input
+            className="meta-search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search types"
+            aria-label="Search types"
+            data-meta-search
+          />
+        )}
         <div className="meta-seg" role="group" aria-label="How to show the model">
           <button type="button" className={shape === "board" ? "on" : ""} onClick={() => setShape("board")} data-shape="board"><Rows3 size={13} /> Types</button>
+          <button type="button" className={shape === "rules" ? "on" : ""} onClick={() => setShape("rules")} data-shape="rules"><Spline size={13} /> Rules</button>
           <button type="button" className={shape === "diagram" ? "on" : ""} onClick={() => setShape("diagram")} data-shape="diagram"><Network size={13} /> Diagram</button>
         </div>
+        {/* Grouping is a property of the card board; it means nothing to a table or a diagram. */}
+        {shape === "board" && (
         <div className="meta-seg" role="group" aria-label="Group by">
           <button type="button" className={groupBy === "kind" ? "on" : ""} onClick={() => setGroupBy("kind")} data-group="kind">Kind</button>
           <button
@@ -122,6 +128,7 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
           </button>
           <button type="button" className={groupBy === "none" ? "on" : ""} onClick={() => setGroupBy("none")} data-group="none">Flat</button>
         </div>
+        )}
         <span className="meta-toolbar-gap" />
         <button type="button" className={`ghost-button ${drawer === "layers" ? "on" : ""}`} onClick={() => setDrawer(drawer === "layers" ? null : "layers")} data-tab-layers>
           <LayersIcon size={14} /> Layers{model.layers.length > 0 && <i className="tab-count">{model.layers.length}</i>}
@@ -149,6 +156,8 @@ export function MetaModelBuilder({ model, workspaceId, slug, notes = {}, report,
         <div className="meta-main">
           {shape === "diagram" ? (
             <MetaModelDiagram model={model} selected={selected} onSelect={(next) => setSelected(next)} />
+          ) : shape === "rules" ? (
+            <Rules model={model} slug={slug} />
           ) : grouped.length === 0 ? (
             <p className="meta-empty" data-meta-empty>
               {all.length === 0

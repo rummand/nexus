@@ -2041,7 +2041,12 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .meta-detail { overflow: auto; padding: 18px 22px; }
 .meta-detail-body { display: grid; gap: 16px; max-width: 760px; }
 .meta-detail-body > header { align-items: center; display: flex; gap: 11px; }
-.meta-detail-body > header > i { border-radius: 4px; flex: 0 0 auto; height: 14px; width: 14px; }
+/*
+ * `:not(.meta-presence)` because the presence tag is an <i> too, and this rule was squashing it
+ * to a 14x14 square — the label read as a sliver at any width narrow enough to make the header
+ * compete for room (§5.66).
+ */
+.meta-detail-body > header > i:not(.meta-presence) { border-radius: 4px; flex: 0 0 auto; height: 14px; width: 14px; }
 .meta-detail-body > header > i.rel { background: transparent; border-radius: 0; border-top: 3px solid #94a3b8; height: 0; width: 16px; }
 .meta-detail-body > header div { flex: 1; min-width: 0; }
 .meta-detail-body > header small { color: #7c8799; display: block; font-size: 10px; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
@@ -3831,4 +3836,35 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
  */
 .meta-detail .meta-detail-body { padding: 14px; }
 .meta-detail .meta-detail-body > header { flex-wrap: wrap; }
-.meta-detail .meta-detail-body > header .meta-presence { flex: 0 0 auto; }
+
+/* ---- relationship rules: the triple as a row (§5.67) ------------------------
+ *
+ * One sentence repeated down the page — source, relationship, target — because that is the shape
+ * of the statement a meta-model makes about connections. Observed rows are tinted like an
+ * emergent type card: the same warm ground means the same thing everywhere in this product, that
+ * the data said it and nobody has agreed to it yet.
+ */
+.meta-rules { display: grid; gap: 12px; max-width: 1100px; }
+.meta-rules-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+.meta-rules .meta-verdict { flex: 1 1 340px; }
+.meta-rules .meta-search { width: 320px; }
+.meta-rules-table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+.meta-rules-table th { color: var(--quiet); font-size: 10px; font-weight: 800; letter-spacing: 0.05em; padding: 0 8px 6px; text-align: left; text-transform: uppercase; }
+.meta-rules-table th.num, .meta-rules-table td.num { text-align: right; }
+.meta-rules-table td { border-top: 1px solid var(--line); padding: 7px 8px; vertical-align: middle; }
+.meta-rules-table tbody tr:hover td { background: #f8fafd; }
+.meta-rules-table tr.observed td { background: #fffdf7; }
+.meta-rules-table tr.observed:hover td { background: #fffaee; }
+.meta-rules-table td b { font-weight: 700; }
+.meta-rules-table td.arrow { color: #b6c1d2; padding: 0; width: 18px; }
+.meta-rules-table td.rel { color: #56637a; white-space: nowrap; }
+.meta-rules-table td.rel em { background: #f2f5f9; border-radius: 4px; color: #7b8799; font-size: 10px; font-style: normal; margin-left: 6px; padding: 1px 5px; }
+.meta-rules-table td.num { color: #56637a; font-variant-numeric: tabular-nums; }
+.meta-rules-table td.act { text-align: right; white-space: nowrap; }
+.meta-rules-table td.act .ghost-button { padding: 3px 8px; }
+.meta-triple-status { border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 800; letter-spacing: 0.03em; padding: 2px 8px; text-transform: uppercase; white-space: nowrap; }
+.meta-triple-status.in-use { background: #eefaf0; color: #2f7d32; }
+.meta-triple-status.unused { background: #f2f5f9; color: #6c7a91; }
+.meta-triple-status.observed { background: #fff8e8; color: #92650e; }
+.meta-rules-foot { border-top: 1px solid var(--line); color: var(--quiet); font-size: 11.5px; line-height: 1.6; margin: 10px 0 0; max-width: 84ch; padding-top: 12px; }
+.meta-rules-foot a { color: var(--blue); text-decoration: underline; }

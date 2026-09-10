@@ -2952,6 +2952,52 @@ belongs somewhere it can be argued with.
 Measured after: 62 controls against 81, the page 995px tall against 1170, and the health of the
 model readable before a single click.
 
+### 5.67 The triple as the unit of the meta-model (v0.2)
+
+Taken, deliberately and with attribution, from **Ardoq's constraints table** — the best idea in
+their product. The unit of a meta-model is not the relationship *type*, it is the **triple**:
+source → relationship → target. "An Application uses an IT Component" is a statement an
+organisation can agree with or reject. "uses", on its own, is not.
+
+Nexus already computed every part of this. `observedPairs` has carried the from→to pairs with
+their counts and a `declared` flag since the meta-model was built, and `relation_rules` has
+carried the declarations. What was missing was somewhere to see them together: the information
+lived inside one relationship type's detail panel at a time, split across two separate lists, so
+the shape of the model's rules was never visible at all.
+
+**Rules is now a third shape on the board** — Types, Rules, Diagram — and the whole screen is one
+sentence repeated with a status and a count.
+
+Three statuses, and the third is what this product exists for:
+
+- **in use** — declared, and the estate does it. The model working.
+- **unused** — declared, and nothing does it. A rule written for a future that never arrived, or
+  a real gap. Worth seeing; never worth deleting on the model's own initiative.
+- **observed** — the data does it and nobody declared it. Every other tool in this category
+  treats that as a violation to be cleaned up. Here it is the **estate proposing the rest of the
+  model**, one click from becoming a rule. That is §2.2 at the grain of a single statement, and
+  it is the one place where Nexus and Ardoq disagree about what the same row *means*.
+
+Two things the table gets right that are easy to get wrong:
+
+- **Coverage is measured in connections, not in rows.** One undeclared triple carrying four
+  hundred connections matters more than nine carrying one each; counting rows would report the
+  opposite and call the model nearly finished.
+- **Promotion is blocked while the relationship type itself is undeclared, and says why.** A rule
+  constrains a type, so there is nothing to hang one on. That is a real order of operations
+  rather than a technicality — you cannot constrain a word the model has not yet agreed is a
+  word — and saying it beats a button that fails.
+
+Cardinality, already in the schema since §5.5 and never shown, appears on declared rules.
+
+**Where we deliberately differ.** Ardoq offers Off / Guided / Strict enforcement, and is candid
+that Strict "does not retroactively remove or block existing invalid references", with further
+gaps in surveys and integrations. Nexus blocks nothing at all: a connection the model does not
+allow is still drawn, still saved, still counted, and shows up as *observed* until somebody
+decides whether the data is wrong or the model is. If enforcement is added later it will owe the
+reader the number Ardoq's does not — how many existing connections a rule would put in breach,
+computed before the switch is thrown, which §5.56's conformance report already knows.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2989,7 +3035,7 @@ model readable before a single click.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 100)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 101)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3279,8 +3325,12 @@ model readable before a single click.
   inspector that appears on selection.
 - A card carries name, instance count, declared fields or rules, and **one** nudge. Declared types
   are solid; ones that grew from the data are dashed on a warm ground.
-- Group by kind, by layer, or flat; toggle the board for the diagram; Layers, Conformance and
-  Frameworks open as drawers over the same view.
+- Group by kind, by layer, or flat; toggle the board for **Rules** or the diagram; Layers,
+  Conformance and Frameworks open as drawers over the same view.
+- **Rules** (§5.67): every source → relationship → target the model declares or the data
+  exhibits, one to a row, with a status — in use, unused, or observed — a connection count, and
+  the cardinality a rule declares. An observed pairing is promoted to a rule in one click;
+  coverage is measured in connections rather than rows. Nothing is ever blocked.
 
 ### Import (v0.2)
 - Four ways in: **files**, a **pasted** block (shape sniffed from the content), a **connected
@@ -3978,6 +4028,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | An undeclared kind is not counted as a breach, matching `conformance()` exactly. | Coverage already says a type is undeclared; counting it again as a broken rule double-counts, and produced a verdict that contradicted itself inside one sentence. Two definitions of "breach" on one screen is how two numbers stop agreeing. |
 | 2026-09-10 | Layers became a grouping of the board rather than a tab. | Banding the model by its layers *is* looking at the layers. A tab that shows the same types again in a different arrangement is a second screen maintaining a second copy of the first one's ideas. |
 | 2026-09-10 | The inspector appears on selection and takes its space back when nothing is selected. | A permanent right-hand panel whose empty state reads "select a type on the left" spends a third of the screen saying nothing, on the view where the remaining two thirds are what you came for. |
+| 2026-09-10 | The unit of the meta-model's relationship half is the triple, not the relationship type. | Borrowed from Ardoq. "An Application uses an IT Component" is a statement somebody can agree with; "uses" is not. Nexus already computed the triples and buried them one relationship type at a time, where the shape of the rules could not be seen. |
+| 2026-09-10 | A pairing the data does and nobody declared is shown as a proposal, not a violation. | This is where we differ from every tool in the category, and it is §2.2 at the grain of one statement: the organisation's data is telling you what its meta-model is. Promoting it is one click; scolding somebody for it would be scolding them for having an estate. |
+| 2026-09-10 | Rule coverage is a share of connections, never of rows. | One undeclared triple carrying four hundred connections matters more than nine carrying one each. Counting rows reports the opposite and calls the model nearly finished. |
+| 2026-09-10 | Promoting a triple is refused while its relationship type is undeclared, with the reason. | A rule constrains a type; an undeclared type has nothing to hang one on. It is an order of operations, not a technicality — you cannot constrain a word the model has not agreed is a word — and saying so beats a button that fails. |
+| 2026-09-10 | Nexus still blocks nothing, where Ardoq offers Guided and Strict enforcement. | A connection the model disallows is still real, and the honest response is to show it rather than refuse it. If enforcement is added it owes the reader the number Ardoq's does not: how many existing connections a rule would put in breach, computed before the switch is thrown. §5.56 already knows it. |
 
 ## 8. Open questions for the product owner
 
@@ -3992,6 +4047,26 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 101: the triple becomes the unit.** Taken, with attribution, from Ardoq's
+  constraints table — their best idea. The unit of a meta-model's relationship half is not the
+  relationship *type* but the **triple**: source → relationship → target. "An Application uses an
+  IT Component" is a statement an organisation can agree with or reject; "uses" alone is not.
+  Nexus already computed all of it — `observedPairs` with counts, `relation_rules` with
+  declarations — and buried it inside one relationship type's detail panel at a time, split
+  across two lists, so the shape of the rules was never visible. **Rules** is a third shape on
+  the meta-model board now: one sentence to a row, with a status (in use, unused, observed), a
+  connection count and the cardinality a rule declares — cardinality having been in the schema
+  since §5.5 and never shown. Coverage is a share of *connections*, not of rows, because one
+  undeclared triple carrying four hundred beats nine carrying one. And where every other tool in
+  this category reads "the data does something the model does not allow" as a violation, Nexus
+  reads it as the estate proposing the rest of the model: an observed pairing becomes a rule in
+  one click. Promotion is refused while the relationship type is itself undeclared, and says why
+  — a rule constrains a type, and you cannot constrain a word the model has not agreed is a word.
+  We keep blocking nothing, where Ardoq offers Guided and Strict; if that ever changes it owes
+  the reader the number theirs admits it lacks, which is how many existing connections a rule
+  would put in breach. Also fixed a CSS bug this exposed: `header > i` styled the presence tag as
+  if it were the 14px colour swatch, crushing "from data" to a sliver in any narrow panel.
 
 - **2026-09-10 — Rev 100: the meta-model becomes one surface.** A file tree beside a five-tab
   inspector — 81 controls at 1440×900, the tab strip wrapping into a ragged three-row block, half
