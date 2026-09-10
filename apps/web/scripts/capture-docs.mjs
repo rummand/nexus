@@ -371,6 +371,17 @@ try {
   // ---- the graph's own history --------------------------------------------
   await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });
 
+  // ---- the wiki (§5.60) ---------------------------------------------------
+  // Written from a board, because an empty wiki is a picture of nothing.
+  await shot("wiki-page", async () => {
+    await goto(`${w}/wiki`, "[data-wiki]");
+    await page.click("[data-new-page]");
+    await page.waitForSelector("[data-new-page-panel]");
+    await page.click('[data-writeup="brd_landscape"]');
+    await page.waitForSelector("[data-wiki-page-view]", { timeout: 60_000 });
+    await page.waitForTimeout(1800);
+  }, { settle: 400 });
+
   // ---- the meta-model -----------------------------------------------------
   await shot("meta", () => goto(`${w}/meta`, ".meta-tree"), { settle: 1200 });
   await shot("meta-diagram", async () => {

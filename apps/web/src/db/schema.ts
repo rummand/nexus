@@ -964,6 +964,49 @@ export type RelationRule = typeof relationRules.$inferSelect;
 export type LayerRow = typeof layers.$inferSelect;
 export type FrameworkAdoptionRow = typeof frameworkAdoptions.$inferSelect;
 
+// ---- the wiki: pages that reference the model rather than copying it -------
+// A page is markdown, and the parts of it that are about the architecture are *embed directives*
+// resolved when the page is read (§5.60). So a page cannot drift behind the board it describes,
+// which is the failure mode of every architecture wiki anybody has met.
+
+export const wikiPages = sqliteTable(
+  "wiki_pages",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /**
+     * The parent page, for the tree down the side. Self-referencing, so a moved subtree moves
+     * whole; a page whose parent is deleted is re-parented to the root rather than vanishing with
+     * it — losing a page because somebody tidied its parent is not a trade anybody would accept.
+     */
+    parentId: text("parent_id"),
+    /** Unique per workspace, and what the URL carries. */
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    /** Markdown, with `:::board` / `:::object` / `:::query` lines for the live parts. */
+    body: text("body").notNull().default(""),
+    /** An emoji, for the tree. Optional and entirely cosmetic. */
+    icon: text("icon").notNull().default(""),
+    /** Order among siblings. */
+    position: integer("position").notNull().default(0),
+    /** What drafted it — "" for a page a person started, "board:<id>" for a write-up (§5.60). */
+    source: text("source").notNull().default(""),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedByName: text("updated_by_name").notNull().default(""),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [
+    index("wiki_pages_workspace_idx").on(t.workspaceId),
+    index("wiki_pages_parent_idx").on(t.parentId),
+    uniqueIndex("wiki_pages_slug_idx").on(t.workspaceId, t.slug),
+  ],
+);
+
+export type WikiPageRow = typeof wikiPages.$inferSelect;
+
 // ---- change sets: the model in time ----------------------------------------
 // The graph is the estate as it is. A *change set* is a named, dated set of intentions about it —
 // what will be introduced, what will be retired, what will change hands — and it is deliberately

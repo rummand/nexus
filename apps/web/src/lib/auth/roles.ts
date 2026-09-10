@@ -46,6 +46,8 @@ export const CAPABILITIES = [
   "import.approve",
   /** Apply a change set to the graph. */
   "plan.deliver",
+  /** Write, move or delete a wiki page (§5.60). */
+  "wiki.edit",
   /** Model providers, connected servers, MCP keys, source grants. */
   "settings.manage",
   /** Invite people, change their role, reset a password. */
@@ -63,9 +65,9 @@ export type Capability = (typeof CAPABILITIES)[number];
  */
 const MATRIX: Record<Role, readonly Capability[]> = {
   guest: ["board.comment"],
-  member: ["board.edit", "board.comment", "graph.edit", "agent.run"],
-  admin: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage"],
-  owner: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "settings.manage", "people.manage"],
+  member: ["board.edit", "board.comment", "graph.edit", "agent.run", "wiki.edit"],
+  admin: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "wiki.edit", "settings.manage"],
+  owner: ["board.edit", "board.comment", "graph.edit", "graph.delete", "agent.run", "agent.manage", "import.approve", "plan.deliver", "wiki.edit", "settings.manage", "people.manage"],
 };
 
 export function isRole(v: unknown): v is Role {
@@ -117,6 +119,7 @@ export function refusal(capability: Capability, role: Role | null | undefined): 
     "agent.manage": "manage agents",
     "import.approve": "approve or roll back an import",
     "plan.deliver": "deliver a change set",
+    "wiki.edit": "write in the wiki",
     "settings.manage": "change this workspace's settings",
     "people.manage": "manage the people in this workspace",
   };

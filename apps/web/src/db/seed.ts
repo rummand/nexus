@@ -49,7 +49,7 @@ export async function backfillDemoRoadmap(db: Db) {
 
 export async function seed(db: Db) {
   const users = [
-    { id: DEMO_USER_ID, name: "Jes Olsen", email: "jes@acme-energy.example", color: "#1376d4" },
+    { id: DEMO_USER_ID, name: "Jesper Olesen", email: "jes@acme-energy.example", color: "#1376d4" },
     { id: "usr_maria", name: "Maria Lund", email: "maria@acme-energy.example", color: "#0ea5e9" },
     { id: "usr_tobias", name: "Tobias Kjær", email: "tobias@acme-energy.example", color: "#10b981" },
     { id: "usr_anna", name: "Anna Holm", email: "anna@acme-energy.example", color: "#f59e0b" },

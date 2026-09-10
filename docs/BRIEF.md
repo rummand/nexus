@@ -2605,6 +2605,61 @@ buttons and no text on any of them. The one it replaces had fourteen buttons car
 captions between them, in a column 52px wide by its own CSS — the extra eight pixels were there to
 give the captions somewhere to sit.
 
+### 5.60 The wiki: pages that reference the model (v0.2)
+
+Every architecture wiki fails the same way. Somebody writes a good page; the estate moves; the page
+stays where it was; a year later nobody trusts any of it. Confluence does not have a bug — the
+failure is structural, because a page there is a **copy** of what was true on the day it was
+written.
+
+So the wiki in Nexus is built the other way round: a page is markdown, and the parts of it that are
+about the architecture are **references** resolved when the page is read.
+
+| Directive | What the reader gets |
+|---|---|
+| `:::board brd_landscape` | The board itself, drawn from its current document by `documentToSvg`. Change the board and the page changes. |
+| `:::object ent_8f21c40a` | One object with its kind, description and attributes as they are now. |
+| `:::query kind:Application missing:owner` | A live list of whatever matches today, over the same query language as the graph page (§5.13). |
+
+`[[Wiki links]]` resolve against the workspace's pages; a link to a page nobody has written yet is
+shown as unresolved rather than as plain text, so a wiki can see what it has promised itself. And
+an embed whose target has been deleted says so **in place** — a wiki that silently drops a diagram
+is worse than one that admits the diagram is gone, because only the second gets fixed.
+
+**A board writes its own first draft.** Blank pages are how wikis stay empty, so *New page → write
+up a board* produces something already half true (`src/lib/wiki/writeup.ts`): the board embedded
+live, the objects grouped by kind, how they connect from the graph rather than from the drawn
+connectors, and the notes somebody left on the canvas carried across — those being the one part
+that is already prose rather than data. A kind with more than six objects becomes a live query
+instead of a table, because a list of six is worth reading and a list of forty is worth querying.
+If the board has frames, the draft takes its structure from them: your areas become its sections,
+and anything outside every frame is named rather than quietly dropped. It ends with **Still to
+write**, because a generated page that reads as finished is one nobody edits.
+
+The draft is deterministic, not written by a model, which is the same order as everywhere else in
+this product: it works with no provider configured, gives the same answer twice, and a model can
+improve the prose later (§5.31). The deeper reason is that a model asked to describe a board writes
+prose that is true on the day it is written — exactly the failure this section exists to avoid. The
+generated parts are references; the parts that can go stale are the ones a person wrote.
+
+**The markdown is ours** (`src/lib/wiki/markdown.ts`), for the same reason the in-product docs are
+typed blocks (§5.23): it parses to a tree that React renders as elements, so there is no
+`dangerouslySetInnerHTML` on the one surface where people paste out of Word — the single exception
+is the board SVG, which this app generated two calls earlier and which escapes what it draws. Two
+properties are tested harder than the syntax: **nothing may disappear**, because a parser that
+swallows a line it does not recognise loses somebody's writing; and **it must terminate**, because
+a hand-written block loop that consumes zero lines is an infinite loop in a server component. The
+second one was not hypothetical — the fence branch never advanced its cursor, and the first version
+of the property test was too weak to reach it. Both are tests now.
+
+Pages nest, deleting one moves its children up rather than taking them, and renaming keeps the
+slug, because an address somebody pasted into a mail six months ago should still work.
+
+**What is not here yet**, and is worth naming because this is meant to grow: page history and
+diffs; drag to re-file; a review flow for pages that are decisions rather than descriptions (ADRs
+with an approval, which is the wiki's version of a pull request); embedding one page in another;
+and full-text search across pages.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -2642,7 +2697,7 @@ give the captions somewhere to sit.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 93)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 94)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -2745,6 +2800,15 @@ give the captions somewhere to sit.
   and a report saying where it looked and what it found. Systems no vendor catalogue knows are
   grouped by domain and can be registered into this workspace's own catalogue
   (`catalog_entries`); entities nothing explains are reported as gaps.
+
+### Wiki (v0.2)
+- `/w/[slug]/wiki`: a tree of markdown pages per workspace, with `:::board`, `:::object` and
+  `:::query` embeds resolved against the model when the page is read, `[[wiki links]]` that show
+  when they point at nothing yet, a contents list from the headings, and an editor with an Insert
+  menu that writes the embed syntax.
+- "Write up a board": a deterministic first draft made of references — the board live, objects by
+  kind, connections from the graph, the board's notes as prose, structured by the board's frames.
+- Guarded by a `wiki.edit` capability; members and above may write.
 
 ### Meta-model builder (v0.2)
 - `/w/[slug]/meta`: hierarchy of node and relation types with fields and rules; declare, rename,
@@ -3546,6 +3610,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | The rail's contents are data in `toolbar.ts`, with catalogue tests. | Two buttons on one letter, a flyout offering a tool the keyboard cannot reach, a rail advertising a shortcut the key handler does not honour — all mechanical, all invisible in review, and all things a rail accumulates as it is added to. The shortcut map is re-typed in the test on purpose: importing it would make the test agree with itself. |
 | 2026-09-10 | Three icons are drawn rather than taken from the icon set. | A 3D cube for an architecture card and a paragraph-heading mark for a section describe the wrong thing, which is worse than a plain square. Where the stock set has no glyph for a domain object, drawing one is cheaper than teaching people to ignore the icon. |
 
+| 2026-09-10 | A wiki page references the model rather than quoting it. | It is the whole reason to have a wiki *inside* the modelling tool rather than beside it in Confluence. A copy is true on the day it is written; a reference cannot go stale. It also means the expensive half of a page — the drawing — is free to maintain. |
+| 2026-09-10 | The board write-up is deterministic rather than model-written. | It works with no provider configured and gives the same answer twice, which matches every other first rung in this product. And a model asked to describe a board produces prose that is true today and wrong next month — the exact failure the section exists to avoid. A model improving prose later is additive; a model *being* the feature is not. |
+| 2026-09-10 | The markdown parser is written rather than installed. | The output is a typed tree React renders as elements, so the one surface where people paste out of Word has no HTML-string path at all. A library would also not understand the two things this wiki is actually for — embed directives and wiki links — so most of the work would remain either way. |
+| 2026-09-10 | A kind with more than six objects is embedded as a query, not tabulated. | A table of six is read; a table of forty is scrolled past, and it is also the part that goes stale fastest. The threshold is a named constant rather than a judgement made once. |
+| 2026-09-10 | An embed whose target is gone says so in the page. | Silence is the failure mode being designed out. A missing diagram that announces itself gets fixed; one that vanishes leaves a page that reads as complete and is not. |
+| 2026-09-10 | Renaming a page keeps its slug; deleting one re-parents its children. | A wiki's addresses are the half of it people share, and a rename that breaks every link is a rename nobody dares perform. Losing a subtree because somebody tidied its parent is not a trade any writer would accept. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -3559,6 +3630,27 @@ migrations. Steps in `docs/DEPLOY.md`.
   locally, and which local model is good enough for intake's long documents?
 
 ## 9. Changelog
+
+- **2026-09-10 — Rev 94: the wiki.** Every architecture wiki fails the same way — somebody writes a
+  good page, the estate moves, the page stays put, and a year later nobody trusts any of it. That is
+  structural rather than a bug: a page in Confluence is a *copy* of what was true when it was
+  written. So this one is built the other way round. A page is markdown, and the parts about the
+  architecture are references resolved when the page is read: `:::board` draws the board from its
+  current document, `:::object` shows an object's attributes as they are now, `:::query` lists
+  whatever matches today over the same query language as the graph page. `[[Wiki links]]` resolve
+  against the workspace's pages and show as unresolved when they point at nothing yet, so a wiki can
+  see what it has promised itself; an embed whose target was deleted says so in place rather than
+  vanishing. Because blank pages are how wikis stay empty, a board writes its own first draft: the
+  board embedded live, objects grouped by kind, connections taken from the graph rather than the
+  drawn lines, the canvas notes carried across as the one part that is already prose, structured by
+  the board's own frames, and ending with "Still to write". It is deterministic rather than
+  model-written — a model asked to describe a board writes prose that is true today and wrong next
+  month, which is the failure being designed out. The markdown is ours, parsing to a typed tree
+  React renders as elements, so the one surface where people paste out of Word has no HTML-string
+  path; two properties are tested harder than the syntax, that nothing disappears and that the
+  parser terminates — the second because the fence branch never advanced its cursor, and the first
+  version of the property test was too weak to reach it. Also in this change: the seeded owner is
+  Jesper Olesen, which is his name.
 
 - **2026-09-10 — Rev 93: the tool rail earns its place.** The rail down the left had been added to
   and never looked at. Every button wore a permanent 8px caption — "card", "note", "on", "off" —

@@ -55,6 +55,7 @@ export const TRANSFER_ORDER = [
   "relation_types",
   "relation_rules",
   "framework_adoptions",
+  "wiki_pages",
   "change_sets",
   "changes",
   "change_set_dependencies",

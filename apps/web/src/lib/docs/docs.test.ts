@@ -43,7 +43,7 @@ describe("the documentation", () => {
     // Every "try it" link is a workspace route; the slug is filled in at render time.
     const known = [
       "", "/graph", "/explore", "/history", "/meta", "/intake", "/intake?view=catalog", "/knowledge", "/roadmap",
-      "/roadmap/plateaus", "/agents", "/import", "/docs", "/settings/models", "/settings/connections",
+      "/roadmap/plateaus", "/agents", "/import", "/docs", "/wiki", "/settings/models", "/settings/connections",
     ];
     for (const t of tries) {
       const resolved = resolveHref(t.href, "acme-energy");

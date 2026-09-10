@@ -528,6 +528,47 @@ try {
     await page.waitForTimeout(400);
   }
 
+  // the wiki: a board writes its own first draft, and the draft is made of live references (§5.60)
+  await page.goto(`${base}/w/acme-energy/wiki`, { waitUntil: "load" });
+  await page.waitForSelector("[data-wiki]");
+  await page.click("[data-new-page]");
+  await page.waitForSelector("[data-new-page-panel]");
+  assert.ok(await page.locator('[data-writeup="brd_landscape"]').count(),
+    "a board can be written up from the wiki");
+  await page.click('[data-writeup="brd_landscape"]');
+  await page.waitForSelector("[data-wiki-page-view]", { timeout: 60000 });
+  await page.waitForTimeout(1200);
+  {
+    const embed = page.locator('[data-embed="board"]');
+    assert.equal(await embed.count(), 1, "the draft embeds the board it was written from");
+    assert.ok(await embed.locator("svg").count(),
+      "the embed is the board drawn from its current document, not a picture of it");
+    assert.ok((await page.locator(".wiki-prose table").count()) > 0, "the objects are tabulated");
+    assert.ok((await page.locator(".wiki-prose blockquote").count()) > 0,
+      "the notes somebody wrote on the board are carried across as prose");
+    // The page title is the h1; a draft that repeated it would give every page two.
+    assert.equal(await page.locator(".wiki-prose h1").count(), 0, "the draft does not repeat the page title");
+  }
+
+  {
+    // Editing, wiki links, and an embed pointing at something that is gone.
+    await page.click("[data-edit-page]");
+    await page.waitForSelector("[data-wiki-editor]");
+    await page.locator("[data-wiki-editor] textarea").fill(
+      "## Reference\n\nSee [[Nowhere]] and [[Application landscape]].\n\n"
+      + ":::query kind:Application | Applications\n\n:::board brd_gone | missing\n",
+    );
+    await page.click("[data-save-page]");
+    await page.waitForSelector('[data-embed="query"]', { timeout: 60000 });
+    assert.equal(await page.locator(".wiki-link.missing").count(), 1,
+      "a link to a page that does not exist yet is shown as unresolved rather than as text");
+    assert.equal(await page.locator("a.wiki-link").count(), 1, "a link to a page that exists resolves");
+    assert.ok((await page.locator('[data-embed="query"] li').count()) > 0,
+      "a query embed lists what matches now");
+    assert.match(await page.locator('[data-embed="missing"]').innerText(), /not in this workspace/,
+      "an embed pointing at something gone says so rather than disappearing");
+  }
+
   // meta-model builder: the tree lists types, and an undeclared type can be declared
   await page.goto(`${base}/w/acme-energy/meta`, { waitUntil: "load" });
   await page.waitForSelector(".meta-tree");
@@ -1248,7 +1289,15 @@ try {
   await page.waitForSelector("[data-draw-form]");
   await page.click("[data-draw-form] button[type=submit]");
   await page.waitForURL(/\/b\/brd_/, { timeout: 30000 });
-  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 45000 });
+  /*
+   * Wait for the drawing to settle, not for "more than three objects". The roadmap draws about
+   * nineteen; reading the titles the moment the fourth appears is a race that passes on a quiet
+   * machine and fails on a busy one, which is exactly what it did.
+   */
+  await page.waitForFunction(() => {
+    const titles = [...document.querySelectorAll(".board-object input")].map((e) => e.value);
+    return titles.includes("Retired") && titles.includes("Maximo");
+  }, null, { timeout: 45000 });
   const drawn = await page.$$eval(".board-object input", (els) => els.map((e) => e.value));
   assert.ok(drawn.includes("Retired"), "objects are laned by what happens to them");
   assert.ok(drawn.includes("Maximo"), "the plans' objects are on the board");
