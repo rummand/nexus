@@ -3077,6 +3077,62 @@ took.
 Deferred deliberately: an adjacency matrix for dense regions, and layered columns by meta-model
 layer. Both are real, and neither is the thing that was wrong.
 
+### 5.69 Evidence gaps: what the model does not know (v0.2)
+
+Taken from **LeanFlow Studio** (`docs/LEANFLOW-GAP.md` §4.1), which is the best idea in that
+repository: when a graph question finds nothing, do not say "no results".
+
+"No results" is a statement about the *query*. It is almost never what the reader needs, because
+the interesting fact is usually about the **model** — nobody has recorded whether anything
+depends on this; this relationship type exists nowhere in the estate; the name you typed is not
+a thing here. Those are different findings, and one shrug flattens all of them.
+
+This is **§2.2 at the grain of a question**. Nexus already treats an undeclared type as the
+estate *proposing* something rather than violating something. An unanswerable question is the
+same kind of event and is owed the same response: say what is missing, and offer the nearest
+thing that is not.
+
+Six diagnoses, ordered most specific first, because a query can be wrong several ways at once
+and the reader wants the one they can act on:
+
+| Diagnosis | What it means |
+| --- | --- |
+| **unknown-seed** | The subject does not exist under that name. Offers the names it might have been — plural, half-remembered first word, abbreviation. |
+| **unknown-relation** | No relationship in this workspace is called that. Offers the types that actually touch the seed. |
+| **unknown-kind** | The type is unused — *not necessarily wrong*, since the meta-model may declare it and the data may not have reached it. |
+| **no-evidence** | Subject and vocabulary both exist; nobody has recorded this. Offers the other direction when that is where the evidence is. |
+| **over-filtered** | Every clause matches something alone; the combination has no example. Offers each clause dropped, with the count. |
+| **empty-workspace** | There is nothing here yet, which is its own answer and not a fault in the question. |
+
+**Every suggestion carries the count it would return, and suggestions that return nothing are
+not shown.** Four dead-end suggestions are worse than none: they look like help and fail four
+times. The first live version of this made exactly that mistake — it offered the workspace's
+busiest relationship types regardless of the seed, and all four came back zero.
+
+To make any of this possible the matcher had to become **pure** (`lib/query-match.ts`). It was
+inline in `runQuery`, interleaved with the database reads, which made one thing impossible:
+asking the query a second question. Diagnosing an empty result means re-running the same match
+with one clause removed, which is trivial against a pure function over data already in memory
+and impossible against a function that also does the loading. `runQuery` now loads everything
+once — including relations, which it used to skip unless the query mentioned one, an
+optimisation that is fatal to explaining an absence.
+
+**Three real bugs fell out of building it**, all of the same shape — a query that silently lied:
+
+- **Curly quotes did not parse.** `related:“Data Lake”` was read as the entity `“Data`, so a
+  phrase pasted out of a document or an email failed in the most confusing way available: it
+  found nothing, and blamed the estate for it.
+- **`rel:` on its own was ignored.** The clause was only consulted inside a `related:` loop, so
+  a query naming a relationship type and nothing else returned the entire workspace while
+  looking like it had filtered. It now means the obvious thing: what that relationship touches.
+- **"0 matches" was printed above the finding.** The header echoed the count the banner exists
+  to replace. It now shows only what was asked.
+
+**Not yet: pinning a gap.** LeanFlow lets you pin an evidence gap as a follow-up note that
+survives onto a board and into exports. That wants somewhere to live, and the typed annotation
+layer (#114) is where it belongs; building private storage for it here would only have to be
+torn out. Diagnosis and pivots ship now; the pin follows the annotation layer.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3114,7 +3170,7 @@ layer. Both are real, and neither is the thing that was wrong.
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 102)
+## 6a. What exists today (v0.2, 2026-09-10 — rev 106)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3321,6 +3377,13 @@ layer. Both are real, and neither is the thing that was wrong.
 - Connector routes (straight / curved / elbow) with route buttons in the property bar;
   relation connectors default to curved. Smart alignment guides with Alt bypass and toggle.
   Right-click context menu.
+
+### Graph query (v0.2, evidence gaps rev 106 — §5.69)
+- An empty answer is diagnosed rather than shrugged at: unknown seed / unknown relationship /
+  unknown kind / no evidence recorded / over-filtered / empty workspace, each with the nearest
+  questions that do have answers, each carrying the count it would return.
+- The matcher is pure (`lib/query-match.ts`), so a query can be re-run with one clause removed.
+- Curly quotes parse. `rel:` on its own filters to what that relationship touches.
 
 ### Graph query (v0.2)
 - Structured graph queries from the command bar with place / highlight actions (§5.10).
@@ -4132,6 +4195,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | Selection **emphasises**; only a question **dims** | The old map dimmed everything but the selection to 16% — in the one view whose entire job is showing the whole estate. A blast radius or a traced route is a question and may dim; clicking something is not. §5.68 |
 | 2026-09-10 | Paths returns **every** shortest route, capped | Returning one implies it is *the* one. "These two are connected through the ESB" and "connected three ways, one of which is the ESB" are different findings, and the second is the one that matters when somebody is about to retire the ESB. §5.68 |
 
+| 2026-09-10 | An empty query result is **diagnosed**, never reported as "no results" | "No results" is a statement about the query; the interesting fact is almost always about the model — nobody has recorded this, or that word is not in this estate's vocabulary. Same claim as §2.2, at the grain of a question. Taken from LeanFlow Studio. §5.69 |
+| 2026-09-10 | A suggested question that would **return nothing is not shown** | Four dead-end suggestions are worse than none: they look like help and fail four times. The first version offered the workspace's busiest relationship types regardless of the seed, and every one came back zero. Every pivot now carries its count, and zero-count pivots are dropped. §5.69 |
+| 2026-09-10 | The query matcher became **pure**, and `runQuery` now always loads relations | Diagnosing an empty result means re-running the match with one clause removed, which is trivial against a pure function over loaded data and impossible against one that also does the loading. Skipping the relations read unless the query mentioned one was a sound optimisation for answering and fatal for explaining. §5.69 |
+| 2026-09-10 | Pinning an evidence gap waits for the annotation layer | LeanFlow lets a gap become a follow-up note that survives onto a board and into exports. It needs somewhere to live, and #114's typed annotation layer is where it belongs; private storage built here would only be torn out. §5.69 |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4146,6 +4214,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-10 — Rev 106: evidence gaps.** A graph question that finds nothing now says what the
+  *model* does not know instead of "no results": the name is not a thing here, no relationship
+  is called that, the type is unused, nobody has recorded anything in that direction, or the
+  clauses are individually fine and jointly impossible. Each diagnosis carries the nearest
+  questions that do have answers, with the count each would return — and suggestions that would
+  also return nothing are not shown, because four dead ends look like help and fail four times.
+  Required extracting the matcher into a pure `lib/query-match.ts` so a query can be re-run with
+  one clause removed. Three latent bugs fell out, all of them a query silently lying: curly
+  quotes did not parse, `rel:` on its own was ignored and returned the whole workspace, and the
+  header printed "0 matches" above the finding. New `lib/query-evidence.ts` with 21 tests, an
+  `EvidenceGap` component in the command bar, e2e coverage, docs page, brief §5.69. Closes #109.
+  Sourced from the LeanFlow Studio gap analysis (`docs/LEANFLOW-GAP.md`).
 
 - **2026-09-10 — Rev 102: the graph explorer becomes an instrument.** Replaced the single
   force-directed cloud with three views over one graph — **Focus** (one entity and its

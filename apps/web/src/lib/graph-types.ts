@@ -1,3 +1,5 @@
+import type { Evidence } from "./query-evidence";
+
 import type { GraphEvent } from "./history/events";
 
 /** Client-safe shapes for the knowledge graph API. */
@@ -151,4 +153,10 @@ export interface QueryResponse {
   explanation: string;
   entities: QueryResultEntity[];
   total: number;
+  /**
+   * What the model does not know, when the answer is empty (§5.69). `kind: "none"` whenever the
+   * query matched — the field is always present so callers never have to guess whether an empty
+   * list means "nothing matches" or "the question could not be asked".
+   */
+  evidence: Evidence;
 }

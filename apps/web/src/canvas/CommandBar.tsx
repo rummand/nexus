@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import { Bot, Box, Database, Frame, Plus, Search, Shapes, Spline, StickyNote, Type } from "lucide-react";
+import { EvidenceGap } from "@/components/graph/EvidenceGap";
 import { cardColorForKind, elementName, elementTypeLabel, type CanvasElement } from "./document";
 import { useCanvas, useCanvasStore } from "./store";
 import { isEntityId, type GraphSnapshot, type QueryResponse } from "@/lib/graph-types";
@@ -237,7 +238,8 @@ export function CommandBar() {
             <>
               <div className="suggestion-header">
                 <span><Database size={11} style={{ verticalAlign: "-1px", marginRight: 4 }} /> In the graph</span>
-                <small>{loading ? "searching…" : graphForQuery ? `${graphForQuery.total} match${graphForQuery.total === 1 ? "" : "es"} · ${graphForQuery.explanation}` : ""}</small>
+                {/* "0 matches" is the shrug the banner below exists to replace; say only what was asked. */}
+                <small>{loading ? "searching…" : !graphForQuery ? "" : graphForQuery.total === 0 ? graphForQuery.explanation : `${graphForQuery.total} match${graphForQuery.total === 1 ? "" : "es"} · ${graphForQuery.explanation}`}</small>
               </div>
               {graphHits.slice(0, 8).map((e) => {
                 const here = onBoard.get(e.id);
@@ -253,7 +255,9 @@ export function CommandBar() {
                 );
               })}
               {graphForQuery && graphForQuery.total > 8 && <div className="suggestion-empty">{graphForQuery.total - 8} more — refine with kind: or an attribute, or press Place to add all {placeable.length} missing.</div>}
-              {graphForQuery && graphForQuery.total === 0 && !loading && <div className="suggestion-empty">No entity matches. Try kind:Application, owner:…, related:…</div>}
+              {graphForQuery && graphForQuery.total === 0 && !loading && (
+                <EvidenceGap evidence={graphForQuery.evidence} onPivot={(q) => setQuery(q)} />
+              )}
               {(placeable.length > 1 || highlightable.length > 1) && (
                 <div className="query-actions">
                   {placeable.length > 1 && <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => place(placeable)}><Plus size={12} /> Place all {placeable.length} on this board</button>}

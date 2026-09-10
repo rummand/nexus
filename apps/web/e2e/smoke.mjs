@@ -281,6 +281,39 @@ try {
   await page.fill(".command-bar input", "kind:Application criticality:high");
   await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
   assert.ok((await page.locator(".search-suggestions .graph-hit").count()) > 0, "graph query returns entities");
+  /*
+   * An unanswerable question is a finding about the model (§5.69), so the three ways of being
+   * unanswerable must give three different answers — never one "no results".
+   */
+  await page.fill(".command-bar input", "related:Salesforce");
+  await page.waitForSelector("[data-evidence]", { timeout: 15000 });
+  assert.equal(await page.locator("[data-evidence]").getAttribute("data-evidence"), "unknown-seed", "a name that is not here is named as such");
+  assert.match(await page.locator("[data-evidence-headline]").innerText(), /Nothing in this workspace is called/, "and the headline says so");
+
+  await page.fill(".command-bar input", "kind:Server");
+  await page.waitForFunction(() => document.querySelector("[data-evidence]")?.getAttribute("data-evidence") === "unknown-kind", null, { timeout: 15000 });
+  const kindPivots = page.locator("[data-evidence-pivot]");
+  assert.ok((await kindPivots.count()) > 0, "an unused kind offers the kinds that are used");
+  // A pivot that leads nowhere is worse than none, so every one of them carries a real count.
+  for (const text of await kindPivots.allInnerTexts()) {
+    assert.ok(/[1-9]/.test(text), `pivot “${text.replace(/\n/g, " ")}” returns something`);
+  }
+  // And clicking one runs it.
+  const firstPivot = await kindPivots.first().getAttribute("data-evidence-pivot");
+  await kindPivots.first().click();
+  await page.waitForTimeout(400);
+  assert.equal(await page.inputValue(".command-bar input"), firstPivot, "a pivot puts its query in the bar");
+  await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
+  assert.equal(await page.locator("[data-evidence]").count(), 0, "and the banner goes away once there is an answer");
+
+  await page.fill(".command-bar input", 'related:"Data Lake" rel:blocking');
+  await page.waitForFunction(() => document.querySelector("[data-evidence]")?.getAttribute("data-evidence") === "unknown-relation", null, { timeout: 15000 });
+
+  // Curly quotes are what people paste, and must parse the same as straight ones.
+  await page.fill(".command-bar input", "kind:\u201cIT Component\u201d");
+  await page.waitForSelector(".search-suggestions .graph-hit", { timeout: 15000 });
+  assert.ok((await page.locator(".search-suggestions .graph-hit").count()) > 0, "curly quotes parse like straight ones");
+
   // Escape folds it away again, and an emptied bar does not hold the middle of the board.
   await page.fill(".command-bar input", "");
   await page.keyboard.press("Escape");

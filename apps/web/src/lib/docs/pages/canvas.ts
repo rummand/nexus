@@ -193,7 +193,22 @@ export const SEARCH: DocPage = {
         ["`billing`", "Free text over names, descriptions and attribute values."],
       ],
     },
-    { kind: "note", tone: "tip", text: "The same grammar drives the Query lens and Compose's `add` lines, so a query you find useful in the command bar can be pasted straight into a script." },
+    { kind: "note", tone: "tip", text: "The same grammar drives the Query lens and Compose's `add` lines, so a query you find useful in the command bar can be pasted straight into a script. Curly quotes work too — a phrase pasted out of a document parses the same as one you typed." },
+    { kind: "heading", text: "When nothing matches", id: "evidence" },
+    { kind: "prose", text: "An empty answer is usually a fact about the model rather than about the question, and the command bar says which. Nexus never replies “no results”." },
+    {
+      kind: "table",
+      columns: ["What it says", "What it means"],
+      rows: [
+        ["Nothing here is called “X”", "The subject of the question does not exist under that name. You are offered the names it might have been."],
+        ["No relationship is called “X”", "Every organisation names its relationship types differently, and this workspace does not use that word. You are offered the types that actually touch what you asked about."],
+        ["Nothing here is of kind “X”", "The type is unused. Not necessarily wrong — the meta-model may declare it and the data may not have reached it yet."],
+        ["Nothing is *reached from* X", "The subject exists and the vocabulary exists; nobody has recorded this. If the evidence is in the other direction, you are offered that."],
+        ["Every condition matches on its own", "The clauses are each fine and their combination has no example. You are offered each clause dropped, with what that would return."],
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why an empty answer gets this much attention", text: "“No results” reports the query's outcome and says nothing about the estate — and the interesting fact is almost always about the estate: nobody has modelled whether anything depends on this. That is the same claim §2.2 makes about undeclared types, at the grain of a single question. A gap the tool names is a gap somebody can close; a gap it shrugs at is one nobody knows about." },
+    { kind: "note", tone: "tip", text: "Every suggested question carries the number it would return, so a suggestion that also leads nowhere is visible as one before you click it." },
     { kind: "prose", text: "The search box in the sidebar is different: it looks across boards and objects in the whole workspace, and is the quickest way to find where something is drawn." },
   ],
 };

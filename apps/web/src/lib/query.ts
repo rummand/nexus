@@ -1,8 +1,10 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import { parseAttributes } from "./graph";
 import type { ParsedQuery, QueryResponse, QueryResultEntity } from "./graph-types";
+import { evidenceFor } from "./query-evidence";
+import { matchEntities, type QueryWorld } from "./query-match";
 
 /**
  * Graph query language — small, forgiving, deterministic. Examples:
@@ -19,15 +21,24 @@ import type { ParsedQuery, QueryResponse, QueryResultEntity } from "./graph-type
 
 const norm = (v: string) => v.trim().toLowerCase();
 
+/*
+ * Curly quotes count. People arrive at this box by copying a phrase out of a document, an email
+ * or a chat client that helpfully replaced their quotes — and a query language that then reads
+ * `related:“Data Lake”` as the entity `“Data` fails in the most confusing way available: it
+ * finds nothing, and blames the estate for it.
+ */
+const OPEN = '["\u201c\u2018]';
+const CLOSE = '["\u201d\u2019]';
+
 function tokenize(q: string): string[] {
   const out: string[] = [];
-  const re = /(\S+?:"[^"]*"|"[^"]*"|\S+)/g;
+  const re = new RegExp(`(\\S+?:${OPEN}[^"\u201c\u201d\u2018\u2019]*${CLOSE}|${OPEN}[^"\u201c\u201d\u2018\u2019]*${CLOSE}|\\S+)`, "g");
   let m: RegExpExecArray | null;
   while ((m = re.exec(q))) out.push(m[0]);
   return out;
 }
 
-const unquote = (v: string) => v.replace(/^"|"$/g, "");
+const unquote = (v: string) => v.replace(/^["\u201c\u2018]|["\u201d\u2019]$/g, "");
 
 export function parseQuery(raw: string): ParsedQuery {
   const q: ParsedQuery = { text: [], kinds: [], attributes: [], related: [], relationKinds: [], has: [], missing: [], boards: [], structured: false };
@@ -71,89 +82,70 @@ export function describeQuery(q: ParsedQuery): string {
 
 export async function runQuery(db: Db, workspaceId: string, raw: string, limit = 50): Promise<QueryResponse> {
   const q = parseQuery(raw);
-  const entities = await db.select().from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
-  const relations = q.related.length ? await db.select().from(s.relations_).where(eq(s.relations_.workspaceId, workspaceId)) : [];
-  const relKinds = q.relationKinds.map(norm);
-  // on:<board> clauses resolve to the ids placed on matching boards
-  let boardIds: Set<string> | null = null;
-  const boardWhy = new Map<string, string>();
-  if (q.boards.length) {
-    const placed = await db.select({ entityId: s.boardEntities.entityId, name: s.boards.name }).from(s.boardEntities).innerJoin(s.boards, eq(s.boardEntities.boardId, s.boards.id)).where(eq(s.boards.workspaceId, workspaceId));
-    boardIds = new Set();
-    for (const p of placed) if (q.boards.some((b) => norm(p.name).includes(norm(b)))) { boardIds.add(p.entityId); boardWhy.set(p.entityId, `on ${p.name}`); }
-  }
 
-  // related-to clauses resolve to a set of allowed ids
-  let relatedIds: Set<string> | null = null;
-  const relatedWhy = new Map<string, string>();
-  for (const clause of q.related) {
-    const anchors = entities.filter((e) => norm(e.name) === norm(clause.name) || norm(e.name).includes(norm(clause.name)));
-    const ids = new Set<string>();
-    for (const anchor of anchors) {
-      for (const r of relations) {
-        if (relKinds.length && !relKinds.some((k) => norm(r.kind).includes(k))) continue;
-        if ((clause.direction === "both" || clause.direction === "out") && r.fromEntityId === anchor.id) { ids.add(r.toEntityId); relatedWhy.set(r.toEntityId, `${anchor.name} → ${r.kind || "related"}`); }
-        if ((clause.direction === "both" || clause.direction === "in") && r.toEntityId === anchor.id) { ids.add(r.fromEntityId); relatedWhy.set(r.fromEntityId, `${r.kind || "related"} → ${anchor.name}`); }
-      }
-    }
-    if (relatedIds) {
-      const prev: Set<string> = relatedIds;
-      relatedIds = new Set(Array.from(prev).filter((id) => ids.has(id)));
-    } else relatedIds = ids;
-  }
+  /*
+   * Everything is loaded, always. The old runner skipped the relations read unless the query
+   * mentioned one — a sound optimisation for answering the question, and fatal for explaining an
+   * empty answer, which needs to know what the estate holds that the question did not ask about.
+   * At the explorer's node cap this is one extra read of a table already indexed by workspace.
+   */
+  const [entities, relations, placed] = await Promise.all([
+    db.select().from(s.entities).where(eq(s.entities.workspaceId, workspaceId)),
+    db.select().from(s.relations_).where(eq(s.relations_.workspaceId, workspaceId)),
+    db
+      .select({ entityId: s.boardEntities.entityId, boardId: s.boards.id, name: s.boards.name })
+      .from(s.boardEntities)
+      .innerJoin(s.boards, eq(s.boardEntities.boardId, s.boards.id))
+      .where(eq(s.boards.workspaceId, workspaceId)),
+  ]);
 
-  const matched: Array<{ e: s.Entity; why: string[] }> = [];
-  for (const e of entities) {
-    const why: string[] = [];
-    if (relatedIds && !relatedIds.has(e.id)) continue;
-    if (relatedIds) why.push(relatedWhy.get(e.id) ?? "related");
-    if (boardIds && !boardIds.has(e.id)) continue;
-    if (boardIds) why.push(boardWhy.get(e.id) ?? "on board");
-    if (q.kinds.length) {
-      const hit = q.kinds.find((k) => norm(e.kind) === norm(k) || norm(e.kind).startsWith(norm(k)));
-      if (!hit) continue;
-      why.push(e.kind);
-    }
-    const attrs = parseAttributes(e.attributes);
-    let ok = true;
-    for (const a of q.attributes) {
-      const key = Object.keys(attrs).find((k) => norm(k) === a.key || norm(k).startsWith(a.key));
-      if (!key || !norm(attrs[key] ?? "").includes(norm(a.value))) { ok = false; break; }
-      why.push(`${key} · ${attrs[key]}`);
-    }
-    if (!ok) continue;
-    const keyOf = (k: string) => Object.keys(attrs).find((x) => norm(x) === k || norm(x).startsWith(k));
-    for (const k of q.has) { const hit = keyOf(k); if (!hit || !attrs[hit]) { ok = false; break; } why.push(`has ${hit}`); }
-    if (!ok) continue;
-    for (const k of q.missing) { const hit = keyOf(k); if (hit && attrs[hit]) { ok = false; break; } why.push(`no ${k}`); }
-    if (!ok) continue;
-    if (q.text.length) {
-      const hay = norm(`${e.kind} ${e.name} ${e.description} ${Object.values(attrs).join(" ")}`);
-      if (!q.text.every((t) => hay.includes(norm(t)))) continue;
-      if (!why.length) why.push(norm(e.name).includes(norm(q.text.join(" "))) ? "name" : "text match");
-    }
-    matched.push({ e, why });
-  }
-  matched.sort((a, b) => a.e.kind.localeCompare(b.e.kind) || a.e.name.localeCompare(b.e.name));
-
-  const ids = matched.slice(0, limit).map((m) => m.e.id);
-  const usage = ids.length
-    ? await db.select({ entityId: s.boardEntities.entityId, boardId: s.boards.id, name: s.boards.name }).from(s.boardEntities).innerJoin(s.boards, eq(s.boardEntities.boardId, s.boards.id)).where(inArray(s.boardEntities.entityId, ids))
-    : [];
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const boardNames = new Map<string, string[]>();
   const boardsOf = new Map<string, Array<{ id: string; name: string }>>();
-  for (const u of usage) {
-    const list = boardsOf.get(u.entityId) ?? [];
-    if (!list.some((b) => b.id === u.boardId)) list.push({ id: u.boardId, name: u.name });
-    boardsOf.set(u.entityId, list);
+  for (const p of placed) {
+    const names = boardNames.get(p.entityId) ?? [];
+    if (!names.includes(p.name)) names.push(p.name);
+    boardNames.set(p.entityId, names);
+    const list = boardsOf.get(p.entityId) ?? [];
+    if (!list.some((b) => b.id === p.boardId)) list.push({ id: p.boardId, name: p.name });
+    boardsOf.set(p.entityId, list);
   }
-  const out: QueryResultEntity[] = matched.slice(0, limit).map(({ e, why }) => ({
-    id: e.id,
-    kind: e.kind,
-    name: e.name,
-    description: e.description,
-    attributes: parseAttributes(e.attributes),
-    boards: boardsOf.get(e.id) ?? [],
-    why: [...new Set(why)].join(" · "),
-  }));
-  return { query: q, explanation: describeQuery(q), entities: out, total: matched.length };
+
+  const world: QueryWorld = {
+    entities: entities.map((e) => ({
+      id: e.id,
+      kind: e.kind,
+      name: e.name,
+      description: e.description,
+      attributes: parseAttributes(e.attributes),
+    })),
+    relations: relations.map((r) => ({ id: r.id, from: r.fromEntityId, to: r.toEntityId, kind: r.kind })),
+    boards: boardNames,
+  };
+
+  const matched = matchEntities(world, q).sort((a, b) => {
+    const ea = byId.get(a.id)!, eb = byId.get(b.id)!;
+    return ea.kind.localeCompare(eb.kind) || ea.name.localeCompare(eb.name);
+  });
+
+  const out: QueryResultEntity[] = matched.slice(0, limit).map((m) => {
+    const e = byId.get(m.id)!;
+    return {
+      id: e.id,
+      kind: e.kind,
+      name: e.name,
+      description: e.description,
+      attributes: parseAttributes(e.attributes),
+      boards: boardsOf.get(e.id) ?? [],
+      why: [...new Set(m.why)].join(" · "),
+    };
+  });
+
+  return {
+    query: q,
+    explanation: describeQuery(q),
+    entities: out,
+    total: matched.length,
+    evidence: evidenceFor(world, q, matched.length),
+  };
 }
