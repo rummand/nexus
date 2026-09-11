@@ -3629,34 +3629,59 @@ builds are still correct, only colder.
 - [x] Infinite canvas: navigation, minimap, tools, selection, move/resize, inline text,
       connectors, frames, undo/redo, copy/paste, autosave.
 
-### Next (brief 2+ — candidates, to be confirmed by the product owner)
-- ~~Real-time multiplayer on boards (presence, cursors, CRDT/OT)~~ **Done (v0.2)** — see §5.40.
-  Not a CRDT in the end: the document is a map of flat objects, so per-element last-writer-wins
-  ordered by the server is the whole merge, and text is locked rather than merged. ~~Comments~~ done
-  (§5.50); ~~following somebody's viewport~~ done (§5.51). Next: comments over the live channel.
-- ~~Authentication~~ **Done (v0.2)** — see §5.41: email and password, scrypt, revocable sessions.
-  Next: enterprise SSO (the sign-in seam is one function and one page), and roles enforced per
-  team/space/board — `workspace_members.role` has always been there and nothing reads it yet.
-- ~~Graph core: entity + relationship store behind the canvas; canvas elements that are
-  *views* of graph nodes.~~ **Done (v0.2)** — see §5.5.
-- ~~Entity resolution proposals (same name / kind across boards → merge)~~ **Done (v0.2)**
-  — see §5.6. ~~Attribute schema per kind~~ done (§5.8). Next: relation-type vocabulary
-  management, attribute value normalisation proposals.
-- Optics: ~~load/unload lenses~~ first version done (§5.7: expand, relations, group by kind,
-  kind lens, saved views per board). ~~Automatic layouts~~ force-directed done in the explorer
-  (§5.13). Next: relation-type filters, overlays (lifecycle, risk, ownership), lanes/radial
-  layouts on boards.
-- Connectors framework and first sources (~~file import~~ done as CSV/JSON import,
-  ServiceNow, CMDB, wiki).
-- Agent framework: classification, meta-model proposal, ~~entity resolution~~ (rules done),
-  enrichment, with human review queue (the accept / dismiss flow exists; LLM-backed
-  proposal sources are next).
-- ~~Search across boards and the graph~~ done: home search over boards + objects, board command bar with structured graph queries (§5.10). Next: natural-language translation by the agent layer.
-- Board templates; ~~export (PNG)~~ done (SVG rev 17, PNG rev 33); PDF export; ~~comments~~ done (§5.50).
-- Sovereign deployment package (containers, Postgres, object storage, model gateway).
-- **The agent framework** — agents as objects in the graph, a run log, a fleet view, model providers
-  as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
-  proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
+### The work ahead, in seven epics
+
+Every open issue now sits under exactly one epic, and every epic sits in one lane. The same
+structure is on GitHub — the epics are issues with sub-issues, the lanes are milestones — so this
+section and the tracker cannot drift apart without somebody noticing.
+
+#### Now · Trust what landed — *due 31 Oct 2026*
+
+The Energinet pull put 455 objects in the graph in eight seconds and none of it is validated.
+
+- **#142 — Trust the data: sources, provenance and the first real connector.** The connector
+  framework exists on paper (#87) and one entry has to be built end to end (#99, #100, #127);
+  the importer has to be *proved* read-only rather than believed to be (#111); an object has to
+  be able to say where it came from (#121); and a codebase is a source like any other (#125).
+
+#### Next · The model governs itself — *due 19 Dec 2026*
+
+The meta-model describes 0% of what the repository holds — 12 undeclared kinds and 40 undeclared
+relation kinds. A model nobody declared is a model nothing can be checked against.
+
+- **#143 — The meta-model means something in practice.** Governing what a board may contain
+  (#128), a managed relation-type vocabulary instead of whatever an import wrote (#83), and
+  asking in relationship *families* rather than exact type names (#115).
+- **#146 — Writing it down: decisions, annotations and the wiki.** Decisions as objects rather
+  than prose (#113), a typed annotation layer (#114), and a wiki that sits where the work is
+  (#129).
+
+#### Later · Read it, draw it, publish it — *due 31 Mar 2027*
+
+A model is worth what can be got out of it.
+
+- **#144 — Reading the model: search, explore, ask.** Natural-language search (#88), RAG over the
+  workspace's own graph (#117), push-to-talk on the canvas (#118), an authored traversal (#122),
+  and optics — relation filters and lifecycle/risk/ownership overlays (#84, #85, #101).
+- **#145 — The canvas earns its keep.** Lane and radial layouts (#86), templates worth starting
+  from (#89), PDF export (#90), off-canvas ghosts (#120), and the canvas agent as a conversation
+  rather than a prompt box (#130).
+
+#### Enterprise readiness — *no date*
+
+Nothing here is interesting and all of it is disqualifying if missing.
+
+- **#147 — Run it in an enterprise.** SSO (#81), the sovereign deployment package (#91, #102),
+  a setup recipe (#124), web search as a configured capability (#119), the LeanFlow gaps (#123),
+  and the dev-server panic everybody hits (#98).
+
+#### Horizon · The versioned repository — *direction, not scheduled*
+
+- **#133 — Git under the model.** The whole direction: campaigns (#134), the branch indicator
+  (#135), checks as the model's CI (#136), import landing on a change set (#137), the storage
+  decision (#138), a branch per source with drift as a pull request (#139), architecture as
+  branches and roadmaps as merge plans (#140), model owners and agents that propose (#141), plus
+  the three issues that predate the framing and belong to it (#131, #112, #116, #126).
 
 ## 6a. What exists today (v0.2, 2026-09-11 — rev 111)
 
@@ -4802,6 +4827,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 122: the backlog gets a shape.** Forty-six open issues with no structure
+  beyond the order they were filed. Every one now sits under exactly one epic and in one lane:
+  seven epics (#133 git under the model, #142 trust the data, #143 the meta-model in practice,
+  #144 reading the model, #145 the canvas, #146 writing it down, #147 enterprise readiness) and
+  five milestones that read as a roadmap — *Now · Trust what landed*, *Next · The model governs
+  itself*, *Later · Read it, draw it, publish it*, *Enterprise readiness*, *Horizon · The
+  versioned repository*. #110 (entity hierarchy) was closed: it shipped in revs 107, 111 and 112.
+  Brief §6 rewritten around the epics so the tracker and the brief cannot drift apart quietly.
 
 - **2026-09-11 — Rev 121: objects, not fact sheets.** "Fact sheet" is LeanIX's word; it came in
   with the import and settled into the rail, the page and the documentation without anybody
