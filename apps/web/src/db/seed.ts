@@ -127,31 +127,36 @@ export async function seed(db: Db) {
  *
  * The L1 rows are created here rather than drawn, because a capability that exists only as a
  * frame on one board is a picture, not a thing the graph knows about.
+ *
+ * The ids carry the `ent_` prefix every other object has: the canvas tests for it before treating
+ * an element as the face of an object, so a seeded capability with a prettier id was drawn on a
+ * board and then ignored by the board's index and by the save. Readable ids are not worth an
+ * object the product cannot see.
  */
 async function seedCapabilityTree(db: Db, workspaceId: string) {
   const ts = new Date().toISOString();
   const L1: Array<{ id: string; name: string; children: Array<{ id: string; name: string; realisedBy: string[] }> }> = [
     {
-      id: "cap_grid", name: "Grid Operations",
+      id: "ent_cap_grid", name: "Grid Operations",
       children: [
-        { id: "cap_grid_control", name: "Real-time control", realisedBy: ["SCADA / EMS", "Historian"] },
-        { id: "cap_grid_outage", name: "Outage management", realisedBy: ["Outage Mgmt"] },
+        { id: "ent_cap_grid_control", name: "Real-time control", realisedBy: ["SCADA / EMS", "Historian"] },
+        { id: "ent_cap_grid_outage", name: "Outage management", realisedBy: ["Outage Mgmt"] },
       ],
     },
     {
-      id: "cap_asset", name: "Asset Management",
+      id: "ent_cap_asset", name: "Asset Management",
       children: [
-        { id: "cap_asset_register", name: "Asset records", realisedBy: ["Asset Register", "Maximo"] },
-        { id: "cap_asset_work", name: "Work orders", realisedBy: ["Maximo"] },
+        { id: "ent_cap_asset_register", name: "Asset records", realisedBy: ["Asset Register", "Maximo"] },
+        { id: "ent_cap_asset_work", name: "Work orders", realisedBy: ["Maximo"] },
       ],
     },
     {
-      id: "cap_market", name: "Market & Settlement",
-      children: [{ id: "cap_market_settle", name: "Settlement", realisedBy: ["Settlement Engine"] }],
+      id: "ent_cap_market", name: "Market & Settlement",
+      children: [{ id: "ent_cap_market_settle", name: "Settlement", realisedBy: ["Settlement Engine"] }],
     },
     {
-      id: "cap_customer", name: "Customer & Connections",
-      children: [{ id: "cap_customer_service", name: "Customer service", realisedBy: ["CRM", "CRM Cloud", "Connection Portal"] }],
+      id: "ent_cap_customer", name: "Customer & Connections",
+      children: [{ id: "ent_cap_customer_service", name: "Customer service", realisedBy: ["CRM", "CRM Cloud", "Connection Portal"] }],
     },
   ];
 

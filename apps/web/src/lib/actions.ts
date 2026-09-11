@@ -10,6 +10,7 @@ import { deny } from "@/lib/auth/guard";
 import { currentUser } from "./session";
 import { emptyDocument, migrateDocument, serializeDocument, type CanvasDocument } from "@/canvas/document";
 import { buildTemplate, type TemplateId } from "@/canvas/templates";
+import { capabilityBoard } from "@/lib/capability-board";
 import { buildBoardFromGraph, graphForWorkspace, importGraph, parseAttributes, parseImportText, syncBoardToGraph } from "./graph";
 import type { ImportResult, Proposal } from "./graph-types";
 import { mergeEntities, recordDecision, renameAttributeKey, renameAttributeValue, setEntityAttribute } from "./proposals";
@@ -145,7 +146,16 @@ export async function createBoard(input: { workspaceId: string; spaceId: string;
   const user = await currentUser();
   const id = `brd_${nanoid(10)}`;
   const template = input.template ?? "blank";
-  const document = template === "blank" ? emptyDocument() : buildTemplate(template);
+  /*
+   * The capability map is drawn from the model rather than from a fixture (§5.75): every
+   * capability the workspace has, nested, with the applications that realise them. The fixture
+   * is kept for a workspace that has none yet — it shows a newcomer what the map *is*, which a
+   * blank rectangle does not.
+   */
+  const document = template === "blank"
+    ? emptyDocument()
+    : (template === "capability" ? await capabilityBoard(db, input.workspaceId, input.name?.trim() || "Capability map") : null)
+      ?? buildTemplate(template);
   await db.insert(s.boards).values({
     id,
     workspaceId: input.workspaceId,

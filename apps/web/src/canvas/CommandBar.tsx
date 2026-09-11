@@ -127,7 +127,11 @@ export function CommandBar() {
 
   const onBoard = useMemo(() => {
     const map = new Map<string, string>();
-    for (const el of Object.values(elements)) if (el.type === "card" && isEntityId(el.meta?.entityId)) map.set(el.meta.entityId, el.id);
+    // Frames can be objects too (§5.75), and "already here" has to know that or the command bar
+    // offers to place a capability that is right there on the board.
+    for (const el of Object.values(elements)) {
+      if ((el.type === "card" || el.type === "frame") && isEntityId(el.meta?.entityId)) map.set(el.meta.entityId, el.id);
+    }
     return map;
   }, [elements]);
 

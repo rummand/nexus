@@ -17,7 +17,7 @@ export interface TemplateInfo {
 
 export const TEMPLATES: TemplateInfo[] = [
   { id: "blank", name: "Blank board", description: "Start with an empty architecture canvas." },
-  { id: "capability", name: "Capability map", description: "Capabilities as frames with the applications that realise them." },
+  { id: "capability", name: "Capability map", description: "Every capability you have, nested, with the applications that realise them." },
   { id: "landscape", name: "Application landscape", description: "Applications as cards with their dependencies." },
   { id: "integration", name: "Integration flows", description: "Core systems and the data that moves between them." },
 ];

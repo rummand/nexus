@@ -59,6 +59,26 @@ function entityCards(elements: Elements): Array<CardElement & { entityId: string
 }
 
 /**
+ * A frame that *is* an object, not just a box around some (§5.75).
+ *
+ * A capability with things inside it is drawn as a frame, and until rev 112 that made it a label:
+ * the entity it stood for was not on the board, not in the board's index, and not clickable. So a
+ * frame may carry an `entityId` too — but only ever to bind to an object that already exists.
+ * Renaming the frame renames it, which is the one edit a frame can express; it cannot create an
+ * object, because a frame carries no kind and an untyped object is a mess somebody else has to
+ * clean up. Cards remain the full face of an entity.
+ */
+function entityFrames(elements: Elements): Array<{ id: string; entityId: string; title: string }> {
+  const out: Array<{ id: string; entityId: string; title: string }> = [];
+  for (const el of Object.values(elements)) {
+    if (el.type === "frame" && isEntityId(el.meta?.entityId) && !el.meta?.planned) {
+      out.push({ id: el.id, entityId: el.meta.entityId, title: el.title });
+    }
+  }
+  return out;
+}
+
+/**
  * Board → graph, with the history the save makes (§5.43).
  *
  * `actor` is the person whose save this is, when the caller knows — a board save is the commonest
@@ -68,7 +88,8 @@ function entityCards(elements: Elements): Array<CardElement & { entityId: string
  */
 export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, actor?: Actor) {
   const cards = entityCards(doc.elements);
-  const ids = cards.map((c) => c.entityId);
+  const framed = entityFrames(doc.elements);
+  const ids = [...new Set([...cards.map((c) => c.entityId), ...framed.map((f) => f.entityId)])];
   const existing = ids.length ? await db.select().from(s.entities).where(inArray(s.entities.id, ids)) : [];
   const byId = new Map(existing.map((e) => [e.id, e]));
   const ts = now();
@@ -83,6 +104,13 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
       } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim() || !sameAttributes(parseAttributes(cur.attributes), attrs))) {
         await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
       }
+    }
+    // A framed object: the title is the only thing it can say, and it never creates.
+    for (const f of framed) {
+      const cur = byId.get(f.entityId);
+      if (!cur || cur.workspaceId !== board.workspaceId) continue;
+      if (cur.name === f.title.trim() || !f.title.trim()) continue;
+      await db.update(s.entities).set({ name: f.title.trim(), updatedAt: ts }).where(eq(s.entities.id, f.entityId));
     }
   });
 
@@ -114,8 +142,13 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
 
   // board ↔ entity index
   await db.delete(s.boardEntities).where(eq(s.boardEntities.boardId, board.id));
-  if (cards.length) {
-    await db.insert(s.boardEntities).values(cards.map((c) => ({ boardId: board.id, entityId: c.entityId, elementId: c.id }))).onConflictDoNothing();
+  const placed = [
+    ...cards.map((c) => ({ boardId: board.id, entityId: c.entityId, elementId: c.id })),
+    // A framed object is on the board as much as a card is: it is where the thing sits.
+    ...framed.filter((f) => byId.has(f.entityId)).map((f) => ({ boardId: board.id, entityId: f.entityId, elementId: f.id })),
+  ];
+  if (placed.length) {
+    await db.insert(s.boardEntities).values(placed).onConflictDoNothing();
   }
 }
 

@@ -24,7 +24,10 @@ export function InventoryPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
   // A stable string key (not a Set) so the panel does not re-render while objects are dragged.
   const onBoardKey = useCanvas((s) => {
     const ids: string[] = [];
-    for (const el of Object.values(s.elements)) if (el.type === "card" && isEntityId(el.meta?.entityId)) ids.push(el.meta.entityId);
+    // A framed object counts as placed too (§5.75): on a capability map the parents are frames.
+    for (const el of Object.values(s.elements)) {
+      if ((el.type === "card" || el.type === "frame") && isEntityId(el.meta?.entityId)) ids.push(el.meta.entityId);
+    }
     return ids.sort().join("\n");
   });
   const onBoard = useMemo(() => new Set(onBoardKey ? onBoardKey.split("\n") : []), [onBoardKey]);
