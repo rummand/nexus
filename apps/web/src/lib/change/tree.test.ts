@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { branchTree, type TreeInput } from "./tree";
+import { MARGIN, branchTree, fitBox, nodeAt, openingView, treeBounds, zoomAround, type TreeInput } from "./tree";
 import type { GraphEvent } from "@/lib/history/events";
 import type { Change, ChangeSet } from "./types";
 
@@ -158,5 +158,93 @@ describe("the drawing itself", () => {
     const t = tree();
     expect(t.nodes).toEqual([]);
     expect(t.lanes).toHaveLength(1);
+  });
+});
+
+describe("the camera", () => {
+  it("frames every node, with room for the labels beside them", () => {
+    const nodes = [{ lane: 0, row: 0 }, { lane: 2, row: 9 }];
+    const box = treeBounds(nodes);
+    for (const n of nodes) {
+      const { x, y } = nodeAt(n);
+      expect(x).toBeGreaterThanOrEqual(box.x);
+      expect(x).toBeLessThanOrEqual(box.x + box.width);
+      expect(y).toBeGreaterThanOrEqual(box.y);
+      expect(y).toBeLessThanOrEqual(box.y + box.height);
+    }
+    // Room on the right for the label that is drawn beside the rightmost node.
+    const right = nodeAt(nodes[1]!).x;
+    expect(box.x + box.width - right).toBeGreaterThan(MARGIN * 2);
+  });
+
+  it("gives an empty tree a world rather than a zero-sized one", () => {
+    const box = treeBounds([]);
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.height).toBeGreaterThan(0);
+  });
+
+  it("fits without distorting: the framed box keeps the viewport's shape", () => {
+    const fitted = fitBox({ x: 0, y: 0, width: 100, height: 400 }, { width: 800, height: 400 });
+    expect(fitted.width / fitted.height).toBeCloseTo(2, 5);
+    // …and still contains the original.
+    expect(fitted.x).toBeLessThanOrEqual(0);
+    expect(fitted.x + fitted.width).toBeGreaterThanOrEqual(100);
+  });
+
+  it("fits a wide box by growing the height instead of squashing the width", () => {
+    const fitted = fitBox({ x: 0, y: 0, width: 1000, height: 100 }, { width: 500, height: 500 });
+    expect(fitted.width).toBe(1000);
+    expect(fitted.height).toBeCloseTo(1000, 5);
+  });
+
+  it("keeps the point under the pointer under the pointer while zooming", () => {
+    const view = { x: 0, y: 0, width: 1000, height: 500 };
+    const at = { x: 250, y: 125 };
+    const zoomed = zoomAround(view, at, 2);
+    const before = (at.x - view.x) / view.width;
+    const after = (at.x - zoomed.x) / zoomed.width;
+    expect(after).toBeCloseTo(before, 5);
+    expect(zoomed.width).toBeCloseTo(500, 5);
+  });
+
+  it("can always zoom back towards the readable range, even from a view outside it", () => {
+    /*
+     * A tall history fitted into a wide stage opens *below* the minimum scale. An absolute
+     * guard refused every zoom from there and locked the camera at the one view you arrive in —
+     * which the walk caught. A zoom that moves towards the range is always allowed.
+     */
+    const wide = { x: 0, y: 0, width: 9200, height: 2400 };
+    const inwards = zoomAround(wide, { x: 0, y: 0 }, 1.25);
+    expect(inwards.width).toBeLessThan(wide.width);
+    // …and going further out from there is refused, because it only makes it worse.
+    expect(zoomAround(wide, { x: 0, y: 0 }, 1 / 1.25).width).toBe(wide.width);
+  });
+
+  it("refuses to zoom past its limits rather than letting the drawing vanish", () => {
+    let view = { x: 0, y: 0, width: 1000, height: 500 };
+    for (let i = 0; i < 40; i++) view = zoomAround(view, { x: 0, y: 0 }, 1.3);
+    expect(view.width).toBeGreaterThan(1);
+    let out = { x: 0, y: 0, width: 1000, height: 500 };
+    for (let i = 0; i < 40; i++) out = zoomAround(out, { x: 0, y: 0 }, 1 / 1.3);
+    expect(Number.isFinite(out.width)).toBe(true);
+  });
+});
+
+describe("where the camera opens", () => {
+  it("opens at one-to-one on the newest commits, not zoomed out to everything", () => {
+    // A year of history is thousands of units tall. Framing all of it in a wide stage shrinks
+    // every label out of existence, which is a picture of a tree rather than one you can read.
+    const world = treeBounds([{ lane: 0, row: 0 }, { lane: 2, row: 400 }]);
+    const open = openingView(world, { width: 1000, height: 800 });
+    expect(open.width).toBe(1000);
+    expect(open.height).toBe(800);
+    expect(open.y).toBe(world.y);
+    // …and fit is still there for the whole shape, which is a different question.
+    expect(fitBox(world, { width: 1000, height: 800 }).height).toBeGreaterThan(open.height);
+  });
+
+  it("gives back the world when the stage has not been measured yet", () => {
+    const world = treeBounds([{ lane: 0, row: 0 }]);
+    expect(openingView(world, { width: 0, height: 0 })).toEqual(world);
   });
 });

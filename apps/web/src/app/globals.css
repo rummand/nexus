@@ -238,6 +238,42 @@ a { color: inherit; text-decoration: none; }
 .fs-standing a:hover { color: var(--blue); text-decoration: underline; }
 .fs-standing em { font-size: 11px; font-style: normal; }
 
+/* ---- the revision explorer (§5.84, §5.86) -------------------------------------------------- */
+/* The graph explorer's own shell, so moving through revisions feels like moving through the
+   graph: branches where the entity directory is, the drawing in the middle, the subject on the
+   right. */
+/* Two rows, not the explorer's three: there is no trail bar here, and leaving the third row in
+   the template let the body size itself to its content and collapse to a strip. */
+.explorer-shell.revisions { grid-template-rows: 46px minmax(0, 1fr); min-width: 0; }
+.revisions-zoom { align-items: center; display: flex; gap: 4px; }
+.revisions-zoom button { align-items: center; background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; color: #53627a; cursor: pointer; display: inline-flex; font-size: 11.5px; font-weight: 700; gap: 5px; height: 28px; padding: 0 9px; }
+.revisions-zoom button:hover { border-color: #b8d7ff; color: var(--blue); }
+
+.revisions-rail { grid-template-rows: auto 1fr; }
+.revisions-lanes { display: grid; gap: 3px; grid-auto-rows: max-content; list-style: none; margin: 0; min-height: 0; overflow: auto; padding: 0; }
+.revisions-lanes li { align-items: center; display: flex; gap: 4px; }
+.revisions-lanes li.off { opacity: .45; }
+.revisions-lane-toggle { align-items: center; background: transparent; border: 0; border-radius: 8px; cursor: pointer; display: flex; flex: 1; gap: 8px; min-width: 0; padding: 6px 7px; text-align: left; }
+.revisions-lane-toggle:hover { background: #f5f9ff; }
+.revisions-stand { background: #eef6ff; border: 1px solid #b8d7ff; border-radius: 7px; color: var(--blue); cursor: pointer; flex: none; font-size: 10.5px; font-weight: 700; padding: 2px 7px; }
+
+.revisions-stage { background: #f6f8fb; cursor: grab; overflow: hidden; touch-action: none; }
+.revisions-stage.dragging { cursor: grabbing; }
+.revisions-canvas { display: block; height: 100%; width: 100%; }
+.revisions-node { cursor: pointer; }
+.revisions-label { fill: #56637a; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: #f6f8fb; stroke-width: 4px; }
+.revisions-label.on { fill: #0b1220; font-weight: 800; }
+
+.revisions-subject { background: #fff; border-left: 1px solid var(--line); display: grid; gap: 10px; grid-auto-rows: max-content; min-height: 0; overflow: auto; padding: 14px; width: 300px; }
+.revisions-subject header { align-items: flex-start; display: flex; gap: 9px; }
+.revisions-subject header i { align-items: center; display: inline-flex; padding-top: 2px; }
+.revisions-subject h2 { color: #172033; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; margin: 0; }
+.revisions-subject header p { color: #8b96a9; font-size: 11.5px; margin: 3px 0 0; }
+.revisions-subject h3 { color: #56637a; font-size: 10.5px; font-weight: 700; letter-spacing: .09em; margin: 4px 0 0; text-transform: uppercase; }
+.revisions-on { color: #77839a; font-size: 12px; margin: 0; }
+.revisions-centre { align-items: center; background: #f4f7fb; border: 1px solid #e2e9f3; border-radius: 8px; color: #53627a; cursor: pointer; display: inline-flex; font-size: 11.5px; font-weight: 650; gap: 6px; justify-self: start; padding: 6px 10px; }
+.revisions-centre:hover { border-color: #b8d7ff; color: var(--blue); }
+
 /* ---- the tree: every branch and every commit (§5.84) --------------------------------------- */
 .tree-page { gap: 14px; }
 .tree-intro { color: #77839a; font-size: 12.5px; line-height: 1.6; margin: 0; max-width: 86ch; }

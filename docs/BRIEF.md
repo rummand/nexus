@@ -3720,7 +3720,8 @@ one people guess at.
 `/w/[slug]/tree` draws it. Time runs down the page, newest first — the direction the history page
 already reads, and the direction `git log --graph` runs anyway. `main` is lane 0; every change
 set gets a lane of its own, cut from main with a dashed curve and landing back with a solid one
-when it is delivered. Plateaus are tags on the trunk.
+when it is delivered. Plateaus are tags on the trunk. It is a **canvas you move through** rather
+than a diagram beside a list — see §5.86.
 
 Three decisions about what the drawing is allowed to claim:
 
@@ -3799,6 +3800,36 @@ own filter language, and each one a job the Energinet import actually created.
 **And an object's own page says where it stands** in every campaign it is in scope for, including
 *it was validated, then edited*. That is the loop closed: the queue sends you to the object, and
 the object tells you what the queue thinks of it.
+
+### 5.86 The revision explorer (v0.2)
+
+Rev 126 drew the tree as an SVG gutter beside a list of rows. The owner's verdict was that the
+drawing was right and the container was not: what he wanted was *the explorer treatment* — a
+canvas you can always get to and move through, the way the graph explorer (§5.68) is moved
+through, and the way the figures in the architecture note read.
+
+So the tree wears the explorer's own shell. Branches where the entity directory sits, the drawing
+in the middle, the subject on the right; the three columns mean the same things they mean next
+door, which is the point of having a shell at all.
+
+**It opens somewhere legible, not zoomed out to everything.** A year of history is a world
+thousands of units tall and a few hundred wide, and framing all of it in a wide stage shrinks
+every node to a thread and hides every label — a picture of a tree rather than a tree you can
+read. So the camera opens at 1:1 on the newest commits, and *Fit* is a button for when the whole
+shape is the question. Drag to pan, scroll to zoom about the pointer, and a branch can be hidden
+from the rail when the drawing gets busy.
+
+**Labels go under their node, not beside it.** Lanes are about one label's width apart, so a
+label to the right of a commit lands on top of the next branch — which is exactly what the first
+cut did. Under the node, a label belongs to its own lane and to nothing else; the full text is in
+the subject panel, which is what the panel is for.
+
+The camera arithmetic — the world's bounds, the opening view, the fit, and zoom-about-a-point —
+lives in `tree.ts` with tests, because *does zoom-to-fit actually frame everything* has a right
+answer that does not need a browser to establish. One of those tests exists because the walk
+caught a real bug: the zoom limits were absolute, so a view that opened *outside* the readable
+range locked the camera where it started. They are directional now — a zoom is allowed whenever
+it lands inside the range or moves towards it, so you can always get back and never get lost.
 
 ## 6. Roadmap
 
@@ -4982,6 +5013,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A waiver is refused without a reason and an expiry. | "Accepted as is", undated, is how a model rots: the exception outlives everyone who understood it. Making the expiry a write-time requirement means there is no way to create the rot. |
 | 2026-09-11 | A campaign's scope is the objects list's own filter shape. | A scope has to stay true as objects arrive, so it must be a query. Reusing the filter people already use to find things by hand means no second query language, no second resolver, and no second set of tests. |
 | 2026-09-11 | Untouched is the absence of a row, not a row saying "untouched". | A 455-object campaign would otherwise write 455 rows the moment it is created, most of which say nothing. Absent-means-untouched also makes clearing a decision a delete, which is honest. |
+| 2026-09-11 | The tree is a canvas in the explorer's shell, not a diagram beside a list. | A branching model is understood by moving through it. The list version was a picture with rows next to it; the explorer is the surface the product already uses for "go and look at the shape of something", so revisions should be explored the same way the graph is. |
+| 2026-09-11 | The camera opens at 1:1 on the newest commits, and fit is a button. | Framing a year of history in a wide stage shrinks every node to a thread and hides every label. An explorer should open somewhere legible and let you move; zoom-to-fit answers a different question, and it is one click away. |
+| 2026-09-11 | Zoom limits are directional, not absolute. | An opening view can legitimately sit outside the readable range, and an absolute guard then refuses every zoom and locks the camera where it started. Allowing any zoom that moves towards the range means you can always get back. |
 | 2026-09-11 | A commit on main is a folded moment, not a single event. | The history already folds by hand, place and two minutes. Three fields renamed on one object at one sitting is one commit in any repository; drawing three would make the trunk unreadable and the shape untrue. |
 | 2026-09-11 | A branch is drawn as cut from the state of main it was written against, not from the tip. | Drawing every branch from the tip would make every plan look like it was written today. Change sets carry no base commit yet, so creation time is the honest approximation — and naming it as an approximation is what #138 would make exact. |
 | 2026-09-11 | Each ref keeps its own lane for the whole drawing. | Reusing a column when a branch ends is how git graphs save space and how readers lose the thread. With tens of change sets rather than thousands of commits, clarity costs nothing. |
@@ -5025,6 +5059,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 129: the tree becomes an explorer.** The owner liked the drawing and not the
+  container: he wanted a canvas he could always get to and move through, like the graph explorer.
+  The tree now wears the explorer's shell — branches on the left, the drawing in the middle, the
+  subject on the right — with drag to pan, scroll to zoom about the pointer, per-branch hiding,
+  and a fit. It opens at 1:1 on the newest commits rather than zoomed out to everything, because
+  framing a year of history hides every label. Labels moved under their nodes, since lanes are
+  one label's width apart and a label to the right lands on the next branch. Four camera tests,
+  one of them for a real bug the walk caught: absolute zoom limits locked the camera whenever the
+  opening view sat outside the readable range. Brief §5.86, three decision rows.
 
 - **2026-09-11 — Rev 128: campaigns, the surfaces (#134).** The queue: one object at a time, with
   what it is and where it sits, and four ways out — it is right, leave it for now (reason and

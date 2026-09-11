@@ -8,13 +8,13 @@ import { workspaceHistory } from "@/lib/history/record";
 import { listChangeSets } from "@/lib/change/read";
 import { currentCheckout } from "@/lib/change/checkout";
 import { branchTree } from "@/lib/change/tree";
-import { BranchTreeView } from "@/components/tree/BranchTreeView";
+import { RevisionExplorer } from "@/components/tree/RevisionExplorer";
 
 /**
- * The tree: every branch and every commit (§5.84).
+ * The tree: every branch and every commit, as a canvas you move through (§5.84, §5.86).
  *
  * Read whole on the server. A workspace's history is unbounded, so the trunk is capped — the
- * page says so rather than pretending the drawing is the whole past.
+ * explorer says how many commits it is drawing rather than pretending it is the whole past.
  */
 
 const CAP = 120;
@@ -37,27 +37,13 @@ export default async function TreePage({ params }: { params: Promise<{ slug: str
   const names = Object.fromEntries(entities.map((e) => [e.id, e.name]));
 
   return (
-    <div className="studio-home-main tree-page" data-tree-page>
-      <div className="studio-home-topbar">
-        <div>
-          <span>Every branch, every commit</span>
-          <h1>The tree</h1>
-        </div>
-      </div>
-      <p className="tree-intro">
-        Time runs down the page, newest first. <b>main</b> is the left-hand line — the estate as we
-        currently believe it to be. Every change set is a line of its own, cut from the state of
-        main it was written against, landing back when it is delivered. Click anything to see what
-        it carries; click a branch to stand on it.
-      </p>
-      <BranchTreeView
-        slug={slug}
-        workspaceId={workspace.id}
-        tree={tree}
-        names={names}
-        currentRef={checkout.ref.kind === "main" ? "main" : checkout.ref.id}
-      />
-    </div>
+    <RevisionExplorer
+      slug={slug}
+      workspaceId={workspace.id}
+      tree={tree}
+      names={names}
+      currentRef={checkout.ref.kind === "main" ? "main" : checkout.ref.id}
+    />
   );
 }
 

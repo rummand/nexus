@@ -216,3 +216,105 @@ export function branchTree({ events, changeSets, plateaus = [], limit = 60 }: Tr
 
   return { nodes: all, edges, lanes, rows: all.length };
 }
+
+
+/* ---- the camera (§5.86) ---------------------------------------------------------------------
+ *
+ * The tree is read by moving through it, not by scrolling a list, so the drawing has a camera:
+ * a world in lane/row coordinates and a viewBox over it. The arithmetic is here, out of the
+ * component, because "does zoom-to-fit actually frame everything" is a question with a right
+ * answer and no need for a browser to establish it.
+ */
+
+/** How far apart the drawing puts things, in world units. */
+export const LANE_W = 190;
+export const ROW_H = 74;
+export const MARGIN = 90;
+
+export interface Box { x: number; y: number; width: number; height: number }
+
+/** Where a node sits in the world. */
+export function nodeAt(node: Pick<TreeNode, "lane" | "row">): { x: number; y: number } {
+  return { x: node.lane * LANE_W, y: node.row * ROW_H };
+}
+
+/** The world the drawing occupies, with room around it so nothing touches the edge. */
+export function treeBounds(nodes: Array<Pick<TreeNode, "lane" | "row">>): Box {
+  if (!nodes.length) return { x: -MARGIN, y: -MARGIN, width: MARGIN * 2, height: MARGIN * 2 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    const { x, y } = nodeAt(n);
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  /*
+   * Wider on the right than on the left: a commit's label is drawn beside its node, so the world
+   * extends past the rightmost dot by about a label's width or the text is cropped at every
+   * zoom-to-fit.
+   */
+  return { x: minX - MARGIN, y: minY - MARGIN, width: maxX - minX + MARGIN * 4, height: maxY - minY + MARGIN * 2 };
+}
+
+/**
+ * A viewBox that frames `box` inside a viewport of the given shape, without distorting it.
+ *
+ * SVG's own `preserveAspectRatio` would do this at render time, but then nothing else knows the
+ * scale — and the drawing needs to know, because labels are hidden when they would be too small
+ * to read. So the fit is computed rather than delegated.
+ */
+/**
+ * Where the camera opens: the newest commits, at a scale where the labels can be read.
+ *
+ * *Not* zoom-to-fit. A year of history is a world thousands of units tall and a few hundred
+ * wide; framing all of it in a wide stage shrinks everything to threads and hides every label,
+ * which is a picture of a tree rather than a tree you can read. An explorer should open
+ * somewhere legible and let you move — so it opens at 1:1 on the top of the trunk, and framing
+ * everything is a button.
+ */
+export function openingView(box: Box, viewport: { width: number; height: number }): Box {
+  if (viewport.width <= 0 || viewport.height <= 0) return box;
+  return { x: box.x, y: box.y, width: viewport.width, height: viewport.height };
+}
+
+export function fitBox(box: Box, viewport: { width: number; height: number }): Box {
+  if (viewport.width <= 0 || viewport.height <= 0) return box;
+  const wanted = viewport.width / viewport.height;
+  const have = box.width / box.height;
+  if (have > wanted) {
+    const height = box.width / wanted;
+    return { x: box.x, y: box.y - (height - box.height) / 2, width: box.width, height };
+  }
+  const width = box.height * wanted;
+  return { x: box.x - (width - box.width) / 2, y: box.y, width, height: box.height };
+}
+
+/** How big a world unit is on screen, in the units the zoom limits are expressed in. */
+const scaleOf = (width: number) => LANE_W / (width / 6);
+const distanceOutside = (scale: number, limits: { min: number; max: number }) =>
+  scale < limits.min ? limits.min - scale : scale > limits.max ? scale - limits.max : 0;
+
+/**
+ * Zoom about a point, so the thing under the pointer stays under the pointer.
+ *
+ * The limits are directional rather than absolute, and that is not fussiness: a tall history
+ * fitted into a wide stage gives an opening view already below the minimum scale, and a guard
+ * that simply refused anything outside the range locked the camera at the one view you arrive
+ * in. So a zoom is allowed whenever it lands inside the range *or* moves towards it — you can
+ * always get back, and you can never get further lost.
+ */
+export function zoomAround(view: Box, at: { x: number; y: number }, factor: number, limits = { min: 0.15, max: 4 }): Box {
+  const width = view.width / factor;
+  const height = view.height / factor;
+  if (!Number.isFinite(width) || width <= 0) return view;
+
+  const before = distanceOutside(scaleOf(view.width), limits);
+  const after = distanceOutside(scaleOf(width), limits);
+  if (after > 0 && after >= before) return view;
+
+  return {
+    x: at.x - ((at.x - view.x) / view.width) * width,
+    y: at.y - ((at.y - view.y) / view.height) * height,
+    width,
+    height,
+  };
+}

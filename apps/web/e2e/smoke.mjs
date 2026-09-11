@@ -1277,21 +1277,63 @@ try {
    * the data has: main on the left, a lane per change set, and somewhere to go from every node.
    */
   await page.goto(`${base}/w/acme-energy/tree`, { waitUntil: "load" });
-  await page.waitForSelector("[data-branch-tree]", { timeout: 45000 });
+  await page.waitForSelector("[data-revision-explorer]", { timeout: 45000 });
+  await page.waitForSelector(".revisions-canvas circle", { timeout: 20000 });
   {
     const lanes = await page.locator("[data-tree-stand], .tree-here").count();
     assert.ok(lanes >= 2, "main and the open change sets each have a branch you can stand on");
     assert.ok((await page.locator("[data-tree-node]").count()) > 2, "the drawing has commits in it");
     assert.ok((await page.locator('[data-tree-node="cut"]').count()) >= 1, "a branch is drawn as cut from main");
-    assert.ok((await page.locator(".tree-svg circle").count()) > 2, "and it is drawn, not only listed");
 
-    // Clicking a commit says what it carries, and every object in it is somewhere you can go.
-    const commit = page.locator('[data-tree-node="commit"]').first();
-    await commit.click();
-    await page.waitForSelector("[data-tree-detail]");
-    assert.ok((await page.locator("[data-tree-detail]").innerText()).length > 10, "a node says what it carries");
+    /*
+     * It is a canvas, not a picture: the camera frames the whole world on arrival, and moving
+     * it changes what is drawn. A viewBox that never changes would mean the drawing is a
+     * screenshot with buttons beside it.
+     */
+    await page.click("[data-revision-fit]");
+    await page.waitForTimeout(300);
+    const before = await page.locator(".revisions-canvas").getAttribute("viewBox");
+    {
+      /*
+       * From empty canvas, not from a node: a node stops the pointer so that clicking one
+       * selects it rather than starting a drag. The bottom-right corner of the stage is below
+       * and right of the drawing, which is framed with a margin.
+       */
+      const box = await page.locator(".revisions-stage").boundingBox();
+      const from = { x: box.x + box.width - 30, y: box.y + box.height - 30 };
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x - 160, from.y - 90, { steps: 8 });
+      await page.mouse.up();
+    }
+    await page.waitForTimeout(300);
+    const after = await page.locator(".revisions-canvas").getAttribute("viewBox");
+    assert.notEqual(before, after, "dragging moves the camera");
 
-    // The tree is a place you can move from, not only read.
+    // And zooming changes how much of the world is on screen.
+    await page.click('[aria-label="Zoom in"]');
+    await page.waitForTimeout(250);
+    const zoomed = await page.locator(".revisions-canvas").getAttribute("viewBox");
+    assert.ok(Number(zoomed.split(" ")[2]) < Number(after.split(" ")[2]), "zooming in shows less of the world");
+
+    // Clicking a node says what it carries, and every object in it is somewhere you can go.
+    // Framed first: a node outside the current camera cannot be clicked, and Playwright cannot
+    // scroll to something inside an SVG viewBox.
+    await page.click("[data-revision-fit]");
+    await page.waitForTimeout(300);
+    await page.locator('[data-tree-node="commit"]').first().click();
+    await page.waitForTimeout(400);
+    assert.ok((await page.locator(".revisions-subject").innerText()).length > 10, "a node says what it carries");
+
+    // A branch can be hidden, which is what makes a busy tree readable.
+    const trunkBefore = await page.locator('[data-tree-node]').count();
+    await page.click('[data-lane-toggle="main"]');
+    await page.waitForTimeout(300);
+    assert.ok((await page.locator("[data-tree-node]").count()) < trunkBefore, "hiding a branch takes it out of the drawing");
+    await page.click('[data-lane-toggle="main"]');
+    await page.waitForTimeout(300);
+
+    // And it is a place you can move from, not only read.
     const stand = page.locator('[data-tree-stand]').first();
     if (await stand.count()) {
       const ref = await stand.getAttribute("data-tree-stand");
