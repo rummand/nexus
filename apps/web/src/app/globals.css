@@ -1428,14 +1428,53 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .live-state button { background: none; border: 0; color: var(--blue); cursor: pointer; font-size: 11px; margin-left: 5px; padding: 0; text-decoration: underline; }
 
 /* ---- the repository: everything, on one shelf (§5.76) -------------------------------------- */
-/* The third row of the .inventory grid, which is `1fr` of a full-height shell. Without
-   min-height:0 a flex column in a grid row is sized by its content, not by its track, so the
-   table below it grew past the viewport and the last four hundred rows were unreachable. */
-.repository-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; padding: 0 22px 26px; }
+/* The repository is the .inventory shell with a rail instead of a chip row (§5.78), so it has two
+   rows rather than three. */
+[data-repository] { grid-template-rows: auto minmax(0, 1fr); }
+.repository-shell { display: grid; grid-template-columns: 262px minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.repository-rail {
+  background: #fff;
+  border-right: 1px solid var(--line);
+  display: grid;
+  gap: 16px;
+  grid-auto-rows: max-content;
+  min-height: 0;
+  overflow: auto;
+  padding: 13px 12px 26px;
+}
+.repository-rail .facet-values button { min-height: 28px; padding: 0 8px; }
+.repository-rail .facet-values button:disabled { color: #c3ccda; cursor: default; }
+.repository-rail .facet-values button:disabled:hover { background: transparent; border-color: transparent; }
+.facet-dot { border-radius: 3px; flex: none; height: 9px; width: 9px; }
+
+/* Without min-height:0 a flex column in a grid row is sized by its content, not by its track, so
+   the table below it grew past the viewport and the last four hundred rows were unreachable. */
+.repository-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; padding: 4px 22px 26px; }
 .repository-body .inventory-table-wrap { flex: 1 1 auto; }
+
+/* Room to breathe. At 478 rows the default 0-8px cell padding put a name, its description and the
+   next name inside 40 vertical pixels, and the list read as one block of text rather than as rows. */
+.repository-table th, .repository-table td { padding: 9px 12px; }
+.repository-table thead th { padding: 8px 12px; }
+.repository-table tbody th[scope="row"] { max-width: 340px; padding-right: 18px; }
+.repository-table tbody tr:hover { background: #f7faff; }
+.repository-table tbody th[scope="row"] a { color: #172033; text-decoration: none; }
+.repository-table tbody th[scope="row"] a:hover { color: var(--blue); text-decoration: underline; }
+.repository-when { color: #8a95a8; white-space: nowrap; }
+
+.repository-sort { align-items: center; color: #8b96a9; display: flex; flex: 0 0 auto; font-size: 11.5px; gap: 7px; }
+.repository-sort select {
+  background: #f4f7fb;
+  border: 1px solid #e2e9f3;
+  border-radius: 10px;
+  color: #344156;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 9px;
+}
 .repository-kind { align-items: center; color: #56637a; display: inline-flex; gap: 6px; white-space: nowrap; }
 .repository-kind i { border-radius: 3px; height: 9px; width: 9px; }
-.repository-said { color: #a5b0c2; display: block; font-size: 11px; font-weight: 400; margin-top: 2px; }
+.repository-said { color: #a5b0c2; display: block; font-size: 11.5px; font-weight: 400; line-height: 1.45; margin-top: 3px; }
 .repository-top { color: #c3ccda; font-style: normal; }
 .inventory-siblings button { align-items: center; background: #f1f5f9; border: 0; border-radius: 8px; color: #56637a; cursor: pointer; display: inline-flex; font-size: 12px; gap: 6px; padding: 5px 10px; }
 .inventory-siblings button.on { background: #1376d4; color: #fff; }

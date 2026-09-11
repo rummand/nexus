@@ -1454,11 +1454,42 @@ try {
   assert.match(page.url(), /\/repository$/, "the rail entry lands on the repository");
   const everything = await page.locator("[data-repository-count]").innerText();
   assert.match(everything, /\d+ objects/, "it says how much the model holds");
-  const kinds = await page.locator("[data-type]").count();
-  assert.ok(kinds > 1, "every type is a chip, with what it holds");
+  const kinds = await page.locator("[data-repository-rail] [data-type]").count();
+  assert.ok(kinds > 1, "every type is a row in the rail, with what it holds");
 
   /*
-   * The list is the third row of a full-height grid, and a row that does not say it scrolls
+   * ---- the rail asks the other questions (§5.78) ----------------------------------------------
+   *
+   * A search box answers "where is that thing" and nothing else. These are the questions a flat
+   * list of 478 objects cannot ask, and the counting rule that keeps the filter from being a
+   * one-way door.
+   */
+  {
+    const all = Number((await page.locator("[data-repository-count]").innerText()).match(/(\d+) objects/)[1]);
+    await page.click('[data-repo-choice="orphan"]');
+    await page.waitForTimeout(400);
+    const narrowed = await page.locator("[data-repository-count]").innerText();
+    assert.match(narrowed, /of \d+ · narrowed by 1 filter/, "choosing a filter says the list is narrowed");
+    const left = Number(narrowed.match(/^(\d+) of/)[1]);
+    assert.ok(left > 0 && left < all, "and the list is actually narrower");
+
+    // Every type still offers what choosing it would give: a facet never counts against itself.
+    const types = await page.locator('[data-repository-rail] [data-type]:not([disabled])').count();
+    assert.ok(types > 1, "the other types stay reachable while a different facet is chosen");
+
+    await page.selectOption("[data-repository-sort]", "connected");
+    await page.waitForTimeout(300);
+    await page.click("[data-repo-clear]");
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator("[data-repository-count]").innerText(), `${all} objects`, "and clearing gives it all back");
+    const top = await page.locator("[data-repository-row]").first().innerText();
+    assert.ok(/\d/.test(top), "sorted by connectedness, the most connected object is first");
+    await page.selectOption("[data-repository-sort]", "name");
+    await page.waitForTimeout(300);
+  }
+
+  /*
+   * The list is the second row of a full-height grid, and a row that does not say it scrolls
    * simply clips: 478 objects with four hundred of them unreachable is what shipped in rev 114.
    */
   {
@@ -1483,9 +1514,9 @@ try {
    * where it stands, and what you type is written without a save button. So the row in the
    * repository is a link, and following it is how the walk gets there.
    *
-   * What the sheet must not do is cost you the menu. It fills everything right of the rail and
+   * What the sheet must not do is cost you the menu. It opens in the area right of the rail and
    * nothing of it, so the next place you are going is one click away rather than a retreat
-   * through the history.
+   * through the history — and it stands inside that area, so the list is visible behind it.
    */
   await page.locator("[data-open-item]").first().click();
   await page.waitForSelector("[data-sheet-window]", { timeout: 45000 });

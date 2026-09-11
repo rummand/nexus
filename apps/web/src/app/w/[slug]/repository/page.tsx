@@ -41,6 +41,9 @@ export default async function RepositoryPage({ params }: { params: Promise<{ slu
         relationCount: e.relationCount,
         boardCount: e.boardCount,
         updatedAt: e.updatedAt,
+        /* Whether the meta-model declares the type this object claims — a filter in the rail
+           (§5.78), and the reason 52 undeclared types is visible rather than merely true. */
+        declared: declared.has(e.kind.trim().toLowerCase()),
       }))}
     />
   );

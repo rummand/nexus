@@ -69,6 +69,34 @@ export const EXPLORER: DocPage = {
   ],
 };
 
+export const REPOSITORY: DocPage = {
+  slug: "repository",
+  title: "Fact sheets: finding anything",
+  summary: "One list of every object the model holds, with a rail that asks the questions a search box cannot.",
+  keywords: ["repository", "fact sheets", "search", "find", "filter", "facet", "sort", "orphan", "undeclared", "top level", "list", "browse"],
+  blocks: [
+    { kind: "prose", text: "**Fact sheets** in the navigation is the shelf everything sits on: every object in the workspace, one flat list, whatever type it is and whoever put it there. It is flat on purpose — the question it answers is *where is that thing*, and a search box over everything answers that in a second where a tree makes you know the shape before you can look." },
+    { kind: "shot", src: "repository", alt: "The repository with a filter rail on the left and a table of every object in the workspace", caption: "The rail on the left; the sort beside the search. Every count says what choosing it would give you." },
+    { kind: "heading", text: "The rail", id: "rail" },
+    { kind: "prose", text: "A search box answers one question. These are the others, and they are the ones a real estate asks the moment it lands:" },
+    {
+      kind: "list",
+      items: [
+        "**Type** — multi-select, each with its count. A type the meta-model has never heard of is marked; picking exactly one offers that type's own inventory, with its facets and declared fields.",
+        "**Where it sits** — at the top level, or inside something. The fastest way to see what never got placed in the hierarchy.",
+        "**Connections** — connected, or *connected to nothing*. An orphan is a finding, so it is marked like one.",
+        "**On a board** — drawn somewhere, or on no board at all. Objects nobody has ever drawn are usually objects nobody has ever looked at.",
+        "**The meta-model** — type declared, or type not declared. This is the undeclared-types number from estate health as something you can act on instead of read.",
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why choosing a value does not empty the rest of its facet", text: "Each facet counts against every *other* facet's selection, never its own. If it counted against itself, picking one type would show all the others as zero and the filter would be a one-way door — you could narrow but never switch. It is a small rule, and it is the difference between a rail you explore with and one you keep having to reset." },
+    { kind: "note", tone: "tip", text: "A choice that would leave nothing is shown greyed rather than removed. Zero is an answer — *nothing here is undeclared* is worth knowing — and a rail whose rows come and go cannot be clicked from memory." },
+    { kind: "heading", text: "Sorting", id: "sorting" },
+    { kind: "prose", text: "Beside the search: **name**, **recently changed**, **most connected**, **most used on boards**, **type**. Every order falls back to the name, so two objects changed in the same second keep their places instead of swapping on the next render." },
+    { kind: "try", href: "/w/:slug/repository", label: "Open the repository" },
+  ],
+};
+
 export const INVENTORY: DocPage = {
   slug: "inventory",
   title: "The inventory: browsing one type",
@@ -103,7 +131,7 @@ export const FACT_SHEET: DocPage = {
   keywords: ["fact sheet", "factsheet", "object", "page", "edit", "inline", "save", "autosave", "undo", "sections", "attributes", "history", "window", "leanix", "link"],
   blocks: [
     { kind: "prose", text: "An object is a thing, not an annotation on a list. **/w/…/fs/…** is its address — the name, the description, every attribute in the section its type puts it in, what it is connected to, where it sits, which boards it is on, and everything that has ever happened to it. It is a link you can send." },
-    { kind: "shot", src: "fact-sheet", alt: "An application's fact sheet open in a window over the repository, with its attributes in sections and its history beside them", caption: "Opened from a list, the sheet is a window over it: everything right of the menu, nothing of the menu." },
+    { kind: "shot", src: "fact-sheet", alt: "An application's fact sheet open in a window over the repository, with its attributes in sections and its history beside them", caption: "Opened from a list, the sheet is a window over it — inside the area right of the menu, so the list is still visible behind it." },
     { kind: "heading", text: "Why it is a window and not a page", id: "window" },
     { kind: "prose", text: "Click a row and the sheet opens **over** the list you were reading, in the area right of the navigation. It stands inside that area rather than filling it, so the list is visible around its edges — it is still there, and you are on top of it rather than somewhere else. The list keeps its search, its facets and its scroll position, so checking one application's owner does not cost you the three filters it took to find it. The address in the bar still changes — the object is linkable and refreshable — and there are four ways out, all cheap: the **close** button, **Escape**, a click on the space beside the window, and the browser's back button, which are the same gesture here." },
     { kind: "note", tone: "tip", text: "Open the link cold — from a mail, a bookmark, a new tab — and there is nothing behind it to cover, so it renders as a whole page instead. Same sheet, same edits. **Open on its own** in the window's bar does that deliberately." },

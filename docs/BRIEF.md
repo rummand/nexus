@@ -3440,14 +3440,45 @@ graph. So the product had fact sheets and nowhere to find them: the first thing 
 seeing the inventory was that there was no menu item for it, which was exactly right.
 
 **Fact sheets** is the entry in the rail, and the page behind it is one flat list of everything
-the model holds — 490 objects across 12 types on Energinet's estate — with the types along the
-top as counted chips, a search across name, type, description and parent, and each row opening
-the same drawer the rest of the product opens. Every row says where it sits (§5.70), how many
-relations it has and how many boards it is on; picking a type narrows the list and offers that
-type's own inventory, with its facets and its declared fields, one click on.
+the model holds — 478 objects across 12 types on Energinet's estate — with a search across name,
+type, description and parent, and each row opening the object's own sheet (§5.77). Every row says
+where it sits (§5.70), how many relations it has and how many boards it is on; picking a single
+type narrows the list and offers that type's own inventory, with its facets and its declared
+fields, one click on.
 
 One flat list on purpose. The question this page answers is "where is that thing", and a search
 box over everything answers it in a second; a shape that has to be navigated does not.
+
+### 5.78 The repository asks the other questions (v0.2)
+
+A search box answers *where is that thing* and nothing else, and the first thing 478 real objects
+did was ask everything else: which applications are connected to nothing, what sits at the top
+level, what did we touch last week, which of these types has nobody declared. The types were a
+row of chips above the table, which had already run out of room at twelve — and the rows
+themselves had no vertical padding, so a name, its description and the next name shared forty
+pixels and the list read as a block of text rather than as rows.
+
+So the page grew **a rail on the left**, which is where a filter belongs, and room to breathe.
+The rail carries five facets and the sort:
+
+- **Type**, multi-select, each with its colour and count, undeclared ones marked.
+- **Where it sits** — at the top level, or inside something.
+- **Connections** — connected, or **connected to nothing**, marked as the finding it is.
+- **On a board** — drawn somewhere, or on no board.
+- **The meta-model** — type declared, or type not declared: the 52-undeclared-types problem as a
+  filter you can act on rather than a number on the health page.
+- **Sort** — name, recently changed, most connected, most used on boards, type. Every order falls
+  back to the name so the list cannot shuffle between renders.
+
+**One facet never counts against itself.** Each count is taken over everything that survives the
+*other* facets and the search, so choosing Application still shows what choosing Business
+Capability would give. If a facet counted against its own selection the filter would be a one-way
+door — you could narrow but never switch — which is the classic faceted-search bug, and the type
+inventory (§5.72) already learned it. A choice that would empty the list is shown disabled rather
+than hidden: its absence is an answer, and a rail whose rows come and go cannot be learned.
+
+The logic lives in `src/lib/repository.ts`, out of the component, because the counting rule is
+the only interesting thing on the page and it is worth a test.
 
 **Something had to leave the rail to make room.** The rail's rule is frequency (§5.65) and it is
 capped at fourteen entries by a test, so adding a daily surface meant moving a monthly one: the
@@ -3739,11 +3770,16 @@ the model rather than a quirk of one object.
 - Sections come from the type's declared fields (set in the meta-model); undeclared keys land in
   *From the data*; declared fields show even when empty, and a required blank is marked.
 
-### The repository (v0.2, rev 113 — §5.76)
+### The repository (v0.2, rev 113 + 117 — §5.76, §5.78)
 - **Fact sheets** in the rail → `/w/[slug]/repository`: every object the model holds, one list.
-- Types as counted chips (declared ones marked), search across name, type, description and parent,
-  where each object sits, its relations and boards, when it last changed, and the object's own
-  sheet in a window on click.
+- A **filter rail** on the left: type (multi-select, counted, undeclared marked), where it sits,
+  connected or orphaned, on a board or not, type declared or not — each counted against the other
+  facets but never against itself, and a choice that would empty the list disabled rather than
+  hidden.
+- **Sort** by name, recently changed, most connected, most used on boards or type, every order
+  falling back to the name.
+- Search across name, type, description and parent; where each object sits, its relations and
+  boards, when it last changed, and the object's own sheet in a window on click.
 - Picking a type offers that type's own faceted inventory.
 
 ### The inventory (v0.2, rev 109 — §5.72)
@@ -4656,6 +4692,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The Capability map starter draws the whole estate from the graph, and falls back to the fixture only when there is nothing to draw. | A template that invents six capabilities teaches a new user that Nexus does not know their organisation. Drawing all of it is the point — a map that quietly showed the first twenty would be worse than none, because it would look right. |
 | 2026-09-11 | An application appears once on the map, under the first capability it realises, with a note when it realises more. | Two cards carrying one entity id is a question the board's sync cannot answer: which one is the object? One card, and the truth about the rest in words. |
 | 2026-09-11 | A frame may be the face of an object that already exists, and may only rename it. | Every parent capability on a map is a frame; as pure decoration they were missing from the board's index and unclickable. A frame carries no kind, so letting it create an object would mint untyped things — bind, rename, and nothing else. |
+| 2026-09-11 | The repository's filters are a rail on the left, not chips above the table. | Twelve types already overflowed the chip row, and the cross-cutting questions — orphaned, top level, undeclared — have nowhere to go in a row of type chips. A rail has room, it is where people look for a filter, and it is the shape the type inventory already uses. |
+| 2026-09-11 | A facet counts against every other facet's selection and never against its own. | Otherwise choosing a type shows every other type as zero and the filter is a one-way door: you can narrow but never switch. The same rule the type inventory learned, applied to the cross-cutting questions. |
+| 2026-09-11 | A filter that would empty the list is shown disabled rather than hidden. | Zero is an answer — *nothing here is undeclared* is worth knowing — and a rail whose rows appear and disappear cannot be learned or clicked from memory. |
 | 2026-09-11 | The repository is one flat searchable list, not a tree or a board. | It answers "where is that thing". A tree makes you know the shape before you can look, and a board makes you pan. 490 rows and a search box is faster than either, and the per-type inventory is one click away for the questions that need facets. |
 | 2026-09-11 | Adding Fact sheets to the rail pushed EA knowledge out of it, rather than raising the cap. | The rail is capped at fourteen because past about a dozen a list stops being scanned and starts being searched. The honest axis is frequency: the repository is daily, the knowledge library is monthly, so it moves to the foot of the rail beside Documentation. |
 | 2026-09-11 | Editing a fact sheet has no save button: the value is the field, written on blur. | The canvas has always worked this way and nobody misses a save button there. What makes it safe is not a button but a history entry with a name on it, a quiet "saved", and an undo for the seconds that matter. |
@@ -4680,6 +4719,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 117: the repository asks the other questions.** 478 objects made the flat
+  list's limits obvious: the types had outgrown the chip row above the table, the cross-cutting
+  questions had nowhere to live, and rows with no vertical padding read as one block of text. The
+  page now has a filter rail on the left — type (multi-select, counted, undeclared marked), where
+  it sits, connected or connected to nothing, on a board or not, declared or not — plus a sort by
+  name, recency, connectedness, board use or type. Every facet counts against the *other* facets
+  and never against itself, so the filter is not a one-way door, and a choice that would empty the
+  list is disabled rather than hidden. The rows got their padding back. The logic is a pure module
+  with eleven tests. Brief §5.78, three decision rows.
 
 - **2026-09-11 — Rev 115: the fact sheet is a window, and it scrolls.** Two things were wrong with
   rev 114. A long sheet could not be scrolled: the workspace shell is a full-height grid and the
