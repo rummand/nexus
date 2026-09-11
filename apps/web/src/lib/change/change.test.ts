@@ -51,6 +51,47 @@ describe("projecting a change set", () => {
     expect(parseAttributes(ESTATE[2]!.attributes).owner).toBe("Finance"); // the original is untouched
   });
 
+  it("moves something in the hierarchy without touching the graph row", () => {
+    const tree = [entity("cap", "Metering", "Capability"), entity("sub", "Meter reading", "Capability")];
+    const p = project(tree, [], [change("c1", "setParent", { entityId: "sub", payload: { parentId: "cap" } })]);
+    expect(p.entities.find((e) => e.id === "sub")?.parentId).toBe("cap");
+    expect(p.moved.has("sub")).toBe(true);
+    expect(tree[1]!.parentId ?? null).toBe(null);
+    expect(summarise(p).moves).toBe(1);
+  });
+
+  it("takes something back to the top level", () => {
+    const inside = { ...entity("sub", "Meter reading", "Capability"), parentId: "cap" } as s.Entity;
+    const p = project([entity("cap", "Metering", "Capability"), inside], [], [change("c1", "setParent", { entityId: "sub", payload: { parentId: "" } })]);
+    expect(p.entities.find((e) => e.id === "sub")?.parentId).toBe(null);
+    expect(p.moved.has("sub")).toBe(true);
+  });
+
+  it("can move something the same change set introduced", () => {
+    const p = project([entity("cap", "Metering", "Capability")], [], [
+      change("c1", "addEntity", { entityId: "new1", payload: { kind: "Capability", name: "Meter reading" } }),
+      change("c2", "setParent", { entityId: "new1", payload: { parentId: "cap" } }),
+    ]);
+    expect(p.entities.find((e) => e.id === "new1")?.parentId).toBe("cap");
+    expect(p.problems).toEqual([]);
+  });
+
+  it("refuses a move that would make a ring, and says so rather than making one", () => {
+    const p = project([entity("a1", "Top", "Capability"), entity("b1", "Under", "Capability")], [], [
+      change("c1", "setParent", { entityId: "b1", payload: { parentId: "a1" } }),
+      change("c2", "setParent", { entityId: "a1", payload: { parentId: "b1" } }),
+    ]);
+    expect(p.moved.has("b1")).toBe(true);
+    expect(p.moved.has("a1")).toBe(false);
+    expect(p.problems).toHaveLength(1);
+    expect(p.problems[0]!.message).toContain("loop");
+  });
+
+  it("reports a move of something that is no longer there", () => {
+    const p = project(ESTATE, WIRES, [change("c1", "setParent", { entityId: "gone", payload: { parentId: "a" } })]);
+    expect(p.problems[0]!.message).toContain("no longer in the graph");
+  });
+
   it("lets a new relation point at a system introduced in the same change set", () => {
     const p = project(ESTATE, WIRES, [
       change("c1", "addEntity", { entityId: "new1", payload: { kind: "Application", name: "Asset Hub" } }),

@@ -27,6 +27,17 @@ export interface AddRelationPayload {
   toEntityId: string;
   kind: string;
 }
+/**
+ * Move something in the hierarchy (§5.84).
+ *
+ * Containment is a column on the entity rather than a relation (§5.70), so a plan that says
+ * "this capability moves under that one" cannot be written as `addRelation` — it needs an op of
+ * its own. An empty `parentId` means the top level, which is a real destination and not a
+ * missing value: "take this out of where it is" is one of the two moves people actually make.
+ */
+export interface SetParentPayload {
+  parentId: string;
+}
 
 export interface Change {
   id: string;
@@ -62,6 +73,8 @@ export interface Projection {
   retired: Set<string>;
   /** Entity ids whose attributes the change set alters. */
   changed: Set<string>;
+  /** Entity ids the change set moves in the hierarchy. */
+  moved: Set<string>;
   addedRelations: Set<string>;
   removedRelations: Set<string>;
   /**
@@ -77,6 +90,7 @@ export interface ChangeSummary {
   additions: number;
   retirements: number;
   attributeChanges: number;
+  moves: number;
   newRelations: number;
   severedRelations: number;
   problems: number;
@@ -87,6 +101,7 @@ export function summarise(projection: Projection): ChangeSummary {
     additions: projection.added.size,
     retirements: projection.retired.size,
     attributeChanges: projection.changed.size,
+    moves: projection.moved.size,
     newRelations: projection.addedRelations.size,
     severedRelations: projection.removedRelations.size,
     problems: projection.problems.length,
@@ -98,6 +113,7 @@ export const OP_LABEL: Record<ChangeOp, string> = {
   addEntity: "Introduce",
   retireEntity: "Retire",
   setAttribute: "Change",
+  setParent: "Move",
   addRelation: "Connect",
   removeRelation: "Disconnect",
 };

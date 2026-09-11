@@ -15,7 +15,7 @@ import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./rea
 import { checkOut } from "./checkout";
 import { project } from "./project";
 import { allBlockers, blocking, wouldCycle } from "./order";
-import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload } from "./types";
+import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload, SetParentPayload } from "./types";
 
 const now = () => new Date().toISOString();
 
@@ -373,7 +373,7 @@ export async function excludeFromPlateau(plateauId: string, changeSetId: string)
  * answer to "what did we replace it with", and a model that forgets it cannot answer that. If you
  * genuinely want it gone, deleting an entity is still a separate, deliberate act.
  */
-export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true; introduced: number; retired: number; altered: number; connected: number; severed: number } | { error: string }> {
+export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true; introduced: number; retired: number; altered: number; moved: number; connected: number; severed: number } | { error: string }> {
   const no = await denySet(changeSetId, "plan.deliver");
   if (no) return no;
   const db = await getDb();
@@ -408,6 +408,7 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
   let introduced = 0;
   let retired = 0;
   let altered = 0;
+  let moved = 0;
   let connected = 0;
   let severed = 0;
 
@@ -462,6 +463,17 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
         altered++;
         break;
       }
+      case "setParent": {
+        const p = change.payload as unknown as SetParentPayload;
+        if (!change.entityId) break;
+        /*
+         * The projection has already refused the moves that would make a ring, and refused the
+         * whole delivery if any of them did, so what reaches here is a move the tree can take.
+         */
+        await db.update(s.entities).set({ parentId: (p.parentId ?? "").trim() || null, updatedAt: ts }).where(eq(s.entities.id, change.entityId));
+        moved++;
+        break;
+      }
       case "addRelation": {
         const p = change.payload as unknown as AddRelationPayload;
         if (!change.relationId || !p.fromEntityId || !p.toEntityId) break;
@@ -493,7 +505,7 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
 
   await db.update(s.changeSets).set({ status: "delivered", deliveredAt: ts, updatedAt: ts }).where(eq(s.changeSets.id, changeSetId));
   await touch(set.workspaceId, set.id);
-  return { ok: true, introduced, retired, altered, connected, severed };
+  return { ok: true, introduced, retired, altered, moved, connected, severed };
 }
 
 // ---- the roadmap as a board --------------------------------------------------

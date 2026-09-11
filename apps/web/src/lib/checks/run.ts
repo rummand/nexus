@@ -34,9 +34,9 @@ function snapshot(entities: s.Entity[], relations: s.Relation[]): Omit<CheckInpu
     toEntityId: r.toEntityId,
   }));
   /*
-   * Containment lives on the entity as a column, not as a relation (§5.70), and the projection
-   * carries it through unchanged — a plan cannot currently move something in the tree, so the
-   * parents are whatever the rows say.
+   * Containment lives on the entity as a column, not as a relation (§5.70). The projection
+   * carries it, and since §5.84 a change set can move something in the tree, so these are the
+   * parents *as the ref leaves them* rather than as the rows stand.
    */
   const parents = new Map<string, string | null>(entities.map((e) => [e.id, e.parentId ?? null]));
   return { entities: named, relations: rows, parents };

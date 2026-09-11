@@ -1077,7 +1077,7 @@ export const changes = sqliteTable(
     changeSetId: text("change_set_id")
       .notNull()
       .references(() => changeSets.id, { onDelete: "cascade" }),
-    op: text("op", { enum: ["addEntity", "retireEntity", "setAttribute", "addRelation", "removeRelation"] }).notNull(),
+    op: text("op", { enum: ["addEntity", "retireEntity", "setAttribute", "setParent", "addRelation", "removeRelation"] }).notNull(),
     /**
      * The entity this change is about. For `addEntity` the id is minted when the change is
      * written, before the entity exists — the same trick the canvas uses, and what lets a new

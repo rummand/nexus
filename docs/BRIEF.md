@@ -3831,6 +3831,29 @@ caught a real bug: the zoom limits were absolute, so a view that opened *outside
 range locked the camera where it started. They are directional now — a zoom is allowed whenever
 it lands inside the range or moves towards it, so you can always get back and never get lost.
 
+### 5.87 A plan can move something in the tree (#137, v0.2)
+
+A change set could introduce, retire, re-attribute, connect and disconnect. It could not say
+*this capability moves under that one* — and containment is a column on the entity rather than a
+relation (§5.70), so there was no way to write it as an `addRelation` either. That mattered the
+moment #137 started, because the LeanIX import's third act is 236 reparents: an import that lands
+on a branch and cannot carry its own hierarchy is an import that arrives flat.
+
+So `setParent` is the sixth op. An empty destination means the top level, which is a real move
+rather than a cleared field — *take this out of where it is* is one of the two moves anybody
+actually makes.
+
+**The ring is refused where it is written, not where it lands.** The projection checks each move
+against the tree *as the change set leaves it*, so two changes that each put one thing under the
+other produce one move and one stale-change problem, and delivery is refused while that problem
+stands. It is the same rule the import's containment pass already applies (§5.74) for the same
+reason: a cycle in the hierarchy is not a wrong answer, it is a tree that hangs every reader.
+
+A move counts as a change *to the object* in the divergence indicator (§5.82) rather than as a
+category of its own — reparenting two hundred capabilities is two hundred changed objects, not
+two hundred of something nobody has a word for. The check suite (§5.83) now reads parents from
+the projection, so *nothing is orphaned* is answered about the estate the ref would leave.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5045,6 +5068,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The window stands inside the content area over a scrim, rather than filling it edge to edge. | A window that covers everything is a page with a close button. Seeing the list you came from around its edges is what tells you the list is still there — and the margin becomes a fourth way out, which is the gesture people try first. |
 | 2026-09-11 | The window is positioned against the shell, not placed in its grid. | A grid item with an explicit cell is laid out before the auto-placed ones, so a window in column 2 pushed the page itself onto a second row — the first cut of this shipped a sidebar cut off halfway down. |
 
+| 2026-09-11 | Moving something in the hierarchy is its own change op, not a relation. | Containment is a column, not an edge (§5.70), so there was nothing to add. Writing it as both a column and an edge would be two facts to keep in step, which is the bug this model was shaped to avoid. |
+| 2026-09-11 | A move to the top level is written as an empty parent, not as a missing change. | "Take this out of where it is" is one of the two moves people make. Treating it as an absence would make it unplannable. |
+| 2026-09-11 | A move that would close a ring becomes a stale-change problem rather than being skipped. | A skipped move is a plan that silently does less than it says. A problem is visible, it is what the delivery gate already refuses on, and the person gets to decide which of the two moves they meant. |
+| 2026-09-11 | A move counts as a changed object in the divergence indicator, not as a fifth number. | Moving something is a change to it in every sense the indicator is asked about, and an import that reparents 236 capabilities would otherwise show a number with no word for it. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5059,6 +5087,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 130: a plan can move something in the tree (#137).** First slice of "import
+  lands on a change set": a change set can now hold `setParent`, the sixth op, because the import
+  it has to carry does 236 reparents and containment is a column rather than a relation. An empty
+  destination is the top level. The projection checks each move against the tree as the change set
+  leaves it, so a ring becomes a visible stale-change problem — which delivery already refuses on —
+  rather than a silently skipped line; delivery applies the moves, the roadmap composer offers
+  "Move it inside something", and the check suite reads parents from the projection. Six tests.
+  Brief §5.87, four decision rows.
 
 - **2026-09-11 — Rev 129: the tree becomes an explorer.** The owner liked the drawing and not the
   container: he wanted a canvas he could always get to and move through, like the graph explorer.

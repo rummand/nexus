@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
-  AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, GitBranch, Link2,
+  AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, FolderTree, GitBranch, Link2,
   LayoutGrid, Lock, Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
 } from "lucide-react";
 import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
@@ -54,6 +54,7 @@ const OP_ICON: Record<ChangeOp, React.ReactNode> = {
   addEntity: <Plus size={13} />,
   retireEntity: <Trash2 size={13} />,
   setAttribute: <Sparkles size={13} />,
+  setParent: <FolderTree size={13} />,
   addRelation: <Link2 size={13} />,
   removeRelation: <Unlink size={13} />,
 };
@@ -296,11 +297,11 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
                           data-deliver
                           onClick={() => {
                             const s2 = set.summary;
-                            const warning = `Deliver “${set.name}”? This applies it to the graph: ${s2.additions} introduced, ${s2.retirements} retired, ${s2.attributeChanges} changed, ${s2.severedRelations} relations severed. Retired systems keep their node with lifecycle “retired”.`;
+                            const warning = `Deliver “${set.name}”? This applies it to the graph: ${s2.additions} introduced, ${s2.retirements} retired, ${s2.attributeChanges} changed, ${s2.moves} moved, ${s2.severedRelations} relations severed. Retired systems keep their node with lifecycle “retired”.`;
                             if (!confirm(warning)) return;
                             start(async () => {
                               const r = await deliverChangeSet(set.id);
-                              setMessage("error" in r ? r.error : `Delivered: ${r.introduced} introduced, ${r.retired} retired, ${r.altered} changed, ${r.connected} connected, ${r.severed} relations severed.`);
+                              setMessage("error" in r ? r.error : `Delivered: ${r.introduced} introduced, ${r.retired} retired, ${r.altered} changed, ${r.moved} moved, ${r.connected} connected, ${r.severed} relations severed.`);
                             });
                           }}
                         >
@@ -390,6 +391,7 @@ function SummaryChips({ summary }: { summary: ChangeSummary }) {
     [summary.additions, "introduced"],
     [summary.retirements, "retired"],
     [summary.attributeChanges, "changed"],
+    [summary.moves, "moved"],
     [summary.newRelations, "connected"],
     [summary.severedRelations, "severed"],
   ];
@@ -520,7 +522,8 @@ function AddChange({ changeSetId, entities, pending, start }: {
       op === "addEntity" ? { kind, name }
         : op === "setAttribute" ? { key, value }
           : op === "addRelation" ? { fromEntityId: entityId, toEntityId: toId, kind: relationKind }
-            : {};
+            : op === "setParent" ? { parentId: toId }
+              : {};
     if (op === "addEntity" && !name.trim()) return;
     if (op !== "addEntity" && !entityId) return;
     if (op === "addRelation" && !toId) return;
@@ -539,6 +542,7 @@ function AddChange({ changeSetId, entities, pending, start }: {
         <option value="addEntity">Introduce something new</option>
         <option value="setAttribute">Change an attribute</option>
         <option value="addRelation">Connect two things</option>
+        <option value="setParent">Move it inside something</option>
       </select>
 
       {op === "addEntity" ? (
@@ -558,6 +562,14 @@ function AddChange({ changeSetId, entities, pending, start }: {
           <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="Attribute" aria-label="Attribute key" className="roadmap-add-kind" />
           <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="New value (empty clears it)" aria-label="Attribute value" />
         </>
+      )}
+
+      {/* The destination, with the top level as a real choice rather than a cleared field. */}
+      {op === "setParent" && (
+        <select value={toId} onChange={(e) => setToId(e.target.value)} aria-label="Inside which object">
+          <option value="">…at the top level</option>
+          {entities.filter((e) => e.id !== entityId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
       )}
 
       {op === "addRelation" && (

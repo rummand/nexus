@@ -61,6 +61,13 @@ export function divergenceOf(changes: Change[]): Divergence {
       case "addEntity": if (change.entityId) introduces.add(change.entityId); break;
       case "retireEntity": if (change.entityId) retires.add(change.entityId); break;
       case "setAttribute": if (change.entityId) changed.add(change.entityId); break;
+      /*
+       * A move counts as a change to the object rather than a category of its own. Moving
+       * something in the hierarchy is a change to that object in every sense the indicator is
+       * asking about, and an import that reparents two hundred capabilities would otherwise
+       * read as two hundred somethings nobody has a word for.
+       */
+      case "setParent": if (change.entityId) changed.add(change.entityId); break;
       case "addRelation": if (change.relationId) connects.add(change.relationId); break;
       case "removeRelation": if (change.relationId) disconnects.add(change.relationId); break;
     }

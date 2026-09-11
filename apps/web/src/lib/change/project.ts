@@ -1,6 +1,7 @@
 import type * as s from "@/db/schema";
 import { parseAttributes } from "@/lib/graph";
-import type { AddEntityPayload, AddRelationPayload, Change, Projection, SetAttributePayload } from "./types";
+import { reparentProblem } from "@/lib/hierarchy";
+import type { AddEntityPayload, AddRelationPayload, Change, Projection, SetAttributePayload, SetParentPayload } from "./types";
 import { deliveryOrder, type Dependency } from "./order";
 
 /**
@@ -23,6 +24,7 @@ export function project(entities: s.Entity[], relations: s.Relation[], changes: 
   const added = new Set<string>();
   const retired = new Set<string>();
   const changedIds = new Set<string>();
+  const movedIds = new Set<string>();
   const addedRelations = new Set<string>();
   const removedRelations = new Set<string>();
   const problems: Projection["problems"] = [];
@@ -51,6 +53,9 @@ export function project(entities: s.Entity[], relations: s.Relation[], changes: 
           name: p.name ?? "",
           description: p.description ?? "",
           attributes: JSON.stringify(p.attributes ?? {}),
+          // At the top until something moves it: a `setParent` in the same change set can, and
+          // the cycle check below needs the column to exist rather than be absent.
+          parentId: null,
           source: "plan",
           createdAt: now,
           updatedAt: now,
@@ -89,6 +94,31 @@ export function project(entities: s.Entity[], relations: s.Relation[], changes: 
         else attributes[p.key] = p.value;
         entity.attributes = JSON.stringify(attributes);
         changedIds.add(entity.id);
+        break;
+      }
+      /*
+       * A move in the hierarchy. Projected against the tree *as this change set leaves it*, so
+       * two changes that each move something under the other are caught here rather than
+       * producing a ring nothing can walk — the same rule the import's containment pass applies
+       * (§5.74), for the same reason.
+       */
+      case "setParent": {
+        const id = change.entityId;
+        const entity = id ? byId.get(id) : undefined;
+        const p = change.payload as unknown as SetParentPayload;
+        if (!entity) {
+          problems.push({ changeId: change.id, message: "the object this moves is no longer in the graph" });
+          break;
+        }
+        const parentId = (p.parentId ?? "").trim() || null;
+        const tree = [...byId.values()].map((e) => ({ id: e.id, parentId: e.parentId ?? null }));
+        const wrong = reparentProblem(tree, entity.id, parentId);
+        if (wrong) {
+          problems.push({ changeId: change.id, message: wrong.toLowerCase().replace(/\.$/, "") });
+          break;
+        }
+        entity.parentId = parentId;
+        movedIds.add(entity.id);
         break;
       }
       case "addRelation": {
@@ -130,6 +160,7 @@ export function project(entities: s.Entity[], relations: s.Relation[], changes: 
     added,
     retired,
     changed: changedIds,
+    moved: movedIds,
     addedRelations,
     removedRelations,
     problems,
