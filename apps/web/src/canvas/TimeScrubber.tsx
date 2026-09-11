@@ -98,7 +98,15 @@ export function TimeScrubber() {
    * instead of timing around it — and it means turning the overlay off anywhere else moves the
    * scrubber too, for free.
    */
-  const index = Math.max(0, stops.findIndex((s) => s.value === (overlay?.id ?? "")));
+  const found = stops.findIndex((s) => s.value === (overlay?.id ?? ""));
+  const index = Math.max(0, found);
+  /*
+   * An overlay can be showing that is not one of this scrubber's stops — the ref you are standing
+   * on (§5.82) is applied on arrival whether or not the roadmap happens to have a stop for it.
+   * Without this the readout fell back to index 0 and said "the estate as it is" over a board
+   * that was plainly drawing a plan.
+   */
+  const elsewhere = Boolean(overlay) && found === -1;
 
   const goTo = useCallback((next: number) => {
     const stop = stops[Math.max(0, Math.min(stops.length - 1, next))];
@@ -161,14 +169,14 @@ export function TimeScrubber() {
 
       <div className="time-scrubber-readout">
         <CalendarClock size={13} />
-        {current?.kind === "as-is" || !counts ? (
+        {(current?.kind === "as-is" && !elsewhere) || !counts ? (
           <span>The estate as it is</span>
         ) : (
           <span>
             {counts.added > 0 && <b className="added">+{counts.added}</b>}
             {counts.retired > 0 && <b className="retired">−{counts.retired}</b>}
             {counts.changed > 0 && <b className="changed">~{counts.changed}</b>}
-            {current?.label}
+            {elsewhere ? overlay?.name : current?.label}
           </span>
         )}
       </div>

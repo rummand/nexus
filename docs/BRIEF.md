@@ -4879,6 +4879,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 ## 9. Changelog
 
 
+- **2026-09-11 — Rev 124a: the scrubber stops contradicting the board.** Applying the ref's
+  overlay on arrival exposed an old assumption in the time scrubber: it derives its position from
+  the overlay by looking the overlay up among its own stops, and an overlay it has no stop for
+  fell through `Math.max(0, -1)` to index 0 — so it announced *the estate as it is* over a board
+  visibly drawing a plan. It now says what is actually being shown. The walk checks that no piece
+  of the canvas chrome contradicts another.
+
 - **2026-09-11 — Rev 124: a board opens in the world you are standing in (#135).** The canvas has
   no rail, so the ref is a chip in the board's topbar — quiet on main, amber off it — and the
   board is drawn through the ref: the change set's overlay is applied on arrival, without anybody

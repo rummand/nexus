@@ -1196,6 +1196,10 @@ try {
   await page.waitForSelector(".fact-card.change-retired", { timeout: 30000 });
   assert.ok((await page.locator(".fact-card.change-retired").count()) >= 1,
     "the plan is drawn on the board without anybody choosing a viewpoint");
+  // …and no other piece of chrome contradicts it. The scrubber has no stop for this change set,
+  // and used to fall back to index 0 and claim "the estate as it is" over a board drawing a plan.
+  assert.doesNotMatch(await page.locator("[data-scrubber]").innerText(), /the estate as it is/i,
+    "the scrubber does not claim as-is while the board is showing a plan");
 
   // Back to main, from a page that has the rail — a board has the chip, not the switcher.
   await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
