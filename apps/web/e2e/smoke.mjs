@@ -1263,7 +1263,9 @@ try {
       "the object's own page says where it stands");
     await page.locator('[data-live-value="Description"] textarea').fill(`Edited after validation ${Date.now()}`);
     await page.locator("[data-factsheet] h2").first().click();
-    await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 20000 });
+    // 45s like the selectors around it: a write on blur plus a revalidation is the slowest thing
+    // this walk asks for, and 20s was tight enough to fail on a loaded machine.
+    await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 45000 });
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("[data-fs-standing]", { timeout: 45000 });
     assert.match(await page.locator("[data-fs-standing]").innerText(), /was validated, then edited/,
