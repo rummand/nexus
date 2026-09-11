@@ -365,3 +365,54 @@ describe("a document and a table in one batch", () => {
     });
   });
 });
+
+describe("a hierarchy arriving in a file (§5.74)", () => {
+  /*
+   * Energinet's LeanIX export landed 202 Business Capabilities flat, because their hierarchy came
+   * through as an ordinary relation and a relation is not containment. Containment is a column on
+   * the object — it is what ancestry, roll-up and a capability map read — so the import has to
+   * write it there, and nowhere else.
+   */
+  const tree = (rows: string[][]) => stage([file("caps.csv", ["Name", "Parent"], rows)]);
+
+  it("reads a parent column as containment, not as a connection", () => {
+    const columns = proposeMapping(["Name", "Parent"], [["Metering", "Grid Operations"]]);
+    expect(describeRole(columns.find((c) => c.header === "Parent")!.role)).toBe("parent");
+    const record = tree([["Metering", "Grid Operations"]])[0]!;
+    expect(record.parent).toBe("Grid Operations");
+    expect(record.relations).toEqual([]);
+  });
+
+  it("still reads a column that merely mentions a parent as a relation", () => {
+    // "parent company" is another organisation, not the box this one sits in.
+    const columns = proposeMapping(["Name", "Parent company"], [["Nexus Ltd", "Acme Group"]]);
+    expect(describeRole(columns.find((c) => c.header === "Parent company")!.role)).not.toBe("parent");
+  });
+
+  it("takes one parent per row, however the cell is punctuated", () => {
+    // A relation cell splits on commas; a parent does not, because a thing has one.
+    expect(tree([["Metering", "Grid Operations, Field Services"]])[0]!.parent).toBe("Grid Operations, Field Services");
+  });
+
+  it("asks about a parent that is in neither the batch nor the graph", () => {
+    const r = review(tree([["Metering", "Grid Operations"]]), [], { kinds: [] });
+    const issue = r.rows[0]!.issues.find((i) => i.code === "orphan-parent");
+    expect(issue?.severity).toBe("question");
+    expect(issue?.message).toContain("Grid Operations");
+  });
+
+  it("says nothing when the parent is another row in the same batch", () => {
+    const r = review(tree([["Grid Operations", ""], ["Metering", "Grid Operations"]]), [], { kinds: [] });
+    expect(r.rows.flatMap((row) => row.issues).some((i) => i.code === "orphan-parent")).toBe(false);
+  });
+
+  it("notices a row given as its own parent", () => {
+    const r = review(tree([["Metering", "Metering"]]), [], { kinds: [] });
+    expect(r.rows[0]!.issues.some((i) => i.code === "self-parent")).toBe(true);
+  });
+
+  it("does not hold a row over its parent: the object still arrives, at the top", () => {
+    const r = review(tree([["Metering", "Grid Operations"]]), [], { kinds: [] });
+    expect(r.rows[0]!.decision).toBe("accept");
+  });
+});

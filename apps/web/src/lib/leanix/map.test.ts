@@ -69,8 +69,15 @@ describe("mapping a workspace", () => {
     expect(m.entities[0]!.attributes).not.toHaveProperty("owner");
   });
 
-  it("prefers the display name, and never produces a nameless object", () => {
-    expect(entityName(fs({ id: "1", name: "raw", displayName: "Shown" }))).toBe("Shown");
+  it("calls a thing by its own name, not by its whole path (§5.74)", () => {
+    /*
+     * LeanIX's display name for a nested fact sheet is the path to it. Energinet's capabilities
+     * arrived as "Electricity System Operation / Operation / Grid Monitoring & Control", which was
+     * the only way to say where something sat while every import landed flat. The tree says it now.
+     */
+    expect(entityName(fs({ id: "1", name: "Grid Monitoring", displayName: "Operation / Grid Monitoring" })))
+      .toBe("Grid Monitoring");
+    expect(entityName(fs({ id: "1", name: "", displayName: "Shown" }))).toBe("Shown");
     expect(entityName(fs({ id: "1", name: "", type: "ITComponent" }))).toBe("(unnamed IT Component)");
   });
 });
@@ -179,22 +186,67 @@ describe("staging a workspace through the ordinary import pipeline", () => {
     const d = dump({
       factSheets: [fs({ id: "1", name: "CRM" }), fs({ id: "2", name: "A" }), fs({ id: "3", name: "B" })],
       relations: [
-        { fromId: "1", toId: "2", type: "relToChild", fields: {} },
-        { fromId: "1", toId: "3", type: "relToChild", fields: {} },
+        { fromId: "1", toId: "2", type: "relApplicationToITComponent", fields: {} },
+        { fromId: "1", toId: "3", type: "relApplicationToITComponent", fields: {} },
       ],
     });
     const file = toBatchFiles(d)[0]!;
-    expect(file.rows[0]![file.headers.indexOf("→ child")]).toBe("A, B");
+    expect(file.rows[0]![file.headers.indexOf("application → it component")]).toBe("A, B");
+  });
+
+  /*
+   * The hierarchy is not one of those columns (§5.74).
+   *
+   * `relToChild` is LeanIX saying one fact sheet is *part of* another, and Nexus holds that as
+   * containment on the object rather than as an edge. Energinet's 202 Business Capabilities came
+   * in flat the first time precisely because this was treated as an ordinary relation.
+   */
+  it("gives the child a parent, rather than giving the parent a relation", () => {
+    const d = dump({
+      factSheets: [fs({ id: "1", name: "Grid Operations" }), fs({ id: "2", name: "Metering" })],
+      relations: [{ fromId: "1", toId: "2", type: "relToChild", fields: {} }],
+    });
+    const file = toBatchFiles(d)[0]!;
+    expect(file.columns.find((c) => c.header === "parent")?.role).toEqual({ as: "parent" });
+    expect(file.headers).not.toContain("→ child");
+    const child = file.rows.find((r) => r[0] === "Metering")!;
+    expect(child[file.headers.indexOf("parent")]).toBe("Grid Operations");
+    const parent = file.rows.find((r) => r[0] === "Grid Operations")!;
+    expect(parent[file.headers.indexOf("parent")]).toBe("");
+  });
+
+  it("reads the hierarchy from whichever end the export kept", () => {
+    const d = dump({
+      factSheets: [fs({ id: "1", name: "Grid Operations" }), fs({ id: "2", name: "Metering" })],
+      relations: [{ fromId: "2", toId: "1", type: "relToParent", fields: {} }],
+    });
+    const file = toBatchFiles(d)[0]!;
+    expect(file.rows.find((r) => r[0] === "Metering")![file.headers.indexOf("parent")]).toBe("Grid Operations");
+  });
+
+  it("leaves the column out of a type that does not nest", () => {
+    const file = toBatchFiles(dump({ factSheets: [fs({ id: "1", name: "CRM" })] }))[0]!;
+    expect(file.headers).not.toContain("parent");
   });
 
   it("points a relation at the disambiguated name when two targets share one", () => {
     const d = dump({
       factSheets: [fs({ id: "src", name: "CRM" }), fs({ id: "aaaaaaaa-1", name: "Reporting" }), fs({ id: "bbbbbbbb-2", name: "Reporting" })],
-      relations: [{ fromId: "src", toId: "aaaaaaaa-1", type: "relToChild", fields: {} }],
+      relations: [{ fromId: "src", toId: "aaaaaaaa-1", type: "relApplicationToITComponent", fields: {} }],
     });
     const file = toBatchFiles(d)[0]!;
     const row = file.rows.find((r) => r[0] === "CRM")!;
-    expect(row[file.headers.indexOf("→ child")]).toBe("Reporting (aaaaaaaa)");
+    expect(row[file.headers.indexOf("application → it component")]).toBe("Reporting (aaaaaaaa)");
+  });
+
+  it("names the parent the same way, when two of them share a name", () => {
+    // A parent resolved by name has to be resolvable: the disambiguated name is the only one that is.
+    const d = dump({
+      factSheets: [fs({ id: "aaaaaaaa-1", name: "Reporting" }), fs({ id: "bbbbbbbb-2", name: "Reporting" }), fs({ id: "c", name: "Metering" })],
+      relations: [{ fromId: "aaaaaaaa-1", toId: "c", type: "relToChild", fields: {} }],
+    });
+    const file = toBatchFiles(d)[0]!;
+    expect(file.rows.find((r) => r[0] === "Metering")![file.headers.indexOf("parent")]).toBe("Reporting (aaaaaaaa)");
   });
 
   it("gives a subscription role its own person column", () => {

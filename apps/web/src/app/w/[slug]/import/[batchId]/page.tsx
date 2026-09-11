@@ -64,6 +64,7 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
     })),
     personal: Object.entries(row.record.personal).map(([key, field]) => ({ key, value: field.chosen.value, from: field.chosen.source })),
     relations: row.record.relations.map((r) => ({ kind: r.kind, target: r.target })),
+    parent: row.record.parent ?? "",
     match: { how: row.match.how, name: row.match.name, kind: row.match.kind, alternatives: row.match.alternatives.map((a) => a.name) },
     changes: row.changes,
     issues: row.issues,

@@ -3329,6 +3329,57 @@ both the CLI and the in-app door only rendered detail that was already a string 
 piece of information the reader needed was dropped, and every failure read as a bare "GraphQL
 reported errors."
 
+### 5.74 The hierarchy survives the import (v0.2)
+
+Rev 110 read Energinet's workspace correctly and rev 107 had given the graph containment, and the
+two still did not meet: the import landed **202 Business Capabilities flat**. Their hierarchy had
+come across as an ordinary relation called "→ child", which is not wrong so much as useless — a
+capability map is a tree, roll-up counts through a tree, and an edge named after a schema field is
+none of that.
+
+**A parent is a column role, not a relation.** `{ as: "parent" }` joins name, key, attribute,
+person and relation as something a column can mean. A staged record carries the *name* of what it
+sits inside, because a name is all a file has; approving resolves the names once every row has an
+id and writes `entities.parent_id`. Deliberately not an edge as well: the graph already holds
+containment as a column, which is what ancestry, roll-up and "where it sits" read, and writing
+both would be two facts to keep in step.
+
+Three rules decide which of those names becomes a move (`planParents`, pure and tested):
+
+- **A name that resolves to nothing is not a move.** The object still arrives — at the top, which
+  is what an unresolvable parent honestly means. The review has already asked about it as a
+  question, never as a blocker: a row is not held hostage to its parent.
+- **A move already made is not a move.** Re-importing the same export must read as "nothing
+  changed", not as an estate that shuffled.
+- **A move that closes a ring is refused**, checked against the tree *including this batch's own
+  earlier moves* — two rows that each name the other are exactly how a cycle arrives, and neither
+  is a loop against the graph as it was. A cycle is not a wrong answer but an unreadable tree:
+  everything that walks it hangs or silently truncates.
+
+Rollback undoes it too, in the shape `__kind` already used: the previous parent is recorded per
+entity, and put back only if the object is still where the import left it.
+
+**The mapper only reads a parent from a header that means one.** `parent`, `parent capability`,
+`child of` and the like, matched exactly — "parent company" is a different organisation, and the
+looser `part of|capability` pattern that reads relations would have swallowed both. A wrong guess
+here builds a tree, so it is the one place in the mapper that refuses to be generous.
+
+**For LeanIX specifically**, `relToChild`/`relToParent` are lifted out of the relation columns
+into a parent column on the *child's* row, read from whichever end of the pair the dedupe kept,
+and only for the types that actually nest. And a nested fact sheet is now named by its own name
+rather than by `displayName`, which LeanIX sets to the whole path: 236 of Energinet's 455 objects
+were called things like "Electricity System Operation / Operation / Grid Monitoring & Control".
+That was the only way to say where something sat while every import landed flat. The tree says it
+now, and a name that repeats its ancestors makes a capability map unreadable and a search
+unusable.
+
+**What it does to the real data**: the same 455 fact sheets, imported again, put **236 objects
+into the hierarchy** — 172 of 191 Business Capabilities under 19 top-level ones, three levels
+deep, "Electricity System Operation › Operation › Balance & System Regulation" — and the relation
+count drops from 608 to 378, because 230 of those edges were never relations. The inventory grew
+an **Inside** column for types that nest, showing the parent or "top level" with the roll-up count
+beside it, so a list of 201 capabilities is legible as the tree it is.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3366,7 +3417,7 @@ reported errors."
   as an admin setting (including sovereign/local endpoints), Nexus as an MCP server, and agents
   proposing agents behind a human signature. Surveyed and designed in `docs/AGENT-FRAMEWORK.md`.
 
-## 6a. What exists today (v0.2, 2026-09-10 — rev 110)
+## 6a. What exists today (v0.2, 2026-09-11 — rev 111)
 
 ### Management structure (LeanFlow home shell)
 - **Workspace home** (`/w/[slug]`): meta line, title, "Open last board", grid/list toggle
@@ -3549,6 +3600,8 @@ reported errors."
 - Cells edit as the type the meta-model declares — enum as a dropdown, boolean as yes/no,
   number as a number, url as a link — and an undeclared key stays free text.
 - Allowed values for an enum are editable on the field, which had no interface before.
+- An **Inside** column for types that nest (§5.74): what contains each one, or "top level", with
+  the number beneath it at any depth.
 
 ### Entity table (v0.2)
 - Spreadsheet view of entities on the Knowledge graph page: attribute columns from the emergent
@@ -3705,7 +3758,7 @@ reported errors."
   system** — ask a tool on an MCP server from the import page and stage what it answers — or an
   **EA repository**: a LeanIX host and an API token, read into one staged batch, a file per fact
   sheet type, fields as attributes, subscriptions as people, relations as relations, the LeanIX id
-  as the key (§5.63).
+  as the key (§5.63), and its hierarchy as containment rather than as edges (§5.74).
 - `/w/:slug/import`: upload a batch of mixed files — CSV, TSV, JSON, Excel, Word, Markdown, text —
   and work on them before anything is written.
 - One object per thing across all the files, with per-field provenance and both values kept where
@@ -3713,6 +3766,9 @@ reported errors."
 - Graded matching against the model, blockers and questions per row, accept / hold / reject.
 - Person-shaped columns excluded by default; what the source has stopped claiming raised, never
   deleted; connections that would go nowhere flagged.
+- **A column can mean "parent"** (§5.74): the row names what it sits inside, and approving writes
+  it to `parent_id` — resolved once every row has an id, refusing any move that would close a ring,
+  leaving an object at the top when its parent names nothing, and undone by rollback.
 - Each file is asked **what its rows are**, with the answer proposed and settable; a row that
   carries its own kind keeps it.
 - **Prose in a batch is read for claims** and folded into the same records, with the sentence each
@@ -4435,6 +4491,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-10 | Mirrored relations are **deduplicated, with a stable direction** | LeanIX returns each edge from both ends; 1,242 rows were 621 edges. Importing both would double every degree and every triple count. Sort order picks the survivor so a re-import is not a reversal, and an unrecognised inverse is kept rather than risk losing a real edge. §5.73 |
 | 2026-09-10 | A stub that agrees with the query is not a test | Rev 97 passed against a stub built to match its own query, and failed on the first real workspace in three independent ways. The stub still earns its place for the plumbing; it cannot vouch for the schema. §5.73 |
 
+| 2026-09-11 | A parent is a column role of its own, and containment is written only to `parent_id` — never also as a relation. | The graph already holds "inside" as a column, which is what ancestry, roll-up and the capability map read. Writing the same fact as an edge too would be two records to keep in step, and the first rename or re-import would put them out of step. |
+| 2026-09-11 | An unresolvable parent is a question on the row, never a blocker. | The object is real whatever its parent turns out to be, and holding it back would lose the thing the import was for. Arriving at the top is what an unknown parent honestly means, and the review says so out loud rather than dropping the claim. |
+| 2026-09-11 | A nested LeanIX fact sheet is named by its own name, not by the path LeanIX puts in `displayName`. | The path was the only way to say where something sat while every import landed flat. The tree says it now, and 236 names of the form "A / B / C" make a capability map unreadable and a search unusable. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -4449,6 +4509,22 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 111: the hierarchy survives the import.** Energinet's 202 Business
+  Capabilities landed flat, because LeanIX's `relToChild` came through as an ordinary relation and
+  a relation is not containment. A column can now mean **parent**: the staged record carries the
+  name of what it sits inside, and approving resolves it to `entities.parent_id` once every row
+  has an id — never as an edge as well, because the graph already holds containment as a column.
+  `planParents` decides which names become moves: one that resolves to nothing leaves the object
+  at the top (a question in the review, never a blocker), one already made writes nothing, and one
+  that would close a ring is refused — checked against the batch's own earlier moves, since two
+  rows naming each other is how a cycle arrives. Rollback restores the previous parent the same
+  way it restores a kind. The LeanIX builder lifts the hierarchy out of the relation columns for
+  the types that nest, and a nested fact sheet is named by its own name rather than by LeanIX's
+  path-shaped `displayName`. The inventory grew an **Inside** column with the roll-up count. The
+  same 455 fact sheets now place **236 objects in the hierarchy** — 172 of 191 capabilities under
+  19 roots, three deep — and 230 fewer relations, because they were never relations. 18 new tests
+  (1,032 total), brief §5.74, three decision rows.
 
 - **2026-09-10 — Rev 110: the LeanIX importer meets a real workspace.** Rev 97's EA-repository
   door had only ever run against a stub written to match its own query, and failed against

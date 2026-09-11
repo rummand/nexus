@@ -35,6 +35,8 @@ export interface RowView {
   attributes: Array<{ key: string; value: string; from: string; quote?: string; others: Array<{ value: string; from: string; quote?: string }> }>;
   personal: Array<{ key: string; value: string; from: string }>;
   relations: Array<{ kind: string; target: string }>;
+  /** What this object would sit inside, when a column was mapped as a parent (§5.74). */
+  parent: string;
   match: { how: MatchHow; name: string; kind: string; alternatives: string[] };
   changes: Change[];
   issues: Issue[];
@@ -65,6 +67,7 @@ const ROLE_CHOICES: Array<{ value: string; label: string }> = [
   { value: "attribute", label: "attribute" },
   { value: "date", label: "date" },
   { value: "person", label: "person" },
+  { value: "parent", label: "parent" },
   { value: "relation", label: "relation" },
   { value: "ignore", label: "ignore" },
 ];
@@ -182,7 +185,10 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
                 if (!confirm(`Take this into the model? ${counts.create} new objects, ${counts.update} changed. ${counts.held + counts.rejected} rows are left alone. You can roll this back.`)) return;
                 start(async () => {
                   const r = await approveBatch(batch.id);
-                  setMessage("error" in r ? r.error : `Written: ${r.created} created, ${r.updated} changed, ${r.connected} connected.`);
+                  setMessage("error" in r
+                    ? r.error
+                    : `Written: ${r.created} created, ${r.updated} changed, ${r.connected} connected`
+                      + (r.nested ? `, ${r.nested} placed in the hierarchy.` : "."));
                   router.refresh();
                 });
               }}
@@ -371,8 +377,11 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
                     ))}
                   </div>
 
-                  {row.relations.length > 0 && (
+                  {(row.relations.length > 0 || row.parent) && (
                     <div className="import-relations">
+                      {/* Containment first, and worded as containment: it is where the thing lives,
+                          not something it points at. */}
+                      {row.parent && <span className="import-parent" data-row-parent>inside <ArrowRight size={10} /> {row.parent}</span>}
                       {row.relations.map((relation, i) => <span key={i}>{relation.kind} <ArrowRight size={10} /> {relation.target}</span>)}
                     </div>
                   )}

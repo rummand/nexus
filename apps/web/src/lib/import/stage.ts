@@ -56,6 +56,13 @@ export interface StagedRecord {
   description: string;
   /** The source's own identifier, when a column was mapped as one. */
   key: string;
+  /**
+   * The name of the object this one sits inside, when a column was mapped as a parent (§5.74).
+   *
+   * A name rather than an id, because that is all a file has, and resolved at approval when every
+   * row has one. Optional: batches staged before rev 111 have no such field.
+   */
+  parent?: string;
   attributes: Record<string, Field>;
   /** Attributes whose column names people. Not written unless somebody says so. */
   personal: Record<string, Field>;
@@ -177,6 +184,7 @@ export function stage(files: FileInput[], options: { includePersonal?: boolean }
       target.kind ||= claim.kind || (file.kind ?? "");
       target.description ||= claim.description;
       target.key ||= claim.key;
+      target.parent ||= claim.parent;
       if (!target.sources.includes(file.name)) target.sources.push(file.name);
       target.rows.push({ source: file.name, row: rowIndex + 2 }); // +2: header row, and 1-based
 
@@ -213,7 +221,7 @@ function merge(into: Record<string, Field>, key: string, value: FieldValue) {
 }
 
 function blank(id: string, name: string): StagedRecord {
-  return { id, name, kind: "", description: "", key: "", attributes: {}, personal: {}, relations: [], sources: [], rows: [] };
+  return { id, name, kind: "", description: "", key: "", parent: "", attributes: {}, personal: {}, relations: [], sources: [], rows: [] };
 }
 
 interface Claim {
@@ -221,6 +229,7 @@ interface Claim {
   kind: string;
   description: string;
   key: string;
+  parent: string;
   attributes: Record<string, FieldValue>;
   personal: Record<string, FieldValue>;
   relations: StagedRelation[];
@@ -229,7 +238,7 @@ interface Claim {
 }
 
 export function readRow(file: FileInput, row: string[], dayFirst: Map<string, boolean | null>): Claim {
-  const claim: Claim = { name: "", kind: "", description: "", key: "", attributes: {}, personal: {}, relations: [], badDates: [] };
+  const claim: Claim = { name: "", kind: "", description: "", key: "", parent: "", attributes: {}, personal: {}, relations: [], badDates: [] };
   file.columns.forEach((column, i) => {
     const raw = (row[i] ?? "").trim();
     if (!raw) return;
@@ -246,6 +255,7 @@ function applyRole(claim: Claim, role: Role, at: FieldValue, dayFirst: boolean |
     case "kind": claim.kind = at.value; return;
     case "description": claim.description = at.value; return;
     case "key": claim.key = at.value; return;
+    case "parent": claim.parent = at.value; return;
     case "attribute": claim.attributes[role.key] = at; return;
     case "person": claim.personal[role.key] = at; return;
     case "relation": {

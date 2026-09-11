@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { graphSnapshot } from "@/lib/graph";
 import { metaModel } from "@/lib/metamodel";
+import { descendants } from "@/lib/hierarchy";
 import { getWorkspaceBySlug } from "@/lib/data";
 import { Inventory } from "@/components/inventory/Inventory";
 
@@ -27,6 +28,12 @@ export default async function TypePage({ params }: { params: Promise<{ slug: str
   const [snapshot, model] = await Promise.all([graphSnapshot(db, workspace.id), metaModel(db, workspace.id)]);
 
   const items = snapshot.entities.filter((e) => e.kind.trim().toLowerCase() === kind.trim().toLowerCase());
+  /*
+   * Where each one sits, read across the whole workspace rather than this type alone: a capability
+   * can hold applications, and counting only its own kind would report a parent as empty (§5.70).
+   */
+  const nameOf = new Map(snapshot.entities.map((e) => [e.id, e.name]));
+  const tree = snapshot.entities.map((e) => ({ id: e.id, parentId: e.parentId }));
   const type = model.nodeTypes.find((t) => t.name.trim().toLowerCase() === kind.trim().toLowerCase());
   if (items.length === 0 && !type) notFound();
 
@@ -47,6 +54,8 @@ export default async function TypePage({ params }: { params: Promise<{ slug: str
         attributes: e.attributes,
         relationCount: e.relationCount,
         boardCount: e.boardCount,
+        parent: (e.parentId && nameOf.get(e.parentId)) || "",
+        beneath: descendants(tree, e.id).length,
       }))}
       siblings={snapshot.kinds.map((k) => ({ kind: k.kind, count: k.count, color: k.color }))}
     />

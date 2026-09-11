@@ -48,6 +48,11 @@ export function Inventory({
     [fields],
   );
   const narrowing = activeCount(selection);
+  /*
+   * Only where this type nests. An "inside" column on a list of IT components would be a column
+   * of dashes, and a dash in every row of a table teaches people to stop reading the table.
+   */
+  const nests = useMemo(() => items.some((i) => i.parent || i.beneath), [items]);
 
   return (
     <div className="inventory" data-inventory={kind}>
@@ -168,6 +173,7 @@ export function Inventory({
                 <thead>
                   <tr>
                     <th>Name</th>
+                    {nests && <th>Inside</th>}
                     {cols.map((c) => (
                       <th key={c}>
                         {c}
@@ -185,6 +191,12 @@ export function Inventory({
                           {item.name || "(unnamed)"}
                         </button>
                       </th>
+                      {nests && (
+                        <td className="inventory-inside">
+                          {item.parent ? <span>{item.parent}</span> : <em>top level</em>}
+                          {item.beneath ? <b title="Everything below it, at any depth">{item.beneath} beneath</b> : null}
+                        </td>
+                      )}
                       {cols.map((c) => (
                         <td key={c}>
                           <InventoryCell

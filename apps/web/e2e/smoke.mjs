@@ -1370,6 +1370,63 @@ try {
   assert.match(await page.locator("[data-import-result]").innerText(), /deleted/, "the rollback says what it undid");
   assert.equal(await countEntities(), before, "rolling back puts the graph back exactly as it was");
 
+  /*
+   * ---- a hierarchy through the import (§5.74) ------------------------------------------------
+   *
+   * Energinet's 202 capabilities arrived flat because their parent came in as a relation. This
+   * walks the whole road for containment: a column that means parent, a review that shows it, an
+   * approval that writes it to the object rather than as an edge, and a list that reads as a tree.
+   */
+  await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector('[data-door="paste"]', { timeout: 30000 });
+  await page.click('[data-door="paste"]');
+  await page.fill("[data-paste-name]", "A capability tree");
+  await page.fill(
+    "[data-paste-text]",
+    "Name\tKind\tParent\nGrid Services\tBusiness Capability\t\nMetering\tBusiness Capability\tGrid Services\n"
+      + "Meter reading\tBusiness Capability\tMetering\nSomething adrift\tBusiness Capability\tNo Such Parent",
+  );
+  await page.click("[data-stage-paste]");
+  await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
+  await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
+  const treeBatch = page.url();
+  const metering = page.locator("[data-import-row]", { hasText: "Metering" }).first();
+  await metering.locator(".import-row-head").click();
+  await metering.locator("[data-row-parent]").waitFor({ timeout: 10000 });
+  assert.match(await metering.locator("[data-row-parent]").innerText(), /Grid Services/,
+    "a row says what it would sit inside, worded as containment rather than as a connection");
+
+  const adrift = page.locator("[data-import-row]", { hasText: "Something adrift" }).first();
+  await adrift.locator(".import-row-head").click();
+  await adrift.locator(".import-issue").first().waitFor({ timeout: 10000 });
+  assert.match(await adrift.innerText(), /not in this batch or in the graph/i,
+    "a parent nothing knows is a question on the row…");
+  assert.doesNotMatch(await adrift.innerText(), /\bHeld\b/, "…and never a reason to hold the object itself");
+
+  await page.click("[data-approve-batch]");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-import-result]").innerText(), /placed in the hierarchy/,
+    "approving says how many it placed");
+
+  await page.goto(`${base}/w/acme-energy/type/Business%20Capability`, { waitUntil: "load" });
+  await page.waitForSelector("[data-inventory-table]", { timeout: 30000 });
+  const meteringRow = await page.locator("[data-inventory-row]", { hasText: "Metering" }).first().innerText();
+  assert.match(meteringRow, /Grid Services/, "the inventory says what each one sits inside");
+  const gridServicesRow = await page.locator("[data-inventory-row]", { hasText: "Grid Services" }).first().innerText();
+  assert.match(gridServicesRow, /2 beneath/, "…and counts everything below it, at any depth");
+  const adriftRow = await page.locator("[data-inventory-row]", { hasText: "Something adrift" }).first().innerText();
+  assert.match(adriftRow, /top level/i, "an object whose parent was never found still arrives, at the top");
+
+  // Putting it back has to put the tree back too, not only the objects.
+  await page.goto(treeBatch, { waitUntil: "load" });
+  await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
+  await page.click("[data-rollback-batch]");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  await page.goto(`${base}/w/acme-energy/type/Business%20Capability`, { waitUntil: "load" });
+  await page.waitForSelector("[data-inventory-count]", { timeout: 30000 });
+  assert.equal(await page.locator("[data-inventory-row]", { hasText: "Grid Services" }).count(), 0,
+    "rolling back takes the tree away with the objects");
+
   // ---- an agent on the board -----------------------------------------------------------------
   // Placing one and scoping it works with or without a model; waking it needs one, and with none
   // configured the agent has to say so on the board rather than fail silently.

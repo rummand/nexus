@@ -12,6 +12,7 @@ import { recordRelationEvent, recordSince, snapshotEntities } from "@/lib/histor
 import { currentActor } from "@/lib/history/current";
 import * as who from "@/lib/history/actor";
 import { parseAttributes } from "@/lib/graph";
+import { planParents } from "./parents";
 import { serializeDocument } from "@/canvas/document";
 import { boardChangedElsewhere } from "@/lib/live/room";
 import { proposeFileKind, proposeMapping } from "./map";
@@ -27,7 +28,7 @@ import { vocabulary } from "@/lib/intake/vocabulary";
 import { choose } from "@/lib/models/resolve";
 import type { Db } from "@/db/client";
 import { KEY_ATTRIBUTE, type MatchTarget } from "./match";
-import { review } from "./review";
+import { review, type Reviewed } from "./review";
 import { batchDocument } from "./board";
 import { withOverrides } from "./reconcile";
 import { applyDecisions, emptyWritten, parseFiles, parseReview, parseWritten, type BatchFile, type StoredReview, type Written } from "./batch";
@@ -42,6 +43,15 @@ import { applyDecisions, emptyWritten, parseFiles, parseReview, parseWritten, ty
 const now = () => new Date().toISOString();
 const MAX_BYTES = 12 * 1024 * 1024;
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * How a change of parent is written down in the rollback record.
+ *
+ * The same shape as `__kind`: a pseudo-key beside the attributes, holding the id that was there
+ * before. Containment is a column rather than an attribute, so it cannot be recorded as one, and
+ * a rollback that could not undo it would be a rollback that lies.
+ */
+const PARENT_KEY = "__parent";
 
 async function slugOf(workspaceId: string) {
   const db = await getDb();
@@ -384,7 +394,7 @@ export async function remapBatch(batchId: string, input: {
   return { ok: true };
 }
 
-const ROLES = new Set(["name", "kind", "description", "key", "attribute", "date", "person", "relation", "ignore"]);
+const ROLES = new Set(["name", "kind", "description", "key", "attribute", "date", "person", "parent", "relation", "ignore"]);
 function isRole(v: unknown): v is import("./map").Role {
   return Boolean(v) && typeof v === "object" && typeof (v as { as?: unknown }).as === "string" && ROLES.has((v as { as: string }).as);
 }
@@ -428,7 +438,7 @@ async function denyBatch(batchId: string, capability: "graph.edit" | "import.app
   return deny(batch.workspaceId, capability);
 }
 
-export async function approveBatch(batchId: string): Promise<{ ok: true; created: number; updated: number; connected: number } | { error: string }> {
+export async function approveBatch(batchId: string): Promise<{ ok: true; created: number; updated: number; connected: number; nested: number } | { error: string }> {
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
@@ -555,6 +565,13 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
     }
   }
 
+  /*
+   * Containment last of all (§5.74). A parent is only a name until every row has an id, and it is
+   * deliberately not written as an edge: the graph holds "inside" as a column, which is what
+   * ancestry, roll-up and the capability map read. Writing both would be two facts to keep in step.
+   */
+  const nested = await applyParents(db, batch.workspaceId, taking, idOf, byName, written);
+
   await recordSince(db, history, { workspace: true }, before);
   const user = await currentUser();
   await db.update(s.importBatches).set({
@@ -565,7 +582,49 @@ export async function approveBatch(batchId: string): Promise<{ ok: true; created
     updatedAt: now(),
   }).where(eq(s.importBatches.id, batchId));
   await refresh(batch.workspaceId, batchId);
-  return { ok: true, created: written.created.length, updated: new Set(written.updated.map((u) => u.entityId)).size, connected: written.relations.length };
+  return {
+    ok: true,
+    created: written.created.length,
+    updated: new Set(written.updated.filter((u) => u.key !== PARENT_KEY).map((u) => u.entityId)).size,
+    connected: written.relations.length,
+    nested,
+  };
+}
+
+/**
+ * Put each object inside the one its row named.
+ *
+ * Three things make this its own pass rather than a line in the loop above. A parent is a name
+ * until every row has been written, so it cannot be resolved earlier. A cycle is a real
+ * possibility — an export can say A is inside B and B inside A, and a ring in the hierarchy is
+ * what makes every reader of the tree hang — so each move is checked against the tree as it
+ * stands, including the moves this batch has already made. And a move that cannot be made is
+ * skipped rather than failed: the object still arrives, at the top, which is exactly what an
+ * unresolvable parent means.
+ */
+async function applyParents(
+  db: Db,
+  workspaceId: string,
+  taking: Reviewed[],
+  idOf: Map<string, string>,
+  byName: Map<string, string>,
+  written: Written,
+): Promise<number> {
+  const wanted = taking
+    .map((row) => ({ id: idOf.get(row.record.id) ?? "", parent: (row.record.parent ?? "").trim() }))
+    .filter((row) => row.id && row.parent);
+  if (!wanted.length) return 0;
+
+  // The whole workspace, not only this batch: a loop can run through objects nothing here mentions.
+  const all = await db.select({ id: s.entities.id, parentId: s.entities.parentId })
+    .from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
+  const moves = planParents(wanted, (name) => byName.get(norm(name)), all.map((e) => ({ id: e.id, parentId: e.parentId ?? null })));
+
+  for (const move of moves) {
+    await db.update(s.entities).set({ parentId: move.parentId, updatedAt: now() }).where(eq(s.entities.id, move.id));
+    written.updated.push({ entityId: move.id, key: PARENT_KEY, from: move.from, to: move.parentId });
+  }
+  return moves.length;
 }
 
 /**
@@ -624,8 +683,17 @@ export async function rollbackBatch(batchId: string): Promise<
     for (const row of rows) {
       const attributes = parseAttributes(row.attributes);
       let kind = row.kind;
+      let parentId = row.parentId ?? null;
       let changed = false;
       for (const update of written.updated.filter((u) => u.entityId === row.id)) {
+        if (update.key === PARENT_KEY) {
+          // Somebody has moved it since; where they put it is a later decision than this import's.
+          if ((parentId ?? "") !== update.to) { kept++; notes.push(`“${row.name}” was left where it is: it is no longer inside what the import put it in.`); continue; }
+          parentId = update.from || null;
+          changed = true;
+          restored++;
+          continue;
+        }
         if (update.key === "__kind") {
           if (norm(kind) !== norm(update.to)) { kept++; notes.push(`“${row.name}” kind was left alone: it is no longer what the import set.`); continue; }
           kind = update.from;
@@ -644,7 +712,9 @@ export async function rollbackBatch(batchId: string): Promise<
         restored++;
       }
       if (changed) {
-        await db.update(s.entities).set({ kind, attributes: JSON.stringify(attributes), updatedAt: now() }).where(eq(s.entities.id, row.id));
+        await db.update(s.entities)
+          .set({ kind, parentId, attributes: JSON.stringify(attributes), updatedAt: now() })
+          .where(eq(s.entities.id, row.id));
       }
     }
   }

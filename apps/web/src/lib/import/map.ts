@@ -28,6 +28,14 @@ export type Role =
   | { as: "person"; key: string }
   /** The value names another object; this becomes a relation of the given type. */
   | { as: "relation"; kind: string }
+  /**
+   * The value names the object this row sits inside — containment, not a relation (§5.70, §5.74).
+   *
+   * A capability map arrives as a parent per row, and writing that as an edge would put the same
+   * fact in two places: the graph already holds containment as a column on the object, which is
+   * what roll-up, ancestry and "where it sits" read. One fact, one place.
+   */
+  | { as: "parent" }
   | { as: "ignore" };
 
 export interface Column {
@@ -47,6 +55,14 @@ const KIND = /^(kind|type|class|category|sys class name|object type|record type|
 const DESCRIPTION = /^(description|short description|summary|purpose|comments|notes|remarks|business purpose)$/;
 const PERSON = /(owner|manager|contact|responsible|steward|custodian|author|approver|assigned to|requested by|sponsor|architect)/;
 const DATE = /(date|since|until|expiry|expires|renewal|end of|eol|eos|go live|golive|retire|decommission|created|updated|modified|review)/;
+/**
+ * Headers that name the one object this row sits *inside*, rather than one it merely touches.
+ *
+ * Exact matches only, and that is the point: "parent" is containment, "parent company" is a
+ * relation to a different organisation, and the looser `part of|capability` pattern below would
+ * swallow both. A wrong guess here does more damage than elsewhere — it builds a tree.
+ */
+const PARENT = /^(parent|parent name|parent id|parent key|parent fact sheet|parent capability|parent application|parent process|sub capability of|child of)$/;
 const RELATION: Array<[RegExp, string]> = [
   [/depends on|dependency|dependencies|requires/, "depends on"],
   [/hosted on|runs on|host|platform|infrastructure/, "runs on"],
@@ -155,6 +171,15 @@ export function proposeMapping(headers: string[], rows: string[][], options: { k
     if (KIND.test(h)) return { header, role: { as: "kind" }, why: `“${header}” reads as what sort of thing each row is.`, sample };
     if (DESCRIPTION.test(h)) return { header, role: { as: "description" }, why: `“${header}” is prose about the object.`, sample };
 
+    if (PARENT.test(h)) {
+      return {
+        header,
+        role: { as: "parent" },
+        why: `“${header}” names the object this one sits inside, so it becomes containment rather than a connection.`,
+        sample,
+      };
+    }
+
     const dated = values.filter(readsAsDate).length;
     if (DATE.test(h) && dated >= Math.max(1, filled * 0.5)) {
       return { header, role: { as: "date", key: h }, why: `“${header}” is a date column — ${dated} of ${filled} values read as dates.`, sample };
@@ -231,6 +256,7 @@ export function describeRole(role: Role): string {
     case "date": return `date · ${role.key}`;
     case "person": return `person · ${role.key}`;
     case "relation": return `relation · ${role.kind}`;
+    case "parent": return "parent";
     case "ignore": return "ignored";
   }
 }

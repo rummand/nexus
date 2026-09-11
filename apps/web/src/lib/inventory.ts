@@ -34,6 +34,10 @@ export interface InventoryItem {
   attributes: Record<string, string>;
   relationCount: number;
   boardCount: number;
+  /** The name of what contains it (§5.70), empty at the top level. */
+  parent?: string;
+  /** How many things are below it, at any depth. The number a capability list is read for. */
+  beneath?: number;
 }
 
 /** The marker for "this item has no value for that key". Empty string is a real absent value. */

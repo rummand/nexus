@@ -10,6 +10,8 @@ export interface EntitySummary {
   name: string;
   description: string;
   attributes: Record<string, string>;
+  /** What contains it (§5.70), or null at the top level. */
+  parentId: string | null;
   source: string;
   updatedAt: string;
   boardCount: number;

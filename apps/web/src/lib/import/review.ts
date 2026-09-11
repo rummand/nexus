@@ -133,6 +133,25 @@ export function review(records: StagedRecord[], targets: MatchTarget[], options:
       }
     }
 
+    /*
+     * A parent is a stronger claim than a relation: it puts this object inside another one, and
+     * everything that rolls up — cost, count, coverage — reads the tree. So a parent that names
+     * nothing is a question rather than something to drop quietly, and a row that names itself is
+     * a broken export, not a root.
+     */
+    const parent = (record.parent ?? "").trim();
+    if (parent) {
+      if (norm(parent) === norm(record.name)) {
+        issues.push({ severity: "question", code: "self-parent", message: `“${record.name}” is given as its own parent. It will be left at the top instead.` });
+      } else if (!named.has(norm(parent)) && !targets.some((t) => norm(t.name) === norm(parent))) {
+        issues.push({
+          severity: "question",
+          code: "orphan-parent",
+          message: `“${parent}” is not in this batch or in the graph, so “${record.name}” would come in with nothing above it.`,
+        });
+      }
+    }
+
     if (record.kind && !knownKinds.has(norm(record.kind))) {
       issues.push({ severity: "note", code: "new-kind", message: `“${record.kind}” would be a new kind in this workspace.` });
     }

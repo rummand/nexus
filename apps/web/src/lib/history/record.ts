@@ -36,8 +36,19 @@ export interface HistoryContext {
  */
 export type Scope = { ids: string[] } | { workspace: true };
 
-function snapshot(row: { id: string; kind: string; name: string; description: string; attributes: string }): EntitySnapshot {
-  return { id: row.id, kind: row.kind, name: row.name, description: row.description, attributes: parseAttributes(row.attributes) };
+function snapshot(
+  row: { id: string; kind: string; name: string; description: string; attributes: string; parentId: string | null },
+  parentName: string,
+): EntitySnapshot {
+  return {
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    description: row.description,
+    attributes: parseAttributes(row.attributes),
+    parentId: row.parentId ?? "",
+    parentName,
+  };
 }
 
 async function read(db: Db, workspaceId: string, scope: Scope): Promise<Map<string, EntitySnapshot>> {
@@ -47,7 +58,18 @@ async function read(db: Db, workspaceId: string, scope: Scope): Promise<Map<stri
       : scope.ids.length
         ? await db.select().from(s.entities).where(inArray(s.entities.id, scope.ids))
         : [];
-  return new Map(rows.map((r) => [r.id, snapshot(r)]));
+  /*
+   * The parent's name, so "moved it inside Grid Operations" is a sentence rather than an id. Under
+   * a narrow scope the parent is usually outside the set, which is one small extra read.
+   */
+  const names = new Map(rows.map((r) => [r.id, r.name]));
+  const missing = [...new Set(rows.flatMap((r) => (r.parentId && !names.has(r.parentId) ? [r.parentId] : [])))];
+  if (missing.length) {
+    for (const p of await db.select({ id: s.entities.id, name: s.entities.name }).from(s.entities).where(inArray(s.entities.id, missing))) {
+      names.set(p.id, p.name);
+    }
+  }
+  return new Map(rows.map((r) => [r.id, snapshot(r, r.parentId ? names.get(r.parentId) ?? "" : "")]));
 }
 
 /**

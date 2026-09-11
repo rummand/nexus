@@ -192,3 +192,34 @@ describe("when it happened, in words", () => {
     expect(dayKey("not a date")).toBe("unknown");
   });
 });
+
+describe("moving something in the hierarchy (§5.70)", () => {
+  /*
+   * Rev 107 gave the graph containment and rev 111 let an import write it, and neither left a
+   * trace: a capability could move under a different parent — by hand, or by four hundred rows
+   * arriving at once — and the graph's memory said nothing at all.
+   */
+  const at = (parentId: string, parentName: string) => entity({ parentId, parentName });
+
+  it("records where it went", () => {
+    expect(diffEntity(at("", ""), at("p1", "Grid Operations"))).toEqual([
+      { kind: "moved", field: "", from: "", to: "Grid Operations" },
+    ]);
+  });
+
+  it("records a move to the top level as one", () => {
+    expect(diffEntity(at("p1", "Grid Operations"), at("", ""))[0]).toMatchObject({ kind: "moved", to: "" });
+  });
+
+  it("says nothing when only the parent's name changed", () => {
+    // Comparing names would report every child of a renamed parent as having moved — a screenful
+    // of events for something nobody did.
+    expect(diffEntity(at("p1", "Grid Operations"), at("p1", "Grid Services"))).toEqual([]);
+  });
+
+  it("reads as a sentence either way", () => {
+    expect(describeChange({ kind: "moved", field: "", from: "", to: "Grid Operations" })).toContain("inside");
+    expect(describeChange({ kind: "moved", field: "", from: "Grid Operations", to: "" })).toContain("top level");
+    expect(describeChange({ kind: "moved", field: "", from: "A", to: "B" })).toBe("moved it from inside “A” to inside “B”");
+  });
+});

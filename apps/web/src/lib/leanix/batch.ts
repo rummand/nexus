@@ -26,6 +26,18 @@ import type { FactSheet, LeanIxExport } from "./types";
 const NAME = "name";
 const DESCRIPTION = "description";
 const KEY = "leanix id";
+const PARENT = "parent";
+
+/**
+ * The two names LeanIX gives one fact: the hierarchy inside a fact sheet type.
+ *
+ * It is not a relation like the others. `relApplicationToITComponent` joins two different things;
+ * `relToChild` says one *is part of* another, which is the tree a capability map is drawn from and
+ * what every roll-up counts through. Nexus holds that as containment on the object (§5.74), so it
+ * arrives as a parent column rather than as an edge — and only the child's row carries it, because
+ * a thing has one parent and any number of children.
+ */
+const HIERARCHY = new Set(["relToChild", "relToParent"]);
 
 const cell = (v: string | undefined) => (v ?? "").replace(/\s+/g, " ").trim();
 
@@ -36,8 +48,18 @@ export function toBatchFiles(dump: LeanIxExport): BatchFile[] {
 
   /* Outgoing relations per fact sheet, grouped by relation type: one column each, targets joined. */
   const outgoing = new Map<string, Map<string, string[]>>();
+  /* Who each fact sheet sits inside, read from whichever end of the hierarchy the export kept. */
+  const parentOf = new Map<string, string>();
   for (const r of dump.relations) {
     if (!byId.has(r.fromId) || !byId.has(r.toId)) continue; // the other end was not exported
+    if (HIERARCHY.has(r.type)) {
+      const child = r.type === "relToChild" ? r.toId : r.fromId;
+      const parent = r.type === "relToChild" ? r.fromId : r.toId;
+      // One parent per fact sheet is LeanIX's own rule, so a second would be a broken export;
+      // the first is kept rather than the last, which makes the same export read the same twice.
+      if (!parentOf.has(child)) parentOf.set(child, nameOf(parent));
+      continue;
+    }
     const perType = outgoing.get(r.fromId) ?? new Map<string, string[]>();
     perType.set(r.type, [...(perType.get(r.type) ?? []), nameOf(r.toId)]);
     outgoing.set(r.fromId, perType);
@@ -67,7 +89,9 @@ export function toBatchFiles(dump: LeanIxExport): BatchFile[] {
     roleKeys.sort();
     relationKeys.sort();
 
-    const headers = [NAME, DESCRIPTION, KEY, ...fieldKeys, ...roleKeys, ...relationKeys.map(readableRelation)];
+    // Only where this type actually nests: a parent column of empty cells is noise on a review page.
+    const nested = sheets.some((fs) => parentOf.has(fs.id));
+    const headers = [NAME, DESCRIPTION, KEY, ...(nested ? [PARENT] : []), ...fieldKeys, ...roleKeys, ...relationKeys.map(readableRelation)];
     const columns: Column[] = [
       { header: NAME, role: { as: "name" }, why: "The fact sheet's display name in LeanIX.", sample: [] },
       { header: DESCRIPTION, role: { as: "description" }, why: "The fact sheet's description.", sample: [] },
@@ -76,6 +100,14 @@ export function toBatchFiles(dump: LeanIxExport): BatchFile[] {
        * second copy of the estate.
        */
       { header: KEY, role: { as: "key" }, why: "LeanIX's own id, so re-importing updates rather than duplicates.", sample: [] },
+      ...(nested
+        ? [{
+            header: PARENT,
+            role: { as: "parent" } as const,
+            why: "LeanIX's own hierarchy for this type — what each one sits inside, not a connection to it.",
+            sample: [] as string[],
+          }]
+        : []),
       ...fieldKeys.map((k): Column => ({ header: k, role: { as: "attribute", key: k }, why: `A field this workspace configured on ${readableType(type)}.`, sample: [] })),
       ...roleKeys.map((k): Column => ({ header: k, role: { as: "person", key: k }, why: `A LeanIX subscription role — who is ${k} of this.`, sample: [] })),
       ...relationKeys.map((rel): Column => ({
@@ -97,6 +129,7 @@ export function toBatchFiles(dump: LeanIxExport): BatchFile[] {
         names.get(fs.id) ?? entityName(fs),
         cell(fs.description),
         fs.id,
+        ...(nested ? [parentOf.get(fs.id) ?? ""] : []),
         ...fieldKeys.map((k) => cell(fs.fields[k])),
         ...roleKeys.map((k) => (subs.get(k) ?? []).join(", ")),
         ...relationKeys.map((rel) => (rels?.get(rel) ?? []).join(", ")),

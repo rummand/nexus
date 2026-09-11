@@ -62,9 +62,18 @@ const clean = (v: unknown): string => {
   return "";
 };
 
-/** A name Nexus can key on. LeanIX allows duplicates; the id keeps them apart. */
+/**
+ * A name Nexus can key on. LeanIX allows duplicates; the id keeps them apart.
+ *
+ * The short name, not the display name. For a type with a hierarchy LeanIX's `displayName` is the
+ * whole path — "Electricity System Operation / Operation / Grid Monitoring & Control" — which was
+ * the only way to say where something sat while the import landed everything flat. Now that the
+ * hierarchy comes across as containment (§5.74), the path is in the tree, and repeating it in
+ * every name makes a capability map unreadable and a search unusable. Where there is no path the
+ * two are the same string, so this costs the other types nothing.
+ */
 export function entityName(fs: FactSheet): string {
-  return (fs.displayName || fs.name || "").trim() || `(unnamed ${readableType(fs.type)})`;
+  return (fs.name || fs.displayName || "").trim() || `(unnamed ${readableType(fs.type)})`;
 }
 
 /** The shortest id prefix that still tells every fact sheet apart — 8 unless the ids collide. */

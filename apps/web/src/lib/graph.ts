@@ -235,6 +235,7 @@ export async function graphSnapshot(db: Db, workspaceId: string): Promise<GraphS
       name: r.e.name,
       description: r.e.description,
       attributes: parseAttributes(r.e.attributes),
+      parentId: r.e.parentId ?? null,
       source: r.e.source,
       updatedAt: r.e.updatedAt,
       boardCount: r.boardCount,

@@ -7,7 +7,7 @@
  * is only whitespace, a merge that also inherited a description — cheap to write down as tests.
  *
  * The vocabulary is deliberately small. A history with thirty verbs is one nobody can scan; these
- * eleven cover everything the product can actually do to an entity, and anything that does not fit
+ * twelve cover everything the product can actually do to an entity, and anything that does not fit
  * is a sign the product grew a capability that should be named here too.
  */
 
@@ -30,6 +30,7 @@ export const EVENT_KINDS = [
   "attributeRemoved",
   "relationAdded",
   "relationRemoved",
+  "moved",
   "absorbed",
   "merged",
   "deleted",
@@ -51,6 +52,14 @@ export interface EntitySnapshot {
   name: string;
   description: string;
   attributes: Record<string, string>;
+  /**
+   * What contains it (§5.70), by id — and separately the name, for the sentence.
+   *
+   * Compared by id on purpose: comparing the names would report every child of a renamed parent
+   * as having *moved*, which is a room full of events for something nobody did.
+   */
+  parentId?: string;
+  parentName?: string;
 }
 
 /** One field that moved. Becomes one row, and one line a person can read. */
@@ -91,6 +100,9 @@ export function diffEntity(before: EntitySnapshot | null, after: EntitySnapshot 
   if (trim(a.name) !== trim(b.name)) out.push({ kind: "renamed", field: "", from: trim(a.name), to: trim(b.name) });
   if (trim(a.kind) !== trim(b.kind)) out.push({ kind: "retyped", field: "", from: trim(a.kind), to: trim(b.kind) });
   if (trim(a.description) !== trim(b.description)) out.push({ kind: "described", field: "", from: trim(a.description), to: trim(b.description) });
+  if (trim(a.parentId) !== trim(b.parentId)) {
+    out.push({ kind: "moved", field: "", from: trim(a.parentName) || trim(a.parentId), to: trim(b.parentName) || trim(b.parentId) });
+  }
 
   // Sorted, so two runs over the same edit produce the same history in the same order.
   const keys = [...new Set([...Object.keys(a.attributes), ...Object.keys(b.attributes)])].sort();
@@ -154,6 +166,10 @@ export function describeChange(c: Change): string {
       return `linked ${q(clip(c.from))} —${c.field ? ` ${c.field} ` : " "}→ ${q(clip(c.to))}`;
     case "relationRemoved":
       return `unlinked ${q(clip(c.from))} —${c.field ? ` ${c.field} ` : " "}→ ${q(clip(c.to))}`;
+    case "moved":
+      if (!c.from) return `moved it inside ${q(clip(c.to))}`;
+      if (!c.to) return `moved it to the top level, out of ${q(clip(c.from))}`;
+      return `moved it from inside ${q(clip(c.from))} to inside ${q(clip(c.to))}`;
     case "absorbed":
       return `merged ${q(clip(c.from))} into it`;
     case "merged":
