@@ -5,7 +5,7 @@ import type { Conformance, TypeConformance } from "./metamodel-conformance";
 
 const field = (key: string, declared: boolean) => ({
   id: declared ? `f_${key}` : null, key, dataType: "text", description: "", required: false,
-  options: [] as string[], usage: 3, presence: declared ? ("declared" as const) : ("undeclared" as const),
+  options: [] as string[], section: "", usage: 3, presence: declared ? ("declared" as const) : ("undeclared" as const),
 });
 
 const node = (over: Partial<MetaNodeType> = {}): MetaNodeType => ({

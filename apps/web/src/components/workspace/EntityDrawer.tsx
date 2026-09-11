@@ -13,7 +13,7 @@ import { createRelationAction, deleteEntity, deleteRelationAction, mergeEntities
  * graph knows about an entity — kind / name / description, attributes (with the kind's schema as
  * suggestions), relations (navigable), boards it appears on, and duplicate candidates to merge.
  */
-export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavigate, entities = [], relationKinds = [] }: { entityId: string | null; workspaceId: string; kindColor: (kind: string) => string; onClose: () => void; onNavigate: (id: string) => void; entities?: Array<{ id: string; name: string; kind: string }>; relationKinds?: string[] }) {
+export function EntityDrawer({ entityId, workspaceId, slug, kindColor, onClose, onNavigate, entities = [], relationKinds = [] }: { entityId: string | null; workspaceId: string; slug?: string; kindColor: (kind: string) => string; onClose: () => void; onNavigate: (id: string) => void; entities?: Array<{ id: string; name: string; kind: string }>; relationKinds?: string[] }) {
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -65,6 +65,12 @@ export function EntityDrawer({ entityId, workspaceId, kindColor, onClose, onNavi
             <small>{e?.kind || "Untyped"}</small>
             <h2>{e?.name || (error ? "Not found" : "Loading…")}</h2>
           </div>
+          {/*
+            * The drawer stays where it belongs — beside a canvas, so reading an object does not
+            * cost you your place on the board — and hands over to the object's own page for
+            * everything it cannot show (§5.77).
+            */}
+          {slug && e && <a className="entity-drawer-page" href={`/w/${slug}/fs/${e.id}`} data-open-page>Open its page</a>}
           <button type="button" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </header>
         {error && <p className="form-error">{error}</p>}

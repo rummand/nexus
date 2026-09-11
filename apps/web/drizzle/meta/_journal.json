@@ -225,6 +225,13 @@
       "when": 1789053136151,
       "tag": "0031_common_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1789119031391,
+      "tag": "0032_bent_karen_page",
+      "breakpoints": true
     }
   ]
 }

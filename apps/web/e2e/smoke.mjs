@@ -1458,6 +1458,36 @@ try {
     "a row opens the same drawer the rest of the product opens");
 
   /*
+   * ---- one object, one page (§5.77) -----------------------------------------------------------
+   *
+   * The claim is that a fact sheet is a place, not a panel: it has an address, it is editable
+   * where it stands, and what you type is written without a save button.
+   */
+  await page.goto(`${base}/w/acme-energy/repository`, { waitUntil: "load" });
+  await page.waitForSelector("[data-repository-table]", { timeout: 45000 });
+  await page.fill("[data-repository-search]", "maximo");
+  await page.waitForTimeout(400);
+  await page.locator("[data-open-item]").first().click();
+  await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+  assert.match(page.url(), /\/fs\/[a-z]/i, "an object has an address of its own");
+  const sheet = await page.locator("[data-factsheet]").innerText();
+  assert.match(sheet, /Maximo/, "the page is about the object you clicked");
+  assert.ok((await page.locator("[data-fs-section]").count()) > 2, "its values are grouped into sections");
+  assert.equal(await page.locator('button:has-text("Save")').count(), 0, "there is no save button to look for");
+
+  // Type into the description, look away, and it is written.
+  const said = `Read by the walk at ${new Date().toISOString()}`;
+  await page.locator('[data-live-value="Description"] textarea').fill(said);
+  await page.locator("[data-factsheet] h2").first().click();
+  await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 20000 });
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+  assert.equal(await page.locator('[data-live-value="Description"] textarea').inputValue(), said,
+    "what you typed is there after a reload — blur is the save");
+  assert.match(await page.locator('[data-fs-section="History"]').innerText(), /description/i,
+    "and the edit is in the object's history, with who did it");
+
+  /*
    * ---- the capability map is of this estate (§5.75) -------------------------------------------
    *
    * The starter used to hand out six invented capabilities. The seed has a real capability tree,

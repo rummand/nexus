@@ -14,6 +14,7 @@ import { Conformance } from "./Conformance";
 import { Frameworks } from "./Frameworks";
 import { Layers } from "./Layers";
 import { framework } from "@/lib/frameworks";
+import { sectionsOf } from "@/lib/factsheet";
 import { placeNodeType } from "@/lib/layers/actions";
 import { article, type Conformance as ConformanceReport } from "@/lib/metamodel-conformance";
 import { bands, cards, filterCards, health, type Only, type TypeCard } from "@/lib/metamodel-board";
@@ -399,8 +400,11 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
 
           <section className="meta-section">
             <span>Fields <small>{type.fields.length}</small></span>
+            <datalist id={`sections-${type.id}`}>
+              {sectionsOf(type.fields).map((sec) => <option key={sec} value={sec} />)}
+            </datalist>
             <table className="meta-table">
-              <thead><tr><th>Key</th><th>Type</th><th>Used</th><th /></tr></thead>
+              <thead><tr><th>Key</th><th>Type</th><th>Section</th><th>Used</th><th /></tr></thead>
               <tbody>
                 {type.fields.map((f) => (
                   <tr key={f.key} className={f.presence}>
@@ -411,6 +415,28 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
                           {DATA_TYPES.map((d) => <option key={d} value={d}>{d}</option>)}
                         </select>
                       ) : <em>text</em>}
+                    </td>
+                    <td>
+                      {/*
+                        * Where the field sits on a fact sheet (§5.77). A free text box with the
+                        * sections this type already uses offered alongside: a fixed list would be
+                        * this product deciding that every organisation groups an application the
+                        * same way, which is the assumption §2.2 exists to reject.
+                        */}
+                      {f.id ? (
+                        <>
+                          <input
+                            className="meta-section-input"
+                            defaultValue={f.section}
+                            list={`sections-${type.id}`}
+                            placeholder="unfiled"
+                            aria-label={`Section for ${f.key}`}
+                            data-field-section={f.key}
+                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                            onBlur={(e) => { if (e.target.value.trim() !== f.section) run(() => updateField(f.id!, { section: e.target.value })); }}
+                          />
+                        </>
+                      ) : <em>—</em>}
                     </td>
                     <td className="num">{f.usage}</td>
                     <td>
@@ -428,12 +454,12 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
                   */}
                 {type.fields.filter((f) => f.id && f.dataType === "enum").map((f) => (
                   <tr key={`${f.key}-options`} className="meta-options-row">
-                    <td colSpan={4}>
+                    <td colSpan={5}>
                       <EnumOptions field={f} pending={pending} run={run} />
                     </td>
                   </tr>
                 ))}
-                {type.fields.length === 0 && <tr><td colSpan={4} className="muted">No fields yet.</td></tr>}
+                {type.fields.length === 0 && <tr><td colSpan={5} className="muted">No fields yet.</td></tr>}
               </tbody>
             </table>
             <form className="meta-add" onSubmit={(e) => { e.preventDefault(); run(() => addField(type.id!, newField, newFieldType)); setNewField(""); }}>

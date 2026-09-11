@@ -879,6 +879,14 @@ export const nodeTypeFields = pgTable(
     required: boolean("required").notNull().default(false),
     /** Allowed values for `enum`, JSON-encoded array. */
     options: text("options").notNull().default("[]"),
+    /**
+     * Which group of the fact sheet this field belongs in — "Ownership", "Lifecycle", "Cost" (§5.77).
+     *
+     * Empty means nobody has filed it, and the page puts those together rather than inventing a
+     * home for them: a field's section is somebody's opinion about what belongs beside what, and
+     * guessing it from the key name is how you end up with "cost centre" under Lifecycle.
+     */
+    section: text("section").notNull().default(""),
     position: integer("position").notNull().default(0),
   },
   (t) => [index("node_type_fields_type_idx").on(t.nodeTypeId), uniqueIndex("node_type_fields_key_idx").on(t.nodeTypeId, t.key)],

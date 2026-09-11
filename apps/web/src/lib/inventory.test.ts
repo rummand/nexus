@@ -6,7 +6,7 @@ import {
 import type { MetaField } from "./metamodel";
 
 const field = (key: string, over: Partial<MetaField> = {}): MetaField => ({
-  id: `f_${key}`, key, dataType: "text", description: "", required: false, options: [],
+  id: `f_${key}`, key, dataType: "text", description: "", required: false, options: [], section: "",
   usage: 0, presence: "declared", ...over,
 });
 

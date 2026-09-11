@@ -17,7 +17,7 @@ import type { MetaModel, MetaNodeType, MetaRelationType } from "../metamodel";
 const nodeType = (name: string, fields: string[] = []): MetaNodeType => ({
   id: `nt_${name}`, name, description: "theirs", color: "", parentId: null, instances: 0, presence: "declared",
   framework: "", layerId: null,
-  fields: fields.map((key) => ({ id: `f_${key}`, key, dataType: "text", description: "", required: false, options: [], usage: 0, presence: "declared" as const })),
+  fields: fields.map((key) => ({ id: `f_${key}`, key, dataType: "text", description: "", required: false, options: [], section: "", usage: 0, presence: "declared" as const })),
 });
 const relType = (name: string, rules: Array<[string, string]> = []): MetaRelationType => ({
   id: `rt_${name}`, name, description: "", instances: 0, presence: "declared", observedPairs: [], framework: "", layerId: null,

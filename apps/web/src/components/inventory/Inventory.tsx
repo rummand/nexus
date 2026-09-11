@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Search, SlidersHorizontal, X } from "lucide-react";
+import { Check, Search, SlidersHorizontal } from "lucide-react";
 import type { MetaField } from "@/lib/metamodel";
 import {
   activeCount, columns, facets, filterItems, plural, toggleFacet, NOT_SET,
   type InventoryItem, type Selection,
 } from "@/lib/inventory";
-import { EntityDrawer } from "@/components/workspace/EntityDrawer";
 import { InventoryCell } from "./InventoryCell";
 
 /**
@@ -38,7 +37,6 @@ export function Inventory({
 }) {
   const [selection, setSelection] = useState<Selection>({});
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
 
   const rail = useMemo(() => facets(items, fields, selection), [items, fields, selection]);
   const shown = useMemo(() => filterItems(items, selection, query), [items, selection, query]);
@@ -187,9 +185,10 @@ export function Inventory({
                   {shown.map((item) => (
                     <tr key={item.id} data-inventory-row={item.id}>
                       <th scope="row">
-                        <button type="button" onClick={() => setOpen(item.id)} data-open-item={item.id}>
+                        {/* Straight to the object's own page (§5.77) rather than a drawer. */}
+                        <Link href={`/w/${slug}/fs/${item.id}`} data-open-item={item.id}>
                           {item.name || "(unnamed)"}
-                        </button>
+                        </Link>
                       </th>
                       {nests && (
                         <td className="inventory-inside">
@@ -217,19 +216,6 @@ export function Inventory({
         </main>
       </div>
 
-      {open && (
-        <EntityDrawer
-          entityId={open}
-          workspaceId=""
-          kindColor={() => color || "#94a3b8"}
-          onClose={() => setOpen(null)}
-          onNavigate={setOpen}
-        />
-      )}
-
-      <button type="button" className="inventory-close-hint" hidden onClick={() => setOpen(null)}>
-        <X size={12} /> close
-      </button>
     </div>
   );
 }

@@ -176,6 +176,13 @@
       "when": 1789053145544,
       "tag": "0024_pretty_drax",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789119037665,
+      "tag": "0025_lame_wallop",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Layers, Search } from "lucide-react";
-import { EntityDrawer } from "@/components/workspace/EntityDrawer";
 
 /**
  * Everything in the repository (§5.76).
@@ -41,7 +40,6 @@ const day = (iso: string) => (iso ? new Date(iso).toLocaleDateString(undefined, 
 export function Repository({ slug, types, items }: { slug: string; types: RepositoryType[]; items: RepositoryItem[] }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<string | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -131,9 +129,10 @@ export function Repository({ slug, types, items }: { slug: string; types: Reposi
                 {shown.slice(0, 600).map((item) => (
                   <tr key={item.id} data-repository-row={item.id}>
                     <th scope="row">
-                      <button type="button" onClick={() => setOpen(item.id)} data-open-item={item.id}>
+                      {/* The object has a page of its own (§5.77); a list row is a way to it. */}
+                      <Link href={`/w/${slug}/fs/${item.id}`} data-open-item={item.id}>
                         {item.name || "(unnamed)"}
-                      </button>
+                      </Link>
                       {item.description && <small className="repository-said">{item.description.slice(0, 90)}</small>}
                     </th>
                     <td>
@@ -159,15 +158,6 @@ export function Repository({ slug, types, items }: { slug: string; types: Reposi
         )}
       </div>
 
-      {open && (
-        <EntityDrawer
-          entityId={open}
-          workspaceId=""
-          kindColor={(k) => colorOf.get(k) ?? "#94a3b8"}
-          onClose={() => setOpen(null)}
-          onNavigate={setOpen}
-        />
-      )}
     </div>
   );
 }

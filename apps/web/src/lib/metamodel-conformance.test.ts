@@ -10,7 +10,7 @@ import type { MetaField, MetaModel, MetaNodeType, MetaRelationType } from "./met
  */
 
 const field = (over: Partial<MetaField> & { key: string }): MetaField => ({
-  id: `f_${over.key}`, dataType: "text", description: "", required: false, options: [], usage: 0, presence: "declared", ...over,
+  id: `f_${over.key}`, dataType: "text", description: "", required: false, options: [], section: "", usage: 0, presence: "declared", ...over,
 });
 const nodeType = (name: string, fields: MetaField[] = [], declared = true): MetaNodeType => ({
   id: declared ? `nt_${name}` : null, name, description: "", color: "", parentId: null, instances: 0, fields,

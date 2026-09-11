@@ -151,7 +151,7 @@ export async function addField(nodeTypeId: string, key: string, dataType = "text
   return { ok: true };
 }
 
-export async function updateField(id: string, patch: { key?: string; dataType?: string; required?: boolean; description?: string; options?: string[] }) {
+export async function updateField(id: string, patch: { key?: string; dataType?: string; required?: boolean; description?: string; options?: string[]; section?: string }) {
   const no = await denyFieldRow(id);
   if (no) return no;
   const db = await getDb();
@@ -168,6 +168,9 @@ export async function updateField(id: string, patch: { key?: string; dataType?: 
     required: patch.required ?? field.required,
     description: patch.description?.trim() ?? field.description,
     options: patch.options ? JSON.stringify(patch.options) : field.options,
+    // Where the field sits on a fact sheet (§5.77). Trimmed, because " Ownership" and "Ownership"
+    // would otherwise be two sections.
+    section: patch.section !== undefined ? patch.section.trim().slice(0, 40) : field.section,
   }).where(eq(s.nodeTypeFields.id, id));
 
   // renaming a field renames the attribute on every instance of the type

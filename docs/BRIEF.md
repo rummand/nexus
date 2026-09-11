@@ -3455,6 +3455,40 @@ capped at fourteen entries by a test, so adding a daily surface meant moving a m
 reference reading belongs. Browsing the repository is something an architect does several times a
 day; looking up what TOGAF says about phase B is not.
 
+### 5.77 One object, one page (v0.2)
+
+An object had no address. It opened in a drawer over whatever you were looking at, which is right
+beside a canvas — leaving the board to read a fact sheet loses your place — and wrong everywhere
+else: an object is not an annotation on a list, and "have a look at this application" should be a
+link somebody can send.
+
+`/w/[slug]/fs/[id]` is that link. The page carries the name, the description, the attributes in
+their sections, what it is connected to, where it sits, which boards it is on, and everything that
+has happened to it. The drawer stays, on the canvas only.
+
+**No save button, and no edit mode.** The value on the page *is* the field: click it, change it,
+look away, it is written. The canvas has worked this way since rev 1 — a card's title is a live
+field and nobody has ever asked where its save button is — and a fact sheet that behaved
+differently would be the odd one out. Three things keep that honest rather than alarming: it
+writes on blur rather than on keystroke, so one edit is one entry in the history; it says "saved"
+quietly beside the field rather than flashing; and the value before the edit is kept, so **undo**
+is there for the four seconds anybody would want it. Every edit lands in the object's history with
+the person's name on it, which is what makes an unprompted autosave defensible.
+
+**Attributes are grouped where they belong, and nowhere else.** A declared field names its section
+— Lifecycle, Ownership, Fit for purpose — set on the type in the meta-model, and the page renders
+the sections in the order the modeller put them in rather than alphabetically: somebody decided
+Ownership comes before Cost. A declared field appears **even when it is empty**, because an
+unanswered required field is a finding and hiding it makes the page look complete when it is not.
+Everything else — the `lxState`, `createdAt`, `rev` that an import brings — goes in one honest
+group called *From the data*. Nothing is filed by guesswork: a regex would put `lxCostCentre`
+under Lifecycle often enough that nobody would trust any heading on the page.
+
+**What the type does not know is visible as such.** The header counts what is filled against what
+is declared — *4/5 declared fields filled* — and says when one is required and empty. An
+undeclared type says so, with a link to declare it, because 52 undeclared types is the state of
+the model rather than a quirk of one object.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3669,6 +3703,14 @@ day; looking up what TOGAF says about phase B is not.
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
   warnings. Card kind fields suggest the workspace's kinds.
+
+### The fact sheet (v0.2, rev 114 — §5.77)
+- `/w/[slug]/fs/[id]`: one object, one page — name, description, attributes by section, relations
+  grouped by kind, where it sits, boards, and its history.
+- Inline editing with no save button: written on blur, "saved" beside the field, undo, and an
+  entry in the history with the editor's name.
+- Sections come from the type's declared fields (set in the meta-model); undeclared keys land in
+  *From the data*; declared fields show even when empty, and a required blank is marked.
 
 ### The repository (v0.2, rev 113 — §5.76)
 - **Fact sheets** in the rail → `/w/[slug]/repository`: every object the model holds, one list.
@@ -4588,6 +4630,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A frame may be the face of an object that already exists, and may only rename it. | Every parent capability on a map is a frame; as pure decoration they were missing from the board's index and unclickable. A frame carries no kind, so letting it create an object would mint untyped things — bind, rename, and nothing else. |
 | 2026-09-11 | The repository is one flat searchable list, not a tree or a board. | It answers "where is that thing". A tree makes you know the shape before you can look, and a board makes you pan. 490 rows and a search box is faster than either, and the per-type inventory is one click away for the questions that need facets. |
 | 2026-09-11 | Adding Fact sheets to the rail pushed EA knowledge out of it, rather than raising the cap. | The rail is capped at fourteen because past about a dozen a list stops being scanned and starts being searched. The honest axis is frequency: the repository is daily, the knowledge library is monthly, so it moves to the foot of the rail beside Documentation. |
+| 2026-09-11 | Editing a fact sheet has no save button: the value is the field, written on blur. | The canvas has always worked this way and nobody misses a save button there. What makes it safe is not a button but a history entry with a name on it, a quiet "saved", and an undo for the seconds that matter. |
+| 2026-09-11 | A field's section is declared on the type, never guessed from its key. | A heuristic that files `lxCostCentre` under Lifecycle is wrong often enough to discredit every other heading on the page. Undeclared keys go in one group that says what it is. |
+| 2026-09-11 | The drawer stays, but only on the canvas. | Leaving a board to read an object costs you your place; leaving a list does not. One surface where it earns its keep, and a link to the page for everything it cannot show. |
 
 ## 8. Open questions for the product owner
 
@@ -4603,6 +4648,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 114: one object, one page.** Every object now has an address —
+  `/w/[slug]/fs/[id]` — with its attributes in the sections the type declares, what it is
+  connected to, where it sits, its boards and its whole history. Editing is inline and there is no
+  save button: click a value, change it, look away, it is written on blur, with a quiet "saved", an
+  undo, and an entry in the history carrying the person's name. Declared fields show even when
+  empty (a required blank is a finding); keys no field declares go in one *From the data* group
+  rather than being filed by guesswork. Fields gained a `section` in the meta-model, set on the
+  type. The lists — fact sheets and each type's inventory — now navigate to the page; the drawer
+  stays on the canvas, where losing your place would cost something, and links to the page. 9 new
+  tests, brief §5.77, three decision rows, one migration.
 
 - **2026-09-11 — Rev 113: Fact sheets in the rail.** The per-type inventory had no way in but a
   chip on another page. There is now a **Fact sheets** entry in the rail and a page behind it

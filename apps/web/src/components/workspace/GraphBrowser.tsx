@@ -178,7 +178,7 @@ export function GraphBrowser({ workspaceId, slug, snapshot, spaces, proposals, i
         </div>}
       </section>
 
-      <EntityDrawer entityId={openId} workspaceId={workspaceId} kindColor={(k) => kindColor(snapshot, k)} onClose={() => setOpenId(null)} onNavigate={setOpenId} entities={snapshot.entities} relationKinds={snapshot.relationKinds.map((r) => r.kind)} />
+      <EntityDrawer entityId={openId} workspaceId={workspaceId} slug={slug} kindColor={(k) => kindColor(snapshot, k)} onClose={() => setOpenId(null)} onNavigate={setOpenId} entities={snapshot.entities} relationKinds={snapshot.relationKinds.map((r) => r.kind)} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} workspaceId={workspaceId} snapshot={snapshot} />
       <LayoutDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} workspaceId={workspaceId} spaces={spaces} kinds={snapshot.kinds.map((k) => k.kind)} slug={slug} />
     </section>

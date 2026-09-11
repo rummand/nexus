@@ -1,0 +1,1 @@
+ALTER TABLE "node_type_fields" ADD COLUMN "section" text DEFAULT '' NOT NULL;

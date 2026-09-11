@@ -340,7 +340,7 @@ export async function updateEntity(entityId: string, patch: { kind?: string; nam
   const db = await getDb();
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return;
-  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "editing the object" }, { ids: [entityId] }, async () => {
     await db.update(s.entities).set({ ...patch, updatedAt: now() }).where(eq(s.entities.id, entityId));
   });
   revalidatePath(`/w/${await workspaceSlug(row.workspaceId)}`, "layout");
@@ -352,7 +352,7 @@ export async function createRelationAction(workspaceId: string, fromEntityId: st
   if (no) return no;
   const db = await getDb();
   try {
-    const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId, "graph", { workspaceId, actor: await currentActor(), context: "the entity drawer" });
+    const r = await createRelation(db, workspaceId, fromEntityId, kind, toEntityId, "graph", { workspaceId, actor: await currentActor(), context: "editing the object" });
     revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
     return r;
   } catch (e) {
@@ -365,7 +365,7 @@ export async function deleteRelationAction(workspaceId: string, relationId: stri
   const no = await deny(workspaceId, "graph.edit");
   if (no) return no;
   const db = await getDb();
-  const r = await deleteRelation(db, relationId, { workspaceId, actor: await currentActor(), context: "the entity drawer" });
+  const r = await deleteRelation(db, relationId, { workspaceId, actor: await currentActor(), context: "editing the object" });
   revalidatePath(`/w/${await workspaceSlug(workspaceId)}`, "layout");
   return r;
 }
@@ -485,7 +485,7 @@ export async function setEntityAttributeAction(entityId: string, key: string, va
   if (!k) return { error: "An attribute key is required" };
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return { error: "Entity not found" };
-  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "editing the object" }, { ids: [entityId] }, async () => {
     if (value.trim()) await setEntityAttribute(db, entityId, k, value.trim());
     else {
       const { [k]: _removed, ...rest } = parseAttributes(row.attributes);
@@ -501,7 +501,7 @@ export async function deleteEntity(entityId: string) {
   const db = await getDb();
   const [row] = await db.select().from(s.entities).where(eq(s.entities.id, entityId));
   if (!row) return;
-  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "the entity drawer" }, { ids: [entityId] }, async () => {
+  await remembering(db, { workspaceId: row.workspaceId, actor: await currentActor(), context: "editing the object" }, { ids: [entityId] }, async () => {
     /*
      * Lift the children to the grandparent before the row goes (§5.70). There is no cascade on
      * `parent_id` on purpose: deleting a capability must remove the level, not the estate
