@@ -3913,6 +3913,39 @@ A landed batch cannot be rolled back or deleted — there is nothing to undo, an
 record. What it says instead names the branch and points at the roadmap, where abandoning a plan
 already means something.
 
+### 5.90 Everything arrives as a claim (#139, v0.2)
+
+Rev 133 gave an import two destinations and made a person choose between them. The destinations
+were right; the choosing was not. Which one a claim belongs in is not a matter of taste — it
+follows from what the claim *is* — and a question asked four hundred times is a question
+answered carelessly.
+
+So the two rules of #139 are a function now, not a button:
+
+1. **Anything new lands on a branch.** An object that did not exist before never appears in the
+   shared model because a nightly job ran. It waits until somebody works on it, which is what a
+   campaign (§5.85) is for.
+2. **A known object's new values flow straight through.** Where the object is reconciled and the
+   source is the recognised owner of that field, the update lands — recorded, attributed,
+   reversible, and breaking the quality seal if somebody had validated it.
+
+**The second rule carries as much weight as the first.** Putting routine updates through a
+review queue is how a queue becomes a thing somebody rubber-stamps on a Friday afternoon, and
+once that habit exists the first rule protects nothing either. Ceremony for what is new or
+contested; silence for what is routine.
+
+Trust is **per source and per field**, because that is how it really is: ServiceNow knows a
+system's lifecycle, the CMDB knows where it runs, and neither knows who owns it in the business.
+Three things stay out of a source's hands by default whatever it owns — what something *is*
+(a retype is a modelling decision), where it sits (unless the source is the tree, which an EA
+repository is), and every connection, because structure is a claim rather than a value. A
+source that arrives with no standing at all — a block somebody pasted — owns nothing and has
+everything held, which is the honest reading of a block of text in a mail.
+
+The routing is pure and every fork is conservative: anything it cannot justify letting through,
+it holds. A claim held on a branch costs somebody a click; a claim through the front door costs
+the model its credibility.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5145,6 +5178,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 | 2026-09-11 | The Dockerfile's cache-mount ids carry Railway's `s/<service id>` prefix, hardcoded. | Railway refuses the Dockerfile outright without it, and had done so for every deploy for five hours. An id is only a cache namespace, so the prefix costs nothing anywhere else — and a portable-looking Dockerfile that does not deploy is not portable, it is broken. |
 
+| 2026-09-11 | Where a claim goes is computed from what it is, not chosen by a person per batch. | The destination follows from the claim — new, or a routine update from the field's owner. Asking somebody four hundred times produces four hundred careless answers, and the button was never the interesting part. |
+| 2026-09-11 | Routine updates from a field's owner land without review, deliberately. | It is the half of the model people get wrong. Route everything through a queue and the queue becomes a rubber stamp, after which nothing is reviewed — including the things that needed it. |
+| 2026-09-11 | A retype and a move are withheld from a source even when it owns every field. | What something *is*, and where it sits, are modelling decisions rather than values. The exception is a source that *is* the tree — a capability map from an EA repository — which is given the hierarchy explicitly. |
+| 2026-09-11 | A source with no declared standing owns nothing. | The safe default. A pasted block has no authority until a person gives it some, and a default of "trusted" is one nobody would ever go back and tighten. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5159,6 +5197,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 135: everything arrives as a claim (#139, first slice).** The two rules that
+  decide where data goes, as a pure function over the import plan: anything new lands on a
+  branch, and a known object's new values flow straight through when the source owns that field.
+  Trust is per source and per field; a retype, a move and every connection stay out of a source's
+  hands by default; a source with no declared standing owns nothing. The split reports itself in
+  one sentence — "312 routine updates land; 143 claims wait on a branch" — and counts the
+  validated values it would overwrite before it overwrites them. Sixteen tests. Brief §5.90, four
+  decision rows. Next: hanging this on the connection record so it is durable, then a branch per
+  source and drift as a pull request.
 
 - **2026-09-11 — Rev 134: the deploy has been broken since rev 119, and this is why.** The
   BuildKit cache mounts added to speed the build up (§5.80) used bare ids, and Railway's builder
