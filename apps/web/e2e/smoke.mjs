@@ -1851,15 +1851,25 @@ try {
     const roles = await page.locator(".import-column").evaluateAll((els) => els.map((e) => e.className));
     assert.ok(roles.some((c) => c.includes("key")), "the LeanIX id comes in as the key, so a second read updates");
     assert.ok(roles.some((c) => c.includes("relation")), "a modelled relation arrives as a relation column");
-    assert.ok(columns.some((c) => /child/i.test(c)), "…named after what LeanIX calls it");
+    assert.ok(columns.some((c) => /application → it component/i.test(c)), "…named after the two types LeanIX joins");
+    /*
+     * And the hierarchy does not (§5.74). relToChild says one fact sheet is *part of* another,
+     * which the graph holds as containment on the object — so it arrives as a parent column on the
+     * child's row rather than as an edge, and the batch counts it separately when it is written.
+     */
+    assert.ok(roles.some((c) => c.includes("parent")), "the hierarchy arrives as containment, not as a relation");
+    assert.ok(!columns.some((c) => /→ child/i.test(c)), "…so there is no “→ child” relation column any more");
 
     const rows = (await page.locator("[data-import-row]").allInnerTexts()).join(" ");
     assert.match(rows, /Billing \(2b3c4d5e\)/, "two fact sheets with one name are told apart by their id");
 
     await page.click("[data-approve-batch]");
     await page.waitForSelector("[data-import-result]", { timeout: 120000 });
-    assert.match(await page.locator("[data-import-result]").innerText(), /4 created, 0 changed, 1 connected/,
+    const leanixResult = await page.locator("[data-import-result]").innerText();
+    assert.match(leanixResult, /4 created, 0 changed, 1 connected/,
       "approving wrote the relation as well as the objects — and only the relation whose other end came too");
+    assert.match(leanixResult, /1 placed in the hierarchy/,
+      "…and the parent/child pair, described from both ends, became one containment rather than two edges");
 
     // And it is still reversible, which is the whole reason this door goes through the pipeline.
     await page.waitForSelector("[data-rollback-batch]", { timeout: 30000 });
