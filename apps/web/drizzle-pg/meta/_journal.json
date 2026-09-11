@@ -204,6 +204,13 @@
       "when": 1789145437281,
       "tag": "0028_fearless_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789160479607,
+      "tag": "0029_melted_sentinel",
+      "breakpoints": true
     }
   ]
 }

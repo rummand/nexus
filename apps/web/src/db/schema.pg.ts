@@ -1403,3 +1403,46 @@ export const comments = pgTable(
 );
 
 export type CommentRow = typeof comments.$inferSelect;
+
+/**
+ * What a source system is trusted to say without asking (#139, §5.90).
+ *
+ * Not to be confused with `sources` above, which is intake's record of a document or a meeting.
+ * This is the standing of a *system* — LeanIX, ServiceNow, the spreadsheet somebody maintains —
+ * and it is what decides whether a claim it makes lands in the shared model or waits on a
+ * branch.
+ *
+ * Per field, because that is how it really is: ServiceNow knows a system's lifecycle, the CMDB
+ * knows where it runs, and neither of them knows who owns it in the business. A row is written
+ * the first time a source is seen, with the conservative default for its kind, so the matrix
+ * fills itself in as an estate connects things rather than arriving as an empty screen nobody
+ * completes.
+ */
+export const sourceTrust = pgTable(
+  "source_trust",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Stable across reads: `leanix:acme.leanix.net`, `connection:<id>`, `paste`, `files`. */
+    sourceKey: text("source_key").notNull(),
+    name: text("name").notNull().default(""),
+    /** The door it comes through, which decides the default: files | paste | connected system | EA repository. */
+    origin: text("origin").notNull().default("files"),
+    /** Attribute keys it owns, JSON array of strings. `["*"]` owns everything it carries. */
+    owns: text("owns").notNull().default("[]"),
+    /** May it decide what something *is*? A type is a modelling decision, so rarely. */
+    ownsKind: boolean("owns_kind").notNull().default(false),
+    /** May it move things in the hierarchy? True for a source that *is* the tree. */
+    ownsPlace: boolean("owns_place").notNull().default(false),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [
+    // One standing per source per workspace: two rows would be two answers to one question.
+    uniqueIndex("source_trust_key_idx").on(t.workspaceId, t.sourceKey),
+  ],
+);
+
+export type SourceTrustRow = typeof sourceTrust.$inferSelect;

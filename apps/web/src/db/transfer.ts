@@ -66,6 +66,7 @@ export const TRANSFER_ORDER = [
   "campaign_objects",
   "sources",
   "source_runs",
+  "source_trust",
   "model_providers",
   "model_tasks",
   "agent_definitions",

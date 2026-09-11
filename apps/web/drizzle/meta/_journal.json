@@ -253,6 +253,13 @@
       "when": 1789145435514,
       "tag": "0035_noisy_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1789160478100,
+      "tag": "0036_lame_strong_guy",
+      "breakpoints": true
     }
   ]
 }

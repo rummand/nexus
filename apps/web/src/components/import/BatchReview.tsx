@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, GitBranch, Info,
+  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, GitBranch, Info, Scale,
   LayoutGrid, Pause, RefreshCw, Undo2, UserRound, X,
 } from "lucide-react";
 import type { Role } from "@/lib/import/map";
@@ -221,13 +221,34 @@ export function BatchReview({ slug, workspaceId, batch, files, rows, counts, mis
           */}
           {staged && (
             <>
+              {/*
+                The rules first (§5.90). Which destination a claim belongs in follows from what
+                the claim is, so the primary action applies the rules rather than asking; the
+                two explicit destinations stay for an operator who has a reason.
+              */}
               <button
                 type="button"
                 className="primary-home-button"
                 disabled={pending || counts.create + counts.update === 0}
+                data-apply-rules
+                onClick={() => {
+                  if (!confirm("Apply the rules? Routine updates from a source that owns the field land in the model; everything new or contested waits on a branch.")) return;
+                  start(async () => {
+                    const r = await approveBatch(batch.id, { onto: "auto" });
+                    setMessage("error" in r ? r.error : r.split ? r.split.words : "Nothing to do.");
+                    router.refresh();
+                  });
+                }}
+              >
+                <Scale size={15} /> Apply the rules
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={pending || counts.create + counts.update === 0}
                 data-land-batch
                 onClick={() => {
-                  if (!confirm(`Land this on a branch of its own? ${counts.create} new objects and ${counts.update} changed become a change set nobody has merged. The model does not move until somebody merges it.`)) return;
+                  if (!confirm(`Land all of it on a branch of its own? ${counts.create} new objects and ${counts.update} changed become a change set nobody has merged. The model does not move until somebody merges it.`)) return;
                   start(async () => {
                     const r = await approveBatch(batch.id, { onto: "branch" });
                     setMessage("error" in r

@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -9,6 +9,8 @@ import { applyDecisions, emptyWritten, parseReview, type BatchFile, type StoredR
 import { proposeFileKind, proposeMapping } from "./map";
 import type { MatchTarget } from "./match";
 import { planImport, planTotals, type ImportIntent } from "./plan";
+import { splitByRoute, splitWords } from "@/lib/source/trust";
+import { standingFor, trustFor } from "@/lib/source/read";
 import { review } from "./review";
 import { stage, type FileInput } from "./stage";
 import { withOverrides } from "./reconcile";
@@ -151,8 +153,14 @@ export async function stageBatch(
 }
 
 
-/** Where an approved import lands: the estate everybody reads, or a branch of its own (§5.89). */
-export type ImportOnto = "main" | "branch";
+/**
+ * Where an approved import lands (§5.89, §5.90).
+ *
+ * `auto` is the one to reach for: it applies the two rules (§5.90) claim by claim, so the
+ * routine half lands and the rest waits on a branch. `main` and `branch` are the overrides, for
+ * an operator who has a reason.
+ */
+export type ImportOnto = "main" | "branch" | "auto";
 
 export interface ImportApplied {
   ok: true;
@@ -162,6 +170,8 @@ export interface ImportApplied {
   nested: number;
   /** The branch it landed on, when it landed on one. Null when it was written through. */
   changeSetId: string | null;
+  /** How the two rules split it, when the rules were the ones deciding (§5.90). */
+  split?: { through: number; held: number; seals: number; words: string };
 }
 
 /**
@@ -216,6 +226,60 @@ export async function applyBatch(
   if (options?.onto === "branch") {
     const changeSetId = await landOnBranch(db, batch, intents, approvedById, options.branchName);
     return { ok: true, ...totals, changeSetId };
+  }
+
+  /*
+   * The rules decide (§5.90). One approval, two destinations: what this source owns on objects
+   * somebody has already reconciled goes straight in, and everything else — every new object,
+   * every connection, every field this source has no standing over — waits on a branch.
+   */
+  if (options?.onto === "auto") {
+    const trust = await trustFor(db, batch.workspaceId, {
+      origin: batch.origin,
+      detail: batch.name,
+      name: batch.name,
+    });
+    const standing = await standingFor(db, batch.workspaceId, intents.map((i) => i.entityId));
+    const split = splitByRoute(intents, trust, standing);
+
+    const history = { workspaceId: batch.workspaceId, actor: who.importer(batch.name, batchId), context: `import: ${batch.name}` };
+    const before = await snapshotEntities(db, batch.workspaceId);
+    const written = split.through.length ? await writeThrough(db, batch, split.through, history) : { created: [], relations: [], updated: [], at: now() };
+    if (split.through.length) await recordSince(db, history, { workspace: true }, before);
+
+    /*
+     * A validated value a source has just overwritten is not validated any more. Saying so here
+     * rather than waiting for somebody to notice is the whole difference between a seal that
+     * means something and a badge (§5.85).
+     */
+    const broke = split.routed.filter((r) => r.breaksSeal).map((r) => r.intent.entityId);
+    if (broke.length) {
+      // "Untouched" is the absence of a row (§5.85), so this deletes rather than sets: the
+      // object goes back into the queue exactly as if nobody had ever looked at it, which is
+      // the truth once a source has rewritten the value somebody signed off.
+      await db.delete(s.campaignObjects)
+        .where(and(inArray(s.campaignObjects.entityId, [...new Set(broke)]), eq(s.campaignObjects.state, "validated")));
+    }
+
+    const changeSetId = split.branch.length
+      ? await landOnBranch(db, batch, split.branch, approvedById, options.branchName)
+      : null;
+
+    // The batch is only "landed" when something is actually waiting; otherwise it is done.
+    await db.update(s.importBatches).set({
+      ...(changeSetId ? {} : { status: "approved" as const }),
+      written: JSON.stringify(written),
+      approvedById,
+      approvedAt: now(),
+      updatedAt: now(),
+    }).where(eq(s.importBatches.id, batchId));
+
+    return {
+      ok: true,
+      ...planTotals(intents),
+      changeSetId,
+      split: { through: split.through.length, held: split.branch.length, seals: split.seals, words: splitWords(split) },
+    };
   }
 
   // Everything an approval writes is one act by one import, so the history is taken across the

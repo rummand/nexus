@@ -3946,6 +3946,24 @@ The routing is pure and every fork is conservative: anything it cannot justify l
 it holds. A claim held on a branch costs somebody a click; a claim through the front door costs
 the model its credibility.
 
+**The standing is durable, and writes itself.** A `source_trust` row is created the first time a
+source is seen, carrying the conservative default for its kind. An empty matrix asking somebody
+to declare ownership for eleven systems is a screen nobody completes — after which the defaults
+are what was really agreed to, unexamined. Filling it in as an estate connects things means the
+matrix is always a record of something that happened.
+
+**Reconciled is deliberately narrow**: an object carries a source key, so a system wrote it or
+matched it on a previous read, or somebody has taken it through a campaign. A name that merely
+matched is not reconciliation — that assumption is exactly what fills an estate with two of
+everything.
+
+Approving with the rules is **one approval and two destinations**: what the source owns on
+reconciled objects is written to the graph with its rollback record, everything else lands on a
+branch, and the batch is only "landed" if something is actually waiting. A validated value a
+source overwrites has its seal broken *then*, by deleting the campaign row so the object returns
+to the queue exactly as if nobody had looked at it — which is the truth, and the difference
+between a seal that means something and a badge.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5197,6 +5215,18 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 136: the rules become the button (#139).** The trust from rev 135 is durable
+  now — a `source_trust` row per source per workspace, written with a conservative default the
+  first time a source is seen, so the matrix fills itself in rather than arriving as an empty
+  screen nobody completes. Approving an import can apply the two rules: one approval, two
+  destinations, with what the source owns on reconciled objects written to the graph and
+  everything else landed on a branch. Reconciled means a source key or a campaign, never a name
+  that merely matched. A validated value a source overwrites loses its seal at that moment, by
+  returning the object to the queue. *Apply the rules* is the batch page's primary action; the
+  two explicit destinations remain for an operator with a reason. Brief §5.90 extended. The
+  transfer test caught the new table missing from `TRANSFER_ORDER`, which would have dropped it
+  silently on a move to Postgres.
 
 - **2026-09-11 — Rev 135: everything arrives as a claim (#139, first slice).** The two rules that
   decide where data goes, as a pure function over the import plan: anything new lands on a
