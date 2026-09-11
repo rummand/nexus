@@ -1390,6 +1390,8 @@ try {
   await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
   await page.waitForSelector("[data-import-counts]", { timeout: 30000 });
   const treeBatch = page.url();
+  // The review opens on the rows that need a decision; a row whose parent resolves needs none.
+  await page.locator('nav[aria-label="Which rows to show"] button', { hasText: "All" }).click();
   const metering = page.locator("[data-import-row]", { hasText: "Metering" }).first();
   await metering.locator(".import-row-head").click();
   await metering.locator("[data-row-parent]").waitFor({ timeout: 10000 });
