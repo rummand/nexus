@@ -81,7 +81,7 @@ a rule compiler, intake and import fall back to rules, and every screen says so.
 
 | Command | What it does |
 |---|---|
-| `pnpm dev` / `pnpm build` / `pnpm start` | Next.js dev server / production build / serve |
+| `pnpm dev` / `pnpm build` / `pnpm start` | Next.js dev server / production build (emits the standalone tree the image ships, §5.80) / serve that tree |
 | `pnpm typecheck` · `pnpm lint` · `pnpm test` | TypeScript, ESLint, Vitest unit tests |
 | `pnpm e2e` | Playwright browser suite — brings **its own server and database** (temporary SQLite file, free port, migrations and seed), so nothing needs to be running |
 | `pnpm docs:capture [name]` | Re-capture the in-product documentation screenshots from the seeded demo; a name narrows it to matching shots |

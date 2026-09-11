@@ -2,6 +2,8 @@
 # A mounted volume (Railway, Fly, plain Docker) arrives owned by root and masks any ownership
 # the image set at build time, so the SQLite file cannot be created by an unprivileged app.
 # Fix the mount point as root at startup, then drop to `node` to run the server.
+#
+# The server is Next's standalone output (§5.80) — plain node, no package manager in the image.
 set -e
 
 DATA_DIR=$(node -e 'const u=process.env.DATABASE_URL||"file:/data/nexus.db";const p=u.startsWith("file:")?u.slice(5):"/data/nexus.db";process.stdout.write(require("path").dirname(p))')
@@ -9,7 +11,7 @@ DATA_DIR=$(node -e 'const u=process.env.DATABASE_URL||"file:/data/nexus.db";cons
 if [ "$(id -u)" = "0" ]; then
   mkdir -p "$DATA_DIR"
   chown -R node:node "$DATA_DIR"
-  exec su node -s /bin/sh -c 'exec pnpm exec next start -p ${PORT:-3000}'
+  exec su node -s /bin/sh -c 'exec node server.js'
 fi
 
-exec pnpm exec next start -p "${PORT:-3000}"
+exec node server.js

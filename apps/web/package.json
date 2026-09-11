@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "rm -rf .next && next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && node scripts/standalone.mjs",
+    "start": "node .next/standalone/apps/web/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

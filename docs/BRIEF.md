@@ -3563,6 +3563,40 @@ tab icon, a rounded blue tile the framework picks up by convention, and `app/app
 the home-screen icon, full bleed because iOS applies its own mask and a rounded tile inside it
 comes out as a badge on a white square.
 
+### 5.80 Deploying a small change quickly (v0.2)
+
+A one-line change took as long to deploy as a rewrite, and the reason was not the build — a cold
+Next build of the whole app is 50 seconds. It was the image.
+
+The runtime stage copied the entire built workspace: `COPY --from=build /app /app`. That is
+**617 MB of `node_modules`** — TypeScript, ESLint, Vitest, Playwright, drizzle-kit, every
+devDependency the repository has — plus a 206 MB `.next` and the sources, about **836 MB** on top
+of the base image. The host pays for that twice on every deploy, once pushing and once pulling,
+and none of it is needed to serve a request.
+
+**The image now carries only what the server runs.** `output: "standalone"` makes Next trace what
+each route actually imports and emit a tree with a minimal `node_modules` and its own
+`server.js`; the runtime stage copies that and nothing else — **96 MB**, and a base image with no
+package manager in it, because `node server.js` needs none. Four things tracing cannot know about
+are added by `scripts/standalone.mjs`, because nothing imports them: `.next/static` and `public`
+(Next assumes a CDN; Nexus serves its own assets and vendors its own fonts, §5.45), the `drizzle`
+and `drizzle-pg` folders (the client runs migrations itself from `process.cwd()` — a missing
+folder is an empty database), and the EA corpus.
+
+The same script takes three things *out*. Standalone copies the project's own files as well as
+the traced modules, and a developer's checkout has a `data/` directory holding the development
+database — 26 MB of somebody's workspace, and a genuine leak if an image were ever built without
+`.dockerignore` in front of it. `outputFileTracingExcludes` does not cover this; it filters the
+traced files, not the project copy. So the pruning is explicit, in the script, where it can be
+read and tested.
+
+**Dependencies and the compiler both get a cache.** Installing is a stage of its own over the
+manifests alone, so a source-only change never re-resolves anything, and both the pnpm store and
+Next's build cache are BuildKit cache mounts — an unchanged lockfile costs nothing and a build
+is incremental rather than cold. On Railway a cache mount only persists when its id is scoped to
+the service (`id=s/<service-id>-pnpm`); the Dockerfile says so at the top, and without it the
+builds are still correct, only colder.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4711,6 +4745,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The Capability map starter draws the whole estate from the graph, and falls back to the fixture only when there is nothing to draw. | A template that invents six capabilities teaches a new user that Nexus does not know their organisation. Drawing all of it is the point — a map that quietly showed the first twenty would be worse than none, because it would look right. |
 | 2026-09-11 | An application appears once on the map, under the first capability it realises, with a note when it realises more. | Two cards carrying one entity id is a question the board's sync cannot answer: which one is the object? One card, and the truth about the rest in words. |
 | 2026-09-11 | A frame may be the face of an object that already exists, and may only rename it. | Every parent capability on a map is a frame; as pure decoration they were missing from the board's index and unclickable. A frame carries no kind, so letting it create an object would mint untyped things — bind, rename, and nothing else. |
+| 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
+| 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
+| 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
 | 2026-09-11 | The mark is an N built out of nodes and edges, not a share glyph. | The old one was the icon every collaboration tool uses for "send this to somebody", so it said the wrong thing before anybody read a word. A monogram that is also a graph says both at once, and costs nothing at 16 pixels. |
 | 2026-09-11 | The repository's filters are a rail on the left, not chips above the table. | Twelve types already overflowed the chip row, and the cross-cutting questions — orphaned, top level, undeclared — have nowhere to go in a row of type chips. A rail has room, it is where people look for a filter, and it is the shape the type inventory already uses. |
 | 2026-09-11 | A facet counts against every other facet's selection and never against its own. | Otherwise choosing a type shows every other type as zero and the filter is a one-way door: you can narrow but never switch. The same rule the type inventory learned, applied to the cross-cutting questions. |
@@ -4739,6 +4776,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 119: deploying a small change stops taking as long as a rewrite.** The build
+  was never the problem — a cold Next build is 50 seconds. The image was: the runtime stage copied
+  the whole built workspace, 836 MB of devDependencies, sources and build output, pushed and
+  pulled on every deploy. It now copies Next's standalone tree and nothing else — 96 MB, on a base
+  image with no package manager — with the static assets, `public`, the migration folders and the
+  EA corpus added by a post-build script, and the development database, the e2e suite and the
+  compiler's bookkeeping pruned out of it. Installing is a stage of its own over the manifests, and
+  the pnpm store and Next's build cache are both BuildKit cache mounts. Verified by running the
+  standalone server against a fresh database: migrations, seed, pages, assets and fonts all serve.
+  Brief §5.80, three decision rows.
 
 - **2026-09-11 — Rev 118: a mark of its own.** The logo was a three-node share glyph — the icon
   every collaboration tool uses for "send this to somebody". It is now an N drawn as a graph: four

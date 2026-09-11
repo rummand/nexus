@@ -1,10 +1,14 @@
 node_modules
 **/node_modules
 **/.next
+**/.next-*
 **/data
 **/*.db
 **/*.db-*
 .git
+.github
 docs
+leanix-export
+apps/web/e2e
 *.md
 !README.md
