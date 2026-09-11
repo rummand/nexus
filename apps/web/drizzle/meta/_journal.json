@@ -232,6 +232,13 @@
       "when": 1789119031391,
       "tag": "0032_bent_karen_page",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1789132181352,
+      "tag": "0033_free_sinister_six",
+      "breakpoints": true
     }
   ]
 }

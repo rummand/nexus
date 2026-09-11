@@ -3621,6 +3621,43 @@ is incremental rather than cold. On Railway a cache mount only persists when its
 the service (`id=s/<service-id>-pnpm`); the Dockerfile says so at the top, and without it the
 builds are still correct, only colder.
 
+### 5.82 Which ref you are standing on (#135, v0.2)
+
+The first slice of #133. Nexus has had change sets since rev 40 — a named, dated set of
+intentions that projects a to-be view without touching the graph — and no way to be *in* one. You
+could look at a plan; every page you opened afterwards quietly showed you as-is again. The owner
+said it plainly: **you must always be able to see which change set you are on, including inside a
+canvas.**
+
+**A checkout, not a toggle.** One row per person per workspace naming the ref they are standing
+on; absent means `main`. Per person rather than per board, because two architects being on two
+different plans at once is the point of having plans — a board that carried the ref would let the
+last person to open it decide for everybody. Absent-means-main is the right default in both
+directions: a new workspace needs no row, and losing the row puts you somewhere safe.
+
+**The indicator sits above the navigation**, not in it, because it is not a place you go — it is
+the state every place you go is read in. On `main` it says what main *means*
+(*the estate as we currently believe it to be*), because that is not obvious and it is the
+sentence #133 §7 says the product has to say out loud. On a change set it turns amber, names the
+set, and says how far it has moved: *1 added · 1 retired · 2 connected*.
+
+**Divergence is counted by object, not by row.** Two attribute edits to one application are one
+changed application; an object that is introduced and then edited is an introduction, not both.
+Counting rows would make a plan that renames one system look bigger than one that retires four.
+The count comes from the changes themselves rather than from a projection — an indicator that has
+to load the whole graph to render is one that gets taken out of the layout the first time
+somebody profiles a page.
+
+**Only an open change set is somewhere you can stand.** Delivered is history and abandoned is a
+decision; standing in either would be editing the past. A checkout pointing at one that has since
+closed resolves to `main` on read rather than leaving somebody working in a world that has gone —
+and the row is left alone, because putting them back is the next thing they do, not a write
+performed during a read.
+
+Switching is deliberately *not* guarded by `graph.edit`: standing somewhere is not changing
+anything, and a viewer entitled to read the estate is entitled to look at a plan from the inside.
+What they may do once they are there is decided where it is always decided — at the write.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4797,6 +4834,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | Which change set you are on is a checkout — a row per person per workspace — not a per-board toggle. | Two architects being on two different plans at once is the point of having plans. A board that carried the ref would let whoever opened it last decide for everybody, and a toggle would forget on the next navigation. |
+| 2026-09-11 | Divergence is counted by object, not by change row. | Two edits to one application are one changed application. Counting rows makes a plan that renames one system look bigger than one that retires four, which is exactly backwards. |
+| 2026-09-11 | A checkout pointing at a closed change set resolves to main on read, and the row is not rewritten. | Delivered is history, abandoned is a decision, and neither is a place to work. Repairing it during a read would be a write on a page load; putting them back is the next thing they do. |
+| 2026-09-11 | Switching ref is not guarded by `graph.edit`. | Standing somewhere is not changing it. A viewer entitled to read the estate is entitled to see a plan from the inside; what they may *do* there is decided at the write, where it always is. |
 | 2026-09-11 | An object is called an object, not a fact sheet. | "Fact sheet" is LeanIX's term; it came in with the import rather than being chosen, and a product that speaks a competitor's language teaches its users a word they will have to unlearn. The product's own copy already said "objects". |
 | 2026-09-11 | The rename stops at the vocabulary: the URL, the identifiers and the search keywords keep the old word. | A URL is a link somebody has already sent, an identifier is a diff nobody reads, and a search keyword is how a LeanIX refugee finds the page. None of the three is vocabulary. |
 | 2026-09-11 | The mark is a flat-cut geometric N — a monogram, not a picture of the graph. | Two marks were tried and both said the wrong thing to the audience that matters: a share glyph says "send this to somebody", and an N of dots and edges is clever about the product and reads as playful. This is shown to steering committees beside a utility's own logo, and restraint is what earns a place there. |
@@ -4827,6 +4868,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 123: which ref you are standing on (#135).** The first slice of #133. Change
+  sets have existed since rev 40 with no way to be *in* one — you could look at a plan, and the
+  next page showed you as-is again. There is now a checkout: one row per person per workspace,
+  absent meaning `main`, and an indicator above the navigation that names the ref on every page.
+  On main it says what main means; on a change set it turns amber and says how far it has moved,
+  counted by object rather than by row. Only open change sets are somewhere you can stand, and a
+  checkout pointing at a closed one resolves to main rather than stranding somebody in a world
+  that has gone. 11 new tests, one migration, brief §5.82, four decision rows.
 
 - **2026-09-11 — Rev 122: the backlog gets a shape.** Forty-six open issues with no structure
   beyond the order they were filed. Every one now sits under exactly one epic and in one lane:

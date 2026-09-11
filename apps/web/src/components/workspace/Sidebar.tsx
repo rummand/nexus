@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BookOpen, Bot, Boxes, Clock3, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plus, Settings, Star, Table2, Users, Waypoints, NotebookText } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
+import type { Checkout } from "@/lib/change/checkout";
 import { NexusMark } from "./NexusMark";
+import { RefIndicator, type RefChoice } from "./RefIndicator";
 import { WorkspaceSwitcher, type WorkspaceChoice } from "./WorkspaceSwitcher";
 import { SidebarLink } from "./SidebarLink";
 import { HELP, LIBRARY, NAV } from "./nav";
@@ -34,7 +36,7 @@ const NAV_ICON: Record<string, React.ReactNode> = {
   knowledge: <BookOpen size={17} />,
 };
 
-export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces = [] }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[]; workspaces?: WorkspaceChoice[] }) {
+export function Sidebar({ workspace, user, teams, spaces, favorites, checkout, refs, workspaces = [] }: { workspace: Workspace; user: User; teams: Team[]; spaces: Space[]; favorites: Board[]; checkout: Checkout; refs: RefChoice[]; workspaces?: WorkspaceChoice[] }) {
   const base = `/w/${workspace.slug}`;
   return (
     <aside className="studio-home-sidebar">
@@ -45,6 +47,12 @@ export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces 
           <WorkspaceSwitcher current={workspace} workspaces={workspaces.length ? workspaces : [{ id: workspace.id, slug: workspace.slug, name: workspace.name, role: "member" }]} />
         </div>
       </div>
+
+      {/*
+        Above the search and the navigation, because it is not a place you go: it is the state
+        every place you go is read in (§5.82).
+      */}
+      <RefIndicator workspaceId={workspace.id} at={checkout.ref} divergence={checkout.divergence} choices={refs} />
 
       <Suspense fallback={null}>
         <SidebarSearch slug={workspace.slug} />

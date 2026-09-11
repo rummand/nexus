@@ -85,6 +85,70 @@ a { color: inherit; text-decoration: none; }
   padding: 18px 12px;
 }
 
+/* ---- which ref you are standing on (§5.82) -------------------------------------------------- */
+
+/* Quiet on main, marked off it. The difference has to be visible from across the room, because
+   the failure this exists to prevent is an afternoon's work on the wrong branch. */
+.ref-indicator { position: relative; }
+.ref-current {
+  align-items: center;
+  background: #f4f7fb;
+  border: 1px solid #e2e9f3;
+  border-radius: 10px;
+  color: #56637a;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+  padding: 7px 10px;
+  text-align: left;
+  width: 100%;
+}
+.ref-current:hover { border-color: #cfdcec; }
+.ref-name { display: block; min-width: 0; }
+.ref-name b { color: #172033; display: block; font-size: 12.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-name em { color: #8b96a9; display: block; font-size: 10.5px; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ref-indicator.off-main .ref-current { background: #fdf6e8; border-color: #f0dcae; color: #8a6216; }
+.ref-indicator.off-main .ref-name b { color: #6b4a08; }
+.ref-indicator.off-main .ref-name em { color: #a3812f; }
+
+.ref-menu {
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 16px 34px rgba(19, 33, 68, .16);
+  display: grid;
+  gap: 2px;
+  left: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+}
+.ref-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #38455a;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+  padding: 7px 8px;
+  text-align: left;
+  width: 100%;
+}
+.ref-menu button:hover { background: #f5f9ff; }
+.ref-menu button.on { background: #eef6ff; color: var(--blue); }
+.ref-menu button span { display: block; flex: 1; min-width: 0; }
+.ref-menu button b { display: block; font-size: 12.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-menu button em { color: #8b96a9; display: block; font-size: 10.5px; font-style: normal; }
+.ref-none { color: #a5b0c2; font-size: 11.5px; line-height: 1.5; margin: 4px 8px 6px; }
+.ref-error { color: #b42318; font-size: 11.5px; margin: 4px 8px 2px; }
+
 .studio-home-brand { align-items: center; display: flex; gap: 10px; min-width: 0; padding: 0 4px; }
 .studio-home-brand > div { min-width: 0; }
 .studio-home-brand strong { display: block; font-size: 14.5px; letter-spacing: -0.01em; }

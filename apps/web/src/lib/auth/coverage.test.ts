@@ -46,6 +46,7 @@ const OPEN: Record<string, string> = {
   // guest — who is entitled to read a board — is entitled to have opened one.
   "actions.ts:toggleFavorite": "your own star on a board you can already read",
   "actions.ts:markBoardOpened": "the recently-opened sort key; a read, recorded",
+  "change/actions.ts:switchRefAction": "which change set *you* are standing on; checks membership itself, and standing somewhere is not writing to it",
 
   // The person, for themselves.
   "auth/people-actions.ts:changeMyPassword": "your own password, with your own current one",

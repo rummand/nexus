@@ -1178,6 +1178,39 @@ export const plateauChangeSets = pgTable(
   (t) => [primaryKey({ columns: [t.plateauId, t.changeSetId] }), index("plateau_change_sets_set_idx").on(t.changeSetId)],
 );
 
+/**
+ * Which change set a person is working on, per workspace (§5.82).
+ *
+ * The product had change sets and no notion of being *on* one: you could look at a plan, but not
+ * work inside it, and nothing on screen said which world the thing in front of you belonged to.
+ * A checkout is the missing half — one row per person per workspace, naming the ref they are
+ * standing on, or absent when they are on `main`.
+ *
+ * Deliberately per person and not per board. Two architects can be on two different plans in the
+ * same workspace at the same time, which is the point of having plans; a board that carried the
+ * ref would make the last person to open it decide for everybody.
+ */
+export const checkouts = pgTable(
+  "checkouts",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The change set being worked on. Deleting it puts the person back on main rather than nowhere. */
+    changeSetId: text("change_set_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.userId] }), index("checkouts_set_idx").on(t.changeSetId)],
+);
+
+export type CheckoutRow = typeof checkouts.$inferSelect;
+
 export type PlateauRow = typeof plateaus.$inferSelect;
 
 // ---- the graph remembers (§5.43) --------------------------------------------

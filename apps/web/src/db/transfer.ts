@@ -61,6 +61,7 @@ export const TRANSFER_ORDER = [
   "change_set_dependencies",
   "plateaus",
   "plateau_change_sets",
+  "checkouts",
   "sources",
   "source_runs",
   "model_providers",

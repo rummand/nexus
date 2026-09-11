@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
+import { currentCheckout, refChoices } from "@/lib/change/checkout";
 import * as s from "@/db/schema";
 
 export async function getWorkspaceBySlug(slug: string) {
@@ -9,7 +10,7 @@ export async function getWorkspaceBySlug(slug: string) {
 
 export async function getWorkspaceShell(workspaceId: string, userId: string) {
   const db = await getDb();
-  const [teams, spaces, favoriteRows] = await Promise.all([
+  const [teams, spaces, favoriteRows, checkout, refs] = await Promise.all([
     db.query.teams.findMany({ where: eq(s.teams.workspaceId, workspaceId), orderBy: s.teams.name }),
     db.query.spaces.findMany({ where: eq(s.spaces.workspaceId, workspaceId), orderBy: s.spaces.name }),
     db
@@ -18,8 +19,12 @@ export async function getWorkspaceShell(workspaceId: string, userId: string) {
       .innerJoin(s.boards, eq(s.boardFavorites.boardId, s.boards.id))
       .where(and(eq(s.boardFavorites.userId, userId), eq(s.boards.workspaceId, workspaceId)))
       .orderBy(desc(s.boardFavorites.createdAt)),
+    // Which ref this person is standing on, and where else they could stand (§5.82). Part of the
+    // shell because it is chrome: it is on every page, so it is loaded once with the rest of it.
+    currentCheckout(db, workspaceId, userId),
+    refChoices(db, workspaceId),
   ]);
-  return { teams, spaces, favorites: favoriteRows.map((r) => r.board) };
+  return { teams, spaces, favorites: favoriteRows.map((r) => r.board), checkout, refs };
 }
 
 export type BoardCard = s.Board & { spaceName: string; spaceEmoji: string; favorite: boolean };

@@ -12,6 +12,7 @@ import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
 import { roadmapDocument } from "./board";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
+import { checkOut } from "./checkout";
 import { project } from "./project";
 import { allBlockers, blocking, wouldCycle } from "./order";
 import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload } from "./types";
@@ -47,6 +48,30 @@ async function denyPlateau(plateauId: string, capability: "graph.edit" | "plan.d
  * error that is either present or not.
  */
 export type ChangeResult = { ok: true } | { error: string };
+
+/**
+ * Move to a ref (§5.82).
+ *
+ * Deliberately not guarded by `graph.edit`: standing somewhere is not changing anything, and a
+ * viewer who cannot write still has every reason to look at a plan from the inside. What they
+ * may *do* once they are there is decided where it is always decided — at the write.
+ *
+ * Every route is revalidated because the ref is chrome: it is on the rail of every page, and a
+ * switch that only repainted the page you happened to be on would be a lie everywhere else.
+ */
+export async function switchRefAction(workspaceId: string, changeSetId: string | null): Promise<ChangeResult> {
+  const user = await currentUser();
+  const db = await getDb();
+  const member = await db.query.workspaceMembers.findFirst({
+    where: and(eq(s.workspaceMembers.workspaceId, workspaceId), eq(s.workspaceMembers.userId, user.id)),
+  });
+  if (!member) return { error: "That workspace is not yours to stand in." };
+
+  const done = await checkOut(db, workspaceId, user.id, changeSetId);
+  if (done.error) return { error: done.error };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
 
 async function slugOf(workspaceId: string) {
   const db = await getDb();

@@ -1142,6 +1142,51 @@ try {
   await page.waitForTimeout(1500);
   assert.match(await page.locator("[data-step] em").first().innerText(), /do not understand/i, "an unreadable line explains itself");
 
+  /*
+   * ---- which ref you are standing on (§5.82) --------------------------------------------------
+   *
+   * The state every page is read in, so it is checked on the rail rather than on one screen:
+   * main says what main means, switching to a plan says how far that plan has moved, and the
+   * ref survives a navigation — which is the whole point of a checkout over a toggle.
+   */
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.waitForSelector("[data-ref-indicator]", { timeout: 30000 });
+  assert.equal(await page.locator("[data-ref-indicator]").getAttribute("data-ref-indicator"), "main",
+    "a new arrival is on main");
+  assert.match(await page.locator("[data-ref-indicator]").innerText(), /as we currently believe it to be/,
+    "and main says what main means, rather than assuming everybody knows");
+
+  await page.click("[data-ref-open]");
+  await page.waitForSelector("[data-ref-menu]");
+  {
+    const choices = await page.locator("[data-ref-choice]").count();
+    assert.ok(choices > 1, "the seeded plans are somewhere you can stand");
+    // A delivered or abandoned change set is history or a decision; neither is a place to work,
+    // so only the open ones plus main are on offer.
+    const open = await page.locator('[data-ref-choice]:not([data-ref-choice="main"])').count();
+    assert.equal(open, 2, "the two open seeded plans are offered, and nothing that is closed");
+  }
+  await page.locator('[data-ref-choice="chg_seed_workorders"]').click();
+  await page.waitForFunction(() => document.querySelector("[data-ref-indicator]")?.getAttribute("data-ref-indicator") !== "main",
+    null, { timeout: 20000 });
+  {
+    const on = await page.locator("[data-ref-indicator]").innerText();
+    assert.match(on, /work orders/i, "the rail now names the change set you are on");
+    assert.match(on, /retired|changed|added|connected/, "and says how far it has moved");
+  }
+
+  // It is a checkout, not a toggle: it is still true on the next page.
+  await page.goto(`${base}/w/acme-energy/repository`, { waitUntil: "load" });
+  await page.waitForSelector("[data-ref-indicator]", { timeout: 30000 });
+  assert.notEqual(await page.locator("[data-ref-indicator]").getAttribute("data-ref-indicator"), "main",
+    "the ref follows you to the next page");
+
+  await page.click("[data-ref-open]");
+  await page.waitForSelector("[data-ref-menu]");
+  await page.locator('[data-ref-choice="main"]').click();
+  await page.waitForFunction(() => document.querySelector("[data-ref-indicator]")?.getAttribute("data-ref-indicator") === "main",
+    null, { timeout: 20000 });
+
   // ---- the roadmap: change sets, impact, and a board seen as-is or to-be --------------------
   await page.goto(`${base}/w/acme-energy/roadmap`, { waitUntil: "load" });
   await page.waitForSelector(".roadmap");
