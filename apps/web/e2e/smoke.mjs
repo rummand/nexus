@@ -653,10 +653,12 @@ try {
   await page.waitForSelector("[data-inventory-empty]");
   await page.fill("[data-inventory-search]", "");
 
-  // Opening an item gives the drawer, where the attributes are editable.
+  // Opening an item leaves the list for the object's own page (§5.77), not a panel beside it.
   await page.locator("[data-open-item]").first().click();
-  await page.waitForSelector("[data-entity-drawer] .entity-drawer-body", { timeout: 15000 });
-  await page.keyboard.press("Escape");
+  await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+  assert.match(page.url(), /\/fs\/ent_/, "a row in the inventory is a link to the object");
+  await page.goBack({ waitUntil: "load" });
+  await page.waitForSelector("[data-inventory]", { timeout: 30000 });
 
   // estate health: one number, the measures behind it, and the number leading to the work
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
@@ -1452,21 +1454,14 @@ try {
   await page.waitForTimeout(400);
   assert.match(await page.locator("[data-repository-count]").innerText(), /of \d+/, "searching narrows it…");
   assert.ok((await page.locator("[data-repository-row]").count()) > 0, "…to the thing you asked for");
-  await page.locator("[data-open-item]").first().click();
-  await page.waitForSelector("[data-drawer-hierarchy]", { timeout: 20000 });
-  assert.match(await page.locator("[data-entity-drawer]").innerText(), /Maximo/i,
-    "a row opens the same drawer the rest of the product opens");
 
   /*
    * ---- one object, one page (§5.77) -----------------------------------------------------------
    *
    * The claim is that a fact sheet is a place, not a panel: it has an address, it is editable
-   * where it stands, and what you type is written without a save button.
+   * where it stands, and what you type is written without a save button. So the row in the
+   * repository is a link, and following it is how the walk gets there.
    */
-  await page.goto(`${base}/w/acme-energy/repository`, { waitUntil: "load" });
-  await page.waitForSelector("[data-repository-table]", { timeout: 45000 });
-  await page.fill("[data-repository-search]", "maximo");
-  await page.waitForTimeout(400);
   await page.locator("[data-open-item]").first().click();
   await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
   assert.match(page.url(), /\/fs\/[a-z]/i, "an object has an address of its own");
@@ -1476,13 +1471,13 @@ try {
   assert.equal(await page.locator('button:has-text("Save")').count(), 0, "there is no save button to look for");
 
   // Type into the description, look away, and it is written.
-  const said = `Read by the walk at ${new Date().toISOString()}`;
-  await page.locator('[data-live-value="Description"] textarea').fill(said);
+  const typed = `Read by the walk at ${new Date().toISOString()}`;
+  await page.locator('[data-live-value="Description"] textarea').fill(typed);
   await page.locator("[data-factsheet] h2").first().click();
   await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 20000 });
   await page.reload({ waitUntil: "load" });
   await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
-  assert.equal(await page.locator('[data-live-value="Description"] textarea').inputValue(), said,
+  assert.equal(await page.locator('[data-live-value="Description"] textarea').inputValue(), typed,
     "what you typed is there after a reload — blur is the save");
   assert.match(await page.locator('[data-fs-section="History"]').innerText(), /description/i,
     "and the edit is in the object's history, with who did it");
