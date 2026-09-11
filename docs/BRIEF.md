@@ -5143,6 +5143,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | Merging a landed import is the same `deliverChangeSet` as any other merge, gate included. | An import is the largest change anybody makes to the model, so it should take the least privileged path in, not a private one. It also means the gate cannot be forgotten on the path that needs it most. |
 | 2026-09-11 | The batch's branch pointer is not a foreign key, and is resolved on read. | A deleted change set should leave the batch saying where its work went, rather than silently forgetting. The read decides what to show; the column only remembers. |
 
+| 2026-09-11 | The Dockerfile's cache-mount ids carry Railway's `s/<service id>` prefix, hardcoded. | Railway refuses the Dockerfile outright without it, and had done so for every deploy for five hours. An id is only a cache namespace, so the prefix costs nothing anywhere else — and a portable-looking Dockerfile that does not deploy is not portable, it is broken. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5157,6 +5159,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 134: the deploy has been broken since rev 119, and this is why.** The
+  BuildKit cache mounts added to speed the build up (§5.80) used bare ids, and Railway's builder
+  rejects a Dockerfile whose cache-mount id has no `s/<service id>` prefix — *before* it builds
+  anything. So every deploy from 12:51 on 11 September failed at "unpacking archive" with an
+  invalid Dockerfile, the site stayed on the 11:26 image, and revs 122 to 133 never reached it.
+  The build was green everywhere else, which is exactly what made it invisible: the gates run the
+  tests, not the deploy. Ids are prefixed now. Decision row added; the lesson is that a build
+  which passes locally says nothing about a platform that parses the Dockerfile with its own
+  rules, and a deploy is not done until the deployment says SUCCESS.
 
 - **2026-09-11 — Rev 133: an import lands on a branch (#137).** The epic's point, on the old
   storage: approving an import can now write a change set of its own instead of the estate. Its

@@ -34,7 +34,11 @@ COPY apps/web/package.json apps/web/package.json
 # The knowledge base is a workspace package the app depends on; without its manifest here the
 # install produces no link for it and the build fails on the import.
 COPY packages/ea-knowledge/package.json packages/ea-knowledge/package.json
-RUN --mount=type=cache,id=nexus-pnpm,target=/pnpm/store \
+# The cache id carries Railway's `s/<service id>` prefix. Their builder rejects the whole
+# Dockerfile without it — "missing the cacheKey prefix from its id" — which is how rev 119 broke
+# every deploy from 12:51 on 11 Sep while building perfectly everywhere else. The prefix is just
+# a cache namespace, so `docker build` elsewhere is unaffected.
+RUN --mount=type=cache,id=s/424031e8-c3f8-4825-a390-f15708ba1e49-pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
 # ---- build --------------------------------------------------------------------------------
@@ -42,7 +46,7 @@ FROM deps AS build
 COPY . .
 # Next's own cache survives between builds here, which is the difference between a cold compile
 # and an incremental one. It lives under .next/ and is not part of what the runtime copies.
-RUN --mount=type=cache,id=nexus-next,target=/app/apps/web/.next/cache \
+RUN --mount=type=cache,id=s/424031e8-c3f8-4825-a390-f15708ba1e49-next,target=/app/apps/web/.next/cache \
     pnpm --filter @nexus/web build
 
 # ---- runtime ------------------------------------------------------------------------------
