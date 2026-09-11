@@ -1,19 +1,18 @@
-# A probe, not a gate.
+# A probe, not a gate. Run it by hand from the Actions tab.
 #
-# Every `gates` run since the workflow was created has failed in about two seconds with no
-# runner assigned and no logs, which means the jobs never started. That rules out the tests and
-# leaves three candidates: Actions is off or out of minutes for the account, the runner label is
-# unavailable, or the repository's actions policy forbids the `uses:` steps that `gates` depends
-# on (checkout, setup-node, upload-artifact).
+# Every `gates` run since 2026-09-06 — 129 of them — failed in about two seconds with
+# `runner_id: 0`, no steps and no logs. This job, which uses no actions at all and does nothing
+# but echo, failed identically. That rules out the tests, the workflow and the repository's
+# actions policy: GitHub is not assigning a runner.
 #
-# This job uses no actions at all. If it runs, the policy is the cause and `gates` can be
-# rewritten without `uses:`. If it fails the same way, the cause is the account and only the
-# owner can clear it.
+# What is left is the account: Actions disabled for the repository or the owner, the spending
+# limit reached, or the included minutes exhausted (a private repository bills minutes; a public
+# one does not). None of it is fixable from a commit.
+#
+# After changing that, press "Run workflow" here. One green run means `gates` will work too.
 name: probe
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 jobs:
