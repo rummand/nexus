@@ -52,7 +52,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites, checkout, r
         Above the search and the navigation, because it is not a place you go: it is the state
         every place you go is read in (§5.82).
       */}
-      <RefIndicator workspaceId={workspace.id} at={checkout.ref} divergence={checkout.divergence} choices={refs} />
+      <RefIndicator workspaceId={workspace.id} slug={workspace.slug} at={checkout.ref} divergence={checkout.divergence} choices={refs} />
 
       <Suspense fallback={null}>
         <SidebarSearch slug={workspace.slug} />

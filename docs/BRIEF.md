@@ -3667,6 +3667,45 @@ as-is meant it, and having the board snap back to the plan would be the chrome a
 person. The ref is read on the server with the board, so the chip is right on the first paint
 rather than flickering from main to a plan when a request returns.
 
+### 5.83 The model's test suite (#136, v0.2)
+
+The second slice of #133, and the one both halves of it depend on: a campaign's definition of
+done (#134) and a merge's admission criteria are the same list, and that list is a **test suite
+over the model**.
+
+Nexus already computed most of it — conformance (§5.66), relation rules (§5.67), the orphan count
+on the health page, the cycle guard in the reparent path — but each answer lived in its own
+screen, in its own shape, with no verdict. A number on a dashboard is something to look at; a
+check that passes or fails, with the rows that failed it, is something to gate on.
+
+**Seven checks, two severities.** Types declared (advisory), required fields filled (blocking),
+values matching their declared type (blocking), relations allowed by the model (blocking),
+containment is a tree (blocking), nothing connected to nothing (advisory), names unique within a
+type (advisory). Blocking and advisory are genuinely different: nobody should be stopped from
+merging because two applications share a name, and a gate that cannot tell the difference is a
+gate that gets switched off.
+
+**The verdict is "not worse", not "clean".** A repository with 52 undeclared types cannot pass a
+clean-slate check, and a gate everybody fails is a gate everybody ignores. So the run is
+comparable: standing on a change set, the page shows what the proposal **adds** against `main`,
+what it **repairs**, and whether anything blocking is among them. That is the question a review
+actually asks, and it is the one a merge can fairly refuse on.
+
+**A check is pure over a snapshot** — no database — so the same code runs against `main`, against
+a change set's projection, or later against a campaign's scope, with no second implementation of
+what conformant means. A change set is checked against the very projection the canvas overlay and
+the roadmap already use.
+
+Two details worth recording. An orphan is an object with no relation **and** no place in the
+hierarchy: a capability with eleven applications inside it and no edges is not adrift, and calling
+it an orphan is how a check becomes something people learn to ignore. And a containment ring is
+reported once, keyed by its smallest member, rather than once per member — a two-object loop is
+one problem.
+
+**It is not in the rail.** The rail is capped at fourteen and its rule is frequency (§5.65);
+checks are consulted when something is about to land, which is exactly when somebody is looking
+at the ref menu — so that is where the way in lives.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4843,6 +4882,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | A merge is gated on what a change *adds*, not on whether the model is clean. | 52 undeclared types means a clean-slate gate is red forever, and a gate everybody fails is a gate everybody turns off. "Does this make it worse" is answerable and fair. |
+| 2026-09-11 | Checks are split into blocking and advisory. | Two applications sharing a name is worth saying and not worth stopping a merge for. A gate that cannot tell an opinion from a defect gets switched off wholesale. |
+| 2026-09-11 | The checks are pure over a snapshot, with the database work in a separate module. | The same code has to run against main, against a change set's projection and later against a campaign's scope. Two implementations of "conformant" is the one thing that must not exist twice. |
+| 2026-09-11 | An object with children but no relations is not an orphan. | Containment is attachment. A capability with eleven applications inside it is not adrift, and a check that says it is teaches people to ignore the check. |
+| 2026-09-11 | Checks get no rail entry; the way in is the ref menu. | The rail is capped at fourteen and ordered by frequency. Checks are read when something is about to land — which is when somebody has the ref menu open. |
 | 2026-09-11 | Which change set you are on is a checkout — a row per person per workspace — not a per-board toggle. | Two architects being on two different plans at once is the point of having plans. A board that carried the ref would let whoever opened it last decide for everybody, and a toggle would forget on the next navigation. |
 | 2026-09-11 | Divergence is counted by object, not by change row. | Two edits to one application are one changed application. Counting rows makes a plan that renames one system look bigger than one that retires four, which is exactly backwards. |
 | 2026-09-11 | A checkout pointing at a closed change set resolves to main on read, and the row is not rewritten. | Delivered is history, abandoned is a decision, and neither is a place to work. Repairing it during a read would be a write on a page load; putting them back is the next thing they do. |
@@ -4878,6 +4922,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 125: the model's test suite (#136).** Conformance, relation rules, orphans
+  and the cycle guard each already existed, in their own screens, in their own shapes, with no
+  verdict. They are now one suite of seven checks with two severities, pure over a snapshot, plus
+  a `/checks` page that runs it against the ref you are standing on. On `main` it lists what is
+  failing; on a change set it is a verdict — what this proposal adds against main, what it
+  repairs, and whether anything blocking is among them, because a clean-slate gate on a real
+  estate is red forever. Every finding is a link to the object that failed it. 15 new tests,
+  brief §5.83, five decision rows.
 
 - **2026-09-11 — Rev 124a: the scrubber stops contradicting the board.** Applying the ref's
   overlay on arrival exposed an old assumption in the time scrubber: it derives its position from

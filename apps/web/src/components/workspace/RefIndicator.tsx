@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, GitBranch, GitCommitHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Check, GitBranch, GitCommitHorizontal, ShieldCheck } from "lucide-react";
 import { switchRefAction } from "@/lib/change/actions";
 import { divergenceWords, refKindWords, refName, type Divergence, type Ref } from "@/lib/change/ref";
 
@@ -31,8 +32,8 @@ export interface RefChoice {
  * reads every `current` on it as a ref access during render.
  */
 export function RefIndicator({
-  workspaceId, at: current, divergence, choices,
-}: { workspaceId: string; at: Ref; divergence: Divergence; choices: RefChoice[] }) {
+  workspaceId, slug, at: current, divergence, choices,
+}: { workspaceId: string; slug: string; at: Ref; divergence: Divergence; choices: RefChoice[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -108,6 +109,15 @@ export function RefIndicator({
             })
           )}
           {error && <p className="ref-error">{error}</p>}
+          {/*
+            The checks live here rather than in the rail (§5.83): they are consulted when
+            something is about to land, which is exactly when somebody is looking at this menu.
+            The rail is capped at fourteen and its rule is frequency (§5.65).
+          */}
+          <Link className="ref-checks" href={`/w/${slug}/checks`} onClick={() => setOpen(false)} data-ref-checks>
+            <ShieldCheck size={13} />
+            <span>{onMain ? "What is failing on main" : "What would this change break?"}</span>
+          </Link>
         </div>
       )}
     </div>

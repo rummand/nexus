@@ -1201,6 +1201,40 @@ try {
   assert.doesNotMatch(await page.locator("[data-scrubber]").innerText(), /the estate as it is/i,
     "the scrubber does not claim as-is while the board is showing a plan");
 
+  /*
+   * ---- the model's test suite (§5.83) ---------------------------------------------------------
+   *
+   * Standing on the plan, the question a merge asks is not whether the model is clean — it is
+   * not, and never will be on a real estate — but whether this proposal makes it worse.
+   */
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.waitForSelector("[data-ref-indicator]", { timeout: 30000 });
+  await page.click("[data-ref-open]");
+  await page.waitForSelector("[data-ref-checks]");
+  await page.click("[data-ref-checks]");
+  await page.waitForSelector("[data-checks]", { timeout: 45000 });
+  {
+    const summary = await page.locator("[data-check-summary]").innerText();
+    assert.match(summary, /against\s+main/i, "on a change set the verdict is against main");
+    assert.ok((await page.locator("[data-check]").count()) >= 6, "every check reports, passing or not");
+    // A finding is a link to the object that failed it; a count nobody can click is a dashboard.
+    const failing = page.locator('[data-check] [data-finding]').first();
+    if (await failing.count()) {
+      assert.ok(await failing.locator("a").getAttribute("href"), "a finding names the object it is about");
+    }
+  }
+
+  // On main the same page answers the other question: what is failing right now.
+  await page.click("[data-ref-open]");
+  await page.waitForSelector("[data-ref-menu]");
+  await page.locator('[data-ref-choice="main"]').click();
+  await page.waitForFunction(() => document.querySelector("[data-ref-indicator]")?.getAttribute("data-ref-indicator") === "main",
+    null, { timeout: 20000 });
+  await page.goto(`${base}/w/acme-energy/checks`, { waitUntil: "load" });
+  await page.waitForSelector("[data-checks]", { timeout: 45000 });
+  assert.match(await page.locator("[data-check-headline]").innerText(), /main/i,
+    "on main the page says what is failing on main");
+
   // Back to main, from a page that has the rail — a board has the chip, not the switcher.
   await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
   await page.waitForSelector("[data-ref-indicator]", { timeout: 30000 });
