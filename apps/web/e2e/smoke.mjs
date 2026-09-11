@@ -1705,7 +1705,9 @@ try {
   await page.waitForSelector('[data-door="paste"]', { timeout: 30000 });
   await page.click('[data-door="paste"]');
   await page.fill("[data-paste-name]", "A branch of its own");
-  await page.fill("[data-paste-text]", "Name\tKind\nKafka Bridge\tIntegration\nEvent Router\tIntegration\n");
+  // Applications, because that is what `countEntities` counts: the claim here is that the estate
+  // does not move until the merge, and a kind the query ignores would make it true for free.
+  await page.fill("[data-paste-text]", "Name\tKind\nKafka Bridge\tApplication\nEvent Router\tApplication\n");
   await page.click("[data-stage-paste]");
   await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
   const landedBatch = page.url();
@@ -1727,8 +1729,12 @@ try {
   const merged = await page.locator("[data-import-result]").innerText();
   assert.match(merged, /Merged|blocking/, "merging either lands or says what the checks refused");
   if (/blocking/.test(merged)) {
+    // The gate refused: it named what it found, and the override is underneath what it named.
     await page.click("[data-deliver-anyway]");
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(
+      () => /Merged/.test(document.querySelector("[data-import-result]")?.textContent ?? ""),
+      null, { timeout: 60000 },
+    );
   }
   assert.equal(await countEntities(), beforeLanding + 2, "merging the branch is what puts the objects in the estate");
 
