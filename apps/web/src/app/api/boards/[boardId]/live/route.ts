@@ -142,6 +142,13 @@ export async function POST(req: Request, { params }: Params) {
     joined.doc(body.parts);
   } else if (body.kind === "presence") {
     joined.presence(body);
+  } else if (body.kind === "gather") {
+    /*
+     * Moving other people's cameras is a thing anybody in the room may do, including a viewer:
+     * it changes nothing about the board, and "everyone look at this" is the one gesture a
+     * person who may only read still needs in a workshop (§5.95).
+     */
+    joined.gather();
   } else {
     return NextResponse.json({ error: "Unknown message" }, { status: 400 });
   }

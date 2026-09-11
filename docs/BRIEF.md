@@ -4093,6 +4093,40 @@ Which makes **progress exact**: a plan is finished when its diff against the est
 Reality arrives through the sources (§5.92), the plan is replayed onto it, and what is left is
 precisely the work still to do — no percentage-complete field that somebody updates by feel.
 
+### 5.95 Who is on this board (#148, v0.2)
+
+The canvas has been properly multi-user since §5.40 — server-authoritative rooms, patches applied
+in bus order, live cursors in world coordinates, a soft claim so two people cannot eat each
+other's characters, follow, locking, comments, and an undo that never reverts a colleague's work.
+What it did not have was a way to know somebody was *there*.
+
+The only evidence of a colleague was their cursor, and only while it was inside your viewport. On
+a landscape the size of a wall, somebody working two screens away was invisible — and *following*
+them was unreachable for exactly the same reason, because following started by clicking a cursor
+you could not see.
+
+So: **a people card**, bottom left, with everybody on the board, what each of them is doing
+(typing, holding a selection, looking around), and two verbs.
+
+**Go to and follow are deliberately different.** *Go to* moves your camera once and leaves it
+with you. *Follow* hands your camera over until you take it back. Conflating them is how somebody
+ends up dragged around a board wondering what they pressed.
+
+**Bring everyone here** is the gesture a presenter actually needs, and it is a one-off event
+rather than presence: it happens and it is over. Making it a state somebody is *in* would be a
+second mechanism for what following already does, and two of those is how "why is my screen
+moving" stops having an answer. It is allowed to anybody in the room including a viewer — it
+changes nothing about the board, and it is the one gesture a person who may only read still needs
+in a workshop.
+
+**Being moved always says who moved you.** A camera that jumps with no explanation is the most
+disorienting thing a shared canvas can do, so the pull is accompanied by a name and a dismissal.
+
+What is still missing, and deliberately: reactions and cursor chat, and character-level merging
+of one text field two people are typing into at once. The soft claim removes the data loss there;
+co-typing one box is rare on an architecture canvas, and two people editing different cards —
+the normal case — has always worked.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5352,6 +5386,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A plan is finished when its diff against the estate is empty, rather than at a percentage. | Percentage-complete is updated by feel and is wrong within a week. A diff is computed, and it shrinks as reality arrives through the sources. |
 | 2026-09-11 | Something already built under the name a plan would introduce is a conflict, not a landing. | It may be the same thing or a different one, and only a person knows which. Treating it as done would silently merge two objects; treating it as outstanding would build a second. |
 
+| 2026-09-11 | "Go to" and "follow" are two verbs, not one. | One moves your camera once and gives it back; the other hands it over until you take it back. A single control doing both is how people end up dragged around a board wondering what they pressed. |
+| 2026-09-11 | "Bring everyone here" is an event, not presence. | It happens and it is over. As presence it would be a second mechanism for what following already does, and two of those makes "why is my screen moving" unanswerable. |
+| 2026-09-11 | Anybody may bring the room somewhere, including a viewer. | It changes nothing about the board, and it is the one gesture a person who may only read still needs in a workshop. |
+| 2026-09-11 | A camera that is moved for you always names who moved it. | Being pulled across a canvas without explanation is the most disorienting thing a shared surface can do. The name and a dismissal cost one line. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5366,6 +5405,19 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 141: who is on this board (#148).** The owner asked whether the canvas has
+  full Miro-style multi-user. Most of it did — rooms, cursors, the soft text claim, follow,
+  locking, comments, undo that never reverts a colleague — and the gap was that you could not see
+  anybody unless their cursor happened to be in your viewport, which also made *follow*
+  unreachable, since following started by clicking a cursor you could not find. A people card now
+  lists everybody with what they are doing, and two deliberately different verbs: go to moves your
+  camera once, follow hands it over until you take it back. "Bring everyone here" is a one-off
+  event rather than presence, allowed to anybody including a viewer, and anybody whose camera is
+  moved is told who moved it. Seven tests. Brief §5.95, four decision rows. Issue #148 also
+  records a correction: its first version claimed concurrent-text-editing data loss and an
+  unrendered presence field, and both were wrong — I had grepped for a function name that does
+  not exist and concluded from one bad grep.
 
 - **2026-09-11 — Rev 140: rebase the plan onto reality (#140).** Replay a change set onto the
   estate as it stands and every change gets a verdict: still to do, already true, or something

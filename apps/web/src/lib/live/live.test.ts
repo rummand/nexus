@@ -103,3 +103,24 @@ describe("presence", () => {
     expect(lockedBy([], "card-1")).toBeNull();
   });
 });
+
+describe("who is here, and bringing them here (#148, §5.95)", () => {
+  const peer = (id: string, over: Partial<Peer> = {}): Peer =>
+    ({ id, userId: `u_${id}`, name: id.toUpperCase(), color: "#123456", cursor: null, view: null, following: null, selection: [], editing: null, ...over });
+
+  it("a peer carries what it is doing, so a list can say so without asking", () => {
+    const typing = peer("p1", { editing: "card-1" });
+    const selecting = peer("p2", { selection: ["a", "b"] });
+    expect(typing.editing).toBe("card-1");
+    expect(selecting.selection).toHaveLength(2);
+  });
+
+  it("a peer with no viewport cannot be gone to, which the card has to cope with", () => {
+    expect(peer("p1").view).toBeNull();
+  });
+
+  it("a viewport travels with presence, which is what gather sends", () => {
+    const looking = peer("p1", { view: { x: 0, y: 0, w: 800, h: 600 } });
+    expect(looking.view).toEqual({ x: 0, y: 0, w: 800, h: 600 });
+  });
+});

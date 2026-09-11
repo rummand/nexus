@@ -75,13 +75,23 @@ export type Down =
   | { kind: "presence"; peers: Peer[] }
   | { kind: "doc"; seq: number; from: string; parts: DocParts }
   /** The board was changed by something that is not a peer (an import approval, a restore). */
-  | { kind: "resync"; seq: number; elements: Record<ElementId, CanvasElement>; parts: DocParts };
+  | { kind: "resync"; seq: number; elements: Record<ElementId, CanvasElement>; parts: DocParts }
+  /**
+   * Somebody is asking the room to look at what they are looking at (#148, §5.95).
+   *
+   * A one-off event rather than presence: it happens and it is over. Presence would make it a
+   * state somebody is permanently *in*, which is what following already is, and having two
+   * mechanisms for the same thing is how "why is my screen moving" becomes unanswerable.
+   */
+  | { kind: "gather"; from: string; name: string; view: Box };
 
 /** Client → server. */
 export type Up =
   | { kind: "patch"; patch: Patch }
   | { kind: "doc"; parts: DocParts }
-  | { kind: "presence"; cursor?: Point | null; view?: Box | null; following?: string | null; selection?: ElementId[]; editing?: ElementId | null };
+  | { kind: "presence"; cursor?: Point | null; view?: Box | null; following?: string | null; selection?: ElementId[]; editing?: ElementId | null }
+  /** "Everyone look at this." Carries the asker's viewport so nobody has to ask for it. */
+  | { kind: "gather" };
 
 /**
  * Apply a patch to an element map, returning a new map (or the same one if nothing changed).

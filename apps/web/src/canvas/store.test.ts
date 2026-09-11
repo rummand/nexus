@@ -198,3 +198,45 @@ describe("following somebody", () => {
     expect(store.getState().following).toBe("p1");
   });
 });
+
+describe("finding people on a big board (#148, §5.95)", () => {
+  const peer = (id: string, view: { x: number; y: number; w: number; h: number } | null) =>
+    ({ id, userId: `u_${id}`, name: id, color: "#123456", cursor: null, view, following: null, selection: [], editing: null });
+
+  it("goes to where somebody is looking, once, without following them", () => {
+    const store = makeStore();
+    store.getState().setViewport(1000, 800);
+    store.getState().setPeers([peer("p1", { x: 5000, y: 4000, w: 800, h: 600 })]);
+    store.getState().follow("p1");
+    store.getState().goTo("p1");
+    // The camera moved, and the follow was dropped: they are different verbs (§5.95).
+    expect(store.getState().following).toBeNull();
+    expect(store.getState().camera.x).not.toBe(0);
+  });
+
+  it("does nothing for somebody whose viewport nobody has seen yet", () => {
+    const store = makeStore();
+    const before = store.getState().camera;
+    store.getState().setPeers([peer("p1", null)]);
+    store.getState().goTo("p1");
+    expect(store.getState().camera).toEqual(before);
+  });
+
+  it("being brought somewhere stops any follow and says who did it", () => {
+    const store = makeStore();
+    store.getState().setViewport(1000, 800);
+    store.getState().setPeers([peer("p1", { x: 0, y: 0, w: 100, h: 100 })]);
+    store.getState().follow("p1");
+    store.getState().gatherTo({ x: 900, y: 900, w: 400, h: 300 }, "Jes");
+    expect(store.getState().following).toBeNull();
+    expect(store.getState().gatheredBy?.name).toBe("Jes");
+  });
+
+  it("the note can be dismissed, because it is a one-off and not a state", () => {
+    const store = makeStore();
+    store.getState().setViewport(1000, 800);
+    store.getState().gatherTo({ x: 0, y: 0, w: 100, h: 100 }, "Jes");
+    store.getState().clearGathered();
+    expect(store.getState().gatheredBy).toBeNull();
+  });
+});

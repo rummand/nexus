@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 // The same initials the sidebar and the topbar already show for a person.
 import { initials } from "@/components/workspace/Sidebar";
+import { askEveryoneHere } from "./hooks/useLive";
 import { boxToScreen, elementBounds, worldToScreen } from "./geometry";
 import { useCanvas, useCanvasStore } from "./store";
 
@@ -136,5 +137,87 @@ export function FollowBar() {
         <button type="button" onClick={() => store.getState().follow(null)}>Stop</button>
       </div>
     </>
+  );
+}
+
+/**
+ * Who is on this board (#148, §5.95).
+ *
+ * Before this, the only evidence a colleague was here was their cursor, and only while it was
+ * inside your viewport — so on a landscape the size of a wall, somebody working two screens away
+ * was invisible, and *following* them was unreachable because following starts by clicking a
+ * cursor you cannot see.
+ *
+ * Two verbs per person, deliberately different. **Go to** moves your camera once and leaves it
+ * with you; **follow** hands it over until you take it back. Conflating them is how people end
+ * up dragged around a board wondering what they pressed.
+ */
+export function PeopleCard() {
+  const store = useCanvasStore();
+  const boardId = useCanvas((s) => s.boardId);
+  const peers = useCanvas((s) => s.peers);
+  const live = useCanvas((s) => s.live);
+  const following = useCanvas((s) => s.following);
+  const myPeerId = useCanvas((s) => s.myPeerId);
+  const gatheredBy = useCanvas((s) => s.gatheredBy);
+  const [open, setOpen] = useState(false);
+
+  // Alone on the board is the normal case, and a panel about nobody is chrome for its own sake.
+  if (!live || peers.length === 0) return gatheredBy ? <GatheredNote /> : null;
+
+  return (
+    <>
+      {gatheredBy && <GatheredNote />}
+      <div className={`people-card${open ? " open" : ""}`} data-people-card>
+        <button type="button" className="people-stack" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-people-toggle>
+          {peers.slice(0, 4).map((peer) => (
+            <i key={peer.id} style={{ background: peer.color }} title={peer.name}>{initials(peer.name)}</i>
+          ))}
+          <span>{peers.length + 1} here</span>
+        </button>
+
+        {open && (
+          <div className="people-list">
+            {peers.map((peer) => (
+              <div key={peer.id} className="people-row" data-person={peer.id}>
+                <i style={{ background: peer.color }}>{initials(peer.name)}</i>
+                <span>
+                  <b>{peer.name}</b>
+                  <em>{peer.editing ? "typing" : peer.selection.length ? `${peer.selection.length} selected` : "looking around"}</em>
+                </span>
+                <button type="button" onClick={() => store.getState().goTo(peer.id)} data-go-to={peer.id} title="Move my view to theirs, once">
+                  Go to
+                </button>
+                <button
+                  type="button"
+                  className={following === peer.id ? "on" : ""}
+                  onClick={() => store.getState().follow(peer.id)}
+                  data-follow={peer.id}
+                  title="Keep my view on theirs until I take it back"
+                >
+                  {following === peer.id ? "Following" : "Follow"}
+                </button>
+              </div>
+            ))}
+            <button type="button" className="people-gather" onClick={() => void askEveryoneHere(boardId, myPeerId)} data-gather>
+              Bring everyone here
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Being moved without explanation is disorienting, so the move always says who did it. */
+function GatheredNote() {
+  const store = useCanvasStore();
+  const gatheredBy = useCanvas((s) => s.gatheredBy);
+  if (!gatheredBy) return null;
+  return (
+    <div className="gathered-note" data-gathered>
+      <b>{gatheredBy.name}</b> brought you here.
+      <button type="button" onClick={() => store.getState().clearGathered()}>OK</button>
+    </div>
   );
 }

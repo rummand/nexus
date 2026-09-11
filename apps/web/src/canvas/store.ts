@@ -58,6 +58,13 @@ export interface CanvasState {
   tool: Tool;
   selection: ElementId[];
   editingId: ElementId | null;
+  /**
+   * Who last pulled this camera across the board, so the canvas can say so (§5.95).
+   *
+   * Being moved without explanation is the single most disorienting thing a shared canvas can
+   * do to somebody, so the move is always accompanied by a name and a way back.
+   */
+  gatheredBy: { name: string; at: number } | null;
   hoverId: ElementId | null;
   /** Transient connector being drawn (screen-independent, world coords). */
   pendingConnector: { from: ElementId; to: Point } | null;
@@ -180,6 +187,12 @@ export interface CanvasState {
   /** Start tracking a peer's viewport, or stop. Passing the peer already followed stops. */
   follow(peerId: string | null): void;
   setMyPeerId(id: string): void;
+  /** Jump to where a peer is looking, once. Not the same as following them (§5.95). */
+  goTo(peerId: string): void;
+  /** Somebody asked the room to look at this. Moves the camera and says who did it (§5.95). */
+  gatherTo(view: Box, name: string): void;
+  /** Dismiss the "X brought you here" note. */
+  clearGathered(): void;
   setFocused(id: ElementId | null): void;
   /**
    * Take somebody else's change, or the server's copy of the board.
@@ -382,6 +395,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       lastShape: "rect",
       cardKind: "Application",
       peers: [],
+      gatheredBy: null,
       live: false,
       following: null,
       myPeerId: "",
@@ -478,6 +492,31 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
           return { following: peerId };
         }),
       setMyPeerId: (id) => set({ myPeerId: id }),
+      /*
+       * Go to where somebody is, once, without following them (#148, §5.95).
+       *
+       * The difference matters: following hands them your camera until you take it back, which
+       * is what you want in a walkthrough and not what you want when you are merely looking for
+       * a colleague on a landscape the size of a wall. This is the second one.
+       */
+      gatherTo: (view, name) =>
+        set((s) => ({
+          // Stop following first: being pulled somewhere and *then* dragged around afterwards is
+          // two surprises where the person asked for one.
+          following: null,
+          camera: cameraToFitInsets(view, s.viewport.w, s.viewport.h, fitInsets(s, 60), MAX_ZOOM),
+          gatheredBy: { name, at: Date.now() },
+        })),
+      clearGathered: () => set({ gatheredBy: null }),
+      goTo: (peerId) =>
+        set((s) => {
+          const them = s.peers.find((p) => p.id === peerId);
+          if (!them?.view) return {};
+          return {
+            following: null,
+            camera: cameraToFitInsets(them.view, s.viewport.w, s.viewport.h, fitInsets(s, 60), MAX_ZOOM),
+          };
+        }),
       applyRemoteDoc: (parts) =>
         set((s) => ({
           ...(parts.viewpoints ? { viewpoints: parts.viewpoints } : {}),

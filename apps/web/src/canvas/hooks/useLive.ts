@@ -34,6 +34,22 @@ const VIEW_MS = 130;
  * throws and the store's `live` stays false, which leaves the pre-multiplayer behaviour running
  * underneath: this tab saves for itself and a losing race is refused with "changed elsewhere".
  */
+/**
+ * "Everyone look at this" (#148, §5.95).
+ *
+ * A plain post rather than something threaded through the hook: it is a one-off event with no
+ * state to keep, and the room already knows which viewport the asker has because presence has
+ * been telling it all along.
+ */
+export async function askEveryoneHere(boardId: string, peerId: string): Promise<void> {
+  if (!boardId || !peerId) return;
+  await fetch(`/api/boards/${boardId}/live`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-nexus-peer": peerId },
+    body: JSON.stringify({ kind: "gather" }),
+  }).catch(() => { /* the stream closing is what triggers recovery, not this */ });
+}
+
 export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
   const store = useCanvasStore();
   const peerId = useRef<string>("");
@@ -98,6 +114,16 @@ export function useLive(rootRef: RefObject<HTMLDivElement | null>) {
 
       if (message.kind === "presence") {
         s.setPeers(message.peers.filter((p) => p.id !== peerId.current));
+        return;
+      }
+
+      if (message.kind === "gather") {
+        /*
+         * Somebody asked the room to look at what they are looking at (§5.95). It moves the
+         * camera once and stops following, because being pulled somewhere and *then* being
+         * dragged around is two surprises where the person asked for one.
+         */
+        s.gatherTo(message.view, message.name);
         return;
       }
 

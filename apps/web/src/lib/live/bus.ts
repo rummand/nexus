@@ -1,5 +1,6 @@
 import { dialect } from "@/db/client";
 import type { CanvasDocument, CanvasElement, ElementId } from "@/canvas/document";
+import type { Box } from "@/canvas/document";
 import type { DocParts, Patch, Peer } from "./protocol";
 
 /**
@@ -31,7 +32,9 @@ export type LiveMessage =
   | { kind: "presence"; boardId: string; process: string; peers: Peer[] }
   | { kind: "gone"; boardId: string; process: string }
   /** The document changed outside the rooms, or a patch was too large to carry: read it again. */
-  | { kind: "reload"; boardId: string };
+  | { kind: "reload"; boardId: string }
+  /** Somebody asked the room to look where they are looking (§5.95). One event, not a state. */
+  | { kind: "gather"; boardId: string; from: string; name: string; view: Box };
 
 export interface Bus {
   publish(message: LiveMessage): void;

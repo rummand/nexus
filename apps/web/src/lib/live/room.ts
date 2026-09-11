@@ -5,6 +5,7 @@ import { parseDocument, type CanvasDocument, type CanvasElement, type ElementId 
 import { saveBoardDocument } from "@/lib/board-save";
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
 import { reconcileBoard } from "@/lib/import/sync";
+import type { Box } from "@/canvas/document";
 import { applyPatch, peerColor, type DocParts, type Down, type Patch, type Peer } from "./protocol";
 import { fits, liveBus, PROCESS_ID, shouldPersist, type LiveMessage } from "./bus";
 
@@ -153,6 +154,19 @@ function peers(room: Room): Peer[] {
   return [...byId.values()];
 }
 
+/**
+ * Hand a gather to everybody in this room except the person who asked for it.
+ *
+ * Skipping the asker matters: their camera is already there, and moving it again would fight
+ * whatever they were doing when they pressed the button.
+ */
+function fanOutGather(room: Room, message: { from: string; name: string; view: Box }) {
+  for (const [id, sub] of room.subscribers) {
+    if (id === message.from) continue;
+    sub.send({ kind: "gather", from: message.from, name: message.name, view: message.view });
+  }
+}
+
 /** Which processes have somebody on this board, for deciding who writes it down. */
 function processesPresent(room: Room): string[] {
   const cutoff = Date.now() - REMOTE_TTL_MS;
@@ -244,6 +258,11 @@ function apply(message: LiveMessage) {
     if (message.peers.length) room.remote.set(message.process, { peers: message.peers, at: Date.now() });
     else room.remote.delete(message.process);
     announcePresence(room);
+    return;
+  }
+
+  if (message.kind === "gather") {
+    fanOutGather(room, message);
     return;
   }
 
@@ -379,6 +398,8 @@ export interface Joined {
   /** Saved viewpoints and the Compose script — the document's non-element parts. */
   doc(parts: DocParts): void;
   presence(update: { cursor?: Peer["cursor"]; view?: Peer["view"]; following?: string | null; selection?: ElementId[]; editing?: ElementId | null }): void;
+  /** Ask everybody else on this board to look where you are looking (§5.95). */
+  gather(): void;
   leave(): void;
 }
 
@@ -432,6 +453,21 @@ export async function join(
       if ("editing" in update) sub.peer.editing = update.editing ?? null;
       announcePresence(room);
       publishPresence(room);
+    },
+    /**
+     * "Everyone look at this" (#148, §5.95).
+     *
+     * Broadcast to the room and across the bus, carrying the asker's own viewport so nobody has
+     * to go and fetch it. Deliberately *not* presence: this happens once and is over. Making it
+     * a state somebody is in would be a second mechanism for what following already does, and
+     * two of those is how "why is my screen moving" stops having an answer.
+     */
+    gather() {
+      const sub = room.subscribers.get(peerId);
+      if (!sub?.peer.view) return;
+      const message: LiveMessage = { kind: "gather", boardId, from: peerId, name: sub.peer.name, view: sub.peer.view };
+      liveBus().publish(message);
+      fanOutGather(room, message);
     },
     leave() {
       room.subscribers.delete(peerId);

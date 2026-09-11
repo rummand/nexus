@@ -12,7 +12,7 @@ import { useKeyboard } from "./hooks/useKeyboard";
 import { useAutosave } from "./hooks/useAutosave";
 import { useLive } from "./hooks/useLive";
 import { useFollow } from "./hooks/useFollow";
-import { FollowBar, PeerLayer } from "./PeerLayer";
+import { FollowBar, PeerLayer, PeopleCard } from "./PeerLayer";
 import { ElementLayer } from "./ElementLayer";
 import { ConnectorLayer } from "./ConnectorLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
@@ -251,6 +251,7 @@ export function Canvas() {
       {!presenting && <AgentScopeOverlay />}
       {!presenting && <CommentBadges />}
       {!presenting && <FollowBar />}
+      {!presenting && <PeopleCard />}
       {!presenting && <ZoomCard />}
       {!presenting && <TimeScrubber />}
       <LensLegend />
