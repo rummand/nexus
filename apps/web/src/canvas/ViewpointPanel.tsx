@@ -7,6 +7,7 @@ import { cardColorForKind, isBoxElement, type CardElement } from "./document";
 import { attributeKeysOnBoard, NO_LENS, relationKindsOnBoard } from "./lens";
 import { dateAttributeKeys } from "./timeline";
 import { useCanvas, useCanvasStore } from "./store";
+import { loadOverlay } from "./overlay";
 import { useGraphActions } from "./hooks/useGraphActions";
 import { isEntityId } from "@/lib/graph-types";
 
@@ -99,12 +100,10 @@ export function ViewpointPanel() {
   const showState = async (value: string) => {
     const s2 = store.getState();
     if (!value) { s2.setChangeOverlay(null); setStatus("Showing the estate as it is"); return; }
-    const [kind, id] = value.split(":");
-    const res = await fetch(kind === "plt" ? `/api/plateaus/${id}/overlay` : `/api/change-sets/${id}/overlay`).catch(() => null);
-    if (!res?.ok) { setStatus("Could not load that change set"); return; }
-    const data = (await res.json()) as { id: string; name: string; targetDate: string; retired: string[]; changed: string[]; added: Array<{ id: string; name: string; kind: string; description: string }>; impact: string };
-    s2.setChangeOverlay({ id: value, name: data.name, targetDate: data.targetDate, retired: new Set(data.retired), changed: new Set(data.changed), added: data.added, impact: data.impact });
-    setStatus(`Showing “${data.name}”`);
+    const built = await loadOverlay(value);
+    if (!built) { setStatus("Could not load that change set"); return; }
+    s2.setChangeOverlay(built);
+    setStatus(`Showing “${built.name}”`);
   };
 
   const onBoardEntityIds = useMemo(

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, CircleDot, Copy, Download, History, Image as ImageIcon, Keyboard, Loader2, LogOut, MessageSquare, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Copy, Download, GitBranch, History, Image as ImageIcon, Keyboard, Loader2, LogOut, MessageSquare, Presentation, Share2, Sparkles, TriangleAlert } from "lucide-react";
 import { documentToSvg } from "./export";
 import { svgToPngBlob } from "./png";
 import { renameBoard } from "@/lib/actions";
@@ -11,6 +11,7 @@ import { initials } from "@/components/workspace/Sidebar";
 import { PeerChips } from "./PeerLayer";
 import { useComments } from "./comments/CommentsContext";
 import { useCanvas, useCanvasStore } from "./store";
+import type { Ref } from "@/lib/change/ref";
 
 export interface StudioTopbarProps {
   boardId: string;
@@ -19,9 +20,14 @@ export interface StudioTopbarProps {
   space: { id: string; name: string; emoji: string };
   workspace: { slug: string; name: string };
   user: { id: string; name: string; color: string };
+  /**
+   * Which change set this person is standing on (§5.82); `main` when they are on none. Named
+   * `at` rather than `ref` because `ref` is reserved on a React component.
+   */
+  at: Ref;
 }
 
-export function StudioTopbar({ boardId, name: initialName, space, workspace, user }: StudioTopbarProps) {
+export function StudioTopbar({ boardId, name: initialName, space, workspace, user, at }: StudioTopbarProps) {
   const store = useCanvasStore();
   const [name, setName] = useState(initialName);
   const [copied, setCopied] = useState(false);
@@ -101,6 +107,21 @@ export function StudioTopbar({ boardId, name: initialName, space, workspace, use
         </div>
       </div>
       <div className="topbar-meta">
+        {/*
+          Which world this board is being read in (§5.82). Quiet on main; amber off it, because
+          the failure this exists to prevent is drawing an afternoon's work into the wrong plan.
+          Clicking opens the viewpoint panel, which is where the view is changed.
+        */}
+        <button
+          type="button"
+          className={`canvas-chip ref-chip${at.kind === "main" ? "" : " off-main"}`}
+          onClick={() => store.getState().togglePanel("inventory", true)}
+          title={at.kind === "main" ? "You are on main — the estate as we currently believe it to be" : `You are on “${at.name}”`}
+          data-board-ref={at.kind === "main" ? "main" : at.id}
+        >
+          <GitBranch size={12} />
+          {at.kind === "main" ? "main" : at.name || "(unnamed change set)"}
+        </button>
         <PeerChips />
         <span className="canvas-chip">{count} objects</span>
         {saveState === "conflict" ? (

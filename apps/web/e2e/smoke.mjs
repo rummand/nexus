@@ -1181,6 +1181,25 @@ try {
   assert.notEqual(await page.locator("[data-ref-indicator]").getAttribute("data-ref-indicator"), "main",
     "the ref follows you to the next page");
 
+  /*
+   * And onto a board, which is the case the owner named: the chrome says which world this is,
+   * and the board is drawn in it rather than showing as-is while the rail says otherwise.
+   */
+  await page.goto(`${base}/b/brd_integrations`, { waitUntil: "load" });
+  await page.waitForSelector("[data-element-id]", { timeout: 60000 });
+  assert.equal(await page.locator("[data-board-ref]").getAttribute("data-board-ref"), "chg_seed_workorders",
+    "the board says which change set you are reading it in");
+  /*
+   * And draws it. Nobody touched the viewpoint panel: the plan retires Maximo, and standing in
+   * the plan is enough for the board to show that.
+   */
+  await page.waitForSelector(".fact-card.change-retired", { timeout: 30000 });
+  assert.ok((await page.locator(".fact-card.change-retired").count()) >= 1,
+    "the plan is drawn on the board without anybody choosing a viewpoint");
+
+  // Back to main, from a page that has the rail — a board has the chip, not the switcher.
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.waitForSelector("[data-ref-indicator]", { timeout: 30000 });
   await page.click("[data-ref-open]");
   await page.waitForSelector("[data-ref-menu]");
   await page.locator('[data-ref-choice="main"]').click();

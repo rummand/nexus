@@ -6,6 +6,7 @@ import { getBoardWithContext } from "@/lib/data";
 import { getDb } from "@/db/client";
 import { hydrateDocument } from "@/lib/graph";
 import { currentUser } from "@/lib/session";
+import { currentCheckout } from "@/lib/change/checkout";
 import { eq } from "drizzle-orm";
 import * as s from "@/db/schema";
 
@@ -22,6 +23,12 @@ export default async function BoardPage({ params }: Props) {
   const [board, user] = await Promise.all([getBoardWithContext(boardId), currentUser()]);
   if (!board) notFound();
   const db = await getDb();
+  /*
+   * A board is opened in the world you are standing in (§5.82). The ref is read here rather than
+   * fetched by the canvas, so the chrome says which world this is on the first paint instead of
+   * flickering from main to a plan once a request comes back.
+   */
+  const checkout = await currentCheckout(db, board.workspaceId, user.id);
   const document = await hydrateDocument(db, parseDocument(board.document));
   /*
    * A staged import board needs to know whether its batch is still open (§5.36). Read here rather
@@ -42,6 +49,7 @@ export default async function BoardPage({ params }: Props) {
         space: { id: board.space.id, name: board.space.name, emoji: board.space.emoji },
         workspace: { slug: board.workspace.slug, name: board.workspace.name },
         user: { id: user.id, name: user.name, color: user.color },
+        at: checkout.ref,
       }}
     />
   );

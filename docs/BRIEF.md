@@ -3658,6 +3658,15 @@ Switching is deliberately *not* guarded by `graph.edit`: standing somewhere is n
 anything, and a viewer entitled to read the estate is entitled to look at a plan from the inside.
 What they may do once they are there is decided where it is always decided — at the write.
 
+**A board opens in the world you are standing in.** The canvas has no rail, so it carries the
+same fact as a chip in the topbar — quiet on main, amber off it — and the board is *drawn*
+through the ref: the change set's overlay is applied on arrival, without anybody choosing a
+viewpoint. The rail saying one thing and the picture another was the failure worth preventing.
+It is applied once, keyed on the ref alone: somebody who then switches the viewpoint panel to
+as-is meant it, and having the board snap back to the plan would be the chrome arguing with the
+person. The ref is read on the server with the board, so the chip is right on the first paint
+rather than flickering from main to a plan when a request returns.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4837,6 +4846,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | Which change set you are on is a checkout — a row per person per workspace — not a per-board toggle. | Two architects being on two different plans at once is the point of having plans. A board that carried the ref would let whoever opened it last decide for everybody, and a toggle would forget on the next navigation. |
 | 2026-09-11 | Divergence is counted by object, not by change row. | Two edits to one application are one changed application. Counting rows makes a plan that renames one system look bigger than one that retires four, which is exactly backwards. |
 | 2026-09-11 | A checkout pointing at a closed change set resolves to main on read, and the row is not rewritten. | Delivered is history, abandoned is a decision, and neither is a place to work. Repairing it during a read would be a write on a page load; putting them back is the next thing they do. |
+| 2026-09-11 | Opening a board while on a change set draws the board through it, once, on arrival. | The rail saying "you are on the SAP plan" while the picture shows as-is is the exact confusion the checkout exists to remove. Applying it once rather than continuously leaves the viewpoint panel in charge afterwards, so a deliberate switch to as-is is not undone by the chrome. |
 | 2026-09-11 | Switching ref is not guarded by `graph.edit`. | Standing somewhere is not changing it. A viewer entitled to read the estate is entitled to see a plan from the inside; what they may *do* there is decided at the write, where it always is. |
 | 2026-09-11 | An object is called an object, not a fact sheet. | "Fact sheet" is LeanIX's term; it came in with the import rather than being chosen, and a product that speaks a competitor's language teaches its users a word they will have to unlearn. The product's own copy already said "objects". |
 | 2026-09-11 | The rename stops at the vocabulary: the URL, the identifiers and the search keywords keep the old word. | A URL is a link somebody has already sent, an identifier is a diff nobody reads, and a search keyword is how a LeanIX refugee finds the page. None of the three is vocabulary. |
@@ -4868,6 +4878,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 124: a board opens in the world you are standing in (#135).** The canvas has
+  no rail, so the ref is a chip in the board's topbar — quiet on main, amber off it — and the
+  board is drawn through the ref: the change set's overlay is applied on arrival, without anybody
+  touching the viewpoint panel. Applied once and keyed on the ref alone, so a deliberate switch
+  back to as-is is not undone. The ref is read on the server with the board, so the chip is right
+  on the first paint. The overlay fetch that the viewpoint panel and the time scrubber each
+  carried a copy of is now one function. Brief §5.82, one decision row.
 
 - **2026-09-11 — Rev 123: which ref you are standing on (#135).** The first slice of #133. Change
   sets have existed since rev 40 with no way to be *in* one — you could look at a plan, and the

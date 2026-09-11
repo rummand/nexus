@@ -5,6 +5,7 @@ import type { CanvasDocument } from "./document";
 import { CanvasStoreContext, createCanvasStore, useStore, type ScrollMode } from "./store";
 import { Canvas } from "./Canvas";
 import { StudioTopbar, type StudioTopbarProps } from "./StudioTopbar";
+import { loadOverlay } from "./overlay";
 import { ImportBar } from "./ImportBar";
 import { markBoardOpened } from "@/lib/actions";
 import { CommentsProvider } from "./comments/CommentsContext";
@@ -42,6 +43,32 @@ export function BoardCanvas({ document, header, boardRevision = 0, importStatus 
       }
     });
   }, [store]);
+
+  /*
+   * A board opens in the world you are standing in (§5.82).
+   *
+   * Standing on a change set and being shown as-is anyway is the bug the checkout exists to fix:
+   * the rail would say one thing and the picture another. So the overlay for the ref is applied
+   * on arrival, once — after that the viewpoint panel owns the view, because somebody who
+   * deliberately switched to as-is meant it and should not have it switched back.
+   */
+  const at = header.at;
+  /*
+   * Keyed on the ref alone, deliberately. It must not re-run when the view changes — somebody who
+   * switched the viewpoint panel to as-is meant it, and having the board snap back to the plan
+   * would be the chrome arguing with the person. An earlier cut guarded with a ref instead and
+   * applied nothing at all: under StrictMode the first mount's cleanup cancelled the fetch and
+   * the second mount saw the guard already set.
+   */
+  const atId = at.kind === "main" ? "" : at.id;
+  useEffect(() => {
+    if (!atId) return;
+    let cancelled = false;
+    void loadOverlay(`chg:${atId}`).then((built) => {
+      if (!cancelled && built) store.getState().setChangeOverlay(built);
+    });
+    return () => { cancelled = true; };
+  }, [atId, store]);
 
   const presenting = useStore(store, (s) => s.presenting);
   const importBatch = useStore(store, (s) => s.importBatch);
