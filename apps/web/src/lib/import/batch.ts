@@ -46,6 +46,11 @@ export interface BatchFile {
   claims?: ProseClaim[];
   /** One sentence about how it was read and what came out. */
   claimsNote?: string;
+  /**
+   * The picture, when the file was one (§5.91). Kept with the batch like the rows and the prose
+   * are, so a re-read never asks somebody to find the slide deck again.
+   */
+  image?: { mediaType: string; data: string; bytes: number };
   note?: string;
 }
 

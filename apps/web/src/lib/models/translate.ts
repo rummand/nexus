@@ -95,8 +95,27 @@ function fromAnthropicMessage(message: { role: "user" | "assistant"; content: un
     // One OpenAI message per result; the caller sends an array and gets an array back.
     return { role: "tool", tool_call_id: String(results[0]!.tool_use_id ?? ""), content: String(results[0]!.content ?? "") };
   }
-  const text = blocks.map((b) => String(b.text ?? "")).join("");
-  return { role: "user", content: text };
+  /*
+   * Text and pictures. A diagram is a source of claims like any other (§5.91), and the two
+   * dialects disagree about how an image rides along: Anthropic takes a base64 block, OpenAI
+   * takes a data URL. Translated rather than dropped — the previous version of this line
+   * stringified an image block into the word "undefined" and sent that.
+   */
+  type Part = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+  const parts: Part[] = blocks.flatMap((b): Part[] => {
+    if (b.type === "text") return [{ type: "text", text: String(b.text ?? "") }];
+    if (b.type === "image") {
+      const source = (b.source ?? {}) as { media_type?: string; data?: string };
+      return [{ type: "image_url", image_url: { url: `data:${source.media_type ?? "image/png"};base64,${source.data ?? ""}` } }];
+    }
+    return [];
+  });
+  // A message of nothing but text stays a plain string: that is what every endpoint accepts,
+  // and the block form is only needed once there is a picture in it.
+  if (parts.every((p) => p.type === "text")) {
+    return { role: "user", content: parts.map((p) => (p.type === "text" ? p.text : "")).join("") };
+  }
+  return { role: "user", content: parts };
 }
 
 /** Every tool result in a message, as separate OpenAI messages. */

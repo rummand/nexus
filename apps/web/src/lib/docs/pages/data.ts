@@ -104,7 +104,7 @@ export const LANDING: DocPage = {
   slug: "import",
   title: "Importing data",
   summary: "Bring in the exports you actually have — of anything, not just applications — decide on a canvas, and take only what you agree with, reversibly.",
-  keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match", "branch", "merge", "leanix", "ea repository", "fact sheet", "api token"],
+  keywords: ["import", "landing zone", "servicenow", "spreadsheet", "excel", "sharepoint", "csv", "batch", "staging", "approve", "rollback", "apm", "portfolio", "provenance", "conflict", "match", "branch", "merge", "image", "picture", "diagram", "drawing", "visio", "screenshot", "leanix", "ea repository", "fact sheet", "api token"],
   blocks: [
     { kind: "prose", text: "What you have is a ServiceNow export, an old spreadsheet, a SharePoint list and a Word document from a governance review. What most tools offer is a CSV template. **Import** takes the files you have — applications, servers, interfaces, capabilities, contracts, whatever the data is about — folds them into one object per thing, matches them against the model you already have, and shows you exactly what would change before anything does." },
     { kind: "note", tone: "why", title: "The canvas is the tool, not the picture", text: "The deciding happens on a board: the batch is laid out in lanes, and **the lane a card is in is the decision**. Drag it into Held and it is held; rename the card and the record is renamed; draw a connector between two cards and the import will make that relation. Four hundred rows in a list is a thing you scroll past — the same four hundred as cards you can sort into piles is a thing two people can settle in an afternoon." },
@@ -119,6 +119,7 @@ export const LANDING: DocPage = {
         "**An EA repository** — a LeanIX host and an API token, and the whole workspace is read into one staged batch: a file per fact sheet type, its fields as attributes, its subscriptions as people, its relations as relations.",
       ],
     },
+    { kind: "note", tone: "tip", text: "A fifth thing goes through the same door: **a picture of an architecture**. Drop a PNG or a JPEG — a slide, a Visio export, a photograph of a whiteboard — and a model reads the boxes and the lines into claims, which are then folded, matched and reviewed exactly like rows from a spreadsheet. The batch page shows the drawing beside what was read out of it, because that is the only way to check it. A diagram needs a model configured for intake; there is no reading a picture with rules." },
     { kind: "note", tone: "tip", text: "All four end in the same place: a staged batch, decided on a canvas, approved by a person. The batch remembers which door it came through, because “somebody pasted this” and “a CMDB answered this” are different kinds of claim." },
 
     { kind: "heading", text: "Reading an EA repository", id: "leanix" },

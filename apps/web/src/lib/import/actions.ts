@@ -19,6 +19,7 @@ import { toBatchFiles } from "@/lib/leanix/batch";
 import { readFile, readPasted } from "./read";
 import { stage, type Decision } from "./stage";
 import { claimsFrom, describeProse } from "./prose";
+import { readDiagram } from "./diagram";
 import { runPipeline } from "@/lib/intake/pipeline";
 import { parsePassages } from "@/lib/intake/transcript";
 import { extractWithModel } from "@/lib/intake/model";
@@ -82,9 +83,16 @@ async function stageBatch(workspaceId: string, files: BatchFile[], origin: Batch
 
 /** What a read file becomes in a batch: rows to map, or prose to read for claims (§5.15). */
 function asBatchFile(read: ReturnType<typeof readFile>): BatchFile {
-  return read.shape === "table"
-    ? { name: read.name, format: read.format, headers: read.headers, rows: read.rows, columns: proposeMapping(read.headers, read.rows), note: read.note }
-    : { name: read.name, format: read.format, headers: [], rows: [], columns: [], text: read.text, note: read.note };
+  if (read.shape === "table") {
+    return { name: read.name, format: read.format, headers: read.headers, rows: read.rows, columns: proposeMapping(read.headers, read.rows), note: read.note };
+  }
+  if (read.shape === "image") {
+    return {
+      name: read.name, format: read.format, headers: [], rows: [], columns: [],
+      image: { mediaType: read.mediaType, data: read.data, bytes: read.bytes }, note: read.note,
+    };
+  }
+  return { name: read.name, format: read.format, headers: [], rows: [], columns: [], text: read.text, note: read.note };
 }
 
 /** Files somebody uploaded. */
@@ -212,13 +220,43 @@ export async function stageFromLeanIx(
   return stageBatch(workspaceId, toBatchFiles(dump), "EA repository", `LeanIX · ${dump.workspace}`);
 }
 
-/** Read every prose file in the batch for claims about the objects the tables name. */
+/**
+ * Read everything in the batch that is not a table: prose for claims (§5.38), and pictures for
+ * the architecture drawn in them (§5.91).
+ *
+ * Both are the same step at the same moment, done once and stored on the file, because reading
+ * is the one part of this pipeline that can cost money and a re-map must never re-read.
+ */
 async function readProse(db: Db, workspaceId: string, files: BatchFile[]): Promise<void> {
   const prose = files.filter((f) => f.text?.trim() && !f.claims);
-  if (!prose.length) return;
+  const pictures = files.filter((f) => f.image?.data && !f.claims);
+  if (!prose.length && !pictures.length) return;
 
   const vocab = await vocabulary(workspaceId);
   const choice = await choose(db, workspaceId, "intake");
+
+  /*
+   * A picture needs a model, with no rules fallback — there is no reading a PNG with a regular
+   * expression, and pretending otherwise would be an empty batch with no explanation. Saying so
+   * on the file is the honest failure: the diagram stays with the batch and can be read the
+   * moment a model is configured.
+   */
+  for (const file of pictures) {
+    if (!choice) {
+      file.claims = [];
+      file.claimsNote = "A diagram can only be read by a model, and none is configured for intake. Set one up in Settings → Models and re-read this batch.";
+      continue;
+    }
+    try {
+      const read = await readDiagram({ name: file.name, mediaType: file.image!.mediaType, data: file.image!.data }, vocab.kinds ?? [], choice);
+      file.claims = read.claims;
+      file.claimsNote = read.note;
+    } catch (error) {
+      file.claims = [];
+      file.claimsNote = `The picture could not be read: ${error instanceof Error ? error.message : "unknown error"}. It is kept with the batch.`;
+    }
+  }
+  if (!prose.length) return;
   for (const file of prose) {
     const text = file.text ?? "";
     let read;

@@ -108,6 +108,12 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
         kindWhy: file.kindWhy ?? "",
         kindFromRows: Boolean(file.kindFromRows),
         claimsNote: file.claimsNote ?? null,
+        /*
+         * The picture itself, inline. A diagram's claims are only reviewable beside the drawing
+         * they came from — "SAP PM sends data to the Data Lake" is a sentence you either
+         * recognise in the slide or you do not (§5.91).
+         */
+        image: file.image ? `data:${file.image.mediaType};base64,${file.image.data}` : null,
         columns: file.columns.map((c) => ({ header: c.header, role: c.role, label: describeRole(c.role), why: c.why, sample: c.sample })),
       }))}
       rows={views}

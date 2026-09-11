@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, GitBranch, Info, Scale,
+  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, GitBranch, Image as ImageIcon, Info, Scale,
   LayoutGrid, Pause, RefreshCw, Undo2, UserRound, X,
 } from "lucide-react";
 import type { Role } from "@/lib/import/map";
@@ -58,6 +58,8 @@ export interface FileView {
   kind: string;
   /** For a prose file: how it was read, and what came out of it (§5.38). */
   claimsNote: string | null;
+  /** For a picture: the thing itself, so a claim can be checked against what it was read from. */
+  image: string | null;
   kindWhy: string;
   kindFromRows: boolean;
   columns: Array<{ header: string; role: Role; label: string; why: string; sample: string[] }>;
@@ -361,12 +363,12 @@ export function BatchReview({ slug, workspaceId, batch, files, rows, counts, mis
         {files.map((file) => (
           <article key={file.name} className="import-file">
             <header>
-              {file.text ? <FileText size={14} /> : <FileSpreadsheet size={14} />}
+              {file.image ? <ImageIcon size={14} /> : file.text ? <FileText size={14} /> : <FileSpreadsheet size={14} />}
               <strong>{file.name}</strong>
               <i>{file.format}{file.rows ? ` · ${file.rows.toLocaleString()} rows` : ""}</i>
             </header>
             {file.note && <p className="import-file-note"><Info size={12} /> {file.note}</p>}
-            {file.text === null && (
+            {file.text === null && file.image === null && (
               <div className={`import-file-kind ${file.kind || file.kindFromRows ? "" : "unanswered"}`} data-file-kind={file.name}>
                 <span>What are these rows?</span>
                 {file.kindFromRows ? (
@@ -386,7 +388,18 @@ export function BatchReview({ slug, workspaceId, batch, files, rows, counts, mis
                 )}
               </div>
             )}
-            {file.text !== null ? (
+            {/*
+              The picture, beside what was read from it. A claim out of a diagram is only
+              reviewable against the drawing it came from: "SAP PM sends data to the Data Lake"
+              is a sentence you either recognise in the slide or you do not (§5.91).
+            */}
+            {file.image !== null ? (
+              <div className="import-file-picture" data-file-picture={file.name}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a data URI of the batch's own bytes, not a remote asset */}
+                <img src={file.image} alt={`The diagram in ${file.name}, as it was read`} />
+                <p>{file.claimsNote ?? "A picture. It is kept with the batch."}</p>
+              </div>
+            ) : file.text !== null ? (
               <p className="import-file-prose">
                 {file.claimsNote ?? "Prose, not a table. It is kept with the batch."}
                 <span>{file.text}…</span>

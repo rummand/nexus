@@ -1462,6 +1462,11 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .import-batch-head { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; }
 .import-batch-head strong { font-size: 13.5px; }
 .import-batch-head > span { color: #a5b0c2; font-size: 11px; margin-left: auto; }
+/* A diagram beside what was read out of it (§5.91). */
+.import-file-picture { display: grid; gap: 8px; }
+.import-file-picture img { background: #fff; border: 1px solid var(--line); border-radius: 10px; display: block; max-height: 320px; max-width: 100%; object-fit: contain; width: 100%; }
+.import-file-picture p { color: #65738a; font-size: 12px; margin: 0; }
+
 .import-status { border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 800; letter-spacing: 0.04em; padding: 2px 8px; text-transform: uppercase; }
 .import-status.staged { background: #eaf1fb; color: #1d5fa4; }
 .import-status.approved { background: #e7f5e8; color: #2f7d32; }

@@ -13,9 +13,18 @@ import { entry, unzip } from "./unzip";
 
 export type ReadFile =
   | { shape: "table"; name: string; format: Format; headers: string[]; rows: string[][]; sheets?: string[]; note?: string }
-  | { shape: "text"; name: string; format: Format; text: string; note?: string };
+  | { shape: "text"; name: string; format: Format; text: string; note?: string }
+  /**
+   * A picture of an architecture (§5.91).
+   *
+   * The fifth thing an architect actually has, and the one every import feature in the category
+   * refuses: a diagram. It is kept as bytes because only a model can read it, and the bytes are
+   * what the model is shown — the same discipline as prose, where the source text is kept so a
+   * claim can always be traced back to what it was read from.
+   */
+  | { shape: "image"; name: string; format: Format; mediaType: string; data: string; bytes: number; note?: string };
 
-export type Format = "csv" | "tsv" | "json" | "xlsx" | "docx" | "markdown" | "text";
+export type Format = "csv" | "tsv" | "json" | "xlsx" | "docx" | "markdown" | "text" | "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg";
 
 const MAX_ROWS = 20_000;
 const MAX_TEXT = 2_000_000;
@@ -28,7 +37,17 @@ export function formatOf(name: string, buffer: Buffer): Format {
   if (ext === "xlsx" || ext === "xlsm") return "xlsx";
   if (ext === "docx") return "docx";
   if (ext === "md" || ext === "markdown") return "markdown";
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp" || ext === "gif" || ext === "svg") return ext as Format;
   if (ext === "txt" || ext === "text") return "text";
+  /*
+   * Magic numbers before anything else, because a diagram somebody exported is as likely to be
+   * called "Screenshot 2026-09-11" with no extension at all as it is to be called anything
+   * sensible, and reading a PNG as text produces a wall of mojibake rather than a diagram.
+   */
+  if (buffer.length > 8 && buffer.readUInt32BE(0) === 0x89504e47) return "png";
+  if (buffer.length > 3 && buffer.readUInt16BE(0) === 0xffd8) return "jpeg";
+  if (buffer.length > 12 && buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") return "webp";
+  if (buffer.length > 6 && buffer.subarray(0, 3).toString("ascii") === "GIF") return "gif";
   // No extension worth trusting: look at the bytes. A zip could be either Office format.
   if (buffer.length > 4 && buffer.readUInt32LE(0) === 0x04034b50) {
     const names = unzip(buffer).map((e) => e.name);
@@ -51,6 +70,19 @@ export function readFile(name: string, buffer: Buffer): ReadFile {
     case "json": return { shape: "table", name, format, ...fromJson(decode(buffer)) };
     case "xlsx": return { shape: "table", name, format, ...fromXlsx(buffer) };
     case "docx": return { shape: "text", name, format, text: fromDocx(buffer).slice(0, MAX_TEXT) };
+    case "png": case "jpg": case "jpeg": case "webp": case "gif":
+      return {
+        shape: "image", name, format,
+        mediaType: `image/${format === "jpg" ? "jpeg" : format}`,
+        data: buffer.toString("base64"),
+        bytes: buffer.length,
+      };
+    /*
+     * An SVG is markup, not a raster, and no vision model takes one. Rasterising it would mean a
+     * browser in the import path — so it is read as the text it is, which for an exported Visio
+     * or draw.io diagram still carries every label, and intake reads labels perfectly well.
+     */
+    case "svg": return { shape: "text", name, format, text: decode(buffer).slice(0, MAX_TEXT), note: "Read as markup: the labels in an SVG are text." };
     default: return { shape: "text", name, format, text: decode(buffer).slice(0, MAX_TEXT) };
   }
 }

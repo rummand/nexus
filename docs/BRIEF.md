@@ -3964,6 +3964,42 @@ source overwrites has its seal broken *then*, by deleting the campaign row so th
 to the queue exactly as if nobody had looked at it — which is the truth, and the difference
 between a seal that means something and a badge.
 
+### 5.91 A picture of an architecture is a source (v0.2)
+
+The fifth thing an architect actually has, after the ServiceNow export, the old spreadsheet, the
+Word documents and the SharePoint dump: **a diagram**. Usually the only record of a solution
+architecture, usually in a slide deck, and usually the thing somebody is looking at while they
+tell you the model is wrong. Every import feature in the category refuses it.
+
+A diagram is a source of claims like any other, so it joins the pipeline exactly where prose
+joins it (§5.38) and **everything downstream is unchanged** — folded together with the tables,
+matched against the graph, reviewed row by row, laid out on a board, routed by the two rules
+(§5.90). One new step at the front, and no second pipeline to keep in step with the first.
+
+**Nothing the model says is taken on trust**, which is the same discipline intake already has.
+Three validations, each one a way a vision model actually goes wrong on an architecture slide:
+a box with no readable label is not an object (they will happily name an arrowhead); a line may
+only join two boxes the model itself listed, because an edge into thin air is a hallucinated end
+and half a relation is worse than none; and everything is bounded, because a busy slide has
+forty boxes and four hundred means it has misread a table or a legend. What survives is reported
+— *"Read 23 objects and 31 connections. 2 shapes had no readable label and were left out."*
+
+A box drawn inside another box is **containment**, not a connection: a swimlane is a capability
+map's tree, and reading it as an edge would put the same fact in two places (§5.70).
+
+**The claim carries what it was read from.** Each relation quotes the line it came from, and the
+batch page shows the picture beside the claims, because a claim out of a diagram is only
+reviewable against the drawing — "SAP PM sends data to the Data Lake" is a sentence you either
+recognise in the slide or you do not.
+
+Two honest limits. A diagram needs a model configured for intake and there is no rules fallback,
+because there is no reading a PNG with a regular expression; the file says so and stays with the
+batch until one exists. And an SVG is read as the markup it is rather than rasterised — no
+vision model takes one, and an exported Visio or draw.io file still carries every label as text.
+
+Under §5.90 a picture has no standing at all, so everything it claims waits on a branch. That is
+the right answer for a drawing somebody made in a meeting.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5201,6 +5237,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A retype and a move are withheld from a source even when it owns every field. | What something *is*, and where it sits, are modelling decisions rather than values. The exception is a source that *is* the tree — a capability map from an EA repository — which is given the hierarchy explicitly. |
 | 2026-09-11 | A source with no declared standing owns nothing. | The safe default. A pasted block has no authority until a person gives it some, and a default of "trusted" is one nobody would ever go back and tighten. |
 
+| 2026-09-11 | A diagram enters the pipeline where prose does, rather than getting an import path of its own. | Everything after the reading step is identical — folding, matching, review, the board, the routing rules. A second pipeline would be a second review screen to keep in step with the first, which is the mistake the LeanIX import deliberately avoided. |
+| 2026-09-11 | A line is kept only when both ends are boxes the model itself named. | An edge into thin air is a hallucinated end. Half a relation is worse than no relation: it points at an object that will then be created to receive it. |
+| 2026-09-11 | A box drawn inside a box is containment, not a connection. | A swimlane is the tree. Writing it as an edge would put the same fact in two places, which is the thing the hierarchy column exists to avoid (§5.70). |
+| 2026-09-11 | A picture with no model configured fails loudly and is kept, rather than falling back to rules. | There is no reading a PNG with a regular expression. An empty batch with no explanation is the worst outcome; the file saying why, and still being there when a model is configured, is the best. |
+| 2026-09-11 | SVG is read as markup rather than rasterised. | No vision model takes an SVG, and rasterising would put a browser in the import path. An exported Visio or draw.io file carries every label as text, which intake reads perfectly well. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5215,6 +5257,18 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 137: import a picture of an architecture.** The owner asked to be able to
+  import images and have the architecture in them read. A diagram is now a third shape of file,
+  beside a table and a document, and it joins the pipeline where prose does — so everything after
+  the reading step is unchanged. A forced tool call reads the boxes and the lines; nothing it says
+  is trusted, with a label-less shape dropped, a line kept only when both ends are boxes the model
+  itself named, and the whole thing bounded at a slide's worth. A box inside a box is containment.
+  The batch page shows the picture beside what was read from it, because that is the only way a
+  claim out of a diagram is reviewable. Images are detected by magic number as well as by name,
+  since an exported diagram is as likely to be called "Screenshot 2026-09-11" as anything. The
+  model layer learned to carry an image block into OpenAI's dialect, which it previously
+  stringified into the word "undefined". 21 tests. Brief §5.91, five decision rows.
 
 - **2026-09-11 — Rev 136: the rules become the button (#139).** The trust from rev 135 is durable
   now — a `source_trust` row per source per workspace, written with a conservative default the

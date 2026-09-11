@@ -313,13 +313,13 @@ export function ImportZone({ slug, workspaceId, batches, servers }: {
         <label>
           <Upload size={20} />
           <strong>Choose the files</strong>
-          <span>CSV, TSV, JSON, Excel, Word, Markdown or plain text · up to 12 files, 12MB each</span>
+          <span>Tables, documents, or a picture of an architecture · CSV, Excel, Word, Markdown, PNG, JPEG · up to 12 files, 12MB each</span>
           <input
             type="file"
             name="files"
             multiple
             data-import-files
-            accept=".csv,.tsv,.tab,.json,.xlsx,.xlsm,.docx,.md,.markdown,.txt,text/*"
+            accept=".csv,.tsv,.tab,.json,.xlsx,.xlsm,.docx,.md,.markdown,.txt,text/*,.png,.jpg,.jpeg,.webp,.gif,.svg,image/*"
             onChange={(e) => setChosen([...(e.target.files ?? [])].map((f) => f.name))}
           />
         </label>

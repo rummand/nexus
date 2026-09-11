@@ -234,3 +234,37 @@ describe("what somebody pasted", () => {
     expect(empty.shape === "text" && empty.text).toBe("");
   });
 });
+
+describe("a picture of an architecture (§5.91)", () => {
+  /** A one-pixel PNG: enough to be a real PNG, small enough to write down. */
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
+  it("keeps the bytes, because only a model can read them", () => {
+    const read = readFile("landscape.png", PNG);
+    expect(read.shape).toBe("image");
+    if (read.shape !== "image") return;
+    expect(read.mediaType).toBe("image/png");
+    expect(Buffer.from(read.data, "base64")).toEqual(PNG);
+    expect(read.bytes).toBe(PNG.length);
+  });
+
+  it("knows a picture by its bytes when the name says nothing", () => {
+    const read = readFile("Screenshot 2026-09-11", PNG);
+    expect(read.shape).toBe("image");
+  });
+
+  it("calls a jpg image/jpeg, because that is the media type", () => {
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(20)]);
+    const read = readFile("diagram.jpg", jpeg);
+    if (read.shape !== "image") throw new Error("expected an image");
+    expect(read.mediaType).toBe("image/jpeg");
+  });
+
+  it("reads an SVG as the markup it is, since no model takes one", () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><text>SAP PM</text></svg>');
+    const read = readFile("drawing.svg", svg);
+    expect(read.shape).toBe("text");
+    if (read.shape !== "text") return;
+    expect(read.text).toContain("SAP PM");
+  });
+});

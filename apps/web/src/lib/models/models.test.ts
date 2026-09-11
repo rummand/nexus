@@ -198,3 +198,32 @@ describe("which model answers this job", () => {
     expect(fromEnvironment()).toMatchObject({ baseUrl: "http://127.0.0.1:4599", from: "environment" });
   });
 });
+
+describe("a picture, in both dialects (§5.91)", () => {
+  const message = {
+    role: "user" as const,
+    content: [
+      { type: "image", source: { type: "base64", media_type: "image/png", data: "AAAA" } },
+      { type: "text", text: "What is drawn here?" },
+    ],
+  };
+
+  it("Anthropic takes the blocks as they are", () => {
+    const body = toWire("anthropic", "claude", { messages: [message] });
+    expect((body.messages as unknown[])[0]).toEqual(message);
+  });
+
+  it("OpenAI takes a data URL, rather than the word undefined", () => {
+    const body = toWire("openai", "gpt", { messages: [message] });
+    const sent = (body.messages as Array<{ role: string; content: unknown }>)[0]!;
+    expect(sent.content).toEqual([
+      { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
+      { type: "text", text: "What is drawn here?" },
+    ]);
+  });
+
+  it("a message of nothing but text stays a plain string", () => {
+    const body = toWire("openai", "gpt", { messages: [{ role: "user", content: [{ type: "text", text: "hello" }] }] });
+    expect((body.messages as Array<{ content: unknown }>)[0]!.content).toBe("hello");
+  });
+});
