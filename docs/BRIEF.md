@@ -3546,16 +3546,22 @@ the model rather than a quirk of one object.
 
 ### 5.79 A mark of its own (v0.2)
 
-The product's mark was three nodes and two lines — a share glyph, which is what every
-collaboration tool puts on its "send this to somebody" menu item. A reader has already learned
-what that shape means, and it is not this.
+The mark has been three things. It started as three nodes and two lines — a share glyph, the icon
+every collaboration tool puts on its "send this to somebody" menu item, which says the wrong
+thing before anybody reads a word. It became an N built out of dots and edges, which was literal
+about the graph and read as *playful*, and the owner said so: this product is shown to steering
+committees.
 
-The mark is now **an N drawn as a graph**: four nodes at the corners, three edges between them —
-the left stem, the diagonal, the right stem. Read as a letter it is the product's initial; read
-as a picture it is what the product *is*, which is the only thing a mark for this product should
-be. Nothing in it is smaller than two pixels of stroke on a 24 grid, the nodes are solid rather
-than ringed and the edges run centre to centre with the nodes painted over them, so it survives
-the size where a mark is actually seen: a 16-pixel favicon.
+It is now a **flat-cut geometric N**: two stems and a diagonal, square apexes, even counters,
+drawn on a 24 grid with 4.4-wide stems inset 4 from every edge. A monogram and nothing else — the
+mark of a system of record rather than of a drawing tool. The restraint is the point; it has to
+sit on a slide next to a utility's own logo without looking like a startup's app icon.
+
+Chosen against four alternatives rather than picked: a layer cake with a spine (read as a list
+icon), an N of nine grid cells (fussy below 32px), a building block frame (read as a camera
+focus ring), and the dot-and-edge N it replaces. Each was drawn at 16, 20, 24, 32, 48 and 96, on
+the tile, on white and reversed, before the choice was made — because a mark is seen at sixteen
+pixels far more often than at ninety-six.
 
 It is used in three places from one component (`NexusMark`) — the sidebar, sign in, log in — and
 twice more as a file, because a browser will not read a React component: `app/icon.svg` is the
@@ -4748,7 +4754,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
-| 2026-09-11 | The mark is an N built out of nodes and edges, not a share glyph. | The old one was the icon every collaboration tool uses for "send this to somebody", so it said the wrong thing before anybody read a word. A monogram that is also a graph says both at once, and costs nothing at 16 pixels. |
+| 2026-09-11 | The mark is a flat-cut geometric N — a monogram, not a picture of the graph. | Two marks were tried and both said the wrong thing to the audience that matters: a share glyph says "send this to somebody", and an N of dots and edges is clever about the product and reads as playful. This is shown to steering committees beside a utility's own logo, and restraint is what earns a place there. |
 | 2026-09-11 | The repository's filters are a rail on the left, not chips above the table. | Twelve types already overflowed the chip row, and the cross-cutting questions — orphaned, top level, undeclared — have nowhere to go in a row of type chips. A rail has room, it is where people look for a filter, and it is the shape the type inventory already uses. |
 | 2026-09-11 | A facet counts against every other facet's selection and never against its own. | Otherwise choosing a type shows every other type as zero and the filter is a one-way door: you can narrow but never switch. The same rule the type inventory learned, applied to the cross-cutting questions. |
 | 2026-09-11 | A filter that would empty the list is shown disabled rather than hidden. | Zero is an answer — *nothing here is undeclared* is worth knowing — and a rail whose rows appear and disappear cannot be learned or clicked from memory. |
@@ -4776,6 +4782,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 120: the mark, again.** Rev 118 replaced a share glyph with an N built out
+  of nodes and edges; the owner's verdict was that it reads as playful, and this product is put
+  in front of steering committees. It is now a flat-cut geometric N — two stems, a diagonal,
+  square apexes, even counters — chosen against four alternatives (a layer cake, a nine-cell grid
+  N, a building-block frame, and the dot-and-edge N) each drawn at six sizes, on the tile, on
+  white and reversed. The tab icon and the home-screen icon were redrawn from the same geometry.
+  Brief §5.79, one decision row rewritten.
 
 - **2026-09-11 — Rev 119: deploying a small change stops taking as long as a rewrite.** The build
   was never the problem — a cold Next build is 50 seconds. The image was: the runtime stage copied
