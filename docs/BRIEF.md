@@ -4923,6 +4923,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 ## 9. Changelog
 
 
+- **2026-09-11 — Rev 125a: the checks page reads in the order the reader needs.** Definition
+  order put a 39-finding advisory check above the two blocking findings the verdict was actually
+  about, and every finding was printed — several hundred of them on a real estate. Checks are now
+  ordered blocking-failing, advisory-failing, passing, with the ones carrying new findings first,
+  and each shows eight rows and a count.
+
 - **2026-09-11 — Rev 125: the model's test suite (#136).** Conformance, relation rules, orphans
   and the cycle guard each already existed, in their own screens, in their own shapes, with no
   verdict. They are now one suite of seven checks with two severities, pure over a snapshot, plus

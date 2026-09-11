@@ -14,8 +14,16 @@ import { refName } from "@/lib/change/ref";
  * the rows behind each, not a dashboard: every failure is a link to the object that failed it.
  */
 
+/**
+ * Eight rows, not all of them.
+ *
+ * The undeclared-types check has 39 findings on the seeded workspace and would have several
+ * hundred on Energinet's. Printing them all buries the two findings the merge actually turns on
+ * under a wall of the same sentence — so the new ones come first (the caller orders them) and
+ * the rest is a count.
+ */
 function FindingRows({ slug, findings }: { slug: string; findings: Finding[] }) {
-  const shown = findings.slice(0, 25);
+  const shown = findings.slice(0, 8);
   return (
     <>
       <ul className="check-findings">
@@ -62,6 +70,16 @@ export function Checks({ slug, at, result }: { slug: string; at: Ref; result: Re
   const v = verdict(added);
   const addedKeys = new Set(added.map((f) => `${f.checkId}::${f.subjectId}::${f.detail}`));
 
+  /*
+   * Read in the order the reader needs: what would stop a merge, then what is worth knowing,
+   * then what is fine. Definition order put a 39-finding advisory check above the two blocking
+   * findings the verdict was about.
+   */
+  const rank = (c: CheckResult) => (c.passed ? 2 : c.severity === "blocking" ? 0 : 1);
+  const ordered = [...head.checks].sort((a, b) => rank(a) - rank(b)
+    || Number(addedKeys.size > 0 && b.findings.some((f) => addedKeys.has(`${f.checkId}::${f.subjectId}::${f.detail}`)))
+     - Number(addedKeys.size > 0 && a.findings.some((f) => addedKeys.has(`${f.checkId}::${f.subjectId}::${f.detail}`))));
+
   return (
     <div className="studio-home-main checks" data-checks>
       <div className="studio-home-topbar">
@@ -100,7 +118,7 @@ export function Checks({ slug, at, result }: { slug: string; at: Ref; result: Re
       </section>
 
       <div className="check-list">
-        {head.checks.map((check) => <CheckCard key={check.id} slug={slug} check={check} added={addedKeys} />)}
+        {ordered.map((check) => <CheckCard key={check.id} slug={slug} check={check} added={addedKeys} />)}
       </div>
     </div>
   );
