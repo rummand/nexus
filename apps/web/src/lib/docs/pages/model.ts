@@ -96,6 +96,44 @@ export const INVENTORY: DocPage = {
   ],
 };
 
+export const FACT_SHEET: DocPage = {
+  slug: "fact-sheet",
+  title: "The fact sheet: one object, one page",
+  summary: "Every object has an address, opens in a window over whatever you were doing, and is edited by typing in it.",
+  keywords: ["fact sheet", "factsheet", "object", "page", "edit", "inline", "save", "autosave", "undo", "sections", "attributes", "history", "window", "leanix", "link"],
+  blocks: [
+    { kind: "prose", text: "An object is a thing, not an annotation on a list. **/w/…/fs/…** is its address — the name, the description, every attribute in the section its type puts it in, what it is connected to, where it sits, which boards it is on, and everything that has ever happened to it. It is a link you can send." },
+    { kind: "shot", src: "fact-sheet", alt: "An application's fact sheet open in a window over the repository, with its attributes in sections and its history beside them", caption: "Opened from a list, the sheet is a window over it: everything right of the menu, nothing of the menu." },
+    { kind: "heading", text: "Why it is a window and not a page", id: "window" },
+    { kind: "prose", text: "Click a row and the sheet opens **over** the list you were reading, filling the area right of the navigation. The list underneath keeps its search, its facets and its scroll position, so checking one application's owner does not cost you the three filters it took to find it. The address in the bar still changes — the object is linkable and refreshable — and there are three ways out, all cheap: the **close** button, **Escape**, and the browser's back button, which are the same gesture here." },
+    { kind: "note", tone: "tip", text: "Open the link cold — from a mail, a bookmark, a new tab — and there is nothing behind it to cover, so it renders as a whole page instead. Same sheet, same edits. **Open on its own** in the window's bar does that deliberately." },
+    { kind: "heading", text: "There is no save button", id: "editing" },
+    { kind: "prose", text: "The value on the page *is* the field. Click it, change it, look away — it is written. The canvas has worked this way since the beginning and nobody has ever asked where its save button is." },
+    {
+      kind: "list",
+      items: [
+        "**It writes when you look away, not as you type.** One edit is one entry in the history, not eleven.",
+        "**It says so quietly.** The word *saved* appears beside the field for a moment; a field that flashes on every keystroke teaches you to watch the chrome instead of the content.",
+        "**It can be taken back.** *undo* sits next to *saved* and puts the previous value straight back.",
+        "**Escape belongs to the field.** Pressed while typing it reverts what you typed; pressed outside a field it closes the window.",
+      ],
+    },
+    { kind: "note", tone: "why", title: "Why an unprompted autosave is defensible here", text: "Because nothing is anonymous. Every edit lands in the object's history with the editor's name and the time on it, and the graph's history page shows it beside everything else that changed. A save button protects you from a system that forgets who did what; this one remembers." },
+    { kind: "heading", text: "Sections, and what the type does not know", id: "sections" },
+    { kind: "prose", text: "A declared field names the section it belongs to — Lifecycle, Ownership, Fit for purpose — and you set that on the type in the **meta-model**. The page renders sections in the order the modeller declared them, not alphabetically: somebody decided Ownership comes before Cost." },
+    {
+      kind: "list",
+      items: [
+        "**A declared field appears even when it is empty.** An unanswered required field is a finding; hiding it makes the page look complete when it is not.",
+        "**Keys nobody declared go in one group.** It is called *From the data*, and on an imported estate it holds most of them — a section rather than an error.",
+        "**Nothing is filed by guesswork.** A regex would put `lxCostCentre` under Lifecycle often enough that no heading on the page could be trusted.",
+        "The header counts what is filled against what is declared, and says when a required field is blank.",
+      ],
+    },
+    { kind: "try", href: "/w/:slug/repository", label: "Open an object" },
+  ],
+};
+
 export const HIERARCHY: DocPage = {
   slug: "hierarchy",
   title: "Containment: what sits inside what",

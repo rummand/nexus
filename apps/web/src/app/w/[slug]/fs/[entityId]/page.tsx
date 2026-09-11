@@ -11,6 +11,10 @@ import { FactSheet } from "@/components/factsheet/FactSheet";
  * An address somebody can send in a mail, which the drawer never was. The drawer stays where it
  * belongs — beside a canvas, where leaving the board to read an object would lose your place —
  * and everywhere else a click on an object comes here.
+ *
+ * Reached by a click from inside the product, this address is intercepted and the sheet opens in
+ * a window over the list you came from (`@sheet/(.)fs/[entityId]`). This file is what a cold load
+ * of the same address gets: the same sheet, standing on its own, scrolling in its own column.
  */
 export default async function FactSheetPage({ params }: { params: Promise<{ slug: string; entityId: string }> }) {
   const { slug, entityId } = await params;
@@ -29,14 +33,16 @@ export default async function FactSheetPage({ params }: { params: Promise<{ slug
    * `sheetSections` files the second lot together rather than guessing where they belong.
    */
   return (
-    <FactSheet
-      slug={slug}
-      detail={detail}
-      fields={type?.fields ?? []}
-      color={type?.color || model.nodeTypes.find((t) => t.name === detail.entity.kind)?.color || ""}
-      typeDeclared={Boolean(type?.id)}
-      framework={type?.framework ?? ""}
-    />
+    <div className="fs-page" data-factsheet-page={entityId}>
+      <FactSheet
+        slug={slug}
+        detail={detail}
+        fields={type?.fields ?? []}
+        color={type?.color || model.nodeTypes.find((t) => t.name === detail.entity.kind)?.color || ""}
+        typeDeclared={Boolean(type?.id)}
+        framework={type?.framework ?? ""}
+      />
+    </div>
   );
 }
 

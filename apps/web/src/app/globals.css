@@ -63,11 +63,16 @@ a { color: inherit; text-decoration: none; }
 /* ------------------------------------------------------------------ */
 
 .studio-home-shell {
+  --rail: 268px;
   background: #ffffff;
   color: #172033;
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-columns: var(--rail) minmax(0, 1fr);
   height: 100%;
+  /* A fact sheet opens over the page in the second column (§5.77); it is positioned against this
+     shell rather than placed in the grid, because a grid item with an explicit cell is laid out
+     before the auto-placed ones and would push the page itself onto a second row. */
+  position: relative;
 }
 
 .studio-home-sidebar {
@@ -1277,6 +1282,58 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .entity-drawer-page:hover { text-decoration: underline; }
 
 /* ---- the fact sheet: one object, one page (§5.77) ------------------------------------------ */
+
+/* The sheet standing on its own, from a cold load of its address. The shell is a full-height
+   grid, so a column that does not say it scrolls simply overflows and the bottom of a long sheet
+   becomes unreachable — hence min-height 0 and overflow auto, on the column and not on the
+   article, so the article can keep its padding. */
+.fs-page { background: #fbfcfe; min-height: 0; overflow: auto; }
+
+/* The sheet opened over whatever you were doing. It sits in the shell's second column, on top of
+   the page rather than beside it: everything right of the menu, nothing of the menu. */
+.fs-window {
+  background: #fbfcfe;
+  border-left: 1px solid var(--line);
+  bottom: 0;
+  box-shadow: -18px 0 42px rgba(19, 33, 68, .10);
+  display: flex;
+  flex-direction: column;
+  left: var(--rail);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 40;
+}
+.fs-window-bar {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 9px 14px 9px 20px;
+}
+.fs-window-name { align-items: baseline; display: flex; gap: 9px; min-width: 0; }
+.fs-window-name b { color: #172033; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-window-name em { color: #a5b0c2; flex: none; font-size: 11.5px; font-style: normal; }
+.fs-window-full { align-items: center; color: #77839a; display: inline-flex; font-size: 11.5px; gap: 4px; margin-left: auto; text-decoration: none; white-space: nowrap; }
+.fs-window-full:hover { color: var(--blue); text-decoration: underline; }
+.fs-window-close {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: #56637a;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+.fs-window-close:hover { background: #f1f5f9; color: #172033; }
+.fs-window-scroll { min-height: 0; overflow: auto; }
+
 .factsheet { display: flex; flex-direction: column; gap: 18px; padding: 26px 26px 60px; }
 .fs-head { display: flex; flex-direction: column; gap: 10px; }
 .fs-crumbs { align-items: center; color: #a5b0c2; display: flex; flex-wrap: wrap; font-size: 12px; gap: 6px; }

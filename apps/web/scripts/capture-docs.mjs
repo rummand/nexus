@@ -371,6 +371,18 @@ try {
   // ---- one type, browsed (§5.72) ------------------------------------------
   await shot("inventory", () => goto(`${w}/type/Application`, "[data-inventory-table]"), { settle: 800 });
 
+  // ---- one object, in the window it opens in (§5.77) -----------------------
+  // Reached by clicking a row, not by its address: the address alone renders the standalone page,
+  // and the window over the list is the thing the page is describing.
+  await shot("fact-sheet", async () => {
+    await goto(`${w}/repository`, "[data-repository-table]");
+    await page.fill("[data-repository-search]", "maximo");
+    await page.waitForTimeout(400);
+    await page.locator("[data-open-item]").first().click();
+    await page.waitForSelector("[data-sheet-window]", { timeout: 60_000 });
+    await page.waitForTimeout(1200);
+  });
+
   // ---- the graph's own history --------------------------------------------
   await shot("history", () => goto(`${w}/history`, "[data-history-summary]"), { settle: 900 });
 

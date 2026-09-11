@@ -11,8 +11,12 @@ import { viewer } from "@/lib/auth/guard";
  * by slug and showing it to anybody signed in was a curiosity; with two it is the hole. Somebody
  * who is not a member gets `notFound` rather than a refusal, because "this workspace exists and you
  * cannot see it" is itself something they should not learn from a URL.
+ *
+ * The `sheet` slot is where a fact sheet opened from a list lands (§5.77). It is a sibling of the
+ * page rather than part of it, so opening an object leaves the page underneath alive — and it is
+ * placed in the shell's second column, which is why the menu stays reachable with it open.
  */
-export default async function WorkspaceLayout({ children, params }: { children: React.ReactNode; params: Promise<{ slug: string }> }) {
+export default async function WorkspaceLayout({ children, sheet, params }: { children: React.ReactNode; sheet: React.ReactNode; params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [workspace, user] = await Promise.all([getWorkspaceBySlug(slug), currentUser()]);
   if (!workspace) notFound();
@@ -26,6 +30,7 @@ export default async function WorkspaceLayout({ children, params }: { children: 
     <main className="studio-home-shell">
       <Sidebar workspace={workspace} user={user} workspaces={workspaces} {...shell} />
       {children}
+      {sheet}
     </main>
   );
 }

@@ -653,12 +653,19 @@ try {
   await page.waitForSelector("[data-inventory-empty]");
   await page.fill("[data-inventory-search]", "");
 
-  // Opening an item leaves the list for the object's own page (§5.77), not a panel beside it.
+  /*
+   * Opening an item gives the object's own sheet — in a window over the list, not a page that
+   * replaces it (§5.77). The address changes, so the thing is linkable; the list underneath is
+   * still mounted, so Escape puts you back exactly where you were standing.
+   */
   await page.locator("[data-open-item]").first().click();
-  await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
-  assert.match(page.url(), /\/fs\/ent_/, "a row in the inventory is a link to the object");
-  await page.goBack({ waitUntil: "load" });
-  await page.waitForSelector("[data-inventory]", { timeout: 30000 });
+  await page.waitForSelector("[data-sheet-window]", { timeout: 45000 });
+  assert.match(page.url(), /\/fs\/ent_/, "the object the window shows is the address you can send");
+  assert.ok(await page.locator("[data-inventory]").count(), "the list it opened over is still there");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator("[data-sheet-window]").count(), 0, "Escape closes the window");
+  assert.match(page.url(), /\/type\//, "and the address goes back to the list");
 
   // estate health: one number, the measures behind it, and the number leading to the work
   await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
@@ -1461,9 +1468,20 @@ try {
    * The claim is that a fact sheet is a place, not a panel: it has an address, it is editable
    * where it stands, and what you type is written without a save button. So the row in the
    * repository is a link, and following it is how the walk gets there.
+   *
+   * What the sheet must not do is cost you the menu. It fills everything right of the rail and
+   * nothing of it, so the next place you are going is one click away rather than a retreat
+   * through the history.
    */
   await page.locator("[data-open-item]").first().click();
+  await page.waitForSelector("[data-sheet-window]", { timeout: 45000 });
   await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+  {
+    const rail = await page.locator(".studio-home-sidebar").boundingBox();
+    const win = await page.locator("[data-sheet-window]").boundingBox();
+    assert.ok(win.x >= rail.x + rail.width - 1, "the window starts where the menu ends");
+    assert.ok(win.width > 400, "and takes everything to the right of it");
+  }
   assert.match(page.url(), /\/fs\/[a-z]/i, "an object has an address of its own");
   const sheet = await page.locator("[data-factsheet]").innerText();
   assert.match(sheet, /Maximo/, "the page is about the object you clicked");
@@ -1476,7 +1494,9 @@ try {
   await page.locator("[data-factsheet] h2").first().click();
   await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 20000 });
   await page.reload({ waitUntil: "load" });
-  await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+  await page.waitForSelector("[data-factsheet-page]", { timeout: 45000 });
+  assert.equal(await page.locator("[data-sheet-window]").count(), 0,
+    "a cold load of the address is the sheet standing on its own, not a window over nothing");
   assert.equal(await page.locator('[data-live-value="Description"] textarea').inputValue(), typed,
     "what you typed is there after a reload — blur is the save");
   assert.match(await page.locator('[data-fs-section="History"]').innerText(), /description/i,
