@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { BookOpen, Bot, Boxes, Clock3, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plus, Settings, Star, Users, Waypoints, NotebookText } from "lucide-react";
+import { BookOpen, Bot, Boxes, Clock3, Database, DownloadCloud, GitBranch, History, Home, Inbox, LifeBuoy, LogOut, Plus, Settings, Star, Table2, Users, Waypoints, NotebookText } from "lucide-react";
 import type { Board, Space, Team, User, Workspace } from "@/db/schema";
 import { NexusMark } from "./NexusMark";
 import { WorkspaceSwitcher, type WorkspaceChoice } from "./WorkspaceSwitcher";
 import { SidebarLink } from "./SidebarLink";
-import { HELP, NAV } from "./nav";
+import { HELP, LIBRARY, NAV } from "./nav";
 import { SidebarSearch } from "./SidebarSearch";
 import { SpaceListItem } from "./SpaceListItem";
 import { NewSpaceDialog } from "./NewSpaceDialog";
@@ -21,6 +21,7 @@ const NAV_ICON: Record<string, React.ReactNode> = {
   recent: <Clock3 size={17} />,
   favorites: <Star size={17} />,
   teams: <Users size={17} />,
+  repository: <Table2 size={17} />,
   graph: <Database size={17} />,
   explore: <Waypoints size={17} />,
   meta: <Boxes size={17} />,
@@ -100,6 +101,7 @@ export function Sidebar({ workspace, user, teams, spaces, favorites, workspaces 
         is rarely "the Models page" — it is "the place where this is configured".
       */}
       <div className="studio-nav-utility">
+        <SidebarLink href={`${base}${LIBRARY.path}`} icon={<BookOpen size={17} />}>{LIBRARY.label}</SidebarLink>
         <SidebarLink href={`${base}${HELP.path}`} icon={<LifeBuoy size={17} />}>{HELP.label}</SidebarLink>
         <SidebarLink href={`${base}/settings`} icon={<Settings size={17} />}>Settings</SidebarLink>
       </div>

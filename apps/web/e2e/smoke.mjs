@@ -1433,6 +1433,49 @@ try {
   assert.equal(await page.locator("[data-inventory-row]", { hasText: "Grid Services" }).count(), 0,
     "rolling back takes the tree away with the objects");
 
+  /*
+   * ---- the repository has a shelf (§5.76) -----------------------------------------------------
+   *
+   * Rev 109 built the per-type inventory and gave it no way in but a chip on another page. The
+   * entry in the rail is the fix, so the walk uses the rail rather than the address.
+   */
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.click('a:has-text("Fact sheets")');
+  await page.waitForSelector("[data-repository-table]", { timeout: 45000 });
+  assert.match(page.url(), /\/repository$/, "the rail entry lands on the repository");
+  const everything = await page.locator("[data-repository-count]").innerText();
+  assert.match(everything, /\d+ objects/, "it says how much the model holds");
+  const kinds = await page.locator("[data-type]").count();
+  assert.ok(kinds > 1, "every type is a chip, with what it holds");
+
+  await page.fill("[data-repository-search]", "maximo");
+  await page.waitForTimeout(400);
+  assert.match(await page.locator("[data-repository-count]").innerText(), /of \d+/, "searching narrows it…");
+  assert.ok((await page.locator("[data-repository-row]").count()) > 0, "…to the thing you asked for");
+  await page.locator("[data-open-item]").first().click();
+  await page.waitForSelector("[data-drawer-hierarchy]", { timeout: 20000 });
+  assert.match(await page.locator("[data-entity-drawer]").innerText(), /Maximo/i,
+    "a row opens the same drawer the rest of the product opens");
+
+  /*
+   * ---- the capability map is of this estate (§5.75) -------------------------------------------
+   *
+   * The starter used to hand out six invented capabilities. The seed has a real capability tree,
+   * so a map built from it must contain the seed's own names and nothing invented.
+   */
+  await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
+  await page.waitForSelector("button:has-text('Capability map')", { timeout: 30000 });
+  await page.locator("button", { hasText: "Capability map" }).first().click();
+  const createBoard = page.locator('button:has-text("Create board")');
+  if (await createBoard.count()) await createBoard.click();
+  await page.waitForURL(/\/b\/brd_/, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 45000 });
+  await page.waitForTimeout(800);
+  const mapText = await page.locator(".canvas-root, body").first().innerText();
+  assert.match(mapText, /Grid Operations/, "the map is drawn from the estate the workspace has…");
+  assert.doesNotMatch(mapText, /Grid Planning/, "…and not from the fixture it used to hand out");
+  assert.match(mapText, /Real-time control/, "a nested capability is on it, not only the top level");
+
   // ---- an agent on the board -----------------------------------------------------------------
   // Placing one and scoping it works with or without a model; waking it needs one, and with none
   // configured the agent has to say so on the board rather than fail silently.

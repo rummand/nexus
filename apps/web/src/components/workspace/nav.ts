@@ -55,6 +55,7 @@ export const NAV: NavGroup[] = [
   {
     label: "Model",
     items: [
+      { id: "repository", label: "Fact sheets", path: "/repository" },
       { id: "graph", label: "Knowledge graph", path: "/graph" },
       { id: "explore", label: "Graph explorer", path: "/explore" },
       { id: "meta", label: "Meta-model", path: "/meta" },
@@ -74,10 +75,18 @@ export const NAV: NavGroup[] = [
       { id: "wiki", label: "Wiki", path: "/wiki" },
       { id: "roadmap", label: "Roadmap", path: "/roadmap" },
       { id: "agents", label: "Agents", path: "/agents" },
-      { id: "knowledge", label: "EA knowledge", path: "/knowledge" },
     ],
   },
 ];
+
+/**
+ * Reference rather than work, so it sits with Documentation at the foot of the rail (§5.76).
+ *
+ * The EA knowledge library is read when somebody wants to check what TOGAF says about a phase —
+ * monthly, and never in the middle of doing something else. It came out of the rail when Fact
+ * sheets went in, because the rail's own rule is frequency, and browsing the repository is daily.
+ */
+export const LIBRARY: NavItem = { id: "knowledge", label: "EA knowledge", path: "/knowledge" };
 
 /**
  * The settings area: everything configured rather than used.

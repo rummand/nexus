@@ -1270,6 +1270,18 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .import-values em { color: #b45309; font-size: 11px; font-style: normal; }
 .import-relations { display: flex; flex-wrap: wrap; gap: 5px; }
 .import-relations span { align-items: center; background: #f1f5f9; border-radius: 7px; color: #56637a; display: inline-flex; font-size: 11px; gap: 4px; padding: 2px 8px; }
+/* ---- the repository: everything, on one shelf (§5.76) -------------------------------------- */
+.repository-body { display: flex; flex-direction: column; gap: 10px; padding: 0 22px 26px; }
+.repository-kind { align-items: center; color: #56637a; display: inline-flex; gap: 6px; white-space: nowrap; }
+.repository-kind i { border-radius: 3px; height: 9px; width: 9px; }
+.repository-said { color: #a5b0c2; display: block; font-size: 11px; font-weight: 400; margin-top: 2px; }
+.repository-top { color: #c3ccda; font-style: normal; }
+.inventory-siblings button { align-items: center; background: #f1f5f9; border: 0; border-radius: 8px; color: #56637a; cursor: pointer; display: inline-flex; font-size: 12px; gap: 6px; padding: 5px 10px; }
+.inventory-siblings button.on { background: #1376d4; color: #fff; }
+.inventory-siblings button i { border-radius: 3px; height: 9px; width: 9px; }
+.inventory-siblings button small { opacity: .7; }
+.inventory-siblings button em.undeclared { color: #f59e0b; font-style: normal; font-weight: 800; }
+
 /* Where a thing sits, in a list of its type: the parent as plain text, the roll-up as a number,
    because the number is what a capability list is read for. */
 .inventory-inside { white-space: nowrap; }

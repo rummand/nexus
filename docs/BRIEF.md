@@ -3396,6 +3396,65 @@ count drops from 608 to 378, because 230 of those edges were never relations. Th
 an **Inside** column for types that nest, showing the parent or "top level" with the roll-up count
 beside it, so a list of 201 capabilities is legible as the tree it is.
 
+### 5.75 The capability map is of *your* estate (v0.2)
+
+The Capability map starter handed out six invented capabilities — Grid Planning, Grid Operations,
+Asset Management, and three more — with a dozen invented applications inside them, and it handed
+out the same six whether the workspace held four capabilities or four hundred. It made a good
+screenshot. It was also the wrong thing entirely: a capability map is a picture *of an
+organisation*, and one that is not of yours is a slide.
+
+So the starter builds the real thing now, and builds **all** of it: every capability in the graph,
+nested by containment (§5.70), with the applications that realise each one placed inside it. On
+Energinet's estate that is 201 capabilities in 44 frames and 174 cards, three levels deep, from
+one click. The fixture is kept for a workspace with no capabilities yet, where it still does the
+job it was written for — showing a newcomer what a capability map *is*.
+
+**Frames are measured from their contents.** A capability with three children and two
+applications is exactly as big as those five things need; a leaf is a card. Nothing sits on a
+fixed grid, because no real capability tree is even — one L1 has 27 children and the next has two,
+and a grid would either crop the first or leave a crater around the second.
+
+**An application is drawn once.** Many realise several capabilities, and a card per pairing would
+put four cards on the board all claiming to be one object — which the board's own sync would then
+have to guess about. It goes inside the first capability it realises, by name so the same estate
+always draws the same map, and its description says where else it is used. There are no
+connectors: containment carries the meaning here, and three hundred edges would carry only ink.
+
+**A frame can be an object now.** This is the change with teeth. A capability that holds things is
+drawn as a frame, and a frame was a label: the entity it stood for was not in the board's index,
+not clickable, not renameable from the board. Rev 112 lets a frame carry an `entityId` — but only
+to bind to an object that already exists. Renaming the frame renames the object, which is the one
+edit a frame can express; it cannot *create* one, because a frame carries no kind and an untyped
+object is somebody else's cleanup. Cards remain the full face of an entity.
+
+That change surfaced an older bug worth writing down: the seeded capability tree used ids like
+`cap_grid`, and the canvas tests for the `ent_` prefix before treating an element as the face of an
+object. Ten seeded capabilities could therefore be drawn on a board and then ignored by the board's
+index and by the save. Readable ids are not worth an object the product cannot see.
+
+### 5.76 Fact sheets: a shelf for the whole repository (v0.2)
+
+Rev 109 gave every type a page of its own and left the only way in as a chip on the knowledge
+graph. So the product had fact sheets and nowhere to find them: the first thing the owner said on
+seeing the inventory was that there was no menu item for it, which was exactly right.
+
+**Fact sheets** is the entry in the rail, and the page behind it is one flat list of everything
+the model holds — 490 objects across 12 types on Energinet's estate — with the types along the
+top as counted chips, a search across name, type, description and parent, and each row opening
+the same drawer the rest of the product opens. Every row says where it sits (§5.70), how many
+relations it has and how many boards it is on; picking a type narrows the list and offers that
+type's own inventory, with its facets and its declared fields, one click on.
+
+One flat list on purpose. The question this page answers is "where is that thing", and a search
+box over everything answers it in a second; a shape that has to be navigated does not.
+
+**Something had to leave the rail to make room.** The rail's rule is frequency (§5.65) and it is
+capped at fourteen entries by a test, so adding a daily surface meant moving a monthly one: the
+**EA knowledge** library now sits beside Documentation at the foot of the rail, which is where
+reference reading belongs. Browsing the repository is something an architect does several times a
+day; looking up what TOGAF says about phase B is not.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -3441,6 +3500,9 @@ beside it, so a list of 201 capabilities is legible as the tree it is.
   (filters boards by name, description, space and object text), four starters (blank,
   capability map, application landscape, integration flows), recent boards strip, board
   browser.
+- **Starters**: Blank board, **Capability map** (§5.75 — built from the graph: every capability,
+  nested, with the applications that realise them; the fixture only when the workspace has none),
+  Application landscape, Integration flows.
 - **Board browser** rows: thumbnail, star glyph, name / description / object counts, last
   opened, space; actions star, rename inline, move to another space, duplicate, delete.
 - **Spaces** (`/spaces`, `/spaces/[spaceId]`): create (icon, name, description, team,
@@ -3449,9 +3511,10 @@ beside it, so a list of 201 capabilities is legible as the tree it is.
 - **Teams** (`/teams`, `/teams/[teamId]`): create with colour, rename inline, add/remove
   members, delete; team page lists its spaces and members.
 - **Sidebar** (§5.65): brand, search (→ home with `?q=`), then 14 entries in 4 labelled groups —
-  Home/Recent/Starred/Teams, **Model** (knowledge graph, explorer, meta-model, what changed),
-  **Data** (intake, import), **Work** (wiki, roadmap, agents, EA knowledge) — SPACES list with
-  hover actions, TEAMS list, then Documentation and Settings pinned above the current user.
+  Home/Recent/Starred/Teams, **Model** (**fact sheets** §5.76, knowledge graph, explorer,
+  meta-model, what changed), **Data** (intake, import), **Work** (wiki, roadmap, agents) — SPACES
+  list with hover actions, TEAMS list, then EA knowledge, Documentation and Settings pinned above
+  the current user.
 - **Settings** (`/w/:slug/settings`): its own shell and nav over People, Models and Connections,
   with the platform console below a divider for operators. The rail carries none of them.
 - Seeded demo tenant "Acme Energy" (an energy-grid operator): 4 users, 3 teams, 4 spaces,
@@ -3606,6 +3669,12 @@ beside it, so a list of 201 capabilities is legible as the tree it is.
 ### Import preview (v0.2)
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
   warnings. Card kind fields suggest the workspace's kinds.
+
+### The repository (v0.2, rev 113 — §5.76)
+- **Fact sheets** in the rail → `/w/[slug]/repository`: every object the model holds, one list.
+- Types as counted chips (declared ones marked), search across name, type, description and parent,
+  where each object sits, its relations and boards, when it last changed, and the drawer on click.
+- Picking a type offers that type's own faceted inventory.
 
 ### The inventory (v0.2, rev 109 — §5.72)
 - `/w/[slug]/type/[kind]`: one type as a destination, with its own address. Reachable from the
@@ -4514,6 +4583,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | An unresolvable parent is a question on the row, never a blocker. | The object is real whatever its parent turns out to be, and holding it back would lose the thing the import was for. Arriving at the top is what an unknown parent honestly means, and the review says so out loud rather than dropping the claim. |
 | 2026-09-11 | A nested LeanIX fact sheet is named by its own name, not by the path LeanIX puts in `displayName`. | The path was the only way to say where something sat while every import landed flat. The tree says it now, and 236 names of the form "A / B / C" make a capability map unreadable and a search unusable. |
 | 2026-09-11 | The work of an import lives outside the server action: `run.ts` takes a database and a user id, and the action is a guard, a call and a revalidation. | Staging and approving read the session, checked a capability and revalidated routes, so an estate could be imported only from a browser tab. An operator with a shell on the server — which is how a first import of four hundred objects actually happens — had no way in that was not a reimplementation, and a second implementation of "what an approved import writes" is the one thing that must not exist twice. |
+| 2026-09-11 | The Capability map starter draws the whole estate from the graph, and falls back to the fixture only when there is nothing to draw. | A template that invents six capabilities teaches a new user that Nexus does not know their organisation. Drawing all of it is the point — a map that quietly showed the first twenty would be worse than none, because it would look right. |
+| 2026-09-11 | An application appears once on the map, under the first capability it realises, with a note when it realises more. | Two cards carrying one entity id is a question the board's sync cannot answer: which one is the object? One card, and the truth about the rest in words. |
+| 2026-09-11 | A frame may be the face of an object that already exists, and may only rename it. | Every parent capability on a map is a frame; as pure decoration they were missing from the board's index and unclickable. A frame carries no kind, so letting it create an object would mint untyped things — bind, rename, and nothing else. |
+| 2026-09-11 | The repository is one flat searchable list, not a tree or a board. | It answers "where is that thing". A tree makes you know the shape before you can look, and a board makes you pan. 490 rows and a search box is faster than either, and the per-type inventory is one click away for the questions that need facets. |
+| 2026-09-11 | Adding Fact sheets to the rail pushed EA knowledge out of it, rather than raising the cap. | The rail is capped at fourteen because past about a dozen a list stops being scanned and starts being searched. The honest axis is frequency: the repository is daily, the knowledge library is monthly, so it moves to the foot of the rail beside Documentation. |
 
 ## 8. Open questions for the product owner
 
@@ -4529,6 +4603,27 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 113: Fact sheets in the rail.** The per-type inventory had no way in but a
+  chip on another page. There is now a **Fact sheets** entry in the rail and a page behind it
+  holding every object in the workspace — types as counted chips, a search across name, type,
+  description and parent, where each one sits, its relation and board counts, and the drawer on
+  click, with each type's own faceted inventory one step further. EA knowledge moved to the foot
+  of the rail beside Documentation to keep the rail at fourteen: the repository is daily, the
+  library is monthly. Brief §5.76, two decision rows.
+
+- **2026-09-11 — Rev 112: the capability map is of your estate.** The starter drew six invented
+  capabilities for every workspace; it now builds the whole map from the graph — every capability,
+  nested by containment, with the applications that realise them placed inside, frames measured
+  from their contents rather than laid on a grid. One click on Energinet's estate gives 201
+  capabilities in 44 frames and 174 cards, three levels deep. An application is drawn once, under
+  the first capability it realises, with a note when it realises more; there are no connectors,
+  because containment already says it. A frame can now be the face of an object that already
+  exists — it binds and renames, never creates — which is what makes the parents on a map
+  clickable, indexed and countable rather than labels. That exposed an older bug: seeded
+  capabilities used ids like `cap_grid`, and the canvas only treats `ent_`-prefixed ids as
+  objects, so ten seeded capabilities were drawn and then ignored by the board's index. 16 new
+  tests, brief §5.75, three decision rows.
 
 - **2026-09-11 — Rev 111a: the import has a terminal door.** Staging and approving moved out of
   the server actions into `src/lib/import/run.ts`, which takes a database and the id of whoever is
