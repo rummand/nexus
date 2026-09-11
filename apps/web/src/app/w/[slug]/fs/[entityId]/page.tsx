@@ -3,6 +3,7 @@ import { getDb } from "@/db/client";
 import { entityDetail } from "@/lib/graph";
 import { metaModel } from "@/lib/metamodel";
 import { getWorkspaceBySlug } from "@/lib/data";
+import { campaignsFor } from "@/lib/campaign/read";
 import { FactSheet } from "@/components/factsheet/FactSheet";
 
 /**
@@ -25,7 +26,7 @@ export default async function FactSheetPage({ params }: { params: Promise<{ slug
   const detail = await entityDetail(db, entityId);
   if (!detail) notFound();
 
-  const model = await metaModel(db, workspace.id);
+  const [model, campaigns] = await Promise.all([metaModel(db, workspace.id), campaignsFor(db, workspace.id, entityId)]);
   const type = model.nodeTypes.find((t) => t.name.trim().toLowerCase() === detail.entity.kind.trim().toLowerCase());
 
   /*
@@ -41,6 +42,7 @@ export default async function FactSheetPage({ params }: { params: Promise<{ slug
         color={type?.color || model.nodeTypes.find((t) => t.name === detail.entity.kind)?.color || ""}
         typeDeclared={Boolean(type?.id)}
         framework={type?.framework ?? ""}
+        campaigns={campaigns}
       />
     </div>
   );

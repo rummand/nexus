@@ -3,8 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ArrowUpRight, CornerDownRight, History, Layers, Plus } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CornerDownRight, History, Layers, ListChecks, Plus } from "lucide-react";
 import type { EntityDetail } from "@/lib/graph-types";
+import type { Campaign } from "@/lib/campaign/read";
+import { STATE_LABEL, type Standing } from "@/lib/campaign/state";
 import type { MetaField } from "@/lib/metamodel";
 import { completeness, sheetSections } from "@/lib/factsheet";
 import { describeActor, describeChange, whenWords } from "@/lib/history/events";
@@ -31,6 +33,7 @@ export function FactSheet({
   color,
   typeDeclared,
   framework,
+  campaigns = [],
 }: {
   slug: string;
   detail: EntityDetail;
@@ -38,6 +41,8 @@ export function FactSheet({
   color: string;
   typeDeclared: boolean;
   framework: string;
+  /** Where this object stands in the campaigns it is in scope for (§5.85). */
+  campaigns?: Array<{ campaign: Campaign; standing: Standing }>;
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -241,6 +246,24 @@ export function FactSheet({
               <ul className="fs-boards">
                 {detail.duplicates.map((d) => (
                   <li key={d.id}><Link href={href(d.id)}>{d.name}</Link><em>{d.kind}</em></li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {campaigns.length > 0 && (
+            <section className="fs-card" data-fs-section="Campaigns">
+              <h2><ListChecks size={13} /> Being gone through</h2>
+              <ul className="fs-standing">
+                {campaigns.map(({ campaign, standing }) => (
+                  <li key={campaign.id} data-fs-campaign={campaign.id}>
+                    <Link href={`/w/${slug}/campaigns/${campaign.id}`}>{campaign.name}</Link>
+                    <em className={`campaign-state ${standing.state}`} data-fs-standing={standing.state}>
+                      {STATE_LABEL[standing.state]}
+                      {standing.lapsed === "changed" && " — it was validated, then edited"}
+                      {standing.lapsed === "expired" && " — the waiver has expired"}
+                    </em>
+                  </li>
                 ))}
               </ul>
             </section>

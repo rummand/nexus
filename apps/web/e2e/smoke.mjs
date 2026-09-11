@@ -1225,6 +1225,52 @@ try {
   }
 
   /*
+   * ---- campaigns (§5.85) ----------------------------------------------------------------------
+   *
+   * An import ends at "approved" and the work after it has no shape. A campaign is that shape:
+   * a scope, a queue, and an end. The edge worth checking is the one the whole process stands
+   * on — a validation is about the object as it was, so editing the object undoes it.
+   */
+  await page.goto(`${base}/w/acme-energy/campaigns`, { waitUntil: "load" });
+  await page.waitForSelector("[data-campaigns]", { timeout: 45000 });
+  await page.click("[data-campaign-new]");
+  await page.waitForSelector('[data-campaign-template="orphans"]');
+  await page.click('[data-campaign-template="orphans"]');
+  await page.waitForSelector("[data-campaign]", { timeout: 45000 });
+  {
+    const before = await page.locator("[data-campaign-burn]").innerText();
+    assert.match(before, /0 validated/, "a fresh campaign has nothing done");
+
+    // A waiver without a reason is refused: "accepted as is" with no reason is how a model rots.
+    await page.click("[data-campaign-waive]");
+    await page.waitForSelector("[data-campaign-error]");
+    assert.match(await page.locator("[data-campaign-error]").innerText(), /needs a reason/i,
+      "a waiver with no reason is refused");
+
+    const first = await page.locator("[data-campaign-current]").getAttribute("data-campaign-current");
+    await page.click("[data-campaign-validate]");
+    await page.waitForFunction(() => /1 validated/.test(document.querySelector("[data-campaign-burn]")?.textContent ?? ""),
+      null, { timeout: 20000 });
+
+    /*
+     * Now edit the object that was just validated. The validation was a statement about the
+     * object as it was, so it must not survive the edit — this is the edge that decides whether
+     * anybody believes the badge in three months.
+     */
+    await page.goto(`${base}/w/acme-energy/fs/${first}`, { waitUntil: "load" });
+    await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
+    assert.match(await page.locator("[data-fs-standing]").innerText(), /Validated/,
+      "the object's own page says where it stands");
+    await page.locator('[data-live-value="Description"] textarea').fill(`Edited after validation ${Date.now()}`);
+    await page.locator("[data-factsheet] h2").first().click();
+    await page.waitForFunction(() => /saved/.test(document.body.innerText), null, { timeout: 20000 });
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector("[data-fs-standing]", { timeout: 45000 });
+    assert.match(await page.locator("[data-fs-standing]").innerText(), /was validated, then edited/,
+      "editing a validated object puts it back in the queue, and says why");
+  }
+
+  /*
    * ---- the tree (§5.84) -----------------------------------------------------------------------
    *
    * A branching model you cannot see is one people guess at. The drawing has to have the shape

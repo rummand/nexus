@@ -3783,6 +3783,23 @@ Nothing here is open to an agent. An agent may clear the mechanical part of a ca
 owners, spot duplicates, flag orphans — and may never validate: validation is somebody putting
 their name to it, and an anonymous one is a badge rather than a statement.
 
+**Where the work happens is a queue, not a table.** `/w/[slug]/campaigns/[id]` shows one object
+at a time — what it is, where it sits, what it is connected to, whether its type is declared —
+and four ways out, which are the four honest ones: *it is right*, *leave it for now* (with a
+reason and an expiry), *somebody has to answer* (with the question), and *I am still on it*. The
+object you have just judged leaves the queue and the next takes its place, so getting through
+ninety applications on a Tuesday is ninety decisions rather than ninety scrolls. A table with a
+dropdown per row is a screen people scroll; a queue is something people finish.
+
+**A campaign is started from something you already know how to say.** Four templates rather than
+an empty form — describe what the import brought, connect what is connected to nothing, fill the
+fields the model asks for, place what never got placed — each one a scope in the objects list's
+own filter language, and each one a job the Energinet import actually created.
+
+**And an object's own page says where it stands** in every campaign it is in scope for, including
+*it was validated, then edited*. That is the loop closed: the queue sends you to the object, and
+the object tells you what the queue thinks of it.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4959,6 +4976,8 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | The campaign surface is a queue, not a table with a dropdown per row. | Ninety applications is ninety decisions. A table is a screen people scroll and abandon; a queue that hands you the next object the moment you judge one is a thing people finish. |
+| 2026-09-11 | A campaign is started from a template, never from an empty form. | Nobody should have to design a campaign from nothing, and the four templates are the four jobs the import actually created. An empty form is how a feature ends up used once. |
 | 2026-09-11 | A validation is stamped to the object as it was, and lapses the moment the object changes. | A fact sheet validated in March and edited in June is not validated. Without this the burn-down only ever goes one way and the badge is furniture within a quarter — which is what every tool that shipped a boolean `reviewed` flag discovered. |
 | 2026-09-11 | A waiver is refused without a reason and an expiry. | "Accepted as is", undated, is how a model rots: the exception outlives everyone who understood it. Making the expiry a write-time requirement means there is no way to create the rot. |
 | 2026-09-11 | A campaign's scope is the objects list's own filter shape. | A scope has to stay true as objects arrive, so it must be a query. Reusing the filter people already use to find things by hand means no second query language, no second resolver, and no second set of tests. |
@@ -5006,6 +5025,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 128: campaigns, the surfaces (#134).** The queue: one object at a time, with
+  what it is and where it sits, and four ways out — it is right, leave it for now (reason and
+  expiry required), somebody has to answer (question required), I am still on it. A campaign list
+  with a burn-down on each, and four templates to start from rather than an empty form. An
+  object's own page now says where it stands in every campaign it is in scope for, including *it
+  was validated, then edited* — which the walk checks end to end: validate an object, edit it,
+  and watch it come back into the queue. Brief §5.85, two decision rows.
 
 - **2026-09-11 — Rev 127: campaigns, the model and the rules (#134).** The data model and the
   state machine for remediation: a campaign with a query scope (the objects list's own filter
