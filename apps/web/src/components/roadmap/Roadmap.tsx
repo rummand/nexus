@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import {
-  AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, FolderTree, GitBranch, Link2,
+  AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, FolderTree, GitBranch, History, Link2,
   LayoutGrid, Lock, Plus, Rocket, Sparkles, Tag, Trash2, TrendingDown, TrendingUp, Unlink, X,
 } from "lucide-react";
-import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
+import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteChangeSet, deliverChangeSet, rebaseChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
 import type { Refusal } from "@/lib/checks/gate";
 import { Refused } from "@/components/checks/Refused";
@@ -372,6 +372,33 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe, 
                     )}
                     {set.status === "delivered" && (
                       <span className="roadmap-delivered"><Check size={14} /> Delivered {set.deliveredAt?.slice(0, 10)} — the graph carries this now.</span>
+                    )}
+                    {set.status !== "delivered" && (
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        disabled={pending}
+                        data-rebase
+                        title="Replay this plan onto the estate as it is now: what has already come true, and what reality has moved past."
+                        onClick={() => start(async () => {
+                          const r = await rebaseChangeSet(set.id);
+                          if ("error" in r) { setMessage(r.error); return; }
+                          if (!r.landed) { setMessage(r.words); return; }
+                          /*
+                            Dropping is a second, deliberate press. The first one is a question —
+                            what has happened without us — and answering a question by quietly
+                            deleting part of somebody's plan is not an answer.
+                          */
+                          if (!confirm(`${r.words}\n\nTake the ${r.landed} that ${r.landed === 1 ? "has" : "have"} already come true out of the plan? Anything reality has moved past is left for you to decide.`)) {
+                            setMessage(r.words);
+                            return;
+                          }
+                          const done = await rebaseChangeSet(set.id, { drop: true });
+                          setMessage("error" in done ? done.error : `${done.dropped} dropped. ${done.words}`);
+                        })}
+                      >
+                        <History size={14} /> Replay onto today
+                      </button>
                     )}
                     <a className="ghost-button" href={`/w/${slug}/graph`}>Open the graph</a>
                     {set.status !== "delivered" && (

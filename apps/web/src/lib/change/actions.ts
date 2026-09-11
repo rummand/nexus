@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,6 +20,7 @@ import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./rea
 import { checkOut } from "./checkout";
 import { project } from "./project";
 import { allBlockers, blocking, wouldCycle } from "./order";
+import { progressWords, rebaseOnto } from "./rebase";
 import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, RetypeEntityPayload, SetAttributePayload, SetParentPayload } from "./types";
 
 const now = () => new Date().toISOString();
@@ -577,6 +578,42 @@ export async function deliverChangeSet(changeSetId: string, options?: { anyway?:
   await db.update(s.changeSets).set({ status: "delivered", deliveredAt: ts, updatedAt: ts }).where(eq(s.changeSets.id, changeSetId));
   await touch(set.workspaceId, set.id);
   return { ok: true, introduced, retired, altered, moved, connected, severed, advisory: call.ok ? call.advisory : call.refusal.advisory };
+}
+
+/**
+ * Replay a plan onto today's estate, and drop what has already come true (#140, §5.94).
+ *
+ * The single best argument in the epic, and free once plans are branches. Reality moves under a
+ * target architecture and nobody notices until the plan is fiction; rebasing says exactly which
+ * parts of it have quietly happened and which no longer make sense.
+ *
+ * What it removes is only ever the **landed** half — changes the estate already satisfies.
+ * Conflicts are left alone on purpose: a change reality has moved past is somebody's decision,
+ * and quietly deleting it would be the plan losing an argument nobody knew it was having.
+ */
+export async function rebaseChangeSet(changeSetId: string, options?: { drop?: boolean }): Promise<
+  { ok: true; outstanding: number; landed: number; conflicted: number; dropped: number; words: string } | { error: string }
+> {
+  const no = await denySet(changeSetId, "graph.edit");
+  if (no) return no;
+  const db = await getDb();
+  const set = await getChangeSet(db, changeSetId);
+  if (!set) return { error: "That change set is gone." };
+  if (set.status === "delivered") return { error: "This has been delivered; there is nothing to replay it onto." };
+
+  const { entities, relations } = await graphRows(db, set.workspaceId);
+  const replay = rebaseOnto(set.changes, entities, relations);
+
+  let dropped = 0;
+  if (options?.drop) {
+    const landed = replay.replayed.filter((r) => r.verdict === "landed").map((r) => r.change.id);
+    if (landed.length) {
+      await db.delete(s.changes).where(inArray(s.changes.id, landed));
+      dropped = landed.length;
+      await touch(set.workspaceId, set.id);
+    }
+  }
+  return { ok: true, outstanding: replay.outstanding, landed: replay.landed, conflicted: replay.conflicted, dropped, words: progressWords(replay) };
 }
 
 // ---- the roadmap as a board --------------------------------------------------

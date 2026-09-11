@@ -4067,6 +4067,32 @@ merged this without waiting for Jes Olesen."* A bypass that leaves no trace is n
 Only the person who holds a rule sees an Approve button. Showing one to everybody and refusing
 the click is how a governance screen teaches people it does not mean anything.
 
+### 5.94 Rebase the plan onto reality (#140, v0.2)
+
+The chronic problem with a target architecture is that reality moves underneath it and nobody
+notices until the plan is fiction. Git's answer is to rebase: replay the work onto what the
+estate says *now*, and whatever no longer applies shows up. *That application you planned to
+retire in 2027 was decommissioned last month* is a conflict, and a conflict is a prompt. It is
+the best argument in the whole epic and it is free once plans are branches.
+
+Three verdicts per change, and the middle one is the point:
+
+- **outstanding** — it still has to happen. This is the plan.
+- **landed** — the estate already says this. Not a failure and not a conflict: it is the plan
+  coming true, usually by somebody else's hand, and it should leave the branch quietly.
+- **conflicted** — reality moved somewhere the plan cannot be replayed onto: the object is gone,
+  or somebody has already built a *different* thing by the name this plan was going to introduce.
+
+**Only the landed half is ever dropped, and only on a second, deliberate press.** The first press
+asks a question — what has happened without us — and answering a question by silently deleting
+part of somebody's plan is not an answer. Conflicts are never dropped: a change reality has moved
+past is somebody's decision, and removing it would be the plan losing an argument nobody knew it
+was having.
+
+Which makes **progress exact**: a plan is finished when its diff against the estate is empty.
+Reality arrives through the sources (§5.92), the plan is replayed onto it, and what is left is
+precisely the work still to do — no percentage-complete field that somebody updates by feel.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5321,6 +5347,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | Both ends of a relation count as touched by a branch. | Connecting something to a subtree you own is a change to your subtree, whichever end the change record happens to name. |
 | 2026-09-11 | A merge can override the owners, and the override is recorded as its own act with a name. | A rule with no way through is one people route around by editing the graph directly — the thing branches exist to prevent. A bypass that leaves no trace is not a rule. |
 
+| 2026-09-11 | A replay drops only what has already come true, never what conflicts. | A conflict is somebody's decision to make. Dropping it silently is the plan losing an argument nobody knew it was having; leaving it is the prompt that makes the whole idea worth having. |
+| 2026-09-11 | Dropping takes a second press: the first replay only reports. | Reading what has happened without you and editing somebody's plan are different acts, and the first should never silently perform the second. |
+| 2026-09-11 | A plan is finished when its diff against the estate is empty, rather than at a percentage. | Percentage-complete is updated by feel and is wrong within a week. A diff is computed, and it shrinks as reality arrives through the sources. |
+| 2026-09-11 | Something already built under the name a plan would introduce is a conflict, not a landing. | It may be the same thing or a different one, and only a person knows which. Treating it as done would silently merge two objects; treating it as outstanding would build a second. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5335,6 +5366,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 140: rebase the plan onto reality (#140).** Replay a change set onto the
+  estate as it stands and every change gets a verdict: still to do, already true, or something
+  reality has moved past. *Replay onto today* on the roadmap card reports first and drops only the
+  changes that have already come true, and only on a second press — conflicts are always left for
+  a person, because a change reality has overtaken is a decision rather than a deletion. Progress
+  becomes exact: a plan is finished when its diff against the estate is empty, which is a fact
+  rather than a percentage somebody updates by feel. Sixteen tests. Brief §5.94, four decision
+  rows.
 
 - **2026-09-11 — Rev 139: owners of parts of the model (#141).** MODELOWNERS, over the containment
   tree and over types: changes under a capability subtree need the person or team who owns it to
