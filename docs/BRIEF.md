@@ -3544,6 +3544,25 @@ is declared — *4/5 declared fields filled* — and says when one is required a
 undeclared type says so, with a link to declare it, because 52 undeclared types is the state of
 the model rather than a quirk of one object.
 
+### 5.79 A mark of its own (v0.2)
+
+The product's mark was three nodes and two lines — a share glyph, which is what every
+collaboration tool puts on its "send this to somebody" menu item. A reader has already learned
+what that shape means, and it is not this.
+
+The mark is now **an N drawn as a graph**: four nodes at the corners, three edges between them —
+the left stem, the diagonal, the right stem. Read as a letter it is the product's initial; read
+as a picture it is what the product *is*, which is the only thing a mark for this product should
+be. Nothing in it is smaller than two pixels of stroke on a 24 grid, the nodes are solid rather
+than ringed and the edges run centre to centre with the nodes painted over them, so it survives
+the size where a mark is actually seen: a 16-pixel favicon.
+
+It is used in three places from one component (`NexusMark`) — the sidebar, sign in, log in — and
+twice more as a file, because a browser will not read a React component: `app/icon.svg` is the
+tab icon, a rounded blue tile the framework picks up by convention, and `app/apple-icon.png` is
+the home-screen icon, full bleed because iOS applies its own mask and a rounded tile inside it
+comes out as a badge on a white square.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4692,6 +4711,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The Capability map starter draws the whole estate from the graph, and falls back to the fixture only when there is nothing to draw. | A template that invents six capabilities teaches a new user that Nexus does not know their organisation. Drawing all of it is the point — a map that quietly showed the first twenty would be worse than none, because it would look right. |
 | 2026-09-11 | An application appears once on the map, under the first capability it realises, with a note when it realises more. | Two cards carrying one entity id is a question the board's sync cannot answer: which one is the object? One card, and the truth about the rest in words. |
 | 2026-09-11 | A frame may be the face of an object that already exists, and may only rename it. | Every parent capability on a map is a frame; as pure decoration they were missing from the board's index and unclickable. A frame carries no kind, so letting it create an object would mint untyped things — bind, rename, and nothing else. |
+| 2026-09-11 | The mark is an N built out of nodes and edges, not a share glyph. | The old one was the icon every collaboration tool uses for "send this to somebody", so it said the wrong thing before anybody read a word. A monogram that is also a graph says both at once, and costs nothing at 16 pixels. |
 | 2026-09-11 | The repository's filters are a rail on the left, not chips above the table. | Twelve types already overflowed the chip row, and the cross-cutting questions — orphaned, top level, undeclared — have nowhere to go in a row of type chips. A rail has room, it is where people look for a filter, and it is the shape the type inventory already uses. |
 | 2026-09-11 | A facet counts against every other facet's selection and never against its own. | Otherwise choosing a type shows every other type as zero and the filter is a one-way door: you can narrow but never switch. The same rule the type inventory learned, applied to the cross-cutting questions. |
 | 2026-09-11 | A filter that would empty the list is shown disabled rather than hidden. | Zero is an answer — *nothing here is undeclared* is worth knowing — and a rail whose rows appear and disappear cannot be learned or clicked from memory. |
@@ -4719,6 +4739,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 118: a mark of its own.** The logo was a three-node share glyph — the icon
+  every collaboration tool uses for "send this to somebody". It is now an N drawn as a graph: four
+  nodes at the corners, three edges between them, legible at sixteen pixels because nothing in it
+  is thinner than two pixels of stroke on a 24 grid. One component for the three places in the
+  product, plus `app/icon.svg` for the browser tab and a full-bleed `app/apple-icon.png` for the
+  home screen, both picked up by convention. The walk now checks that the tab icon exists and can
+  be fetched. Brief §5.79, one decision row.
 
 - **2026-09-11 — Rev 117: the repository asks the other questions.** 478 objects made the flat
   list's limits obvious: the types had outgrown the chip row above the table, the cross-cutting

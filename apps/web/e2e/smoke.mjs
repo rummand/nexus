@@ -70,6 +70,19 @@ try {
   assert.equal(new URL(page.url()).pathname, "/signin", "a signed-out visitor is sent to sign in");
   assert.ok(await page.locator("[data-demo-hint]").isVisible(), "a demo instance says how to get in");
 
+  /*
+   * The product has a mark of its own, and a browser tab is where most people see it (§5.79). The
+   * icon is a file the framework picks up by convention, so the only thing that can silently
+   * break is the convention.
+   */
+  {
+    const icon = await page.locator('link[rel~="icon"]').first().getAttribute("href");
+    assert.ok(icon, "the document declares an icon");
+    const res = await fetch(new URL(icon, base));
+    assert.equal(res.status, 200, "and the browser can fetch it");
+    assert.match(await res.text(), /<svg/, "the tab icon is the mark, drawn rather than a placeholder");
+  }
+
   // A wrong password is refused, and says nothing about whether the account exists.
   await page.fill('input[name="email"]', "jes@acme-energy.example");
   await page.fill('input[name="password"]', "not-the-password");
