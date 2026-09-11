@@ -1471,10 +1471,15 @@ try {
   await page.waitForURL(/\/b\/brd_/, { timeout: 60000 });
   await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 3, null, { timeout: 45000 });
   await page.waitForTimeout(800);
-  const mapText = await page.locator(".canvas-root, body").first().innerText();
-  assert.match(mapText, /Grid Operations/, "the map is drawn from the estate the workspace has…");
-  assert.doesNotMatch(mapText, /Grid Planning/, "…and not from the fixture it used to hand out");
-  assert.match(mapText, /Real-time control/, "a nested capability is on it, not only the top level");
+  /*
+   * Titles on the canvas are live fields, so they are values rather than text — innerText sees a
+   * board full of empty boxes. Read what the elements actually say.
+   */
+  const mapSays = (await page.locator("[data-element-id] input, [data-element-id] textarea")
+    .evaluateAll((nodes) => nodes.map((n) => n.value))).join(" | ");
+  assert.match(mapSays, /Grid Operations/, "the map is drawn from the estate the workspace has…");
+  assert.doesNotMatch(mapSays, /Grid Planning/, "…and not from the fixture it used to hand out");
+  assert.match(mapSays, /Real-time control/, "a nested capability is on it, not only the top level");
 
   // ---- an agent on the board -----------------------------------------------------------------
   // Placing one and scoping it works with or without a model; waking it needs one, and with none
