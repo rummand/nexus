@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, GitBranch, GitCommitHorizontal, ShieldCheck } from "lucide-react";
+import { Check, GitBranch, GitCommitHorizontal, Network, ShieldCheck } from "lucide-react";
 import { switchRefAction } from "@/lib/change/actions";
 import { divergenceWords, refKindWords, refName, type Divergence, type Ref } from "@/lib/change/ref";
 
@@ -117,6 +117,10 @@ export function RefIndicator({
           <Link className="ref-checks" href={`/w/${slug}/checks`} onClick={() => setOpen(false)} data-ref-checks>
             <ShieldCheck size={13} />
             <span>{onMain ? "What is failing on main" : "What would this change break?"}</span>
+          </Link>
+          <Link className="ref-checks" href={`/w/${slug}/tree`} onClick={() => setOpen(false)} data-ref-tree>
+            <Network size={13} />
+            <span>Every branch and commit</span>
           </Link>
         </div>
       )}

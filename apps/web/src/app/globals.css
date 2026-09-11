@@ -154,6 +154,56 @@ a { color: inherit; text-decoration: none; }
 .ref-checks { align-items: center; border-top: 1px solid var(--line); color: #56637a; display: flex; font-size: 11.5px; gap: 8px; margin-top: 4px; padding: 8px; text-decoration: none; }
 .ref-checks:hover { color: var(--blue); }
 
+/* ---- the tree: every branch and every commit (§5.84) --------------------------------------- */
+.tree-page { gap: 14px; }
+.tree-intro { color: #77839a; font-size: 12.5px; line-height: 1.6; margin: 0; max-width: 86ch; }
+.tree-intro b { color: #172033; }
+.tree-shell { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 300px; min-height: 0; }
+.tree-scroll { background: #fff; border: 1px solid var(--line); border-radius: 12px; min-height: 0; overflow: auto; }
+.tree-grid { display: grid; }
+.tree-svg { display: block; flex: none; }
+.tree-rows { display: block; list-style: none; margin: 0; padding: 18px 0; }
+.tree-rows li { display: flex; }
+.tree-row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+  margin-right: 10px;
+  padding: 0 10px;
+  text-align: left;
+  width: 100%;
+}
+.tree-row:hover { background: #f5f9ff; }
+.tree-row.on { background: #eef6ff; }
+.tree-row i { align-items: center; display: inline-flex; flex: none; }
+.tree-row b { color: #172033; flex: none; font-size: 12.5px; font-weight: 650; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-row em { color: #8b96a9; flex: 1; font-size: 11.5px; font-style: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-row time { color: #a5b0c2; flex: none; font-size: 11px; }
+.tree-row.cut b, .tree-row.tag b { color: #64748b; font-weight: 600; }
+
+.tree-side { display: grid; gap: 12px; grid-auto-rows: max-content; min-width: 0; }
+.tree-lanes, .tree-node { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.tree-lanes h2, .tree-node h2 { color: #56637a; font-size: 11px; font-weight: 700; letter-spacing: .09em; margin: 0 0 10px; text-transform: uppercase; }
+.tree-node h2 { color: #172033; font-size: 14px; letter-spacing: -0.01em; text-transform: none; }
+.tree-lanes ul { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
+.tree-lanes li { align-items: center; display: flex; gap: 8px; }
+.tree-lane-dot { border-radius: 50%; flex: none; height: 9px; width: 9px; }
+.tree-lane-name { flex: 1; min-width: 0; }
+.tree-lane-name b { display: block; font-size: 12.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-lane-name em { color: #8b96a9; display: block; font-size: 10.5px; font-style: normal; }
+.tree-lanes button { background: #eef6ff; border: 1px solid #b8d7ff; border-radius: 7px; color: var(--blue); cursor: pointer; flex: none; font-size: 11px; font-weight: 650; padding: 3px 8px; }
+.tree-here { color: #8b96a9; flex: none; font-size: 11px; font-style: italic; }
+.tree-node-meta { color: #8b96a9; font-size: 12px; margin: 0 0 12px; }
+.tree-node h3 { color: #56637a; font-size: 11px; font-weight: 700; letter-spacing: .09em; margin: 0 0 6px; text-transform: uppercase; }
+.tree-touched { display: grid; gap: 3px; list-style: none; margin: 0; padding: 0; }
+.tree-touched a { color: #172033; font-size: 12.5px; text-decoration: none; }
+.tree-touched a:hover { color: var(--blue); text-decoration: underline; }
+.tree-more { color: #a5b0c2; font-size: 11.5px; line-height: 1.5; margin: 8px 0 0; }
+
 /* ---- the model's test suite (§5.83) -------------------------------------------------------- */
 .checks { gap: 16px; }
 .check-summary { align-items: flex-start; background: #f7f9fc; border: 1px solid var(--line); border-radius: 12px; color: #56637a; display: flex; gap: 12px; padding: 16px 18px; }

@@ -238,11 +238,31 @@ export function foldMoments(events: GraphEvent[], windowMs = MOMENT_MS): Moment[
 }
 
 /** "2 minutes ago", "yesterday", "12 Feb". Same wording everywhere the history is shown. */
+/** How far ahead of now still counts as a clock disagreeing rather than as the future. */
+const SKEW_S = 300;
+
 export function whenWords(iso: string, now: number): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return "at some point";
   const secs = Math.round((now - t) / 1000);
-  if (secs < 0) return "just now";
+  /*
+   * The future is a real answer here. Nothing in the history log is ever ahead of now, but the
+   * tree (§5.84) puts plateaus on the same axis and a plateau is a date somebody is aiming at —
+   * calling 2028 "just now" was the drawing's own small lie.
+   *
+   * Five minutes of slack, not none: a browser clock a minute ahead of the server is skew, and
+   * reading "in 1 minute" on something that has already happened is worse than reading "just
+   * now" on something a plateau could never be.
+   */
+  if (secs < -SKEW_S) {
+    const ahead = -secs;
+    const days = Math.round(ahead / 86400);
+    if (ahead < 3600) return `in ${Math.max(1, Math.round(ahead / 60))} minute${Math.round(ahead / 60) === 1 ? "" : "s"}`;
+    if (ahead < 86400) return `in ${Math.round(ahead / 3600)} hour${Math.round(ahead / 3600) === 1 ? "" : "s"}`;
+    if (days === 1) return "tomorrow";
+    if (days < 30) return `in ${days} days`;
+    return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
   if (secs < 45) return "just now";
   const mins = Math.round(secs / 60);
   if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;

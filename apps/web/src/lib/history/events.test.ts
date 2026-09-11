@@ -187,8 +187,14 @@ describe("when it happened, in words", () => {
   });
 
   it("does not fall over on a clock that went backwards, or on rubbish", () => {
+    // A minute ahead is a clock disagreeing, not the future.
     expect(whenWords(new Date(NOW + 60_000).toISOString(), NOW)).toBe("just now");
     expect(whenWords("not a date", NOW)).toBe("at some point");
+    // A date somebody is aiming at is the future, and saying "just now" about 2028 was a lie
+    // the tree (§5.84) put on screen.
+    expect(whenWords(new Date(NOW + 86_400_000).toISOString(), NOW)).toBe("tomorrow");
+    expect(whenWords(new Date(NOW + 5 * 86_400_000).toISOString(), NOW)).toBe("in 5 days");
+    expect(whenWords(new Date(NOW + 400 * 86_400_000).toISOString(), NOW)).toMatch(/\d{4}/);
     expect(dayKey("not a date")).toBe("unknown");
   });
 });

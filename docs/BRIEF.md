@@ -3706,6 +3706,46 @@ one problem.
 checks are consulted when something is about to land, which is exactly when somebody is looking
 at the ref menu — so that is where the way in lives.
 
+### 5.84 The tree: every branch and every commit (#133, v0.2)
+
+The owner's requirement, and the gap that made every other part of #133 abstract: *the tree and
+the branches must be represented visually somewhere — a drawing of all branches and commits, and
+I want to navigate through it.*
+
+Nexus had all the pieces of a version-controlled model and no picture of it. The history page is
+a list, the roadmap is a timeline of plans, and nothing showed the **shape** — which branches
+exist, where each was cut, what is on it, which have landed. A branching model you cannot see is
+one people guess at.
+
+`/w/[slug]/tree` draws it. Time runs down the page, newest first — the direction the history page
+already reads, and the direction `git log --graph` runs anyway. `main` is lane 0; every change
+set gets a lane of its own, cut from main with a dashed curve and landing back with a solid one
+when it is delivered. Plateaus are tags on the trunk.
+
+Three decisions about what the drawing is allowed to claim:
+
+- **A commit on `main` is a *moment*, not an event.** The history already folds edits by the same
+  hand in the same place within two minutes into one moment (§5.43); renaming three fields on one
+  object is one commit, exactly as it would be in a repository. Two different hands in the same
+  minute stay two commits.
+- **A branch is cut from the state of main it was written against** — the newest trunk commit no
+  later than its creation — not from the tip. Change sets carry no base commit today, so the
+  creation time is the truthful approximation, and it is one of the things #138's storage
+  decision would make exact.
+- **A lane is a ref for the whole height of the drawing.** Reusing a column once a branch ends is
+  how git graphs save space and how readers lose the thread. Nexus has tens of change sets, not
+  thousands of commits; clarity is affordable.
+
+**It is navigable, which is the point of drawing it.** Click a node to see what it carries and
+follow it into the objects it touched; click a branch in the side panel to stand on that ref —
+the rail, the boards and the checks all move with it (§5.82).
+
+Two small lies the first drawing told, both now fixed: a plateau dated 2028 read as *just now*,
+because `whenWords` had never needed to describe the future — it now does, with five minutes of
+slack so a skewed clock still reads as "just now" rather than "in 1 minute". And a change set
+written in the same millisecond as its own changes sorted its cut *above* them, so a branch
+appeared to start after the work on it.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4882,6 +4922,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | A commit on main is a folded moment, not a single event. | The history already folds by hand, place and two minutes. Three fields renamed on one object at one sitting is one commit in any repository; drawing three would make the trunk unreadable and the shape untrue. |
+| 2026-09-11 | A branch is drawn as cut from the state of main it was written against, not from the tip. | Drawing every branch from the tip would make every plan look like it was written today. Change sets carry no base commit yet, so creation time is the honest approximation — and naming it as an approximation is what #138 would make exact. |
+| 2026-09-11 | Each ref keeps its own lane for the whole drawing. | Reusing a column when a branch ends is how git graphs save space and how readers lose the thread. With tens of change sets rather than thousands of commits, clarity costs nothing. |
 | 2026-09-11 | A merge is gated on what a change *adds*, not on whether the model is clean. | 52 undeclared types means a clean-slate gate is red forever, and a gate everybody fails is a gate everybody turns off. "Does this make it worse" is answerable and fair. |
 | 2026-09-11 | Checks are split into blocking and advisory. | Two applications sharing a name is worth saying and not worth stopping a merge for. A gate that cannot tell an opinion from a defect gets switched off wholesale. |
 | 2026-09-11 | The checks are pure over a snapshot, with the database work in a separate module. | The same code has to run against main, against a change set's projection and later against a campaign's scope. Two implementations of "conformant" is the one thing that must not exist twice. |
@@ -4922,6 +4965,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 126: the tree (#133).** The owner asked to *see* the branches and commits and
+  navigate them, and it was the gap that made the rest of #133 abstract. `/w/[slug]/tree` draws it:
+  time down the page newest-first, `main` as lane 0, a lane per change set cut from the state of
+  main it was written against and landing back when delivered, plateaus as tags. A trunk commit is
+  a folded moment rather than a single event. Click a node to see what it carries and follow it
+  into the objects; click a branch to stand on it, and the rail, the boards and the checks move
+  with you. Two lies the first drawing told are fixed with it: a plateau dated 2028 read as "just
+  now" (`whenWords` now describes the future, with five minutes of slack for clock skew), and a
+  change set written in the same millisecond as its changes sorted its cut above them. 13 new
+  tests, brief §5.84, three decision rows.
 
 - **2026-09-11 — Rev 125a: the checks page reads in the order the reader needs.** Definition
   order put a 39-finding advisory check above the two blocking findings the verdict was actually

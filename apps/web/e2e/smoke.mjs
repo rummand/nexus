@@ -1224,6 +1224,38 @@ try {
     }
   }
 
+  /*
+   * ---- the tree (§5.84) -----------------------------------------------------------------------
+   *
+   * A branching model you cannot see is one people guess at. The drawing has to have the shape
+   * the data has: main on the left, a lane per change set, and somewhere to go from every node.
+   */
+  await page.goto(`${base}/w/acme-energy/tree`, { waitUntil: "load" });
+  await page.waitForSelector("[data-branch-tree]", { timeout: 45000 });
+  {
+    const lanes = await page.locator("[data-tree-stand], .tree-here").count();
+    assert.ok(lanes >= 2, "main and the open change sets each have a branch you can stand on");
+    assert.ok((await page.locator("[data-tree-node]").count()) > 2, "the drawing has commits in it");
+    assert.ok((await page.locator('[data-tree-node="cut"]').count()) >= 1, "a branch is drawn as cut from main");
+    assert.ok((await page.locator(".tree-svg circle").count()) > 2, "and it is drawn, not only listed");
+
+    // Clicking a commit says what it carries, and every object in it is somewhere you can go.
+    const commit = page.locator('[data-tree-node="commit"]').first();
+    await commit.click();
+    await page.waitForSelector("[data-tree-detail]");
+    assert.ok((await page.locator("[data-tree-detail]").innerText()).length > 10, "a node says what it carries");
+
+    // The tree is a place you can move from, not only read.
+    const stand = page.locator('[data-tree-stand]').first();
+    if (await stand.count()) {
+      const ref = await stand.getAttribute("data-tree-stand");
+      await stand.click();
+      await page.waitForTimeout(1200);
+      assert.equal(await page.locator("[data-ref-indicator]").getAttribute("data-ref-indicator"), ref,
+        "standing on a branch from the tree moves the rail with it");
+    }
+  }
+
   // On main the same page answers the other question: what is failing right now.
   await page.click("[data-ref-open]");
   await page.waitForSelector("[data-ref-menu]");
