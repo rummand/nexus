@@ -55,7 +55,7 @@ export const NAV: NavGroup[] = [
   {
     label: "Model",
     items: [
-      { id: "repository", label: "Fact sheets", path: "/repository" },
+      { id: "repository", label: "Objects", path: "/repository" },
       { id: "graph", label: "Knowledge graph", path: "/graph" },
       { id: "explore", label: "Graph explorer", path: "/explore" },
       { id: "meta", label: "Meta-model", path: "/meta" },

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 
 /**
- * The window a fact sheet opens in (§5.77).
+ * The window an object opens in (§5.77).
  *
  * An object is not worth losing your place over. You are three filters deep in the repository,
  * you open one application to check who owns it, and a full page navigation throws the list away:

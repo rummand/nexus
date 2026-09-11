@@ -3433,13 +3433,13 @@ That change surfaced an older bug worth writing down: the seeded capability tree
 object. Ten seeded capabilities could therefore be drawn on a board and then ignored by the board's
 index and by the save. Readable ids are not worth an object the product cannot see.
 
-### 5.76 Fact sheets: a shelf for the whole repository (v0.2)
+### 5.76 Objects: a shelf for the whole repository (v0.2)
 
 Rev 109 gave every type a page of its own and left the only way in as a chip on the knowledge
 graph. So the product had fact sheets and nowhere to find them: the first thing the owner said on
 seeing the inventory was that there was no menu item for it, which was exactly right.
 
-**Fact sheets** is the entry in the rail, and the page behind it is one flat list of everything
+**Objects** is the entry in the rail, and the page behind it is one flat list of everything
 the model holds — 478 objects across 12 types on Energinet's estate — with a search across name,
 type, description and parent, and each row opening the object's own sheet (§5.77). Every row says
 where it sits (§5.70), how many relations it has and how many boards it is on; picking a single
@@ -3568,6 +3568,24 @@ twice more as a file, because a browser will not read a React component: `app/ic
 tab icon, a rounded blue tile the framework picks up by convention, and `app/apple-icon.png` is
 the home-screen icon, full bleed because iOS applies its own mask and a rounded tile inside it
 comes out as a badge on a white square.
+
+### 5.81 Objects, not fact sheets (v0.2)
+
+"Fact sheet" is LeanIX's word. It arrived with the import and settled into the rail, the page and
+the documentation before anybody chose it — which is how a product ends up speaking a competitor's
+language to its own users, and teaching every new reader a term they will have to unlearn.
+
+The rail now says **Objects**, and an object has an **object page**. Nothing new has to be taught:
+the product already said it everywhere the copy was written rather than borrowed — *478 objects
+across 12 types* is the line at the top of the list, and the meta-model has always described types
+*of objects*. It is vendor-neutral, it is what the database calls them, and it is what somebody
+says out loud when they are not reading a screen.
+
+Three things deliberately did not change. The address stays `/w/[slug]/fs/[id]`, because links
+already exist and a URL is not vocabulary. The internal names — `FactSheet`, `factsheet.ts`, the
+`fs-` class prefix — stay, because renaming an identifier costs a diff across the codebase and
+buys a reader nothing. And *fact sheet* stays in the documentation's keywords, so somebody
+arriving from LeanIX and searching for what they know still lands on the right page.
 
 ### 5.80 Deploying a small change quickly (v0.2)
 
@@ -3818,7 +3836,7 @@ builds are still correct, only colder.
 - Live dry run in the import dialog: new / existing counts, kinds, attribute columns, relations,
   warnings. Card kind fields suggest the workspace's kinds.
 
-### The fact sheet (v0.2, rev 114–115 — §5.77)
+### The object page (v0.2, rev 114–115 — §5.77)
 - `/w/[slug]/fs/[id]`: one object, one page — name, description, attributes by section, relations
   grouped by kind, where it sits, boards, and its history.
 - Opened from inside the product it is a **window over the page you were on**, filling everything
@@ -3830,7 +3848,7 @@ builds are still correct, only colder.
   *From the data*; declared fields show even when empty, and a required blank is marked.
 
 ### The repository (v0.2, rev 113 + 117 — §5.76, §5.78)
-- **Fact sheets** in the rail → `/w/[slug]/repository`: every object the model holds, one list.
+- **Objects** in the rail → `/w/[slug]/repository`: every object the model holds, one list.
 - A **filter rail** on the left: type (multi-select, counted, undeclared marked), where it sits,
   connected or orphaned, on a board or not, type declared or not — each counted against the other
   facets but never against itself, and a choice that would empty the list disabled rather than
@@ -4754,12 +4772,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | An object is called an object, not a fact sheet. | "Fact sheet" is LeanIX's term; it came in with the import rather than being chosen, and a product that speaks a competitor's language teaches its users a word they will have to unlearn. The product's own copy already said "objects". |
+| 2026-09-11 | The rename stops at the vocabulary: the URL, the identifiers and the search keywords keep the old word. | A URL is a link somebody has already sent, an identifier is a diff nobody reads, and a search keyword is how a LeanIX refugee finds the page. None of the three is vocabulary. |
 | 2026-09-11 | The mark is a flat-cut geometric N — a monogram, not a picture of the graph. | Two marks were tried and both said the wrong thing to the audience that matters: a share glyph says "send this to somebody", and an N of dots and edges is clever about the product and reads as playful. This is shown to steering committees beside a utility's own logo, and restraint is what earns a place there. |
 | 2026-09-11 | The repository's filters are a rail on the left, not chips above the table. | Twelve types already overflowed the chip row, and the cross-cutting questions — orphaned, top level, undeclared — have nowhere to go in a row of type chips. A rail has room, it is where people look for a filter, and it is the shape the type inventory already uses. |
 | 2026-09-11 | A facet counts against every other facet's selection and never against its own. | Otherwise choosing a type shows every other type as zero and the filter is a one-way door: you can narrow but never switch. The same rule the type inventory learned, applied to the cross-cutting questions. |
 | 2026-09-11 | A filter that would empty the list is shown disabled rather than hidden. | Zero is an answer — *nothing here is undeclared* is worth knowing — and a rail whose rows appear and disappear cannot be learned or clicked from memory. |
 | 2026-09-11 | The repository is one flat searchable list, not a tree or a board. | It answers "where is that thing". A tree makes you know the shape before you can look, and a board makes you pan. 490 rows and a search box is faster than either, and the per-type inventory is one click away for the questions that need facets. |
-| 2026-09-11 | Adding Fact sheets to the rail pushed EA knowledge out of it, rather than raising the cap. | The rail is capped at fourteen because past about a dozen a list stops being scanned and starts being searched. The honest axis is frequency: the repository is daily, the knowledge library is monthly, so it moves to the foot of the rail beside Documentation. |
+| 2026-09-11 | Adding the objects list to the rail pushed EA knowledge out of it, rather than raising the cap. | The rail is capped at fourteen because past about a dozen a list stops being scanned and starts being searched. The honest axis is frequency: the repository is daily, the knowledge library is monthly, so it moves to the foot of the rail beside Documentation. |
 | 2026-09-11 | Editing a fact sheet has no save button: the value is the field, written on blur. | The canvas has always worked this way and nobody misses a save button there. What makes it safe is not a button but a history entry with a name on it, a quiet "saved", and an undo for the seconds that matter. |
 | 2026-09-11 | A field's section is declared on the type, never guessed from its key. | A heuristic that files `lxCostCentre` under Lifecycle is wrong often enough to discredit every other heading on the page. Undeclared keys go in one group that says what it is. |
 | 2026-09-11 | The drawer stays, but only on the canvas. | Leaving a board to read an object costs you your place; leaving a list does not. One surface where it earns its keep, and a link to the page for everything it cannot show. |
@@ -4782,6 +4802,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 121: objects, not fact sheets.** "Fact sheet" is LeanIX's word; it came in
+  with the import and settled into the rail, the page and the documentation without anybody
+  choosing it. The rail now says **Objects** and an object has an **object page** — which is what
+  the product's own copy already said, and what the database has always called them. The URL
+  (`/fs/[id]`), the identifiers and the documentation's search keywords keep the old word on
+  purpose: a link is already sent, a rename of identifiers is a diff nobody reads, and somebody
+  arriving from LeanIX should still find the page by searching what they know. Brief §5.81, two
+  decision rows.
 
 - **2026-09-11 — Rev 120: the mark, again.** Rev 118 replaced a share glyph with an N built out
   of nodes and edges; the owner's verdict was that it reads as playful, and this product is put

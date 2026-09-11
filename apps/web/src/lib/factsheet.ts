@@ -1,7 +1,7 @@
 import type { MetaField } from "@/lib/metamodel";
 
 /**
- * A fact sheet, arranged (§5.77).
+ * An object page, arranged (§5.77).
  *
  * An object's page is not a dump of its attributes: it is the type's own opinion about what
  * belongs beside what. The meta-model carries that opinion — each declared field names the

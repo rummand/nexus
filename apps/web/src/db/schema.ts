@@ -878,7 +878,7 @@ export const nodeTypeFields = sqliteTable(
     /** Allowed values for `enum`, JSON-encoded array. */
     options: text("options").notNull().default("[]"),
     /**
-     * Which group of the fact sheet this field belongs in — "Ownership", "Lifecycle", "Cost" (§5.77).
+     * Which group of the object page this field belongs in — "Ownership", "Lifecycle", "Cost" (§5.77).
      *
      * Empty means nobody has filed it, and the page puts those together rather than inventing a
      * home for them: a field's section is somebody's opinion about what belongs beside what, and

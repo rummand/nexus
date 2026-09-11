@@ -87,10 +87,6 @@
     "width": 1452,
     "height": 1000
   },
-  "fact-sheet": {
-    "width": 1452,
-    "height": 1000
-  },
   "graph": {
     "width": 1452,
     "height": 1000
@@ -184,6 +180,10 @@
     "height": 1000
   },
   "models": {
+    "width": 1452,
+    "height": 1000
+  },
+  "object-page": {
     "width": 1452,
     "height": 1000
   },

@@ -71,11 +71,11 @@ export const EXPLORER: DocPage = {
 
 export const REPOSITORY: DocPage = {
   slug: "repository",
-  title: "Fact sheets: finding anything",
+  title: "Objects: finding anything",
   summary: "One list of every object the model holds, with a rail that asks the questions a search box cannot.",
-  keywords: ["repository", "fact sheets", "search", "find", "filter", "facet", "sort", "orphan", "undeclared", "top level", "list", "browse"],
+  keywords: ["repository", "objects", "fact sheets", "factsheet", "search", "find", "filter", "facet", "sort", "orphan", "undeclared", "top level", "list", "browse"],
   blocks: [
-    { kind: "prose", text: "**Fact sheets** in the navigation is the shelf everything sits on: every object in the workspace, one flat list, whatever type it is and whoever put it there. It is flat on purpose — the question it answers is *where is that thing*, and a search box over everything answers that in a second where a tree makes you know the shape before you can look." },
+    { kind: "prose", text: "**Objects** in the navigation is the shelf everything sits on: every object in the workspace, one flat list, whatever type it is and whoever put it there. It is flat on purpose — the question it answers is *where is that thing*, and a search box over everything answers that in a second where a tree makes you know the shape before you can look." },
     { kind: "shot", src: "repository", alt: "The repository with a filter rail on the left and a table of every object in the workspace", caption: "The rail on the left; the sort beside the search. Every count says what choosing it would give you." },
     { kind: "heading", text: "The rail", id: "rail" },
     { kind: "prose", text: "A search box answers one question. These are the others, and they are the ones a real estate asks the moment it lands:" },
@@ -125,13 +125,13 @@ export const INVENTORY: DocPage = {
 };
 
 export const FACT_SHEET: DocPage = {
-  slug: "fact-sheet",
-  title: "The fact sheet: one object, one page",
+  slug: "object-page",
+  title: "The object page: one object, one place",
   summary: "Every object has an address, opens in a window over whatever you were doing, and is edited by typing in it.",
-  keywords: ["fact sheet", "factsheet", "object", "page", "edit", "inline", "save", "autosave", "undo", "sections", "attributes", "history", "window", "leanix", "link"],
+  keywords: ["object", "object page", "fact sheet", "factsheet", "page", "edit", "inline", "save", "autosave", "undo", "sections", "attributes", "history", "window", "leanix", "link"],
   blocks: [
     { kind: "prose", text: "An object is a thing, not an annotation on a list. **/w/…/fs/…** is its address — the name, the description, every attribute in the section its type puts it in, what it is connected to, where it sits, which boards it is on, and everything that has ever happened to it. It is a link you can send." },
-    { kind: "shot", src: "fact-sheet", alt: "An application's fact sheet open in a window over the repository, with its attributes in sections and its history beside them", caption: "Opened from a list, the sheet is a window over it — inside the area right of the menu, so the list is still visible behind it." },
+    { kind: "shot", src: "object-page", alt: "An application's object page open in a window over the list, with its attributes in sections and its history beside them", caption: "Opened from a list, the sheet is a window over it — inside the area right of the menu, so the list is still visible behind it." },
     { kind: "heading", text: "Why it is a window and not a page", id: "window" },
     { kind: "prose", text: "Click a row and the sheet opens **over** the list you were reading, in the area right of the navigation. It stands inside that area rather than filling it, so the list is visible around its edges — it is still there, and you are on top of it rather than somewhere else. The list keeps its search, its facets and its scroll position, so checking one application's owner does not cost you the three filters it took to find it. The address in the bar still changes — the object is linkable and refreshable — and there are four ways out, all cheap: the **close** button, **Escape**, a click on the space beside the window, and the browser's back button, which are the same gesture here." },
     { kind: "note", tone: "tip", text: "Open the link cold — from a mail, a bookmark, a new tab — and there is nothing behind it to cover, so it renders as a whole page instead. Same sheet, same edits. **Open on its own** in the window's bar does that deliberately." },

@@ -7,7 +7,7 @@ import { FactSheet } from "@/components/factsheet/FactSheet";
 import { SheetWindow } from "@/components/factsheet/SheetWindow";
 
 /**
- * A fact sheet opened from somewhere else (§5.77).
+ * An object opened from somewhere else (§5.77).
  *
  * This is the same page as `/w/[slug]/fs/[entityId]`, intercepted: clicking a row in the
  * repository does not leave the repository, it opens the object over it, in a window that fills

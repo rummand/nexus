@@ -8,7 +8,7 @@ import type { MetaField } from "@/lib/metamodel";
  *
  * No edit mode, no save button, no dialog: the text on the page *is* the input. Click it, change
  * it, look away — it is written. The product already works this way on the canvas, where a card's
- * title is a live field and nobody has ever asked where the save button is; a fact sheet that
+ * title is a live field and nobody has ever asked where the save button is; an object page that
  * behaved differently would be the odd one out.
  *
  * Three things make that safe rather than alarming:

@@ -73,7 +73,7 @@ export function FactSheet({
     <article className="factsheet" data-factsheet={e.id}>
       <header className="fs-head">
         <nav className="fs-crumbs" aria-label="Where it sits">
-          <Link href={`/w/${slug}/repository`}>Fact sheets</Link>
+          <Link href={`/w/${slug}/repository`}>Objects</Link>
           <span>/</span>
           <Link href={`/w/${slug}/type/${encodeURIComponent(e.kind)}`}>{e.kind || "Untyped"}</Link>
           {detail.ancestry.slice(0, -1).map((a) => (

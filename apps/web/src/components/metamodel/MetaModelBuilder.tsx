@@ -418,7 +418,7 @@ function NodeTypeDetail({ type, allTypeNames, layers, pending, run, workspaceId,
                     </td>
                     <td>
                       {/*
-                        * Where the field sits on a fact sheet (§5.77). A free text box with the
+                        * Where the field sits on an object page (§5.77). A free text box with the
                         * sections this type already uses offered alongside: a fixed list would be
                         * this product deciding that every organisation groups an application the
                         * same way, which is the assumption §2.2 exists to reject.

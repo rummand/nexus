@@ -12,7 +12,7 @@ import { viewer } from "@/lib/auth/guard";
  * who is not a member gets `notFound` rather than a refusal, because "this workspace exists and you
  * cannot see it" is itself something they should not learn from a URL.
  *
- * The `sheet` slot is where a fact sheet opened from a list lands (§5.77). It is a sibling of the
+ * The `sheet` slot is where an object opened from a list lands (§5.77). It is a sibling of the
  * page rather than part of it, so opening an object leaves the page underneath alive — and it is
  * placed in the shell's second column, which is why the menu stays reachable with it open.
  */

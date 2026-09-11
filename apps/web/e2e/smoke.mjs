@@ -1462,9 +1462,9 @@ try {
    * entry in the rail is the fix, so the walk uses the rail rather than the address.
    */
   await page.goto(`${base}/w/acme-energy`, { waitUntil: "load" });
-  await page.click('a:has-text("Fact sheets")');
+  await page.click('a:has-text("Objects")');
   await page.waitForSelector("[data-repository-table]", { timeout: 45000 });
-  assert.match(page.url(), /\/repository$/, "the rail entry lands on the repository");
+  assert.match(page.url(), /\/repository$/, "the rail entry lands on the list of objects");
   const everything = await page.locator("[data-repository-count]").innerText();
   assert.match(everything, /\d+ objects/, "it says how much the model holds");
   const kinds = await page.locator("[data-repository-rail] [data-type]").count();
@@ -1523,7 +1523,7 @@ try {
   /*
    * ---- one object, one page (§5.77) -----------------------------------------------------------
    *
-   * The claim is that a fact sheet is a place, not a panel: it has an address, it is editable
+   * The claim is that an object page is a place, not a panel: it has an address, it is editable
    * where it stands, and what you type is written without a save button. So the row in the
    * repository is a link, and following it is how the walk gets there.
    *

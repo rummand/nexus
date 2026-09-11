@@ -20,7 +20,7 @@ import {
  * Everything in the repository (§5.76).
  *
  * Rev 109 made each type browsable and reachable at its own address, and then left the only way
- * in as a chip on another page — so the product had fact sheets and no shelf to find them on.
+ * in as a chip on another page — so the product had object pages and no shelf to find them on.
  * This is the shelf: every object in the workspace, in one flat list, opening its own sheet.
  *
  * Deliberately one flat list rather than a tree or a board. The question this page answers is
@@ -88,7 +88,7 @@ export function Repository({ slug, types, items }: { slug: string; types: Reposi
         <div className="inventory-title">
           <i style={{ background: "#1376d4" }} />
           <div>
-            <h1>Fact sheets</h1>
+            <h1>Objects</h1>
             <p>
               {items.length} object{items.length === 1 ? "" : "s"} across {types.length} type{types.length === 1 ? "" : "s"}
               {" · everything the model holds, whoever put it there"}

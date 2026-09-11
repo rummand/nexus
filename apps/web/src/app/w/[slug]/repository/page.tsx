@@ -9,7 +9,7 @@ import { Repository } from "@/components/inventory/Repository";
  * The repository: every object the model holds (§5.76).
  *
  * Rev 109 gave each type a page and no way to reach it except a chip on the knowledge graph.
- * This is the entry in the rail that was missing — the shelf the fact sheets sit on — and it is
+ * This is the entry in the rail that was missing — the shelf the objects sit on — and it is
  * one flat list on purpose: the question it answers is "where is that thing", and a search box
  * over everything answers it faster than any tree.
  */

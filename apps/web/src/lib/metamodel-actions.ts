@@ -168,7 +168,7 @@ export async function updateField(id: string, patch: { key?: string; dataType?: 
     required: patch.required ?? field.required,
     description: patch.description?.trim() ?? field.description,
     options: patch.options ? JSON.stringify(patch.options) : field.options,
-    // Where the field sits on a fact sheet (§5.77). Trimmed, because " Ownership" and "Ownership"
+    // Where the field sits on an object page (§5.77). Trimmed, because " Ownership" and "Ownership"
     // would otherwise be two sections.
     section: patch.section !== undefined ? patch.section.trim().slice(0, 40) : field.section,
   }).where(eq(s.nodeTypeFields.id, id));

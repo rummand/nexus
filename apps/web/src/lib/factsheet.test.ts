@@ -3,7 +3,7 @@ import { completeness, FROM_DATA, sectionsOf, sheetSections, UNFILED } from "./f
 import type { MetaField } from "./metamodel";
 
 /**
- * Arranging a fact sheet (§5.77).
+ * Arranging an object page (§5.77).
  *
  * The cases are the ones that decide whether a reader trusts the page: a required field nobody
  * filled has to be visible, a key nobody declared must not be filed under a heading somebody's
@@ -15,7 +15,7 @@ const field = (key: string, over: Partial<MetaField> = {}): MetaField => ({
   usage: 1, presence: "declared", ...over,
 });
 
-describe("grouping a fact sheet into sections", () => {
+describe("grouping an object page into sections", () => {
   const fields = [
     field("owner", { section: "Ownership" }),
     field("steward", { section: "Ownership" }),

@@ -377,7 +377,7 @@ try {
   // ---- one object, in the window it opens in (§5.77) -----------------------
   // Reached by clicking a row, not by its address: the address alone renders the standalone page,
   // and the window over the list is the thing the page is describing.
-  await shot("fact-sheet", async () => {
+  await shot("object-page", async () => {
     await goto(`${w}/repository`, "[data-repository-table]");
     await page.fill("[data-repository-search]", "maximo");
     await page.waitForTimeout(400);
