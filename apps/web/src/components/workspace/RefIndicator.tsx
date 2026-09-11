@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, GitBranch, GitCommitHorizontal, ListChecks, Network, ShieldCheck } from "lucide-react";
+import { Check, GitBranch, GitCommitHorizontal, ListChecks, Network, Rss, ShieldCheck } from "lucide-react";
 import { switchRefAction } from "@/lib/change/actions";
 import { divergenceWords, refKindWords, refName, type Divergence, type Ref } from "@/lib/change/ref";
 
@@ -25,6 +25,8 @@ export interface RefChoice {
   status: string;
   targetDate: string;
   changes: number;
+  /** Set when the branch belongs to a source system rather than to a person (§5.92). */
+  sourceKey: string;
 }
 
 /*
@@ -87,24 +89,37 @@ export function RefIndicator({
               abandoned one is not.
             </p>
           ) : (
-            choices.map((c) => {
+            choices.map((c, i) => {
               const here = !onMain && current.id === c.id;
+              /*
+                Source branches under their own heading (§5.92). They are permanent fixtures
+                rather than work in progress, and a list that mixes "the SAP migration" with
+                "what ServiceNow says" reads as though somebody is planning the second one.
+              */
+              const opensSources = Boolean(c.sourceKey) && !choices[i - 1]?.sourceKey;
               return (
-                <button
-                  key={c.id}
-                  type="button"
-                  role="menuitem"
-                  className={here ? "on" : ""}
-                  onClick={() => go(c.id)}
-                  data-ref-choice={c.id}
-                >
-                  <GitBranch size={13} />
-                  <span>
-                    <b>{c.name || "(unnamed change set)"}</b>
-                    <em>{c.targetDate ? `${c.targetDate} · ` : ""}{c.changes} change{c.changes === 1 ? "" : "s"}</em>
-                  </span>
-                  {here && <Check size={13} />}
-                </button>
+                <Fragment key={c.id}>
+                  {opensSources && <p className="ref-heading">What the sources say</p>}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`${here ? "on" : ""}${c.sourceKey ? " from-source" : ""}`}
+                    onClick={() => go(c.id)}
+                    data-ref-choice={c.id}
+                    data-ref-source={c.sourceKey || undefined}
+                  >
+                    {c.sourceKey ? <Rss size={13} /> : <GitBranch size={13} />}
+                    <span>
+                      <b>{c.name || "(unnamed change set)"}</b>
+                      <em>
+                        {c.sourceKey
+                          ? `${c.changes} thing${c.changes === 1 ? "" : "s"} it says that we have not agreed to`
+                          : `${c.targetDate ? `${c.targetDate} · ` : ""}${c.changes} change${c.changes === 1 ? "" : "s"}`}
+                      </em>
+                    </span>
+                    {here && <Check size={13} />}
+                  </button>
+                </Fragment>
               );
             })
           )}

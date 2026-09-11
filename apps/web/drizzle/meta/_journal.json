@@ -260,6 +260,13 @@
       "when": 1789160478100,
       "tag": "0036_lame_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1789168306243,
+      "tag": "0037_giant_giant_man",
+      "breakpoints": true
     }
   ]
 }

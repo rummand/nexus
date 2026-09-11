@@ -1075,11 +1075,25 @@ export const changeSets = sqliteTable(
     targetDate: text("target_date").notNull().default(""),
     /** Set when the change set was applied to the graph; the graph moved at this moment. */
     deliveredAt: text("delivered_at"),
+    /**
+     * The source system this branch belongs to, when it is one (#139, §5.92).
+     *
+     * A plan is written by a person and delivered once. A **source branch** is different: it is
+     * long-lived, it is re-synced, and what it holds is not an intention but a standing claim —
+     * *this is what ServiceNow currently says, and we have not agreed to all of it*. Same table,
+     * because it is the same mechanism: a set of changes projected over the graph and merged
+     * deliberately. Empty for every branch a person wrote.
+     */
+    sourceKey: text("source_key").notNull().default(""),
     createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
-  (t) => [index("change_sets_workspace_idx").on(t.workspaceId, t.targetDate)],
+  (t) => [
+    index("change_sets_workspace_idx").on(t.workspaceId, t.targetDate),
+    // "Is there already a branch open for this source?" is asked on every sync.
+    index("change_sets_source_idx").on(t.workspaceId, t.sourceKey),
+  ],
 );
 
 export const changes = sqliteTable(

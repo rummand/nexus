@@ -47,13 +47,31 @@ export async function currentCheckout(db: Db, workspaceId: string, userId: strin
 
   const changes = await db.select().from(s.changes).where(eq(s.changes.changeSetId, set.id));
   return {
-    ref: { kind: "set", id: set.id, name: set.name, status: set.status, targetDate: set.targetDate },
+    ref: {
+      kind: "set", id: set.id, name: set.name, status: set.status, targetDate: set.targetDate,
+      ...(set.sourceKey ? { sourceKey: set.sourceKey, sourceName: sourceNameOf(set.sourceKey, set.name) } : {}),
+    },
     divergence: divergenceOf(changes.map(asChange)),
   };
 }
 
 /** The refs this person could move to: main, plus every change set still open. */
-export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ id: string; name: string; status: s.ChangeSetRow["status"]; targetDate: string; changes: number }>> {
+/**
+ * The source's own name out of its key, when nothing better is to hand.
+ *
+ * `leanix:acme.leanix.net` is a key, not a name; the branch is called "What LeanIX says" and
+ * that is where the readable name lives. Falling back to the key would put a hostname in a
+ * sentence a person is meant to read.
+ */
+function sourceNameOf(sourceKey: string, branchName: string): string {
+  const said = branchName.match(/^What (.+) says$/);
+  if (said) return said[1]!;
+  const [kind, detail] = sourceKey.split(":");
+  if (kind === "leanix") return detail ? `LeanIX (${detail})` : "LeanIX";
+  return detail || kind || "a source";
+}
+
+export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ id: string; name: string; status: s.ChangeSetRow["status"]; targetDate: string; changes: number; sourceKey: string }>> {
   const sets = await db.select().from(s.changeSets).where(eq(s.changeSets.workspaceId, workspaceId));
   const open = sets.filter(canCheckOut);
   if (!open.length) return [];
@@ -61,8 +79,16 @@ export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ i
   const counted = new Map<string, number>();
   for (const row of rows) counted.set(row.changeSetId, (counted.get(row.changeSetId) ?? 0) + 1);
   return open
-    .map((set) => ({ id: set.id, name: set.name, status: set.status, targetDate: set.targetDate, changes: counted.get(set.id) ?? 0 }))
-    .sort((a, b) => (a.targetDate || "9999").localeCompare(b.targetDate || "9999") || a.name.localeCompare(b.name));
+    .map((set) => ({ id: set.id, name: set.name, status: set.status, targetDate: set.targetDate, changes: counted.get(set.id) ?? 0, sourceKey: set.sourceKey }))
+    /*
+     * Source branches last, under their own heading: they are always open, so sorting them in
+     * with the plans would put a permanent fixture at the top of a list of things people are
+     * actually working on.
+     */
+    .sort((a, b) =>
+      Number(Boolean(a.sourceKey)) - Number(Boolean(b.sourceKey))
+      || (a.targetDate || "9999").localeCompare(b.targetDate || "9999")
+      || a.name.localeCompare(b.name));
 }
 
 /**

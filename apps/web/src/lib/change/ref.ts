@@ -24,6 +24,9 @@ export type Ref =
       name: string;
       status: ChangeSetStatus;
       targetDate: string;
+      /** Set when this branch belongs to a source system rather than to a person (§5.92). */
+      sourceKey?: string;
+      sourceName?: string;
     };
 
 export const MAIN: Ref = { kind: "main" };
@@ -115,6 +118,12 @@ export function refName(ref: Ref): string {
  */
 export function refKindWords(ref: Ref): string {
   if (ref.kind === "main") return MAIN_MEANS;
+  /*
+   * The three kinds #133 §7 says a branch must name out loud. A source branch is knowable now:
+   * it is not a plan and not somebody's proposal, it is what a system currently claims, and
+   * reading it as a plan would be reading a sync as an intention.
+   */
+  if (ref.sourceKey) return `a standing claim from ${ref.sourceName || "a source"}, reconciled deliberately`;
   return ref.targetDate ? `a plan, for ${ref.targetDate}` : "a proposal, undated";
 }
 

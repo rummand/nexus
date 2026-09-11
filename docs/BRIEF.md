@@ -4000,6 +4000,39 @@ vision model takes one, and an exported Visio or draw.io file still carries ever
 Under §5.90 a picture has no standing at all, so everything it claims waits on a branch. That is
 the right answer for a drawing somebody made in a meeting.
 
+### 5.92 A branch per source, and drift that proposes itself (#139, v0.2)
+
+The consequence the epic was aimed at. Each source system gets **one long-lived branch** that is
+re-synced rather than replaced: re-reading LeanIX next month adds commits to the branch already
+open for it, instead of leaving a graveyard of one-shot imports nobody merged. Two open branches
+from one system would be two answers to "what does it currently say".
+
+**`main` stops being what the last import wrote** and becomes *the reconciled model — what we
+chose to believe after seeing what each source claims*. When two sources disagree about an
+owner, that is a merge conflict with both claims visible, rather than last-write-wins at three in
+the morning. That is the single biggest difference between this and every import pipeline in the
+category, today's included.
+
+A source branch is the third kind of branch #133 §7 says must be named out loud, and it is the
+one that was knowable: not a plan, not somebody's proposal, but *a standing claim from ServiceNow,
+reconciled deliberately*. It reads that way everywhere — in the ref menu it sits under its own
+heading, marked, saying **how many things it claims that we have not agreed to**, because sorting
+a permanent fixture in with the SAP migration makes it look like somebody is planning it.
+
+**Drift speaks in the source's voice.** Not "34 changes are pending" but *"ServiceNow proposes 34
+changes to the model: 12 objects we do not have, 20 it says we have wrong, 2 connections."* The
+passive form hides the fact that somebody is answerable for the claim, which is the entire reason
+for putting a source behind a branch.
+
+And the rot problem (#133 §7) in its likeliest form — a source branch nobody ever merges — is
+named at three weeks rather than discovered at nine months, when the diff is unreviewable and
+throwing it away is the only honest option left.
+
+**What is not here yet: the nightly sync.** A LeanIX token is used for one call and never stored
+(§5.63), so nothing can re-read that source unattended, and the schedule waits on a decision
+about holding a credential rather than on code. A connected system consented through the
+catalogue (§5.37) has no such problem, and is where the schedule should land first.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5243,6 +5276,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A picture with no model configured fails loudly and is kept, rather than falling back to rules. | There is no reading a PNG with a regular expression. An empty batch with no explanation is the worst outcome; the file saying why, and still being there when a model is configured, is the best. |
 | 2026-09-11 | SVG is read as markup rather than rasterised. | No vision model takes an SVG, and rasterising would put a browser in the import path. An exported Visio or draw.io file carries every label as text, which intake reads perfectly well. |
 
+| 2026-09-11 | A source gets one long-lived branch, re-synced, rather than a branch per read. | Two open branches from one system are two answers to "what does it currently say". A branch per read is also how a repository fills with one-shot imports nobody merged, which is the thing version control was supposed to prevent. |
+| 2026-09-11 | A source branch is a change set, not a new kind of object. | It is the same mechanism: changes projected over the graph and merged deliberately. What differs is who wrote it and that it is never finished — both of which a column can say. |
+| 2026-09-11 | Drift is phrased in the source's voice: "ServiceNow proposes 34 changes." | The passive "34 changes are pending" hides that somebody is answerable for the claim, which is the whole point of putting a source behind a branch. |
+| 2026-09-11 | A source branch nobody has reconciled for three weeks says so. | Long-lived-branch rot in its likeliest form. Saying it at three weeks is cheap; finding it at nine months means the diff is unreviewable and the only honest option is to throw the branch away. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5257,6 +5295,18 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 138: a branch per source, and drift that proposes itself (#139).** The
+  consequence the epic was aimed at. A source system now gets one long-lived branch that is
+  re-synced rather than replaced, so a second read of LeanIX adds commits to the branch already
+  open instead of leaving another one-shot import nobody merged. `main` stops being what the last
+  import wrote and becomes the reconciled model. A source branch names itself as the third kind
+  of branch — a standing claim, reconciled deliberately — and sits under its own heading in the
+  ref menu saying how many things it claims that we have not agreed to. Drift speaks in the
+  source's voice rather than the passive, and a branch nobody has reconciled for three weeks says
+  so before the diff becomes unreviewable. Ten tests. Brief §5.92, four decision rows. Not yet
+  here: the nightly sync, which waits on a decision about storing a credential rather than on
+  code.
 
 - **2026-09-11 — Rev 137: import a picture of an architecture.** The owner asked to be able to
   import images and have the architecture in them read. A diagram is now a third shape of file,

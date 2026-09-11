@@ -10,6 +10,7 @@ import { proposeFileKind, proposeMapping } from "./map";
 import type { MatchTarget } from "./match";
 import { planImport, planTotals, type ImportIntent } from "./plan";
 import { splitByRoute, splitWords } from "@/lib/source/trust";
+import { standingBranchName } from "@/lib/source/drift";
 import { standingFor, trustFor } from "@/lib/source/read";
 import { review } from "./review";
 import { stage, type FileInput } from "./stage";
@@ -262,7 +263,7 @@ export async function applyBatch(
     }
 
     const changeSetId = split.branch.length
-      ? await landOnBranch(db, batch, split.branch, approvedById, options.branchName)
+      ? await landOnBranch(db, batch, split.branch, approvedById, options.branchName, { key: trust.id, name: trust.name })
       : null;
 
     // The batch is only "landed" when something is actually waiting; otherwise it is done.
@@ -316,19 +317,43 @@ async function landOnBranch(
   intents: ImportIntent[],
   createdById: string,
   branchName?: string,
+  source?: { key: string; name: string },
 ): Promise<string> {
-  const changeSetId = `chg_${nanoid(10)}`;
-  await db.insert(s.changeSets).values({
-    id: changeSetId,
-    workspaceId: batch.workspaceId,
-    name: (branchName?.trim() || batch.name).slice(0, 120),
-    description: `Imported from ${batch.origin}. Nothing here is in the estate until this is merged.`,
-    targetDate: "",
-    status: "draft",
-    createdById,
-    createdAt: now(),
-    updatedAt: now(),
-  });
+  /*
+   * A source's branch is long-lived (§5.92). Re-reading LeanIX next month adds commits to the
+   * branch already open for it rather than making a second one: a graveyard of one-shot imports
+   * nobody merged is exactly what a version-controlled model is supposed to prevent, and two
+   * open branches from one system is two answers to "what does it currently say".
+   */
+  const standing = source?.key
+    ? await db.query.changeSets.findFirst({
+        where: and(
+          eq(s.changeSets.workspaceId, batch.workspaceId),
+          eq(s.changeSets.sourceKey, source.key),
+          inArray(s.changeSets.status, ["draft", "planned"]),
+        ),
+      })
+    : undefined;
+
+  const changeSetId = standing?.id ?? `chg_${nanoid(10)}`;
+  if (standing) {
+    await db.update(s.changeSets).set({ updatedAt: now() }).where(eq(s.changeSets.id, changeSetId));
+  } else {
+    await db.insert(s.changeSets).values({
+      id: changeSetId,
+      workspaceId: batch.workspaceId,
+      name: (branchName?.trim() || (source ? standingBranchName(source.name) : batch.name)).slice(0, 120),
+      description: source
+        ? `What ${source.name} currently claims, and we have not agreed to. Re-synced rather than replaced; nothing here is in the estate until it is merged.`
+        : `Imported from ${batch.origin}. Nothing here is in the estate until this is merged.`,
+      targetDate: "",
+      status: "draft",
+      sourceKey: source?.key ?? "",
+      createdById,
+      createdAt: now(),
+      updatedAt: now(),
+    });
+  }
 
   const rows = intents.map((intent) => ({
     id: `chn_${nanoid(10)}`,
