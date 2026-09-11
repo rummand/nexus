@@ -1412,12 +1412,16 @@ try {
 
   await page.goto(`${base}/w/acme-energy/type/Business%20Capability`, { waitUntil: "load" });
   await page.waitForSelector("[data-inventory-table]", { timeout: 30000 });
-  const meteringRow = await page.locator("[data-inventory-row]", { hasText: "Metering" }).first().innerText();
-  assert.match(meteringRow, /Grid Services/, "the inventory says what each one sits inside");
-  const gridServicesRow = await page.locator("[data-inventory-row]", { hasText: "Grid Services" }).first().innerText();
-  assert.match(gridServicesRow, /2 beneath/, "…and counts everything below it, at any depth");
-  const adriftRow = await page.locator("[data-inventory-row]", { hasText: "Something adrift" }).first().innerText();
-  assert.match(adriftRow, /top level/i, "an object whose parent was never found still arrives, at the top");
+  /*
+   * By the name in the first cell, not by "the row containing this text": once containment shows
+   * in the table, the row for "Meter reading" contains the word "Metering" too — which is the
+   * feature working, and would quietly make a sloppier assertion pass for the wrong reason.
+   */
+  const rows = await page.locator("[data-inventory-row]").allInnerTexts();
+  const inside = (name) => (rows.find((r) => r.split("\t")[0].trim() === name) ?? "").split("\t")[1] ?? "";
+  assert.match(inside("Metering"), /Grid Services/, "the inventory says what each one sits inside");
+  assert.match(inside("Grid Services"), /2 beneath/, "…and counts everything below it, at any depth");
+  assert.match(inside("Something adrift"), /top level/i, "an object whose parent was never found still arrives, at the top");
 
   // Putting it back has to put the tree back too, not only the objects.
   await page.goto(treeBatch, { waitUntil: "load" });

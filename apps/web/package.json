@@ -21,7 +21,8 @@
     "db:pg:schema": "node scripts/generate-pg-schema.mjs",
     "db:pg:generate": "node scripts/generate-pg-schema.mjs && drizzle-kit generate --config drizzle.pg.config.ts",
     "docs:capture": "node scripts/capture-docs.mjs",
-    "leanix:export": "tsx scripts/leanix-export.ts"
+    "leanix:export": "tsx scripts/leanix-export.ts",
+    "leanix:into-graph": "tsx scripts/leanix-into-graph.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

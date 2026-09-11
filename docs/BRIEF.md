@@ -3373,6 +3373,22 @@ That was the only way to say where something sat while every import landed flat.
 now, and a name that repeats its ancestors makes a capability map unreadable and a search
 unusable.
 
+**And the import grew a second door.** Staging and approving were written as server actions, so
+every line of them read the signed-in user from the request, checked a capability against it and
+asked Next to revalidate a route — three things only a browser request has. A whole estate could
+therefore be imported *only* by somebody clicking a button in a tab, which is the right door for
+almost everybody and the wrong one for the first import of a real workspace on a deployed server.
+`src/lib/import/run.ts` now holds the work — `stageBatch` and `applyBatch`, taking a database and
+the id of whoever is answerable — and the actions are what they should always have been: a guard,
+a call, and a revalidation. There is one implementation of "what an approved import does to the
+graph", so the terminal and the button cannot drift apart.
+
+`pnpm leanix:into-graph` is that terminal door: host and token from the environment (never argv),
+`DATABASE_URL` saying which graph, `--workspace=<slug>` when a deployment has more than one, and
+**nothing written without `--approve`** — without it the batch is left on the import page for a
+person to look through. Run against Energinet it produces exactly what the browser produced: 452
+created, 3 changed, 378 connected, 236 placed in the hierarchy.
+
 **What it does to the real data**: the same 455 fact sheets, imported again, put **236 objects
 into the hierarchy** — 172 of 191 Business Capabilities under 19 top-level ones, three levels
 deep, "Electricity System Operation › Operation › Balance & System Regulation" — and the relation
@@ -3769,6 +3785,9 @@ beside it, so a list of 201 capabilities is legible as the tree it is.
 - **A column can mean "parent"** (§5.74): the row names what it sits inside, and approving writes
   it to `parent_id` — resolved once every row has an id, refusing any move that would close a ring,
   leaving an object at the top when its parent names nothing, and undone by rollback.
+- `pnpm leanix:into-graph` (§5.74): the same import from a terminal, for a server with no browser
+  on it — host and token from the environment, `--workspace=<slug>`, and nothing written until
+  `--approve`.
 - Each file is asked **what its rows are**, with the answer proposed and settable; a row that
   carries its own kind keeps it.
 - **Prose in a batch is read for claims** and folded into the same records, with the sentence each
@@ -4494,6 +4513,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A parent is a column role of its own, and containment is written only to `parent_id` — never also as a relation. | The graph already holds "inside" as a column, which is what ancestry, roll-up and the capability map read. Writing the same fact as an edge too would be two records to keep in step, and the first rename or re-import would put them out of step. |
 | 2026-09-11 | An unresolvable parent is a question on the row, never a blocker. | The object is real whatever its parent turns out to be, and holding it back would lose the thing the import was for. Arriving at the top is what an unknown parent honestly means, and the review says so out loud rather than dropping the claim. |
 | 2026-09-11 | A nested LeanIX fact sheet is named by its own name, not by the path LeanIX puts in `displayName`. | The path was the only way to say where something sat while every import landed flat. The tree says it now, and 236 names of the form "A / B / C" make a capability map unreadable and a search unusable. |
+| 2026-09-11 | The work of an import lives outside the server action: `run.ts` takes a database and a user id, and the action is a guard, a call and a revalidation. | Staging and approving read the session, checked a capability and revalidated routes, so an estate could be imported only from a browser tab. An operator with a shell on the server — which is how a first import of four hundred objects actually happens — had no way in that was not a reimplementation, and a second implementation of "what an approved import writes" is the one thing that must not exist twice. |
 
 ## 8. Open questions for the product owner
 
@@ -4509,6 +4529,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 111a: the import has a terminal door.** Staging and approving moved out of
+  the server actions into `src/lib/import/run.ts`, which takes a database and the id of whoever is
+  answerable rather than a request; the actions keep the guard, the call and the revalidation. On
+  top of that, `pnpm leanix:into-graph` imports a LeanIX workspace straight into the graph from a
+  shell — token from the environment, `DATABASE_URL` for the graph, nothing written without
+  `--approve` — for the case the in-app door cannot serve: a first import of a real estate on a
+  deployed server, by somebody who has a shell and not a session. Same code as the button, and the
+  same numbers on Energinet's workspace: 452 created, 3 changed, 378 connected, 236 nested.
 
 - **2026-09-11 — Rev 111: the hierarchy survives the import.** Energinet's 202 Business
   Capabilities landed flat, because LeanIX's `relToChild` came through as an ordinary relation and
