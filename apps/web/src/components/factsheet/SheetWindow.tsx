@@ -50,6 +50,16 @@ export function SheetWindow({
   }, [router]);
 
   return (
+    <div
+      className="fs-overlay"
+      data-sheet-overlay
+      /*
+       * The margin around the window is a way out too. Only a click that starts *and* ends on it
+       * counts: a drag that began inside the sheet — selecting a description to retype it — ends
+       * wherever the pointer went, and closing on that would throw the edit away.
+       */
+      onMouseDown={(e) => { if (e.target === e.currentTarget) router.back(); }}
+    >
     <section className="fs-window" data-sheet-window={entityId} aria-label={`${name} — ${kind || "object"}`}>
       <header className="fs-window-bar">
         <span className="fs-window-name">
@@ -65,5 +75,6 @@ export function SheetWindow({
       </header>
       <div className="fs-window-scroll">{children}</div>
     </section>
+    </div>
   );
 }

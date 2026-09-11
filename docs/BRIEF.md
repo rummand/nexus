@@ -3470,18 +3470,25 @@ has happened to it. The drawer stays, on the canvas only.
 throws the list away: three filters deep in the repository, you open one application to check who
 owns it and you come back to an unfiltered list at the top. So the address is *intercepted*
 (`@sheet/(.)fs/[entityId]`, a parallel slot on the workspace layout): clicking a row opens the
-sheet over the page you were on, filling everything right of the menu and nothing of it. The menu
-stays reachable, because the next place you are going is usually somewhere else in the product
-rather than back where you came from. The address still changes, so the thing is still linkable
-and still refreshable, and the ways out are the ones people already try — the ×, Escape, and the
-back button, which the interception makes the same gesture. A **cold** load of the same address
-renders the standalone page instead: there is nothing behind it to overlay, and a link in a mail
-has to open something whole.
+sheet over the page you were on, in the area right of the menu and nothing of it. The menu stays
+reachable, because the next place you are going is usually somewhere else in the product rather
+than back where you came from. The address still changes, so the thing is still linkable and still
+refreshable, and the ways out are the ones people already try — the ×, Escape, the space around
+it, and the back button, which the interception makes the same gesture. A **cold** load of the
+same address renders the standalone page instead: there is nothing behind it to overlay, and a
+link in a mail has to open something whole.
+
+The window stands *inside* that area rather than filling it, over a light scrim, so the page it
+was opened from is visible around its edges — widest on the left, where the list is. That is the
+difference between a window and a navigation, and it has to be visible or it is not a claim
+anybody can check: you are standing on top of where you were, not somewhere else.
 
 Escape belongs to the field it is pressed in: inside an input it puts back the value before the
 edit (below), and only outside one does it close the window. Both the window and the standalone
 page scroll in their own column — the shell is a full-height grid, and a column that does not say
-it scrolls simply makes the bottom of a long sheet unreachable.
+it scrolls simply makes the bottom of a long sheet unreachable. The same omission clipped the
+repository's own list (§5.76): 478 objects with four hundred of them below the fold and no way
+down.
 
 **No save button, and no edit mode.** The value on the page *is* the field: click it, change it,
 look away, it is written. The canvas has worked this way since rev 1 — a card's title is a live
@@ -4656,6 +4663,7 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The drawer stays, but only on the canvas. | Leaving a board to read an object costs you your place; leaving a list does not. One surface where it earns its keep, and a link to the page for everything it cannot show. |
 | 2026-09-11 | A fact sheet opens as a window over the page you were on, not as a navigation away from it. | A page throws the list away — the filters, the search, the scroll — and the back button has to rebuild it. Intercepting the route keeps the list mounted underneath while the address still changes, so the sheet is linkable *and* free to leave. |
 | 2026-09-11 | The window covers everything right of the menu and nothing of it. | Where people go after reading an object is usually somewhere else in the product, not back where they came from. A modal that hides the rail makes the common case two clicks and adds a dismissal nobody asked for. |
+| 2026-09-11 | The window stands inside the content area over a scrim, rather than filling it edge to edge. | A window that covers everything is a page with a close button. Seeing the list you came from around its edges is what tells you the list is still there — and the margin becomes a fourth way out, which is the gesture people try first. |
 | 2026-09-11 | The window is positioned against the shell, not placed in its grid. | A grid item with an explicit cell is laid out before the auto-placed ones, so a window in column 2 pushed the page itself onto a second row — the first cut of this shipped a sidebar cut off halfway down. |
 
 ## 8. Open questions for the product owner
@@ -4679,11 +4687,13 @@ migrations. Steps in `docs/DEPLOY.md`.
   unreachable. And opening an object was a navigation — three filters deep in the repository, one
   click to check an owner and the list was gone. The address is now intercepted by a parallel slot
   on the workspace layout (`@sheet/(.)fs/[entityId]`), so a click opens the sheet in a window over
-  the page you were on, filling everything right of the menu and nothing of it; the list underneath
-  keeps its scroll and its filters, the address still changes, and the ×, Escape and the back
-  button are the same gesture. Escape inside a field still belongs to the field. A cold load of the
-  same address renders the standalone page, which now scrolls in its own column. Brief §5.77, three
-  decision rows.
+  the page you were on, in the area right of the menu and nothing of it; the window stands inside
+  that area over a light scrim, so the list it came from shows around its edges and the margin is
+  itself a way out. The list underneath keeps its scroll and its filters, the address still
+  changes, and the ×, Escape, the margin and the back button are the same gesture. Escape inside a
+  field still belongs to the field. A cold load of the same address renders the standalone page,
+  which now scrolls in its own column — as does the repository's own list, which had the same
+  omission and four hundred unreachable rows. Brief §5.77, four decision rows.
 
 - **2026-09-11 — Rev 114: one object, one page.** Every object now has an address —
   `/w/[slug]/fs/[id]` — with its attributes in the sections the type declares, what it is

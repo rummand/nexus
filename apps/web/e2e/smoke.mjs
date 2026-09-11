@@ -1457,6 +1457,20 @@ try {
   const kinds = await page.locator("[data-type]").count();
   assert.ok(kinds > 1, "every type is a chip, with what it holds");
 
+  /*
+   * The list is the third row of a full-height grid, and a row that does not say it scrolls
+   * simply clips: 478 objects with four hundred of them unreachable is what shipped in rev 114.
+   */
+  {
+    const wrap = page.locator("[data-repository] .inventory-table-wrap");
+    const reach = await wrap.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      return { scrolls: el.scrollHeight > el.clientHeight, atEnd: el.scrollTop + el.clientHeight >= el.scrollHeight - 2 };
+    });
+    if (reach.scrolls) assert.ok(reach.atEnd, "the repository list can be scrolled to its last row");
+    await wrap.evaluate((el) => { el.scrollTop = 0; });
+  }
+
   await page.fill("[data-repository-search]", "maximo");
   await page.waitForTimeout(400);
   assert.match(await page.locator("[data-repository-count]").innerText(), /of \d+/, "searching narrows it…");
@@ -1478,10 +1492,21 @@ try {
   await page.waitForSelector("[data-factsheet]", { timeout: 45000 });
   {
     const rail = await page.locator(".studio-home-sidebar").boundingBox();
+    const over = await page.locator("[data-sheet-overlay]").boundingBox();
     const win = await page.locator("[data-sheet-window]").boundingBox();
-    assert.ok(win.x >= rail.x + rail.width - 1, "the window starts where the menu ends");
-    assert.ok(win.width > 400, "and takes everything to the right of it");
+    assert.ok(over.x >= rail.x + rail.width - 1, "the sheet covers nothing of the menu");
+    assert.ok(win.x > over.x + 4, "and stands inside that area, so the page it opened from shows behind it");
+    assert.ok(win.width > 400, "with room left to read the object");
   }
+
+  // The list behind it is still the list, filtered, and the margin around the window is a way out.
+  await page.mouse.click(Math.round((await page.locator("[data-sheet-overlay]").boundingBox()).x) + 6, 400);
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator("[data-sheet-window]").count(), 0, "clicking beside the window closes it");
+  assert.equal(await page.locator("[data-repository-search]").inputValue(), "maximo",
+    "and the search that found the object is still in the box");
+  await page.locator("[data-open-item]").first().click();
+  await page.waitForSelector("[data-sheet-window]", { timeout: 45000 });
   assert.match(page.url(), /\/fs\/[a-z]/i, "an object has an address of its own");
   const sheet = await page.locator("[data-factsheet]").innerText();
   assert.match(sheet, /Maximo/, "the page is about the object you clicked");

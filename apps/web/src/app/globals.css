@@ -1291,23 +1291,37 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 
 /* The sheet opened over whatever you were doing. It sits in the shell's second column, on top of
    the page rather than beside it: everything right of the menu, nothing of the menu. */
-.fs-window {
-  background: #fbfcfe;
-  border-left: 1px solid var(--line);
+/* The area the sheet opens over: everything right of the menu, and nothing of it. The page
+   underneath stays visible through the scrim and around the window's edges, so it is plain that
+   you are standing on top of where you were rather than somewhere else. */
+.fs-overlay {
+  background: rgba(23, 32, 51, .16);
   bottom: 0;
-  box-shadow: -18px 0 42px rgba(19, 33, 68, .10);
   display: flex;
-  flex-direction: column;
   left: var(--rail);
   position: absolute;
   right: 0;
   top: 0;
   z-index: 40;
 }
+.fs-window {
+  background: #fbfcfe;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(19, 33, 68, .22);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Wider on the left, so what you opened from is visible behind rather than merely implied. */
+  margin: 18px 22px 22px 40px;
+  min-height: 0;
+  overflow: hidden;
+}
 .fs-window-bar {
   align-items: center;
   background: #fff;
   border-bottom: 1px solid var(--line);
+  border-radius: 13px 13px 0 0;
   display: flex;
   flex: 0 0 auto;
   gap: 12px;
@@ -1414,7 +1428,11 @@ fieldset.agent-field { border: 0; margin: 0; padding: 0; }
 .live-state button { background: none; border: 0; color: var(--blue); cursor: pointer; font-size: 11px; margin-left: 5px; padding: 0; text-decoration: underline; }
 
 /* ---- the repository: everything, on one shelf (§5.76) -------------------------------------- */
-.repository-body { display: flex; flex-direction: column; gap: 10px; padding: 0 22px 26px; }
+/* The third row of the .inventory grid, which is `1fr` of a full-height shell. Without
+   min-height:0 a flex column in a grid row is sized by its content, not by its track, so the
+   table below it grew past the viewport and the last four hundred rows were unreachable. */
+.repository-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; padding: 0 22px 26px; }
+.repository-body .inventory-table-wrap { flex: 1 1 auto; }
 .repository-kind { align-items: center; color: #56637a; display: inline-flex; gap: 6px; white-space: nowrap; }
 .repository-kind i { border-radius: 3px; height: 9px; width: 9px; }
 .repository-said { color: #a5b0c2; display: block; font-size: 11px; font-weight: 400; margin-top: 2px; }
