@@ -3746,6 +3746,43 @@ slack so a skewed clock still reads as "just now" rather than "in 1 minute". And
 written in the same millisecond as its own changes sorted its cut *above* them, so a branch
 appeared to start after the work on it.
 
+### 5.85 Campaigns: giving remediation a shape (#134, v0.2)
+
+The part of #133 that would have paid for itself the day the Energinet import landed. An import
+ends at *approved*; the actual work — going through the estate, deciding what is true, filling
+what is missing, retiring what is dead — has no shape, no owner, no queue and no end.
+
+A **campaign** is a named, scoped, finite piece of validation with a definition of done.
+
+- **Its scope is a query, not a list**, so it stays true as objects arrive. It is stored as the
+  very filter shape the objects list already speaks (§5.78) — *every Application with no owner*,
+  *everything undeclared* — which means a campaign can be described in the words somebody would
+  use to find the objects by hand, and the resolver is code that is already tested.
+- **Its definition of done comes from the checks** (§5.83) rather than being written twice. A
+  campaign says *which* checks must hold for its scope, not what they are.
+- **Its per-object state is the thing the repository has never had.** Untouched, in review,
+  needs a decision, validated, waived. A row exists only once somebody has touched the object, so
+  a 455-object campaign writes no rows on the day it is created and *absent* means untouched.
+
+**Validation is stamped to a version, not to an object.** This is the one edge the whole process
+stands on. A fact sheet validated in March and edited in June is **not** validated: the object's
+`updatedAt` at the moment of validation is recorded, and the moment it differs the object goes
+back to untouched with `lapsed: "changed"`. The burn-down therefore goes **up** as well as down,
+and the page says how many came back. Without it, validation is a badge people stop believing
+within a quarter — the version every tool ships first and regrets. A waiver behaves the same way
+against its expiry, and a waiver *without* an expiry is refused at the write, because "accepted
+as is" with no end date is how a model quietly rots.
+
+Two write rules that live in the action rather than the state machine, because they are about
+committing rather than reading: a waiver needs a reason and an expiry, and a question needs to
+say what is being asked. And a campaign **closes only when its scope is validated or explicitly
+waived** — a campaign that can be closed with work left and nobody's name against it is one
+nobody believes the next time.
+
+Nothing here is open to an agent. An agent may clear the mechanical part of a campaign — propose
+owners, spot duplicates, flag orphans — and may never validate: validation is somebody putting
+their name to it, and an anonymous one is a badge rather than a statement.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4922,6 +4959,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | The production image is Next's standalone output, not the built workspace. | 836 MB of the 836 MB copied was devDependencies, sources and build artefacts that never serve a request, and the host pays to push and pull all of it on every deploy. Tracing knows what the server imports; a `COPY /app /app` does not. |
 | 2026-09-11 | The runtime image has no package manager in it. | `node server.js` needs none, and every tool that is present in a production image is a tool somebody can run there. |
 | 2026-09-11 | What must not ship is pruned in the build script, not only in `.dockerignore`. | A protection that lives in a different file from the thing it protects is a protection that goes missing the first time somebody builds the image another way. A development database in a deployed image is the failure that rule exists to prevent. |
+| 2026-09-11 | A validation is stamped to the object as it was, and lapses the moment the object changes. | A fact sheet validated in March and edited in June is not validated. Without this the burn-down only ever goes one way and the badge is furniture within a quarter — which is what every tool that shipped a boolean `reviewed` flag discovered. |
+| 2026-09-11 | A waiver is refused without a reason and an expiry. | "Accepted as is", undated, is how a model rots: the exception outlives everyone who understood it. Making the expiry a write-time requirement means there is no way to create the rot. |
+| 2026-09-11 | A campaign's scope is the objects list's own filter shape. | A scope has to stay true as objects arrive, so it must be a query. Reusing the filter people already use to find things by hand means no second query language, no second resolver, and no second set of tests. |
+| 2026-09-11 | Untouched is the absence of a row, not a row saying "untouched". | A 455-object campaign would otherwise write 455 rows the moment it is created, most of which say nothing. Absent-means-untouched also makes clearing a decision a delete, which is honest. |
 | 2026-09-11 | A commit on main is a folded moment, not a single event. | The history already folds by hand, place and two minutes. Three fields renamed on one object at one sitting is one commit in any repository; drawing three would make the trunk unreadable and the shape untrue. |
 | 2026-09-11 | A branch is drawn as cut from the state of main it was written against, not from the tip. | Drawing every branch from the tip would make every plan look like it was written today. Change sets carry no base commit yet, so creation time is the honest approximation — and naming it as an approximation is what #138 would make exact. |
 | 2026-09-11 | Each ref keeps its own lane for the whole drawing. | Reusing a column when a branch ends is how git graphs save space and how readers lose the thread. With tens of change sets rather than thousands of commits, clarity costs nothing. |
@@ -4965,6 +5006,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 127: campaigns, the model and the rules (#134).** The data model and the
+  state machine for remediation: a campaign with a query scope (the objects list's own filter
+  shape), a definition of done taken from the checks (§5.83), and a per-object state — untouched,
+  in review, needs a decision, validated, waived. The edge the whole thing stands on is
+  implemented and tested: a validation records what the object looked like when it was given, and
+  lapses the moment the object changes, so the burn-down goes up as well as down. A waiver is
+  refused without a reason and an expiry; a campaign closes only when its scope is validated or
+  explicitly waived. 13 new tests, one migration on both dialects, brief §5.85, four decision
+  rows. The surfaces come next.
 
 - **2026-09-11 — Rev 126: the tree (#133).** The owner asked to *see* the branches and commits and
   navigate them, and it was the gap that made the rest of #133 abstract. `/w/[slug]/tree` draws it:

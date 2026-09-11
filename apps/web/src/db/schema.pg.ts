@@ -1211,6 +1211,78 @@ export const checkouts = pgTable(
 
 export type CheckoutRow = typeof checkouts.$inferSelect;
 
+// ---- campaigns: giving remediation a shape (§5.85) -------------------------
+// An import ends at "approved" and the actual work — going through the estate, deciding what is
+// true, filling what is missing — has no shape, no owner, no queue and no end. A campaign is the
+// unit that turns "the import landed" into "we went through it": a named, scoped, finite piece
+// of validation with a definition of done taken from the meta-model rather than written twice.
+
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default(""),
+    description: text("description").notNull().default(""),
+    /**
+     * A query over the repository, not a hand-picked list, so the scope stays true as objects
+     * arrive. Stored as the same filter shape the objects list already speaks (§5.78).
+     */
+    scope: text("scope").notNull().default("{}"),
+    /** Which checks (§5.83) must hold for an object in scope to count as done. A JSON array of ids. */
+    checks: text("checks").notNull().default("[]"),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    /** The branch it runs on, when it has one (#133): the campaign closes by proposing a merge. */
+    changeSetId: text("change_set_id").references(() => changeSets.id, { onDelete: "set null" }),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("campaigns_workspace_idx").on(t.workspaceId, t.status)],
+);
+
+/**
+ * Where one object stands in one campaign.
+ *
+ * The thing the repository has never had: an object is in the model or it is not, and there is
+ * no room between for "somebody has looked at this". A row exists only once somebody has touched
+ * the object — absent means `untouched`, which keeps a 455-object campaign from writing 455 rows
+ * on the day it is created.
+ */
+export const campaignObjects = pgTable(
+  "campaign_objects",
+  {
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    entityId: text("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    state: text("state", { enum: ["in-review", "needs-decision", "validated", "waived"] }).notNull(),
+    /** The waiver's reason, or the question being waited on. A state without one is not a decision. */
+    note: text("note").notNull().default(""),
+    /** A waiver without an expiry is how a model quietly rots, so one is always recorded. */
+    expiresAt: text("expires_at"),
+    /** Who the question is addressed to, when the state is a question. */
+    askedOfId: text("asked_of_id").references(() => users.id, { onDelete: "set null" }),
+    /**
+     * What the object looked like when somebody said yes — its `updated_at` at that moment.
+     * A fact sheet validated in March and edited in June is not validated, and comparing this
+     * to the entity's current `updated_at` is what makes the burn-down go up as well as down.
+     */
+    atVersion: text("at_version").notNull().default(""),
+    byId: text("by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.entityId] }), index("campaign_objects_entity_idx").on(t.entityId)],
+);
+
+export type CampaignRow = typeof campaigns.$inferSelect;
+export type CampaignObjectRow = typeof campaignObjects.$inferSelect;
+
 export type PlateauRow = typeof plateaus.$inferSelect;
 
 // ---- the graph remembers (§5.43) --------------------------------------------
