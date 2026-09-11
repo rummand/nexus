@@ -6,6 +6,11 @@ import { contextOf, project, projectAll, settled } from "@/lib/change/project";
 import { blocking, blockersOf, deliveryOrder, scheduleWarnings } from "@/lib/change/order";
 import { impactOf } from "@/lib/change/impact";
 import { summarise } from "@/lib/change/types";
+import { ownerRules } from "@/lib/govern/read";
+import { maySign } from "@/lib/govern/owners";
+import { currentUser } from "@/lib/session";
+import * as s from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { Roadmap, type ChangeSetView, type EntityOption } from "@/components/roadmap/Roadmap";
 
 /**
@@ -95,8 +100,21 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
     .map((e) => ({ id: e.id, name: e.name, kind: e.kind }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  /*
+   * Which rules *this* person holds, computed once here rather than per card. Only they see an
+   * Approve button: showing one to everybody and refusing the click is how a governance screen
+   * teaches people that it does not mean anything (§5.93).
+   */
+  const user = await currentUser();
+  const rules = await ownerRules(db, workspace.id);
+  const myTeams = await db.select({ teamId: s.teamMembers.teamId }).from(s.teamMembers).where(eq(s.teamMembers.userId, user.id));
+  const mayApprove = rules
+    .filter((rule) => maySign(rule, { userId: user.id, teamIds: myTeams.map((t) => t.teamId) }))
+    .map((rule) => rule.id);
+
   return (
     <Roadmap
+      mayApprove={mayApprove}
       workspaceId={workspace.id}
       slug={slug}
       sets={views}

@@ -3273,6 +3273,13 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .ref-menu button.from-source b { font-weight: 650; }
 .ref-menu button.from-source svg:first-child { color: #8a5a10; }
 
+/* Waiting on the owners of what a branch touches (§5.93). Blue: a queue, not a failure. */
+.roadmap-awaiting { background: #f4f8fd; border: 1px solid #d8e4f2; border-radius: 12px; flex: 1 1 100%; margin-top: 8px; padding: 11px 13px; }
+.roadmap-awaiting > p { align-items: center; color: #1d5fa4; display: flex; font-size: 12.5px; font-weight: 650; gap: 6px; margin: 0; }
+.roadmap-awaiting ul { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 8px 0 0; padding: 0; }
+.roadmap-awaiting li { align-items: center; color: #56637a; display: flex; font-size: 12.5px; gap: 10px; justify-content: space-between; }
+.roadmap-awaiting-given { color: #8a94a6; font-size: 12px; margin: 8px 0 0; }
+
 /* The checks refusing a merge (§5.88). Amber, like the ref chip: a stop, not a failure. */
 .roadmap-refused { background: #fffaf0; border: 1px solid #f0dcb4; border-radius: 12px; flex: 1 1 100%; margin-top: 8px; padding: 11px 13px; }
 .roadmap-refused > p { align-items: center; color: #8a5a10; display: flex; font-size: 12.5px; font-weight: 650; gap: 6px; margin: 0; }

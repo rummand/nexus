@@ -9,6 +9,9 @@ import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteCh
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
 import type { Refusal } from "@/lib/checks/gate";
 import { Refused } from "@/components/checks/Refused";
+import { Awaiting } from "@/components/checks/Awaiting";
+import { approveChangeSet } from "@/lib/govern/actions";
+import type { Standing as OwnerStanding } from "@/lib/govern/owners";
 import type { Nature } from "@/lib/change/impact";
 import { RoadmapTabs } from "./RoadmapTabs";
 
@@ -69,7 +72,7 @@ const NATURE_LABEL: Record<Nature, string> = {
   connected: "is connected to it",
 };
 
-export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }: {
+export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe, mayApprove = [] }: {
   workspaceId: string;
   slug: string;
   sets: ChangeSetView[];
@@ -78,6 +81,8 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
   order: string[];
   asIs: { entities: number; relations: number };
   toBe: { entities: number; relations: number };
+  /** The MODELOWNERS rules this person holds, so only they see an Approve button (§5.93). */
+  mayApprove?: string[];
 }) {
   const [pending, start] = useTransition();
   const [creating, setCreating] = useState(false);
@@ -86,6 +91,8 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
   const [message, setMessage] = useState<string | null>(null);
   /** The one change set the checks have just refused, and why. Cleared by the next attempt. */
   const [refused, setRefused] = useState<{ setId: string; refusal: Refusal } | null>(null);
+  /** The one change set whose owners have not all signed, and who is outstanding. */
+  const [awaiting, setAwaiting] = useState<{ setId: string; standing: OwnerStanding } | null>(null);
 
   /**
    * Deliver, once, and say what happened.
@@ -98,8 +105,10 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
     const r = await deliverChangeSet(setId, { anyway });
     if ("error" in r) {
       setMessage(r.error);
+      setAwaiting(r.awaiting ? { setId, standing: r.awaiting } : null);
       return r.refusal ?? null;
     }
+    setAwaiting(null);
     setMessage(
       `Delivered “${name}”: ${r.introduced} introduced, ${r.retired} retired, ${r.altered} changed, ${r.moved} moved, `
       + `${r.connected} connected, ${r.severed} relations severed.`
@@ -326,6 +335,7 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
                             const warning = `Deliver “${set.name}”? This applies it to the graph: ${s2.additions} introduced, ${s2.retirements} retired, ${s2.attributeChanges} changed, ${s2.moves} moved, ${s2.severedRelations} relations severed. Retired systems keep their node with lifecycle “retired”.`;
                             if (!confirm(warning)) return;
                             setRefused(null);
+                            setAwaiting(null);
                             start(async () => {
                               const r = await deliver(set.id, set.name, false);
                               if (r) setRefused({ setId: set.id, refusal: r });
@@ -335,6 +345,19 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
                           <Rocket size={14} /> Deliver
                         </button>
                       </>
+                    )}
+                    {awaiting?.setId === set.id && (
+                      <Awaiting
+                        standing={awaiting.standing}
+                        pending={pending}
+                        canSign={mayApprove}
+                        onSign={(ruleId) => start(async () => {
+                          const r = await approveChangeSet(set.id, ruleId);
+                          if ("error" in r) { setMessage(r.error); return; }
+                          setMessage("Approved. Deliver it again to merge.");
+                          setAwaiting(null);
+                        })}
+                      />
                     )}
                     {refused?.setId === set.id && (
                       <Refused

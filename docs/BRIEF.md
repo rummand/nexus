@@ -4033,6 +4033,40 @@ throwing it away is the only honest option left.
 about holding a credential rather than on code. A connected system consented through the
 catalogue (§5.37) has no such problem, and is where the schedule should land first.
 
+### 5.93 Owners of parts of the model (#141, v0.2)
+
+A MODELOWNERS rule, in the shape the code world settled on decades ago: *changes under Grid
+Operations need the person who owns that capability subtree to approve*. Architecture governance
+stops being a monthly board meeting and becomes **a review queue with a service level** — the
+same move that made code review beat the design committee. The meeting exists to approve things;
+the queue exists to approve things *and* it runs every day, keeps its own record, and cannot lose
+an item between meetings.
+
+**Ownership is expressed over the containment tree** (§5.74) or over a type, because those are
+the units that stay true. A hand-kept list of objects is out of date the first time somebody adds
+one — and ancestry is walked rather than matched on the parent, so ownership of a domain survives
+somebody inserting a level in the middle of it, which is the whole reason for putting it on the
+tree.
+
+The merge gate asks for the intersection of what the branch touches (§5.88 is the third gate,
+this is the fourth), and it asks *after* the checks: "it would break something" is worth knowing
+before you go and find three people to sign it off. A relation's **both ends** count as touched —
+connecting something to your subtree is a change to your subtree.
+
+**Approval standing is not write permission**, and conflating them is how both end up wrong
+(§5.48). A domain lead may be whose agreement a change needs without being an administrator; an
+administrator is not automatically whose agreement is being asked for. So approving is guarded by
+the rule itself rather than by a capability: guarding it with `graph.edit` would let every editor
+approve their own work. Deciding *who owns what* is a different, administrative act.
+
+**The override exists and has a name on it.** A governance rule nobody can get past is a rule
+people route around — by editing the graph directly, which is what branches exist to prevent. So
+a merge without the approvals is possible, and it is written down as its own act: *"Jane Doe
+merged this without waiting for Jes Olesen."* A bypass that leaves no trace is not a rule.
+
+Only the person who holds a rule sees an Approve button. Showing one to everybody and refusing
+the click is how a governance screen teaches people it does not mean anything.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5281,6 +5315,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | Drift is phrased in the source's voice: "ServiceNow proposes 34 changes." | The passive "34 changes are pending" hides that somebody is answerable for the claim, which is the whole point of putting a source behind a branch. |
 | 2026-09-11 | A source branch nobody has reconciled for three weeks says so. | Long-lived-branch rot in its likeliest form. Saying it at three weeks is cheap; finding it at nine months means the diff is unreviewable and the only honest option is to throw the branch away. |
 
+| 2026-09-11 | Ownership is expressed over the containment tree and over types, never as a list of objects. | A list is stale the first time somebody adds an object. A subtree keeps being true, and walking ancestry rather than the parent means inserting a level in the middle does not silently drop a domain out of its owner's hands. |
+| 2026-09-11 | Approving is guarded by the MODELOWNERS rule, not by a capability. | `graph.edit` would let every editor approve their own work; an administrative capability would let an administrator sign on an owner's behalf. Approval standing and write permission are different things, and conflating them gets both wrong. |
+| 2026-09-11 | The owners gate is asked after the checks, not before. | "This would break something" is worth knowing before you go and find three people to sign it off. |
+| 2026-09-11 | Both ends of a relation count as touched by a branch. | Connecting something to a subtree you own is a change to your subtree, whichever end the change record happens to name. |
+| 2026-09-11 | A merge can override the owners, and the override is recorded as its own act with a name. | A rule with no way through is one people route around by editing the graph directly — the thing branches exist to prevent. A bypass that leaves no trace is not a rule. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5295,6 +5335,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 139: owners of parts of the model (#141).** MODELOWNERS, over the containment
+  tree and over types: changes under a capability subtree need the person or team who owns it to
+  approve. The fourth merge gate, asked after the checks. Ownership walks ancestry, so inserting a
+  level in the middle does not drop a domain out of its owner's hands, and both ends of a relation
+  count as touched. Approving is guarded by the rule rather than by a capability — `graph.edit`
+  would let every editor approve their own work — while deciding who owns what is administrative.
+  The override exists and is written down as its own act with a name on it. Only the person who
+  holds a rule sees an Approve button. Seventeen tests; the guard-coverage test caught both new
+  actions and made me justify them rather than wave them through. Brief §5.93, five decision rows.
 
 - **2026-09-11 — Rev 138: a branch per source, and drift that proposes itself (#139).** The
   consequence the epic was aimed at. A source system now gets one long-lived branch that is

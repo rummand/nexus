@@ -47,6 +47,15 @@ const OPEN: Record<string, string> = {
   "actions.ts:toggleFavorite": "your own star on a board you can already read",
   "actions.ts:markBoardOpened": "the recently-opened sort key; a read, recorded",
   "change/actions.ts:switchRefAction": "which change set *you* are standing on; checks membership itself, and standing somewhere is not writing to it",
+  /*
+   * Approving is a standing the MODELOWNERS rule itself confers (§5.93), not a capability.
+   * Guarding it with `graph.edit` would let every editor approve their own work, and guarding it
+   * with an administrative one would mean an administrator could sign on an owner's behalf —
+   * which is exactly the conflation of approval with permission the design refuses. Both check
+   * membership and then check the rule against the person signing.
+   */
+  "govern/actions.ts:approveChangeSet": "the entitlement is the rule; membership and `maySign` are both checked inside",
+  "govern/actions.ts:withdrawApproval": "takes your own signature off; refuses somebody else's",
 
   // The person, for themselves.
   "auth/people-actions.ts:changeMyPassword": "your own password, with your own current one",

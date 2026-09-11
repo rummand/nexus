@@ -14,6 +14,8 @@ import { roadmapDocument } from "./board";
 import { checksForRef } from "@/lib/checks/run";
 import { newFindings } from "@/lib/checks/suite";
 import { mergeGate, refusalWords, type Refusal } from "@/lib/checks/gate";
+import { standingFor as governanceFor } from "@/lib/govern/read";
+import { outstandingWords, overrideWords, type Standing as OwnerStanding } from "@/lib/govern/owners";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { checkOut } from "./checkout";
 import { project } from "./project";
@@ -371,11 +373,13 @@ export async function excludeFromPlateau(plateauId: string, changeSetId: string)
 /**
  * Apply a change set to the graph. This is the one operation here that moves the estate.
  *
- * Three gates, in the order a person can act on them: everything it waits for has landed, none of
- * its changes have gone stale, and the checks it would leave behind are no worse than the ones we
- * have (§5.88). The third can be overruled — `anyway` is what the button says after the refusal —
- * because a model is never clean and a gate nobody can open is a gate everybody routes around.
- * What cannot happen is overruling it without having been told.
+ * Four gates, in the order a person can act on them: everything it waits for has landed, none of
+ * its changes have gone stale, the checks it would leave behind are no worse than the ones we have
+ * (§5.88), and the owners of what it touches have agreed (§5.93). The last two can be overruled —
+ * `anyway` is what the button says after the refusal — because a model is never clean, a rule
+ * nobody can get past is a rule people route around, and routing around it means editing the graph
+ * directly, which is what branches exist to prevent. What cannot happen is overruling either
+ * without having been told, and an override is recorded with a name on it.
  *
  * Retirement sets `lifecycle: retired` and severs the system's relations rather than deleting the
  * node. The graph is meant to outlive the things in it — a system you retired last year is the
@@ -395,7 +399,7 @@ export interface Delivered {
 }
 
 /** A refusal the caller can act on: `refusal` is set only when the checks are what said no. */
-export type DeliveryResult = Delivered | { error: string; refusal?: Refusal };
+export type DeliveryResult = Delivered | { error: string; refusal?: Refusal; awaiting?: OwnerStanding };
 
 export async function deliverChangeSet(changeSetId: string, options?: { anyway?: boolean }): Promise<DeliveryResult> {
   const no = await denySet(changeSetId, "plan.deliver");
@@ -435,6 +439,15 @@ export async function deliverChangeSet(changeSetId: string, options?: { anyway?:
   const call = mergeGate(newFindings(runs.base, runs.head));
   if (!call.ok && !options?.anyway) {
     return { error: refusalWords(call.refusal), refusal: call.refusal };
+  }
+
+  /*
+   * The owners of what this touches (§5.93). Asked after the checks, because "it would break
+   * something" is worth knowing before you go and find three people to sign it off.
+   */
+  const owners = await governanceFor(db, set.workspaceId, set.id, set.changes);
+  if (!owners.satisfied && !options?.anyway) {
+    return { error: outstandingWords(owners), awaiting: owners };
   }
 
   const existing = new Set(entities.map((e) => e.id));
@@ -542,6 +555,23 @@ export async function deliverChangeSet(changeSetId: string, options?: { anyway?:
         break;
       }
     }
+  }
+
+  /*
+   * An override is an act in its own right, so it is written down as one: the branch carries a
+   * sentence naming who merged it and whose agreement they did not wait for. A governance rule
+   * whose bypass leaves no trace is not a rule.
+   */
+  if (!owners.satisfied) {
+    const user = await currentUser();
+    await db.insert(s.changeSetApprovals).values({
+      changeSetId,
+      ruleId: "__override",
+      byId: user.id,
+      byName: user.name,
+      note: overrideWords(owners, user.name),
+      createdAt: ts,
+    }).onConflictDoNothing();
   }
 
   await db.update(s.changeSets).set({ status: "delivered", deliveredAt: ts, updatedAt: ts }).where(eq(s.changeSets.id, changeSetId));

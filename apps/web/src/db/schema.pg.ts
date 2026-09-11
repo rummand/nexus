@@ -1460,3 +1460,62 @@ export const sourceTrust = pgTable(
 );
 
 export type SourceTrustRow = typeof sourceTrust.$inferSelect;
+
+/**
+ * Who owns which part of the model (#141, §5.93).
+ *
+ * A MODELOWNERS rule. Ownership is expressed over the containment tree — a capability subtree, a
+ * domain — or over a type, because those are the units that stay true; a hand-kept list of
+ * objects is out of date the first time somebody adds one.
+ *
+ * The rule names a person or a team, never both. Approval standing is deliberately *not* write
+ * permission (§5.48): a domain lead may be the one whose agreement a change needs without being
+ * an administrator, and an administrator is not automatically whose agreement is being asked for.
+ */
+export const modelOwners = pgTable(
+  "model_owners",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** subtree | kind | everything. */
+    scope: text("scope", { enum: ["subtree", "kind", "everything"] }).notNull().default("subtree"),
+    /** The root entity id for a subtree, the type name for a kind, empty for everything. */
+    scopeValue: text("scope_value").notNull().default(""),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    teamId: text("team_id").references(() => teams.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("model_owners_workspace_idx").on(t.workspaceId)],
+);
+
+export type ModelOwnerRow = typeof modelOwners.$inferSelect;
+
+/**
+ * An owner putting their name to a branch (#141, §5.93).
+ *
+ * One row per rule signed, not per person: the question a merge asks is whether every rule the
+ * branch triggers has been answered, and the same person may hold two of them. The name is
+ * copied in, like everywhere else in this schema, so a decision still says who made it after
+ * somebody leaves.
+ */
+export const changeSetApprovals = pgTable(
+  "change_set_approvals",
+  {
+    changeSetId: text("change_set_id")
+      .notNull()
+      .references(() => changeSets.id, { onDelete: "cascade" }),
+    /** The MODELOWNERS rule this answers. Not a foreign key: a rule may be rewritten later, and
+     *  the record that somebody approved under it should outlive the rule's current wording. */
+    ruleId: text("rule_id").notNull(),
+    byId: text("by_id").references(() => users.id, { onDelete: "set null" }),
+    byName: text("by_name").notNull().default(""),
+    /** Why, when somebody chose to say. A rubber stamp with a sentence beats one without. */
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [primaryKey({ columns: [t.changeSetId, t.ruleId] })],
+);
+
+export type ChangeSetApprovalRow = typeof changeSetApprovals.$inferSelect;
