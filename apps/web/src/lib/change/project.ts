@@ -1,7 +1,7 @@
 import type * as s from "@/db/schema";
 import { parseAttributes } from "@/lib/graph";
 import { reparentProblem } from "@/lib/hierarchy";
-import type { AddEntityPayload, AddRelationPayload, Change, Projection, SetAttributePayload, SetParentPayload } from "./types";
+import type { AddEntityPayload, AddRelationPayload, Change, Projection, RetypeEntityPayload, SetAttributePayload, SetParentPayload } from "./types";
 import { deliveryOrder, type Dependency } from "./order";
 
 /**
@@ -119,6 +119,23 @@ export function project(entities: s.Entity[], relations: s.Relation[], changes: 
         }
         entity.parentId = parentId;
         movedIds.add(entity.id);
+        break;
+      }
+      /* Retyping counts as changing the object: it is the same object, differently described. */
+      case "retypeEntity": {
+        const id = change.entityId;
+        const entity = id ? byId.get(id) : undefined;
+        const p = change.payload as unknown as RetypeEntityPayload;
+        if (!entity) {
+          problems.push({ changeId: change.id, message: "the object this retypes is no longer in the graph" });
+          break;
+        }
+        if (!(p.kind ?? "").trim()) {
+          problems.push({ changeId: change.id, message: "a retype with no type cannot be applied" });
+          break;
+        }
+        entity.kind = p.kind.trim();
+        changedIds.add(entity.id);
         break;
       }
       case "addRelation": {

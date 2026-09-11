@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, Info,
+  AlertTriangle, ArrowRight, Check, CircleHelp, FileSpreadsheet, FileText, GitBranch, Info,
   LayoutGrid, Pause, RefreshCw, Undo2, UserRound, X,
 } from "lucide-react";
 import type { Role } from "@/lib/import/map";
@@ -11,6 +11,10 @@ import type { Decision } from "@/lib/import/stage";
 import type { Issue, Severity } from "@/lib/import/review";
 import type { Change, MatchHow } from "@/lib/import/match";
 import { approveBatch, createBatchBoard, decideRows, redrawBatchBoard, remapBatch, rollbackBatch } from "@/lib/import/actions";
+import { deliverChangeSet, switchRefAction } from "@/lib/change/actions";
+import { divergenceWords, type Divergence } from "@/lib/change/ref";
+import { Refused } from "@/components/checks/Refused";
+import type { Refusal } from "@/lib/checks/gate";
 
 /**
  * The review.
@@ -80,9 +84,15 @@ const SEVERITY_ICON: Record<Severity, React.ReactNode> = {
 
 type Filter = "questions" | "new" | "changed" | "all";
 
-export function BatchReview({ slug, batch, files, rows, counts, missing, written, kinds }: {
+export function BatchReview({ slug, workspaceId, batch, files, rows, counts, missing, written, kinds }: {
   slug: string;
-  batch: { id: string; name: string; status: "staged" | "approved" | "rolled back"; createdAt: string; approvedAt: string | null; includePersonal: boolean; boardId: string | null };
+  workspaceId: string;
+  batch: {
+    id: string; name: string; status: "staged" | "approved" | "landed" | "rolled back";
+    createdAt: string; approvedAt: string | null; includePersonal: boolean; boardId: string | null;
+    /** The branch it landed on, resolved. Null when it was written straight through (§5.89). */
+    branch: { id: string; name: string; status: string; divergence: Divergence } | null;
+  };
   /** The kinds this workspace already uses, so an import speaks its vocabulary rather than ours. */
   kinds: string[];
   files: FileView[];
@@ -97,7 +107,9 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
   const [message, setMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
   const staged = batch.status === "staged";
+  const landed = batch.status === "landed";
 
   const questions = useMemo(() => rows.filter((r) => r.issues.some((i) => i.severity !== "note")), [rows]);
   const shown = useMemo(() => {
@@ -108,6 +120,28 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
       default: return rows;
     }
   }, [filter, questions, rows]);
+
+  /**
+   * Merge the branch this batch landed on — the gesture that used to be "approve" (§5.89).
+   *
+   * It goes through the same gate everything else does (§5.88), which is the point: an import is
+   * the largest change anybody ever makes to the model, and it should be the *least* privileged
+   * path into it, not a side door with its own rules.
+   */
+  const merge = (anyway: boolean) => {
+    if (!batch.branch) return;
+    setRefusal(null);
+    start(async () => {
+      const r = await deliverChangeSet(batch.branch!.id, { anyway });
+      if ("error" in r) {
+        setMessage(r.error);
+        setRefusal(r.refusal ?? null);
+        return;
+      }
+      setMessage(`Merged: ${r.introduced} introduced, ${r.altered} changed, ${r.moved} moved, ${r.connected} connected.`);
+      router.refresh();
+    });
+  };
 
   const decide = (ids: string[], decision: Decision) => {
     setMessage(null);
@@ -143,11 +177,14 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
     <section className="studio-home-main" aria-label="Batch review">
       <header className="studio-home-topbar">
         <div>
-          <span>{staged ? "Nothing here is in the model yet" : batch.status === "approved" ? "In the model" : "Put back"}</span>
+          <span>{staged ? "Nothing here is in the model yet" : landed ? "On a branch, not in the model" : batch.status === "approved" ? "In the model" : "Put back"}</span>
           <h1>{batch.name}</h1>
           <p className="roadmap-lede">
             {staged
               ? "Everything the files claim, folded into one object per thing, matched against what you already have. Settle what the columns mean here, then do the deciding on the board — the lanes there are the decision."
+              : landed
+                ? `This landed on “${batch.branch?.name ?? "a branch"}”${batch.branch ? `: ${divergenceWords(batch.branch.divergence) || "nothing"}` : ""}. `
+                  + "The estate everybody reads has not moved. Stand on the branch to see it from the inside, run the checks against it, then merge — or never merge, which is what undoing an import now means."
               : batch.status === "approved"
                 ? `Approved ${batch.approvedAt ? new Date(batch.approvedAt).toLocaleString() : ""}: ${written.created} created, ${written.updated} changed, ${written.relations} connected. It can still be put back.`
                 : "This batch was approved and then rolled back. What it wrote has been undone, except where somebody had since built on it."}
@@ -175,26 +212,85 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
           >
             <LayoutGrid size={15} /> {batch.boardId ? "Open the board" : "Work on the canvas"}
           </button>
+          {/*
+            Two destinations, and the branch is the primary one (§5.89). An import is somebody
+            else's claim about your estate; putting it on a branch first is what lets it be
+            reviewed, checked and walked away from. Writing straight in stays, because a
+            forty-row correction to objects you already own does not need a review round — but
+            it is the second button now, not the only one.
+          */}
           {staged && (
-            <button
-              type="button"
-              className={batch.boardId ? "ghost-button" : "primary-home-button"}
-              disabled={pending || counts.create + counts.update === 0}
-              data-approve-batch
-              onClick={() => {
-                if (!confirm(`Take this into the model? ${counts.create} new objects, ${counts.update} changed. ${counts.held + counts.rejected} rows are left alone. You can roll this back.`)) return;
-                start(async () => {
-                  const r = await approveBatch(batch.id);
-                  setMessage("error" in r
-                    ? r.error
-                    : `Written: ${r.created} created, ${r.updated} changed, ${r.connected} connected`
-                      + (r.nested ? `, ${r.nested} placed in the hierarchy.` : "."));
+            <>
+              <button
+                type="button"
+                className="primary-home-button"
+                disabled={pending || counts.create + counts.update === 0}
+                data-land-batch
+                onClick={() => {
+                  if (!confirm(`Land this on a branch of its own? ${counts.create} new objects and ${counts.update} changed become a change set nobody has merged. The model does not move until somebody merges it.`)) return;
+                  start(async () => {
+                    const r = await approveBatch(batch.id, { onto: "branch" });
+                    setMessage("error" in r
+                      ? r.error
+                      : `Landed on a branch: ${r.created} to introduce, ${r.updated} to change, ${r.connected} to connect`
+                        + (r.nested ? `, ${r.nested} to place in the hierarchy.` : "."));
+                    router.refresh();
+                  });
+                }}
+              >
+                <GitBranch size={15} /> Land it on a branch
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={pending || counts.create + counts.update === 0}
+                data-approve-batch
+                onClick={() => {
+                  if (!confirm(`Write this straight into the model? ${counts.create} new objects, ${counts.update} changed. ${counts.held + counts.rejected} rows are left alone. You can roll this back.`)) return;
+                  start(async () => {
+                    const r = await approveBatch(batch.id);
+                    setMessage("error" in r
+                      ? r.error
+                      : `Written: ${r.created} created, ${r.updated} changed, ${r.connected} connected`
+                        + (r.nested ? `, ${r.nested} placed in the hierarchy.` : "."));
+                    router.refresh();
+                  });
+                }}
+              >
+                <Check size={15} /> Write it straight in
+              </button>
+            </>
+          )}
+          {landed && batch.branch && (
+            <>
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={pending}
+                data-stand-on-branch
+                onClick={() => start(async () => {
+                  const r = await switchRefAction(workspaceId, batch.branch!.id);
+                  if ("error" in r) setMessage(r.error);
                   router.refresh();
-                });
-              }}
-            >
-              <Check size={15} /> Approve
-            </button>
+                })}
+              >
+                <GitBranch size={15} /> Stand on it
+              </button>
+              <a className="ghost-button" href={`/w/${slug}/checks`}>Run the checks</a>
+              {batch.branch.status !== "delivered" ? (
+                <button
+                  type="button"
+                  className="primary-home-button"
+                  disabled={pending}
+                  data-merge-batch
+                  onClick={() => merge(false)}
+                >
+                  <Check size={15} /> Merge it
+                </button>
+              ) : (
+                <span className="import-merged"><Check size={15} /> Merged</span>
+              )}
+            </>
           )}
           {batch.status === "approved" && (
             <button
@@ -220,6 +316,7 @@ export function BatchReview({ slug, batch, files, rows, counts, missing, written
       </header>
 
       {message && <p className="proposal-bulk-result" data-import-result>{message}</p>}
+      {refusal && <Refused slug={slug} refusal={refusal} pending={pending} onAnyway={() => merge(true)} />}
       {notes.length > 0 && (
         <details className="proposal-rejected" open>
           <summary>{notes.length} thing{notes.length === 1 ? "" : "s"} the rollback would not touch</summary>

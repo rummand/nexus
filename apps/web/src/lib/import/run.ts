@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -7,9 +7,9 @@ import { recordRelationEvent, recordSince, snapshotEntities } from "@/lib/histor
 import * as who from "@/lib/history/actor";
 import { applyDecisions, emptyWritten, parseReview, type BatchFile, type StoredReview, type Written } from "./batch";
 import { proposeFileKind, proposeMapping } from "./map";
-import { KEY_ATTRIBUTE, type MatchTarget } from "./match";
-import { planParents } from "./parents";
-import { review, type Reviewed } from "./review";
+import type { MatchTarget } from "./match";
+import { planImport, planTotals, type ImportIntent } from "./plan";
+import { review } from "./review";
 import { stage, type FileInput } from "./stage";
 import { withOverrides } from "./reconcile";
 
@@ -51,7 +51,6 @@ export const tabular = (files: BatchFile[]): FileInput[] =>
 export const PARENT_KEY = "__parent";
 
 const now = () => new Date().toISOString();
-const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
 
 /** The kinds and names this workspace already knows, as something to match a batch against. */
 export async function targetsFor(db: Db, workspaceId: string): Promise<{ targets: MatchTarget[]; kinds: string[] }> {
@@ -152,18 +151,37 @@ export async function stageBatch(
 }
 
 
+/** Where an approved import lands: the estate everybody reads, or a branch of its own (§5.89). */
+export type ImportOnto = "main" | "branch";
+
+export interface ImportApplied {
+  ok: true;
+  created: number;
+  updated: number;
+  connected: number;
+  nested: number;
+  /** The branch it landed on, when it landed on one. Null when it was written through. */
+  changeSetId: string | null;
+}
+
+/**
+ * Approve a batch: work out what it does, then write it where it was told to.
+ *
+ * The judgement is `planImport` and lives outside this file. What is left here is two executors
+ * over the same list of intentions — one that moves the estate and keeps a rollback record, one
+ * that writes a change set nobody has merged yet. Keeping them side by side in one function is
+ * deliberate: the moment they live apart, "what an import does" has two answers.
+ */
 export async function applyBatch(
   db: Db,
   batchId: string,
   approvedById: string,
-): Promise<{ ok: true; created: number; updated: number; connected: number; nested: number } | { error: string }> {
+  options?: { onto?: ImportOnto; branchName?: string },
+): Promise<ImportApplied | { error: string }> {
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   if (batch.status === "approved") return { error: "This batch has already been approved." };
-  // Everything an approval writes is one act by one import, so the history is taken across the
-  // whole workspace and attributed to the batch (§5.43).
-  const history = { workspaceId: batch.workspaceId, actor: who.importer(batch.name, batchId), context: `import: ${batch.name}` };
-  const before = await snapshotEntities(db, batch.workspaceId);
+  if (batch.status === "landed") return { error: "This batch is already on a branch. Merge it there." };
 
   const stored = parseReview(batch.review);
   const { targets, kinds } = await targetsFor(db, batch.workspaceId);
@@ -177,110 +195,34 @@ export async function applyBatch(
   const taking = rows.filter((r) => r.decision === "accept" && r.record.name.trim());
   if (!taking.length) return { error: "Nothing in this batch is accepted." };
 
-  const written: Written = { created: [], relations: [], updated: [], at: now() };
-  const idOf = new Map<string, string>();
+  const [wired, hierarchy] = await Promise.all([
+    db.select({ fromEntityId: s.relations_.fromEntityId, toEntityId: s.relations_.toEntityId, kind: s.relations_.kind })
+      .from(s.relations_).where(eq(s.relations_.workspaceId, batch.workspaceId)),
+    db.select({ id: s.entities.id, parentId: s.entities.parentId })
+      .from(s.entities).where(eq(s.entities.workspaceId, batch.workspaceId)),
+  ]);
 
-  for (const row of taking) {
-    const attributes: Record<string, string> = {};
-    for (const [key, field] of Object.entries(row.record.attributes)) attributes[key] = field.chosen.value;
-    if (row.record.key) attributes[KEY_ATTRIBUTE] = row.record.key;
+  const { intents } = planImport({
+    taking,
+    targets,
+    wired,
+    hierarchy: hierarchy.map((e) => ({ id: e.id, parentId: e.parentId ?? null })),
+    drawn: stored.drawn,
+    mintEntityId: () => `ent_${nanoid(12)}`,
+    mintRelationId: () => `rel_${nanoid(10)}`,
+  });
+  const totals = planTotals(intents);
 
-    if (row.match.entityId) {
-      const before = targets.find((t) => t.id === row.match.entityId);
-      if (!before) continue;
-      const merged = { ...before.attributes };
-      for (const [key, value] of Object.entries(attributes)) {
-        if (norm(merged[key] ?? "") === norm(value)) continue;
-        written.updated.push({ entityId: before.id, key, from: merged[key] ?? "", to: value });
-        merged[key] = value;
-      }
-      const kind = row.record.kind || before.kind;
-      if (norm(kind) !== norm(before.kind)) written.updated.push({ entityId: before.id, key: "__kind", from: before.kind, to: kind });
-      await db.update(s.entities)
-        .set({ kind, attributes: JSON.stringify(merged), updatedAt: now() })
-        .where(eq(s.entities.id, before.id));
-      idOf.set(row.record.id, before.id);
-    } else {
-      const id = `ent_${nanoid(12)}`;
-      await db.insert(s.entities).values({
-        id,
-        workspaceId: batch.workspaceId,
-        kind: row.record.kind || "",
-        name: row.record.name,
-        description: row.record.description,
-        attributes: JSON.stringify(attributes),
-        // Where it came from, as a fact on the row: "where did this object come from" becomes a
-        // query rather than somebody's memory.
-        source: `import:${batchId}`,
-        createdAt: now(),
-        updatedAt: now(),
-      });
-      written.created.push(id);
-      idOf.set(row.record.id, id);
-    }
+  if (options?.onto === "branch") {
+    const changeSetId = await landOnBranch(db, batch, intents, approvedById, options.branchName);
+    return { ok: true, ...totals, changeSetId };
   }
 
-  // Relations last, so both ends exist whichever order the rows were in.
-  const byName = new Map<string, string>();
-  for (const target of targets) byName.set(norm(target.name), target.id);
-  for (const row of taking) byName.set(norm(row.record.name), idOf.get(row.record.id) ?? byName.get(norm(row.record.name)) ?? "");
-  const existing = await db.select().from(s.relations_).where(eq(s.relations_.workspaceId, batch.workspaceId));
-  const wired = new Set(existing.map((r) => `${r.fromEntityId}|${norm(r.kind)}|${r.toEntityId}`));
-  // For the history: an entity id back to the name a person would recognise.
-  const nameFor = (entityId: string) =>
-    taking.find((r) => idOf.get(r.record.id) === entityId)?.record.name ?? targets.find((t) => t.id === entityId)?.name ?? "";
-
-  /*
-   * Relations somebody drew between two cards on the board. They are named by record rather than
-   * by name — a connector points at a card, and the card knows which claim it is, so a renamed
-   * object cannot silently point somewhere else.
-   */
-  for (const drawn of stored.drawn ?? []) {
-    const from = idOf.get(drawn.from);
-    const to = idOf.get(drawn.to);
-    if (!from || !to || from === to) continue;
-    const kind = drawn.kind.trim() || "relates to";
-    const signature = `${from}|${norm(kind)}|${to}`;
-    if (wired.has(signature)) continue;
-    const id = `rel_${nanoid(10)}`;
-    await db.insert(s.relations_).values({
-      id, workspaceId: batch.workspaceId, fromEntityId: from, toEntityId: to,
-      kind, attributes: "{}", source: `import:${batchId}`, createdAt: now(), updatedAt: now(),
-    });
-    wired.add(signature);
-    written.relations.push(id);
-  }
-
-  for (const row of taking) {
-    const from = idOf.get(row.record.id);
-    if (!from) continue;
-    for (const relation of row.record.relations) {
-      const to = byName.get(norm(relation.target));
-      if (!to || to === from) continue;
-      const signature = `${from}|${norm(relation.kind)}|${to}`;
-      if (wired.has(signature)) continue;
-      const id = `rel_${nanoid(10)}`;
-      await db.insert(s.relations_).values({
-        id, workspaceId: batch.workspaceId, fromEntityId: from, toEntityId: to,
-        kind: relation.kind, attributes: "{}", source: `import:${batchId}`, createdAt: now(), updatedAt: now(),
-      });
-      wired.add(signature);
-      written.relations.push(id);
-      await recordRelationEvent(db, history, {
-        kind: "relationAdded",
-        label: relation.kind,
-        from: { id: from, name: nameFor(from) },
-        to: { id: to, name: nameFor(to) },
-      });
-    }
-  }
-
-  /*
-   * Containment last of all (§5.74). A parent is only a name until every row has an id, and it is
-   * deliberately not written as an edge: the graph holds "inside" as a column, which is what
-   * ancestry, roll-up and the capability map read. Writing both would be two facts to keep in step.
-   */
-  const nested = await applyParents(db, batch.workspaceId, taking, idOf, byName, written);
+  // Everything an approval writes is one act by one import, so the history is taken across the
+  // whole workspace and attributed to the batch (§5.43).
+  const history = { workspaceId: batch.workspaceId, actor: who.importer(batch.name, batchId), context: `import: ${batch.name}` };
+  const before = await snapshotEntities(db, batch.workspaceId);
+  const written = await writeThrough(db, batch, intents, history);
 
   await recordSince(db, history, { workspace: true }, before);
   await db.update(s.importBatches).set({
@@ -290,47 +232,158 @@ export async function applyBatch(
     approvedAt: now(),
     updatedAt: now(),
   }).where(eq(s.importBatches.id, batchId));
-  return {
-    ok: true,
-    created: written.created.length,
-    updated: new Set(written.updated.filter((u) => u.key !== PARENT_KEY).map((u) => u.entityId)).size,
-    connected: written.relations.length,
-    nested,
-  };
+  return { ok: true, ...totals, changeSetId: null };
 }
 
 /**
- * Put each object inside the one its row named.
+ * Write the import into a change set of its own, and merge nothing.
  *
- * Three things make this its own pass rather than a line in the loop above. A parent is a name
- * until every row has been written, so it cannot be resolved earlier. A cycle is a real
- * possibility — an export can say A is inside B and B inside A, and a ring in the hierarchy is
- * what makes every reader of the tree hang — so each move is checked against the tree as it
- * stands, including the moves this batch has already made. And a move that cannot be made is
- * skipped rather than failed: the object still arrives, at the top, which is exactly what an
- * unresolvable parent means.
+ * This is the whole of #137's first half: 455 creations, 378 relations and 236 reparents become
+ * commits on a branch, the checks run against it (§5.88), and somebody merges — or does not, and
+ * the shared model never saw the work. Rollback stops being a mechanism and becomes *do not
+ * merge*, which is the only kind of undo that cannot get it wrong.
+ *
+ * The set is left a draft rather than planned: a draft is a proposal, which is what an unreviewed
+ * import is, and both are things you may stand on (§5.82) to see the estate as it would be.
  */
-async function applyParents(
+async function landOnBranch(
   db: Db,
-  workspaceId: string,
-  taking: Reviewed[],
-  idOf: Map<string, string>,
-  byName: Map<string, string>,
-  written: Written,
-): Promise<number> {
-  const wanted = taking
-    .map((row) => ({ id: idOf.get(row.record.id) ?? "", parent: (row.record.parent ?? "").trim() }))
-    .filter((row) => row.id && row.parent);
-  if (!wanted.length) return 0;
+  batch: s.ImportBatch,
+  intents: ImportIntent[],
+  createdById: string,
+  branchName?: string,
+): Promise<string> {
+  const changeSetId = `chg_${nanoid(10)}`;
+  await db.insert(s.changeSets).values({
+    id: changeSetId,
+    workspaceId: batch.workspaceId,
+    name: (branchName?.trim() || batch.name).slice(0, 120),
+    description: `Imported from ${batch.origin}. Nothing here is in the estate until this is merged.`,
+    targetDate: "",
+    status: "draft",
+    createdById,
+    createdAt: now(),
+    updatedAt: now(),
+  });
 
-  // The whole workspace, not only this batch: a loop can run through objects nothing here mentions.
-  const all = await db.select({ id: s.entities.id, parentId: s.entities.parentId })
-    .from(s.entities).where(eq(s.entities.workspaceId, workspaceId));
-  const moves = planParents(wanted, (name) => byName.get(norm(name)), all.map((e) => ({ id: e.id, parentId: e.parentId ?? null })));
+  const rows = intents.map((intent) => ({
+    id: `chn_${nanoid(10)}`,
+    changeSetId,
+    op: intent.op,
+    entityId: intent.entityId || null,
+    relationId: intent.relationId || null,
+    payload: JSON.stringify(intent.payload),
+    // Why, on every single one: a branch of 1,069 commits nobody can explain is not reviewable.
+    note: noteFor(intent, batch.name),
+    createdAt: now(),
+  }));
+  // In chunks: SQLite has a variable limit per statement, and an EA repository is thousands of rows.
+  for (let at = 0; at < rows.length; at += 200) await db.insert(s.changes).values(rows.slice(at, at + 200));
 
-  for (const move of moves) {
-    await db.update(s.entities).set({ parentId: move.parentId, updatedAt: now() }).where(eq(s.entities.id, move.id));
-    written.updated.push({ entityId: move.id, key: PARENT_KEY, from: move.from, to: move.parentId });
+  await db.update(s.importBatches).set({
+    status: "landed",
+    changeSetId,
+    written: JSON.stringify(emptyWritten()),
+    approvedById: createdById,
+    approvedAt: now(),
+    updatedAt: now(),
+  }).where(eq(s.importBatches.id, batch.id));
+  return changeSetId;
+}
+
+function noteFor(intent: ImportIntent, batchName: string): string {
+  switch (intent.op) {
+    case "addEntity": return `${batchName} has an object called “${intent.name}” that we do not.`;
+    case "setAttribute": return intent.from
+      ? `${batchName} says ${String(intent.payload.key)} is “${String(intent.payload.value)}”; we say “${intent.from}”.`
+      : `${batchName} fills in ${String(intent.payload.key)}.`;
+    case "retypeEntity": return `${batchName} calls this a ${String(intent.payload.kind)}; we call it a ${intent.from || "nothing"}.`;
+    case "setParent": return `${batchName} puts this inside something else.`;
+    default: return `${batchName} says these two are connected.`;
   }
-  return moves.length;
+}
+
+/**
+ * Write the import into the graph, keeping the record that makes a rollback honest.
+ *
+ * Attribute and type changes are grouped per object so a matched row is one UPDATE rather than
+ * one per field — 455 objects with a dozen fields each is the normal case, and the difference is
+ * minutes.
+ */
+async function writeThrough(
+  db: Db,
+  batch: s.ImportBatch,
+  intents: ImportIntent[],
+  history: { workspaceId: string; actor: ReturnType<typeof who.importer>; context: string },
+): Promise<Written> {
+  const written: Written = { created: [], relations: [], updated: [], at: now() };
+
+  for (const intent of intents.filter((i) => i.op === "addEntity")) {
+    await db.insert(s.entities).values({
+      id: intent.entityId,
+      workspaceId: batch.workspaceId,
+      kind: String(intent.payload.kind ?? ""),
+      name: String(intent.payload.name ?? ""),
+      description: String(intent.payload.description ?? ""),
+      attributes: JSON.stringify(intent.payload.attributes ?? {}),
+      // Where it came from, as a fact on the row: "where did this object come from" becomes a
+      // query rather than somebody's memory.
+      source: `import:${batch.id}`,
+      createdAt: now(),
+      updatedAt: now(),
+    });
+    written.created.push(intent.entityId);
+  }
+
+  const edits = new Map<string, { attributes: Record<string, string>; kind: string | null }>();
+  for (const intent of intents) {
+    if (intent.op !== "setAttribute" && intent.op !== "retypeEntity") continue;
+    const edit = edits.get(intent.entityId) ?? { attributes: {}, kind: null };
+    if (intent.op === "setAttribute") {
+      edit.attributes[String(intent.payload.key)] = String(intent.payload.value);
+      written.updated.push({ entityId: intent.entityId, key: String(intent.payload.key), from: intent.from, to: String(intent.payload.value) });
+    } else {
+      edit.kind = String(intent.payload.kind);
+      written.updated.push({ entityId: intent.entityId, key: "__kind", from: intent.from, to: String(intent.payload.kind) });
+    }
+    edits.set(intent.entityId, edit);
+  }
+  if (edits.size) {
+    const rows = await db.select().from(s.entities).where(inArray(s.entities.id, [...edits.keys()]));
+    for (const row of rows) {
+      const edit = edits.get(row.id)!;
+      await db.update(s.entities)
+        .set({ kind: edit.kind ?? row.kind, attributes: JSON.stringify({ ...parseAttributes(row.attributes), ...edit.attributes }), updatedAt: now() })
+        .where(eq(s.entities.id, row.id));
+    }
+  }
+
+  for (const intent of intents.filter((i) => i.op === "addRelation")) {
+    await db.insert(s.relations_).values({
+      id: intent.relationId,
+      workspaceId: batch.workspaceId,
+      fromEntityId: String(intent.payload.fromEntityId),
+      toEntityId: String(intent.payload.toEntityId),
+      kind: String(intent.payload.kind),
+      attributes: "{}",
+      source: `import:${batch.id}`,
+      createdAt: now(),
+      updatedAt: now(),
+    });
+    written.relations.push(intent.relationId);
+    const [from, to] = intent.name.split(" → ");
+    await recordRelationEvent(db, history, {
+      kind: "relationAdded",
+      label: String(intent.payload.kind),
+      from: { id: String(intent.payload.fromEntityId), name: from ?? "" },
+      to: { id: String(intent.payload.toEntityId), name: to ?? "" },
+    });
+  }
+
+  for (const intent of intents.filter((i) => i.op === "setParent")) {
+    await db.update(s.entities).set({ parentId: String(intent.payload.parentId), updatedAt: now() }).where(eq(s.entities.id, intent.entityId));
+    written.updated.push({ entityId: intent.entityId, key: PARENT_KEY, from: intent.from, to: String(intent.payload.parentId) });
+  }
+
+  return written;
 }

@@ -3831,7 +3831,7 @@ caught a real bug: the zoom limits were absolute, so a view that opened *outside
 range locked the camera where it started. They are directional now — a zoom is allowed whenever
 it lands inside the range or moves towards it, so you can always get back and never get lost.
 
-### 5.87 A plan can move something in the tree (#137, v0.2)
+### 5.87 A plan can move and retype (#137, v0.2)
 
 A change set could introduce, retire, re-attribute, connect and disconnect. It could not say
 *this capability moves under that one* — and containment is a column on the entity rather than a
@@ -3849,10 +3849,69 @@ other produce one move and one stale-change problem, and delivery is refused whi
 stands. It is the same rule the import's containment pass already applies (§5.74) for the same
 reason: a cycle in the hierarchy is not a wrong answer, it is a tree that hangs every reader.
 
+**And a plan can say what something *is*.** The kind is a column for the same reason the parent
+is, and a re-read of a source that has since typed its rows properly is a retype of two hundred
+objects — so `retypeEntity` is the seventh op. It is not an attribute change: everything that
+reads the model, the meta-model and the conformance checks and the layers, reads the column.
+Retyping with no type is refused rather than blanking the kind.
+
 A move counts as a change *to the object* in the divergence indicator (§5.82) rather than as a
 category of its own — reparenting two hundred capabilities is two hundred changed objects, not
 two hundred of something nobody has a word for. The check suite (§5.83) now reads parents from
 the projection, so *nothing is orphaned* is answered about the estate the ref would leave.
+
+### 5.88 The checks become a gate (#137, v0.2)
+
+§5.83 built the arithmetic and wired it to a page that could only report. A test suite nothing
+consults is a dashboard, so delivering a change set now runs it and can say no.
+
+The rule is narrow on purpose. Only findings the ref **adds** count — a plan is not answerable
+for the four hundred undeclared types it inherited, and a gate that refused on those would never
+open for anybody. Only the **blocking** half of what it adds stops it; a new advisory finding is
+worth saying out loud at the moment of merging and is not worth a locked door, so it is counted
+in the delivery message instead.
+
+**And it can be overruled, by the person it was shown to.** A model is never clean, and a gate
+with no way through is a gate everybody routes around — by editing the graph directly, which is
+the thing the branch existed to prevent. So the refusal names up to three of the objects it is
+about, links to each one and to the whole run, and puts *Deliver anyway* underneath them rather
+than beside the button that was refused. What cannot happen is overruling it without having
+been told.
+
+The refusal itself is a pure function (`lib/checks/gate.ts`) over the two runs, so what counts
+as a refusal and how it reads are testable without a database. On the seeded workspace both
+plans are refused for the same honest reason: they draw relations of a type nobody declared.
+
+### 5.89 An import lands on a branch (#137, v0.2)
+
+The point of the whole epic, on the old storage. Until now approving an import wrote 455 objects
+straight into the estate everybody reads, and undoing it meant a rollback mechanism with its own
+record, its own pseudo-keys and its own list of things it declined to touch. Now an import can
+land on a change set of its own: its creations, field changes, retypes, relations and reparents
+become commits on a branch, the checks run against it, and somebody merges — or never merges,
+which is what undoing an import has become.
+
+**The judgement moved out of the writer.** `planImport` is pure and is the whole of what an
+import decides: which rows are new, which fields on a matched object actually differ, which
+relations are already wired, where each object ends up in the tree. Two executors then take the
+same list — one writes it to the graph and keeps the rollback record, one writes it as a change
+set. Two destinations that are two loops would disagree within a month; two destinations over one
+plan cannot.
+
+**The branch is the primary button, and writing straight in stays.** #137 asked whether an import
+should *always* get a branch. Always is simpler to explain and wrong for the forty-row correction
+to objects you already own — that is a routine update, not a proposal, and making it a review
+round would teach people to avoid the import. So both, with the branch first: *Land it on a
+branch* is the primary action and *Write it straight in* the secondary one.
+
+**Merging is the ordinary merge.** The batch page's merge button calls the same
+`deliverChangeSet` the roadmap does, through the same gate (§5.88) and the same refusal card. An
+import is the largest change anybody ever makes to a model, so it should take the *least*
+privileged path into it, not a side door with its own rules.
+
+A landed batch cannot be rolled back or deleted — there is nothing to undo, and the branch is the
+record. What it says instead names the branch and points at the roadmap, where abandoning a plan
+already means something.
 
 ## 6. Roadmap
 
@@ -5073,6 +5132,17 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | A move that would close a ring becomes a stale-change problem rather than being skipped. | A skipped move is a plan that silently does less than it says. A problem is visible, it is what the delivery gate already refuses on, and the person gets to decide which of the two moves they meant. |
 | 2026-09-11 | A move counts as a changed object in the divergence indicator, not as a fifth number. | Moving something is a change to it in every sense the indicator is asked about, and an import that reparents 236 capabilities would otherwise show a number with no word for it. |
 
+| 2026-09-11 | Delivery runs the checks and refuses on new blocking findings. | A suite nothing consults is a dashboard. The merge is the one moment where the answer changes what happens, and it is the moment a reviewer is already paying attention. |
+| 2026-09-11 | Only findings the ref adds count, and only the blocking ones stop it. | An estate has hundreds of standing findings that no single plan is answerable for; refusing on those would mean nothing could ever be delivered. Advisory findings are reported at the merge and never block. |
+| 2026-09-11 | The gate can be overruled, and the override sits under the reasons rather than beside the button. | A gate nobody can open gets routed around — people edit the graph directly, which is what the branch existed to prevent. Making the override real and making it require reading the refusal first is the honest trade. |
+| 2026-09-11 | The refusal names three objects and links to them, rather than reporting a count. | "2 new blocking findings" tells somebody they are stuck. Naming the two relations tells them what to do next, which is the only difference between a gate and a wall. |
+
+| 2026-09-11 | What an import does is a pure plan; writing it to the graph or to a branch are two executors over that one plan. | Two destinations written as two loops disagree within a month, and the disagreement shows up as an import that behaves differently depending on where it lands. One judgement, two mechanical writers. |
+| 2026-09-11 | An import does not always get a branch: landing on one is the primary button, writing straight through the secondary. | A 455-object EA repository is somebody else's claim and needs reviewing. A forty-row correction to objects you already own is a routine update, and making it a review round teaches people to avoid the import. |
+| 2026-09-11 | A landed batch has no rollback and no delete; abandoning the branch is the undo. | There is nothing to undo — the estate never moved. Keeping a rollback button that did nothing would be the product lying about what happened. |
+| 2026-09-11 | Merging a landed import is the same `deliverChangeSet` as any other merge, gate included. | An import is the largest change anybody makes to the model, so it should take the least privileged path in, not a private one. It also means the gate cannot be forgotten on the path that needs it most. |
+| 2026-09-11 | The batch's branch pointer is not a foreign key, and is resolved on read. | A deleted change set should leave the batch saying where its work went, rather than silently forgetting. The read decides what to show; the column only remembers. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5087,6 +5157,34 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-11 — Rev 133: an import lands on a branch (#137).** The epic's point, on the old
+  storage: approving an import can now write a change set of its own instead of the estate. Its
+  creations, field changes, retypes, relations and reparents become commits on a branch; the
+  checks run against it; merging is `deliverChangeSet` through the same gate as everything else,
+  with the same refusal card. Undoing an import is now *don't merge*. What an import does became a
+  pure plan (`planImport`) with two executors over it, so the graph and the branch cannot drift
+  apart — ten tests hold that plan to what the old writer did. Landing is the primary button and
+  writing straight through the secondary, because a forty-row correction is not a proposal. A
+  landed batch has no rollback and no delete. Also fixed a duplicate-key warning the walk caught:
+  presence merged a relayed peer the process already had, so two cursors were drawn for one
+  person. Brief §5.89, five decision rows.
+
+- **2026-09-11 — Rev 132: a plan can retype something (#137).** The seventh op, `retypeEntity`,
+  and the last one the import needs before it can land on a branch: a re-read of a source that has
+  since typed its rows properly is a retype of two hundred objects, and the kind is a column
+  rather than an attribute because that is what the meta-model, the conformance checks and the
+  layers read. Retyping with no type is refused rather than blanking the kind. The roadmap
+  composer offers "Change what it is". Brief §5.87 extended, two tests.
+
+- **2026-09-11 — Rev 131: the checks become a gate (#137).** Delivering a change set now runs the
+  #136 suite against its projection and refuses when the merge would add blocking findings. Only
+  what the ref adds counts, and only the blocking half of it stops anything — advisory findings
+  are counted in the delivery message instead. The refusal names up to three of the objects, links
+  to each and to the whole run, and offers *Deliver anyway* beneath them, because a gate nobody can
+  open is a gate everybody routes around. The gate is a pure function with six tests; the walk
+  asserts that pressing Deliver on a seeded plan refuses, says why, and leaves the estate where it
+  was. Brief §5.88, four decision rows.
 
 - **2026-09-11 — Rev 130: a plan can move something in the tree (#137).** First slice of "import
   lands on a change set": a change set can now hold `setParent`, the sixth op, because the import

@@ -132,18 +132,25 @@ function localPeers(room: Room): Peer[] {
   return [...room.subscribers.values()].map((sub) => sub.peer);
 }
 
-/** Everybody on this board, here and on the other replicas, with the stale ones dropped. */
+/**
+ * Everybody on this board, here and on the other replicas, with the stale ones dropped.
+ *
+ * Deduplicated by peer id, and the local copy wins. A relay can carry a peer this process
+ * already has — a replica that has not yet heard the peer move, a bus that round-trips — and
+ * the client renders the list by id, so a duplicate is two cursors for one person and a React
+ * key collision. The walk caught exactly that.
+ */
 function peers(room: Room): Peer[] {
   const cutoff = Date.now() - REMOTE_TTL_MS;
-  const out = localPeers(room);
+  const byId = new Map<string, Peer>(localPeers(room).map((peer) => [peer.id, peer]));
   for (const [process, entry] of room.remote) {
     if (entry.at < cutoff) {
       room.remote.delete(process);
       continue;
     }
-    out.push(...entry.peers);
+    for (const peer of entry.peers) if (!byId.has(peer.id)) byId.set(peer.id, peer);
   }
-  return out;
+  return [...byId.values()];
 }
 
 /** Which processes have somebody on this board, for deciding who writes it down. */

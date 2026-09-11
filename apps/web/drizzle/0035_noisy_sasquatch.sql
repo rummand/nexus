@@ -1,0 +1,1 @@
+ALTER TABLE `import_batches` ADD `change_set_id` text;

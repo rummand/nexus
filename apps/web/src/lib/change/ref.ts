@@ -68,6 +68,7 @@ export function divergenceOf(changes: Change[]): Divergence {
        * read as two hundred somethings nobody has a word for.
        */
       case "setParent": if (change.entityId) changed.add(change.entityId); break;
+      case "retypeEntity": if (change.entityId) changed.add(change.entityId); break;
       case "addRelation": if (change.relationId) connects.add(change.relationId); break;
       case "removeRelation": if (change.relationId) disconnects.add(change.relationId); break;
     }

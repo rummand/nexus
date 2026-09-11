@@ -661,8 +661,14 @@ export const importBatches = pgTable(
      * worth keeping even though the staging is identical.
      */
     origin: text("origin").notNull().default("files"),
-    /** staged → approved → rolled back. A batch is never deleted; the record of it is the audit. */
-    status: text("status", { enum: ["staged", "approved", "rolled back"] }).notNull().default("staged"),
+    /**
+     * staged → approved → rolled back, or staged → landed (§5.89).
+     *
+     * `landed` is the branch destination: the import is written as a change set nobody has
+     * merged, so the estate has not moved and there is nothing to roll back. A batch is never
+     * deleted; the record of it is the audit.
+     */
+    status: text("status", { enum: ["staged", "approved", "landed", "rolled back"] }).notNull().default("staged"),
     /** The files as read: name, format, the proposed mapping, and their rows. */
     files: text("files").notNull().default("[]"),
     /** The staged records and every decision taken about them, as JSON. */
@@ -678,6 +684,12 @@ export const importBatches = pgTable(
      * document carries the batch id, and the batch carries the board id.
      */
     boardId: text("board_id").references(() => boards.id, { onDelete: "set null" }),
+    /**
+     * The branch this import landed on (§5.89). Deliberately not a foreign key: `changeSets` is
+     * declared further down this file, and more to the point a deleted change set should leave
+     * the batch saying where it went rather than quietly forgetting. Resolved on read.
+     */
+    changeSetId: text("change_set_id"),
     createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     approvedById: text("approved_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
@@ -1079,7 +1091,7 @@ export const changes = pgTable(
     changeSetId: text("change_set_id")
       .notNull()
       .references(() => changeSets.id, { onDelete: "cascade" }),
-    op: text("op", { enum: ["addEntity", "retireEntity", "setAttribute", "setParent", "addRelation", "removeRelation"] }).notNull(),
+    op: text("op", { enum: ["addEntity", "retireEntity", "setAttribute", "setParent", "retypeEntity", "addRelation", "removeRelation"] }).notNull(),
     /**
      * The entity this change is about. For `addEntity` the id is minted when the change is
      * written, before the entity exists — the same trick the canvas uses, and what lets a new

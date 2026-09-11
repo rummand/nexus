@@ -8,6 +8,8 @@ import { withOverrides } from "@/lib/import/reconcile";
 import { describeRole } from "@/lib/import/map";
 import { recount, review } from "@/lib/import/review";
 import { targetsFor } from "@/lib/import/actions";
+import { getChangeSet } from "@/lib/change/read";
+import { divergenceOf } from "@/lib/change/ref";
 import { BatchReview, type RowView } from "@/components/import/BatchReview";
 
 /**
@@ -72,9 +74,19 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
     decidedBy: row.decidedBy,
   }));
 
+  /*
+   * The branch it landed on, resolved rather than trusted: the pointer is not a foreign key, so
+   * a change set somebody deleted has to read as gone rather than as a broken link (§5.89).
+   */
+  const set = batch.changeSetId ? await getChangeSet(db, batch.changeSetId) : null;
+  const branch = set && set.workspaceId === workspace.id
+    ? { id: set.id, name: set.name, status: set.status, divergence: divergenceOf(set.changes) }
+    : null;
+
   return (
     <BatchReview
       slug={slug}
+      workspaceId={workspace.id}
       batch={{
         id: batch.id,
         name: batch.name,
@@ -83,6 +95,7 @@ export default async function BatchPage({ params }: { params: Promise<{ slug: st
         approvedAt: batch.approvedAt,
         includePersonal: stored.includePersonal,
         boardId: batch.boardId,
+        branch,
       }}
       kinds={kinds}
       files={files.map((file) => ({

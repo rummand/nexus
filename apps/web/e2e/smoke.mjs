@@ -1407,6 +1407,22 @@ try {
   await page.waitForTimeout(1200);
   assert.equal(await page.locator("[data-change-set] [data-change]").count(), beforeChanges + 1, "the change is recorded");
 
+  /*
+   * The merge gate (§5.88). Both seeded plans add relations of a type nobody declared, which is
+   * a blocking finding — so pressing Deliver refuses, names the relations, and leaves the graph
+   * exactly where it was. The override is deliberately *not* pressed here: this walk asserts the
+   * door is shut, and delivering would move the estate the rest of the walk is measuring.
+   */
+  const statesBefore = await page.locator("[data-states]").innerText();
+  await blocker.locator("[data-deliver]").click();
+  await page.waitForSelector("[data-delivery-refused]", { timeout: 30000 });
+  const refusal = await page.locator("[data-delivery-refused]").innerText();
+  assert.match(refusal, /new blocking finding/, "the gate says how many new blocking findings a merge would add");
+  assert.match(refusal, /nobody declared/, "…and names one of them rather than only counting");
+  assert.equal(await page.locator("[data-deliver-anyway]").count(), 1, "the refusal offers an override to whoever may deliver");
+  assert.equal(await blocker.locator(".roadmap-delivered").count(), 0, "a refused delivery does not deliver");
+  assert.equal(await page.locator("[data-states]").innerText(), statesBefore, "…and the estate is where it was");
+
   // plateaus: named states, and the difference between two of them
   await page.goto(`${base}/w/acme-energy/roadmap/plateaus`, { waitUntil: "load" });
   await page.waitForSelector("[data-plateau-strip]");
@@ -1676,6 +1692,45 @@ try {
   await page.waitForSelector("[data-inventory-count]", { timeout: 30000 });
   assert.equal(await page.locator("[data-inventory-row]", { hasText: "Grid Services" }).count(), 0,
     "rolling back takes the tree away with the objects");
+
+  /*
+   * ---- an import lands on a branch (§5.89) ----------------------------------------------------
+   *
+   * The other destination: approving writes a change set nobody has merged, the estate does not
+   * move, and merging is the gesture that used to be called approving — through the same gate
+   * every other merge goes through (§5.88).
+   */
+  const beforeLanding = await countEntities();
+  await page.goto(`${base}/w/acme-energy/import`, { waitUntil: "load" });
+  await page.waitForSelector('[data-door="paste"]', { timeout: 30000 });
+  await page.click('[data-door="paste"]');
+  await page.fill("[data-paste-name]", "A branch of its own");
+  await page.fill("[data-paste-text]", "Name\tKind\nKafka Bridge\tIntegration\nEvent Router\tIntegration\n");
+  await page.click("[data-stage-paste]");
+  await page.waitForURL(/\/import\/bat_/, { timeout: 60000 });
+  const landedBatch = page.url();
+  await page.waitForSelector("[data-land-batch]", { timeout: 30000 });
+  await page.click("[data-land-batch]");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  assert.match(await page.locator("[data-import-result]").innerText(), /Landed on a branch/,
+    "landing says what the branch would do, in the future tense");
+  assert.equal(await countEntities(), beforeLanding, "landing on a branch moves nothing in the estate");
+
+  await page.goto(landedBatch, { waitUntil: "load" });
+  await page.waitForSelector("[data-merge-batch]", { timeout: 30000 });
+  assert.match(await page.locator(".roadmap-lede").innerText(), /2 added/,
+    "the batch page says how far the branch diverges from main");
+  assert.equal(await page.locator("[data-stand-on-branch]").count(), 1, "…and you can stand on it to see the estate as it would be");
+
+  await page.click("[data-merge-batch]");
+  await page.waitForSelector("[data-import-result]", { timeout: 60000 });
+  const merged = await page.locator("[data-import-result]").innerText();
+  assert.match(merged, /Merged|blocking/, "merging either lands or says what the checks refused");
+  if (/blocking/.test(merged)) {
+    await page.click("[data-deliver-anyway]");
+    await page.waitForTimeout(2000);
+  }
+  assert.equal(await countEntities(), beforeLanding + 2, "merging the branch is what puts the objects in the estate");
 
   /*
    * ---- the repository has a shelf (§5.76) -----------------------------------------------------

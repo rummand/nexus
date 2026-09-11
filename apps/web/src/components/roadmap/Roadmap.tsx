@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import {
   AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, FolderTree, GitBranch, Link2,
-  LayoutGrid, Lock, Plus, Rocket, Sparkles, Trash2, TrendingDown, TrendingUp, Unlink, X,
+  LayoutGrid, Lock, Plus, Rocket, Sparkles, Tag, Trash2, TrendingDown, TrendingUp, Unlink, X,
 } from "lucide-react";
 import { addChange, addDependency, createChangeSet, createRoadmapBoard, deleteChangeSet, deliverChangeSet, removeChange, removeDependency, updateChangeSet } from "@/lib/change/actions";
 import { OP_LABEL, STATUS_LABEL, type ChangeOp, type ChangeSetStatus, type ChangeSummary } from "@/lib/change/types";
+import type { Refusal } from "@/lib/checks/gate";
+import { Refused } from "@/components/checks/Refused";
 import type { Nature } from "@/lib/change/impact";
 import { RoadmapTabs } from "./RoadmapTabs";
 
@@ -55,6 +57,7 @@ const OP_ICON: Record<ChangeOp, React.ReactNode> = {
   retireEntity: <Trash2 size={13} />,
   setAttribute: <Sparkles size={13} />,
   setParent: <FolderTree size={13} />,
+  retypeEntity: <Tag size={13} />,
   addRelation: <Link2 size={13} />,
   removeRelation: <Unlink size={13} />,
 };
@@ -81,6 +84,29 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
   const [drawing, setDrawing] = useState(false);
   const [openId, setOpenId] = useState<string | null>(sets[0]?.id ?? null);
   const [message, setMessage] = useState<string | null>(null);
+  /** The one change set the checks have just refused, and why. Cleared by the next attempt. */
+  const [refused, setRefused] = useState<{ setId: string; refusal: Refusal } | null>(null);
+
+  /**
+   * Deliver, once, and say what happened.
+   *
+   * Returns the refusal when the checks said no, so the caller can put it on screen beside the
+   * button rather than flattening it into the message line — a refusal that names three objects
+   * and links to them is the difference between a gate and a wall.
+   */
+  const deliver = async (setId: string, name: string, anyway: boolean): Promise<Refusal | null> => {
+    const r = await deliverChangeSet(setId, { anyway });
+    if ("error" in r) {
+      setMessage(r.error);
+      return r.refusal ?? null;
+    }
+    setMessage(
+      `Delivered “${name}”: ${r.introduced} introduced, ${r.retired} retired, ${r.altered} changed, ${r.moved} moved, `
+      + `${r.connected} connected, ${r.severed} relations severed.`
+      + (r.advisory ? ` ${r.advisory} new advisory finding${r.advisory === 1 ? "" : "s"} came with it.` : ""),
+    );
+    return null;
+  };
 
   const delta = { entities: toBe.entities - asIs.entities, relations: toBe.relations - asIs.relations };
   const planned = sets.filter((s) => s.status === "draft" || s.status === "planned");
@@ -299,15 +325,27 @@ export function Roadmap({ workspaceId, slug, sets, entities, order, asIs, toBe }
                             const s2 = set.summary;
                             const warning = `Deliver “${set.name}”? This applies it to the graph: ${s2.additions} introduced, ${s2.retirements} retired, ${s2.attributeChanges} changed, ${s2.moves} moved, ${s2.severedRelations} relations severed. Retired systems keep their node with lifecycle “retired”.`;
                             if (!confirm(warning)) return;
+                            setRefused(null);
                             start(async () => {
-                              const r = await deliverChangeSet(set.id);
-                              setMessage("error" in r ? r.error : `Delivered: ${r.introduced} introduced, ${r.retired} retired, ${r.altered} changed, ${r.moved} moved, ${r.connected} connected, ${r.severed} relations severed.`);
+                              const r = await deliver(set.id, set.name, false);
+                              if (r) setRefused({ setId: set.id, refusal: r });
                             });
                           }}
                         >
                           <Rocket size={14} /> Deliver
                         </button>
                       </>
+                    )}
+                    {refused?.setId === set.id && (
+                      <Refused
+                        slug={slug}
+                        refusal={refused.refusal}
+                        pending={pending}
+                        onAnyway={() => start(async () => {
+                          setRefused(null);
+                          await deliver(set.id, set.name, true);
+                        })}
+                      />
                     )}
                     {set.status === "delivered" && (
                       <span className="roadmap-delivered"><Check size={14} /> Delivered {set.deliveredAt?.slice(0, 10)} — the graph carries this now.</span>
@@ -523,6 +561,7 @@ function AddChange({ changeSetId, entities, pending, start }: {
         : op === "setAttribute" ? { key, value }
           : op === "addRelation" ? { fromEntityId: entityId, toEntityId: toId, kind: relationKind }
             : op === "setParent" ? { parentId: toId }
+              : op === "retypeEntity" ? { kind }
               : {};
     if (op === "addEntity" && !name.trim()) return;
     if (op !== "addEntity" && !entityId) return;
@@ -543,6 +582,7 @@ function AddChange({ changeSetId, entities, pending, start }: {
         <option value="setAttribute">Change an attribute</option>
         <option value="addRelation">Connect two things</option>
         <option value="setParent">Move it inside something</option>
+        <option value="retypeEntity">Change what it is</option>
       </select>
 
       {op === "addEntity" ? (
@@ -555,6 +595,10 @@ function AddChange({ changeSetId, entities, pending, start }: {
           <option value="">Choose an object…</option>
           {entities.map((e) => <option key={e.id} value={e.id}>{e.name}{e.kind ? ` · ${e.kind}` : ""}</option>)}
         </select>
+      )}
+
+      {op === "retypeEntity" && (
+        <input value={kind} onChange={(e) => setKind(e.target.value)} placeholder="New type" aria-label="New type" className="roadmap-add-kind" />
       )}
 
       {op === "setAttribute" && (

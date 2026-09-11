@@ -29,7 +29,7 @@ import type { MatchTarget } from "./match";
 import { review } from "./review";
 import { batchDocument } from "./board";
 import { withOverrides } from "./reconcile";
-import { applyBatch, PARENT_KEY, stageBatch as runStage, tabular, targetsFor as targetsForWorkspace, type BatchOrigin } from "./run";
+import { applyBatch, PARENT_KEY, stageBatch as runStage, tabular, targetsFor as targetsForWorkspace, type BatchOrigin, type ImportApplied, type ImportOnto } from "./run";
 import { applyDecisions, parseFiles, parseReview, parseWritten, type BatchFile, type StoredReview } from "./batch";
 
 /**
@@ -347,20 +347,27 @@ async function denyBatch(batchId: string, capability: "graph.edit" | "import.app
   return deny(batch.workspaceId, capability);
 }
 
-export async function approveBatch(batchId: string): Promise<{ ok: true; created: number; updated: number; connected: number; nested: number } | { error: string }> {
+export async function approveBatch(batchId: string, options?: { onto?: ImportOnto }): Promise<ImportApplied | { error: string }> {
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   /*
-   * Approving is where a staged batch stops being a proposal and becomes the estate everybody
-   * else reads (§5.46). Staging, mapping and deciding lanes are ordinary work; this is not.
+   * Approving is where a staged batch stops being a proposal (§5.46). Onto `main` that means it
+   * becomes the estate everybody else reads; onto a branch it becomes a change set somebody has
+   * still to merge, which moves nothing — but it is the same decision either way, so it asks for
+   * the same power. Which of the two the branch merge itself needs is decided at the merge,
+   * where `plan.deliver` is asked for.
    */
   const notAllowed = await deny(batch.workspaceId, "import.approve");
   if (notAllowed) return notAllowed;
 
   const user = await currentUser();
-  const written = await applyBatch(db, batchId, user.id);
-  if ("ok" in written) await refresh(batch.workspaceId, batchId);
+  const written = await applyBatch(db, batchId, user.id, { onto: options?.onto ?? "main" });
+  if ("ok" in written) {
+    await refresh(batch.workspaceId, batchId);
+    // The branch is on the rail, the roadmap and the tree the moment it exists.
+    if (written.changeSetId) revalidatePath("/", "layout");
+  }
   return written;
 }
 
@@ -378,6 +385,7 @@ export async function rollbackBatch(batchId: string): Promise<
   const db = await getDb();
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
+  if (batch.status === "landed") return { error: "This batch is on a branch and never touched the estate. Abandon the branch instead." };
   if (batch.status !== "approved") return { error: "That batch was never approved, so there is nothing to undo." };
   const notAllowed = await deny(batch.workspaceId, "import.approve");
   if (notAllowed) return notAllowed;
@@ -469,6 +477,7 @@ export async function deleteBatch(batchId: string): Promise<{ ok: true } | { err
   const batch = await db.query.importBatches.findFirst({ where: eq(s.importBatches.id, batchId) });
   if (!batch) return { error: "That batch is gone." };
   if (batch.status === "approved") return { error: "An approved batch is the record of what happened to the graph; roll it back instead." };
+  if (batch.status === "landed") return { error: "This batch is on a branch; the branch is the record. Abandon it on the roadmap." };
   await db.delete(s.importBatches).where(and(eq(s.importBatches.id, batchId), eq(s.importBatches.workspaceId, batch.workspaceId)));
   await refresh(batch.workspaceId);
   return { ok: true };

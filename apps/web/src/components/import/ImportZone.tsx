@@ -37,7 +37,7 @@ export interface BatchSummary {
   name: string;
   /** files | paste | connected system — where the data came from. */
   origin: string;
-  status: "staged" | "approved" | "rolled back";
+  status: "staged" | "approved" | "landed" | "rolled back";
   createdAt: string;
   approvedAt: string | null;
   files: Array<{ name: string; format: string; rows: number; prose: boolean }>;
@@ -49,6 +49,7 @@ export interface BatchSummary {
 const STATUS: Record<BatchSummary["status"], { label: string; className: string }> = {
   staged: { label: "waiting for you", className: "staged" },
   approved: { label: "in the graph", className: "approved" },
+  landed: { label: "on a branch", className: "landed" },
   "rolled back": { label: "rolled back", className: "undone" },
 };
 
@@ -369,6 +370,7 @@ export function ImportZone({ slug, workspaceId, batches, servers }: {
                 <p>
                   {batch.records.toLocaleString()} object{batch.records === 1 ? "" : "s"} staged
                   {batch.status === "approved" && ` · ${batch.created} created, ${batch.updated} changed`}
+                  {batch.status === "landed" && " · waiting to be merged"}
                   {batch.status === "rolled back" && " · put back"}
                 </p>
               </div>

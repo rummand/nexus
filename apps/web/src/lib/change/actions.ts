@@ -11,11 +11,14 @@ import { currentUser } from "@/lib/session";
 import { parseAttributes } from "@/lib/graph";
 import { serializeDocument } from "@/canvas/document";
 import { roadmapDocument } from "./board";
+import { checksForRef } from "@/lib/checks/run";
+import { newFindings } from "@/lib/checks/suite";
+import { mergeGate, refusalWords, type Refusal } from "@/lib/checks/gate";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { checkOut } from "./checkout";
 import { project } from "./project";
 import { allBlockers, blocking, wouldCycle } from "./order";
-import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, SetAttributePayload, SetParentPayload } from "./types";
+import type { AddEntityPayload, AddRelationPayload, ChangeSetStatus, RetypeEntityPayload, SetAttributePayload, SetParentPayload } from "./types";
 
 const now = () => new Date().toISOString();
 
@@ -368,12 +371,33 @@ export async function excludeFromPlateau(plateauId: string, changeSetId: string)
 /**
  * Apply a change set to the graph. This is the one operation here that moves the estate.
  *
+ * Three gates, in the order a person can act on them: everything it waits for has landed, none of
+ * its changes have gone stale, and the checks it would leave behind are no worse than the ones we
+ * have (§5.88). The third can be overruled — `anyway` is what the button says after the refusal —
+ * because a model is never clean and a gate nobody can open is a gate everybody routes around.
+ * What cannot happen is overruling it without having been told.
+ *
  * Retirement sets `lifecycle: retired` and severs the system's relations rather than deleting the
  * node. The graph is meant to outlive the things in it — a system you retired last year is the
  * answer to "what did we replace it with", and a model that forgets it cannot answer that. If you
  * genuinely want it gone, deleting an entity is still a separate, deliberate act.
  */
-export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true; introduced: number; retired: number; altered: number; moved: number; connected: number; severed: number } | { error: string }> {
+export interface Delivered {
+  ok: true;
+  introduced: number;
+  retired: number;
+  altered: number;
+  moved: number;
+  connected: number;
+  severed: number;
+  /** New advisory findings the merge carried in. Reported, never a reason to stop. */
+  advisory: number;
+}
+
+/** A refusal the caller can act on: `refusal` is set only when the checks are what said no. */
+export type DeliveryResult = Delivered | { error: string; refusal?: Refusal };
+
+export async function deliverChangeSet(changeSetId: string, options?: { anyway?: boolean }): Promise<DeliveryResult> {
   const no = await denySet(changeSetId, "plan.deliver");
   if (no) return no;
   const db = await getDb();
@@ -401,6 +425,16 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
   // and decide, and a partial delivery is the hardest kind of mess to unpick.
   if (projection.problems.length) {
     return { error: `${projection.problems.length} change${projection.problems.length === 1 ? "" : "s"} no longer fit the graph. Fix or remove them first.` };
+  }
+
+  /*
+   * The checks, run against what this would leave behind and scored against what we already
+   * have. Only what the merge *adds* counts, and only the blocking half of that stops it.
+   */
+  const runs = await checksForRef(db, set.workspaceId, set.id);
+  const call = mergeGate(newFindings(runs.base, runs.head));
+  if (!call.ok && !options?.anyway) {
+    return { error: refusalWords(call.refusal), refusal: call.refusal };
   }
 
   const existing = new Set(entities.map((e) => e.id));
@@ -463,6 +497,13 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
         altered++;
         break;
       }
+      case "retypeEntity": {
+        const p = change.payload as unknown as RetypeEntityPayload;
+        if (!change.entityId || !(p.kind ?? "").trim()) break;
+        await db.update(s.entities).set({ kind: p.kind.trim(), updatedAt: ts }).where(eq(s.entities.id, change.entityId));
+        altered++;
+        break;
+      }
       case "setParent": {
         const p = change.payload as unknown as SetParentPayload;
         if (!change.entityId) break;
@@ -505,7 +546,7 @@ export async function deliverChangeSet(changeSetId: string): Promise<{ ok: true;
 
   await db.update(s.changeSets).set({ status: "delivered", deliveredAt: ts, updatedAt: ts }).where(eq(s.changeSets.id, changeSetId));
   await touch(set.workspaceId, set.id);
-  return { ok: true, introduced, retired, altered, moved, connected, severed };
+  return { ok: true, introduced, retired, altered, moved, connected, severed, advisory: call.ok ? call.advisory : call.refusal.advisory };
 }
 
 // ---- the roadmap as a board --------------------------------------------------

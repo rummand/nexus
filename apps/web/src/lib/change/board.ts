@@ -94,6 +94,7 @@ export function touches(entities: s.Entity[], relations: s.Relation[], sets: Cha
           break;
         case "setAttribute":
         case "setParent":
+        case "retypeEntity":
           if (change.entityId) record(change.entityId, "changed", change.note);
           break;
         case "addRelation": {

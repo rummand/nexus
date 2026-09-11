@@ -38,6 +38,17 @@ export interface AddRelationPayload {
 export interface SetParentPayload {
   parentId: string;
 }
+/**
+ * Change what something *is*.
+ *
+ * The kind is a column too, for the same reason the parent is, and a re-read of a source that
+ * has since typed its rows properly is a retype of two hundred objects. Written as its own op
+ * rather than an attribute, because everything that reads the model — the meta-model, the
+ * conformance checks, the layers — reads the column, not the attributes.
+ */
+export interface RetypeEntityPayload {
+  kind: string;
+}
 
 export interface Change {
   id: string;
@@ -114,6 +125,7 @@ export const OP_LABEL: Record<ChangeOp, string> = {
   retireEntity: "Retire",
   setAttribute: "Change",
   setParent: "Move",
+  retypeEntity: "Retype",
   addRelation: "Connect",
   removeRelation: "Disconnect",
 };

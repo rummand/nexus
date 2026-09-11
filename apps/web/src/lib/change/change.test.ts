@@ -92,6 +92,19 @@ describe("projecting a change set", () => {
     expect(p.problems[0]!.message).toContain("no longer in the graph");
   });
 
+  it("retypes something, and counts it as a change to it", () => {
+    const p = project(ESTATE, WIRES, [change("c1", "retypeEntity", { entityId: "d", payload: { kind: "Data Store" } })]);
+    expect(p.entities.find((e) => e.id === "d")?.kind).toBe("Data Store");
+    expect(p.changed.has("d")).toBe(true);
+    expect(ESTATE[3]!.kind).toBe("Data Object"); // the graph row is untouched
+  });
+
+  it("refuses a retype with no type rather than blanking the kind", () => {
+    const p = project(ESTATE, WIRES, [change("c1", "retypeEntity", { entityId: "d", payload: { kind: "  " } })]);
+    expect(p.entities.find((e) => e.id === "d")?.kind).toBe("Data Object");
+    expect(p.problems[0]!.message).toContain("no type");
+  });
+
   it("lets a new relation point at a system introduced in the same change set", () => {
     const p = project(ESTATE, WIRES, [
       change("c1", "addEntity", { entityId: "new1", payload: { kind: "Application", name: "Asset Hub" } }),
