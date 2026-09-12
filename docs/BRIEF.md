@@ -4164,6 +4164,45 @@ changes itself while everybody sleeps and cannot say whose decision it was is no
 record. Saying "I have read this" is its own act, separate from an owner's approval, because they
 answer different questions and a branch can need both.
 
+### 5.97 The estate on a date, without changing how versions are stored (#138, v0.2)
+
+#138 frames the last decision in the epic as a trade: keep the current row as the truth and
+replay diffs (**A**), or store every version and make the present a query (**B**). B is what buys
+*the estate at any date* — and it touches every read in the product, where the real risk is not
+the migration but the queries that quietly do not grow a ref and so read the wrong thing.
+
+**There is a third way, and it was already here.** The event log (§5.43) is field-level with
+before *and* after. So the estate on any past date is the present rows with the events since that
+date undone, newest first — the same technique change sets already use (§5.21) and the import
+plan already uses (§5.89), pointed at time instead of at intent. No existing query changes,
+because it produces a projection rather than a different way of storing things.
+
+**Newest first is the whole trick.** Each event's `from` is only the truth for the instant before
+it, so replaying forwards lands an April value on top of a June one. There is a test for exactly
+that, because it is the bug this would otherwise ship with.
+
+The cost is proportional to **how much has changed since**, not to how much there is — so "what
+did this look like when we signed the contract in March" is cheap and 2019 is not. That is the
+right shape: the recent question is the one people actually ask.
+
+**Three limits, named rather than hidden.** A deleted object comes back thin, carrying the name
+and type its deletion event held. It is only as good as the log, so anything written before the
+history existed is invisible to it. And relations are not rewound — their events carry ends
+rather than rows.
+
+**The recommendation is therefore A, and not yet B.** The two things #138 says only B buys turn
+out to be reachable without it: *the estate at any date* is this, and *blame per attribute* is
+already stored — `entity_events` has the field, the value, the actor and the moment, so it is a
+read rather than a rebuild. What B would add on top is point-in-time as a **first-class ref in
+every query** rather than a computed projection, and a cost per read that does not grow with how
+eventful the year has been.
+
+**What should trigger revisiting it**, so the decision is not simply deferred forever: a source
+branch (§5.92) that routinely carries tens of thousands of unmerged changes, or somebody wanting
+to stand *on* a date the way they stand on a branch — filtering, editing and merging from there,
+rather than looking at it. Neither is true today, and the branch-rot nudge already pushes against
+the first.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5433,6 +5472,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | A merge and a deletion stay proposals and never become changes. | A merge is a decision about identity rather than state, and a deletion destroys the record of something that existed. A plan may retire; only a person may delete. |
 | 2026-09-12 | An agent's branch needs a human sign-off even when no ownership rule applies, and the owner override does not satisfy it. | Overruling an owner is a judgement about priority; merging a machine's work unread is not a judgement at all. A model that changes itself overnight and cannot say whose decision it was is not a system of record. |
 
+| 2026-09-12 | Stay on Option A: the current row is the truth, and versions are projections. | The two things #138 says only bitemporal storage buys are both reachable without it — the estate at any date by undoing the event log, and per-attribute blame from events already stored. B remains the answer for making a date a first-class ref in every query, and that is not what anybody is asking for yet. |
+| 2026-09-12 | The estate on a date is computed by undoing events, newest first, rather than stored. | The log is already field-level with before and after. Undoing it changes no existing query, because it produces a projection — the same move change sets and the import plan already make. Forwards would land a stale value on a newer one; there is a test for it. |
+| 2026-09-12 | The rewind names what it cannot do rather than approximating it. | A deleted object comes back thin, the log is the limit of what is knowable, and relations are not rewound. A time machine that quietly invents the parts it does not have is worse than one with edges. |
+| 2026-09-12 | Revisit the storage decision when a source branch routinely holds tens of thousands of unmerged changes, or when somebody wants to stand on a date rather than look at one. | Naming the trigger is what stops "last in the sequence" turning into "never". Neither condition holds today. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5447,6 +5491,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 143: the estate on a date (#138).** The last decision in the epic, answered
+  by building the thing it turns on rather than by choosing between the two options as posed. The
+  event log is already field-level with before and after, so the estate on any past date is the
+  present rows with everything since undone, newest first — a projection, so no existing query
+  changes. That makes *the estate at any date* reachable under Option A, and per-attribute blame
+  was already stored, which was the other thing bitemporal rows were supposed to buy. The
+  recommendation is to stay on A, with the trigger for revisiting written down so "last in the
+  sequence" does not become "never". Eleven tests, one of them for the stale-value bug a forward
+  replay would have shipped. Brief §5.97, four decision rows.
 
 - **2026-09-12 — Rev 142: agents propose, people merge (#141).** An agent's open findings can now
   be put on a branch of its own, which is the only autonomy boundary that is actually safe: the
