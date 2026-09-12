@@ -4093,39 +4093,34 @@ Which makes **progress exact**: a plan is finished when its diff against the est
 Reality arrives through the sources (§5.92), the plan is replayed onto it, and what is left is
 precisely the work still to do — no percentage-complete field that somebody updates by feel.
 
-### 5.95 Who is on this board (#148, v0.2)
+### 5.95 Bringing the room to you (#148, v0.2)
 
-The canvas has been properly multi-user since §5.40 — server-authoritative rooms, patches applied
-in bus order, live cursors in world coordinates, a soft claim so two people cannot eat each
-other's characters, follow, locking, comments, and an undo that never reverts a colleague's work.
-What it did not have was a way to know somebody was *there*.
+The canvas has been properly multi-user since §5.40, and §5.51 already put **who is here** in the
+topbar: everybody as initials in their own colour, name on hover, click to follow, a marker for
+somebody following you, and a refusal on the follow-loop.
 
-The only evidence of a colleague was their cursor, and only while it was inside your viewport. On
-a landscape the size of a wall, somebody working two screens away was invisible — and *following*
-them was unreachable for exactly the same reason, because following started by clicking a cursor
-you could not see.
+What it could not do was **the push**. The chips are a pull — they take you to somebody. There was
+no way to ask the room to come to *you*, which is the gesture people use out loud in a workshop:
+"everyone look at this."
 
-So: **a people card**, bottom left, with everybody on the board, what each of them is doing
-(typing, holding a selection, looking around), and two verbs.
-
-**Go to and follow are deliberately different.** *Go to* moves your camera once and leaves it
-with you. *Follow* hands your camera over until you take it back. Conflating them is how somebody
-ends up dragged around a board wondering what they pressed.
-
-**Bring everyone here** is the gesture a presenter actually needs, and it is a one-off event
-rather than presence: it happens and it is over. Making it a state somebody is *in* would be a
-second mechanism for what following already does, and two of those is how "why is my screen
-moving" stops having an answer. It is allowed to anybody in the room including a viewer — it
-changes nothing about the board, and it is the one gesture a person who may only read still needs
-in a workshop.
+So one button joins the chip row, and it is a **one-off event rather than presence**: it happens
+and it is over. As presence it would be a second mechanism for what following already does, and
+two of those is how "why is my screen moving" stops having an answer. Anybody may press it,
+including a viewer — it changes nothing about the board, and it is the one gesture a person who
+may only read still needs in a workshop.
 
 **Being moved always says who moved you.** A camera that jumps with no explanation is the most
 disorienting thing a shared canvas can do, so the pull is accompanied by a name and a dismissal.
 
-What is still missing, and deliberately: reactions and cursor chat, and character-level merging
-of one text field two people are typing into at once. The soft claim removes the data loss there;
-co-typing one box is rare on an architecture canvas, and two people editing different cards —
-the normal case — has always worked.
+This section is smaller than it was. The first attempt shipped a second presence surface — a
+panel listing everybody, with its own follow and a jump-to — before noticing that the chips
+already did all of that. It was removed in the same session it was added: two places answering
+"who is on this board" is exactly what §5.89 warns against, and the honest fix for building the
+wrong thing is to take it out rather than to keep it because it works.
+
+Still missing, deliberately: reactions, cursor chat, and character-level merging of one field two
+people type into at once. The soft claim (§5.40) removes the data loss there; co-typing one box
+is rare on an architecture canvas, and two people editing different cards has always worked.
 
 ### 5.96 Agents propose, people merge (#141, v0.2)
 
@@ -5516,6 +5511,9 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | A checkpoint cannot be marked in the future. | A moment that has not happened is a plan, and the roadmap already holds plans. The rewind would also return today's estate for it, which would be false. |
 | 2026-09-12 | Restoring the estate to a checkpoint is not in this slice. | It is a write against the estate rather than a read of it, and deserves the care a board restore gets. Better decided once somebody has used the reading half in anger. |
 
+| 2026-09-12 | The presence surface stays the topbar chips; the new gesture joins them rather than getting a panel. | Two places answering "who is on this board" is the thing §5.89 exists to prevent. A second surface was built and removed in the same session — the honest fix for building the wrong thing is to take it out, not to keep it because it works. |
+| 2026-09-12 | "Go to somebody without following them" was dropped after being built. | Nobody asked for it and following already takes you there with a way back. A verb that exists only because it was easy to add is a verb somebody has to learn for nothing. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5530,6 +5528,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 145: taking back most of rev 141.** Rev 141 was built on a gap that did not
+  exist. `PeerChips` (§5.51) has always listed everybody on the board in the topbar and followed
+  one on a click — I asserted otherwise from a grep rather than reading the component, which is the
+  second time on the same issue. So the participant panel it added was a duplicate of a surface
+  that already worked, and it is gone; the one genuinely missing gesture, *bring everyone here*,
+  is now a single button in the chip row. `goTo` is gone too: I invented it, and following already
+  does the job. What survives is the gather protocol and the note saying who moved your camera.
+  Issue #148 carries the full correction and is closed. Brief §5.95 rewritten, two decision rows.
 
 - **2026-09-12 — Rev 144: checkpoints (#112).** Rev 143 made the estate on a past date readable;
   this makes it addressable. Name a moment — "before the LeanIX import" — and compare any two of
