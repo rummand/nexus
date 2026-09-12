@@ -4127,6 +4127,43 @@ of one text field two people are typing into at once. The soft claim removes the
 co-typing one box is rare on an architecture canvas, and two people editing different cards —
 the normal case — has always worked.
 
+### 5.96 Agents propose, people merge (#141, v0.2)
+
+**The only autonomy boundary that is actually safe**, and the one that makes a fleet worth
+having. Let agents run continuously — infer owners, spot duplicates, flag the eighty orphans,
+keep lifecycle in step with the CMDB — and let every one of them arrive as a branch a person
+reviews as a whole.
+
+Four things change the moment an agent has a branch instead of write access:
+
+- the permission becomes trivial to reason about — it may write its own branch and nowhere else;
+- its work is reviewable **together**, rather than as two hundred proposals somebody clicks
+  through one at a time until they stop reading and start accepting;
+- an agent that is wrong costs nothing, because the branch is abandoned;
+- and it can be replayed onto today's estate (§5.94) when `main` moves, which today means
+  re-running it and losing every decision already taken on its output.
+
+**A sweep expands into one change per object.** "Call every Widget an Application" becomes forty
+retypes rather than one irreversible gesture — which is what makes it reviewable: somebody can
+see the forty, and drop the two that are wrong, instead of taking all of it or none of it. The
+agent's own sentence rides on every change it writes, because a branch of two hundred commits
+nobody can explain is not reviewable whoever wrote it.
+
+**Two things an agent may not put on a branch, and it is told so rather than finding out by
+their absence.** A merge of two duplicates is a decision about *identity* rather than about
+state, and the change model deliberately has no op for it. A deletion destroys the record of
+something that existed — a plan may retire an object; only a person may delete one. Both stay
+proposals.
+
+**And the rule that must not bend.** An agent-authored branch needs a person's name on it *at
+all*, even where no MODELOWNERS rule (§5.93) happens to cover what it touches, and the owner
+override does not satisfy it: overruling an owner is a judgement about priority, while merging a
+machine's work unread is not a judgement at all. Not because an agent's judgement is necessarily
+worse — on evidence it is often better, since it can cite what it read — but because a model that
+changes itself while everybody sleeps and cannot say whose decision it was is not a system of
+record. Saying "I have read this" is its own act, separate from an owner's approval, because they
+answer different questions and a branch can need both.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5391,6 +5428,11 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-11 | Anybody may bring the room somewhere, including a viewer. | It changes nothing about the board, and it is the one gesture a person who may only read still needs in a workshop. |
 | 2026-09-11 | A camera that is moved for you always names who moved it. | Being pulled across a canvas without explanation is the most disorienting thing a shared surface can do. The name and a dismissal cost one line. |
 
+| 2026-09-12 | An agent gets a branch rather than write access. | It is a far easier permission to reason about, its work becomes reviewable as a whole instead of two hundred separate clicks, an agent that is wrong costs nothing, and its work can be replayed when the estate moves rather than re-run from scratch. |
+| 2026-09-12 | A bulk proposal expands into one change per object on the branch. | One irreversible gesture is take-it-or-leave-it; forty changes can be read, and the two that are wrong dropped. That is the difference between review and assent. |
+| 2026-09-12 | A merge and a deletion stay proposals and never become changes. | A merge is a decision about identity rather than state, and a deletion destroys the record of something that existed. A plan may retire; only a person may delete. |
+| 2026-09-12 | An agent's branch needs a human sign-off even when no ownership rule applies, and the owner override does not satisfy it. | Overruling an owner is a judgement about priority; merging a machine's work unread is not a judgement at all. A model that changes itself overnight and cannot say whose decision it was is not a system of record. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5405,6 +5447,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 142: agents propose, people merge (#141).** An agent's open findings can now
+  be put on a branch of its own, which is the only autonomy boundary that is actually safe: the
+  permission becomes "its own branch and nowhere else", its work is reviewable together rather
+  than as two hundred separate clicks, an agent that is wrong costs nothing, and its work can be
+  replayed when the estate moves instead of re-run. A sweep expands into one change per object so
+  the two that are wrong can be dropped. A merge and a deletion stay proposals — identity and
+  destruction are not a change set's to make — and nothing is ever dropped silently. An
+  agent-authored branch needs a person's name on it even where no ownership rule applies, and the
+  owner override does not satisfy it. Sixteen tests. Brief §5.96, four decision rows.
 
 - **2026-09-11 — Rev 141: who is on this board (#148).** The owner asked whether the canvas has
   full Miro-style multi-user. Most of it did — rooms, cursors, the soft text claim, follow,

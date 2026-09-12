@@ -225,6 +225,13 @@
       "when": 1789168692078,
       "tag": "0031_odd_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789188230602,
+      "tag": "0032_aromatic_jimmy_woo",
+      "breakpoints": true
     }
   ]
 }

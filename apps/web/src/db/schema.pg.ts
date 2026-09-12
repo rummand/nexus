@@ -1087,6 +1087,15 @@ export const changeSets = pgTable(
      * deliberately. Empty for every branch a person wrote.
      */
     sourceKey: text("source_key").notNull().default(""),
+    /**
+     * The agent that wrote this branch, when one did (#141, §5.96).
+     *
+     * An agent gets a branch rather than write access — a much easier permission to reason
+     * about — and its branch needs a person's name on it before it can merge, whatever the
+     * MODELOWNERS rules happen to cover. A model that changes itself while everybody sleeps and
+     * cannot say whose decision it was is not a system of record.
+     */
+    agentId: text("agent_id"),
     createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),

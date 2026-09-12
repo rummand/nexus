@@ -16,6 +16,7 @@ import { newFindings } from "@/lib/checks/suite";
 import { mergeGate, refusalWords, type Refusal } from "@/lib/checks/gate";
 import { standingFor as governanceFor } from "@/lib/govern/read";
 import { outstandingWords, overrideWords, type Standing as OwnerStanding } from "@/lib/govern/owners";
+import { agentBranchNeedsAHuman, HUMAN_SIGN_OFF } from "@/lib/agent/branch";
 import { getChangeSet, graphRows, listChangeSets, listDependencies } from "./read";
 import { checkOut } from "./checkout";
 import { project } from "./project";
@@ -451,6 +452,23 @@ export async function deliverChangeSet(changeSetId: string, options?: { anyway?:
     return { error: outstandingWords(owners), awaiting: owners };
   }
 
+  /*
+   * An agent's branch needs a person's name on it *at all* (§5.96) — not because an agent's
+   * judgement is necessarily worse, but because a model that changes itself while everybody
+   * sleeps and cannot say whose decision it was is not a system of record. This holds even
+   * where no MODELOWNERS rule happens to cover what the branch touches, and `anyway` does not
+   * bypass it: overruling an owner is a judgement about priority, and merging an agent's work
+   * unread is not a judgement at all.
+   */
+  const [row] = await db.select({ agentId: s.changeSets.agentId }).from(s.changeSets).where(eq(s.changeSets.id, changeSetId));
+  if (row?.agentId) {
+    const signed = await db.select({ ruleId: s.changeSetApprovals.ruleId })
+      .from(s.changeSetApprovals).where(eq(s.changeSetApprovals.changeSetId, changeSetId));
+    if (agentBranchNeedsAHuman({ agentId: row.agentId }, signed)) {
+      return { error: "An agent wrote this. Somebody has to read it and say so before it can land." };
+    }
+  }
+
   const existing = new Set(entities.map((e) => e.id));
   const ts = now();
   let introduced = 0;
@@ -614,6 +632,33 @@ export async function rebaseChangeSet(changeSetId: string, options?: { drop?: bo
     }
   }
   return { ok: true, outstanding: replay.outstanding, landed: replay.landed, conflicted: replay.conflicted, dropped, words: progressWords(replay) };
+}
+
+/**
+ * Say you have read an agent's branch (§5.96).
+ *
+ * Deliberately its own act rather than a MODELOWNERS approval: the rules answer "does the owner
+ * of this part of the model agree", and this answers "has a human being looked at what the
+ * machine wrote". They are different questions and a branch can need both.
+ */
+export async function signOffAgentBranch(changeSetId: string): Promise<ChangeResult> {
+  const no = await denySet(changeSetId, "graph.edit");
+  if (no) return no;
+  const db = await getDb();
+  const set = await getChangeSet(db, changeSetId);
+  if (!set) return { error: "That change set is gone." };
+
+  const user = await currentUser();
+  await db.insert(s.changeSetApprovals).values({
+    changeSetId,
+    ruleId: HUMAN_SIGN_OFF,
+    byId: user.id,
+    byName: user.name,
+    note: `${user.name} read what the agent proposed.`,
+    createdAt: now(),
+  }).onConflictDoNothing();
+  await touch(set.workspaceId, set.id);
+  return { ok: true };
 }
 
 // ---- the roadmap as a board --------------------------------------------------
