@@ -2802,6 +2802,36 @@ try {
     assert.match(await page.locator("[data-proposed-note]").innerText(), /Drawn on “Application landscape”/,
       "…and the inspector names the branch it is waiting in");
     await page.keyboard.press("Escape");
+
+    /*
+     * And it can be finished from here (§5.101). A governance step that costs a page change is one
+     * people learn to route around, so the bar counts what is held back and adds it through the
+     * same action the roadmap calls — gate, dependencies and owners included.
+     */
+    await page.waitForSelector("[data-draft-bar]", { timeout: 20000 });
+    assert.match(await page.locator("[data-draft-count]").innerText(), /object/,
+      "the board says how much of it is not in the model yet");
+    assert.match(await page.locator("[data-draft-bar]").innerText(), /Drawn on “Application landscape”/,
+      "…and which branch it is waiting on");
+
+    // "Show me" puts them on screen rather than leaving a number nobody can act on.
+    await page.click("[data-draft-show]");
+    await page.waitForTimeout(700);
+    assert.ok((await page.locator(".fact-card.proposed.selected").count()) > 0,
+      "the bar can show you what it is counting");
+
+    // Adding is the same merge everything else goes through, and the object is in the model after.
+    await page.waitForFunction(() => !document.querySelector("[data-draft-add]")?.disabled, null, { timeout: 30000 });
+    await page.click("[data-draft-add]");
+    await page.waitForSelector(".draft-bar-done, [data-draft-refused], .draft-bar-error", { timeout: 60000 });
+    const outcome = await page.locator("[data-draft-bar]").innerText();
+    assert.match(outcome, /added to the model/,
+      `adding from the board delivers the change set — got "${outcome}"`);
+
+    await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    assert.ok(await page.getByText(drawn).count(),
+      "…and the object somebody drew is now in the estate, having been seen on the way");
   }
 
   await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });

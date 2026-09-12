@@ -182,6 +182,23 @@ export interface CanvasState {
   setPendingConnector(p: CanvasState["pendingConnector"]): void;
   setSaveState(s: SaveState): void;
   setBoardRevision(n: number): void;
+  /**
+   * What this board has drawn and not yet agreed (#149, §5.101).
+   *
+   * Held here rather than as a flag on each element, and the distinction matters: this is a fact
+   * about the *model*, not part of the drawing. The first version marked element meta, which put
+   * it in the document — so it was persisted, could go stale, and was wiped outright whenever the
+   * document was replaced in place (a live resync, a conflict hand-back). The walk caught the last
+   * of those: the badges vanished mid-session for no reason a person could see.
+   */
+  drafts: { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null;
+  /**
+   * Replace what a save reported. A save answers with everything outstanding *on that branch*, so
+   * later news replaces earlier news rather than being appended to it. Named `drafts` because
+   * `proposals` above is already an agent's suggestions — two different things, and giving them
+   * one name is how a store ends up with two fields nobody can tell apart.
+   */
+  setDrafts(next: { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null): void;
   setPeers(peers: Peer[]): void;
   setLive(live: boolean): void;
   /** Start tracking a peer's viewport, or stop. Passing the peer already followed stops. */
@@ -268,6 +285,8 @@ export interface CreateCanvasStoreOptions {
   scrollMode?: ScrollMode;
   /** Server revision of the loaded document; 0 for a document that was never saved. */
   boardRevision?: number;
+  /** What this board has drawn and not yet agreed, as of the open (§5.101). */
+  drafts?: { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null;
 }
 
 export function nextZ(elements: Elements): number {
@@ -352,7 +371,7 @@ export function selectionBounds(selection: ElementId[], elements: Elements): Box
   return unionBoxes(boxes);
 }
 
-export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan", boardRevision = 0 }: CreateCanvasStoreOptions): CanvasStore {
+export function createCanvasStore({ boardId, workspaceId, document, scrollMode = "pan", boardRevision = 0, drafts = null }: CreateCanvasStoreOptions): CanvasStore {
   const store = createStore<CanvasState>((set, get) => {
     const mutate = (next: Elements, history: boolean, extra: Partial<CanvasState> = {}) => {
       const s = get();
@@ -385,6 +404,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       past: [],
       future: [],
       saveState: "saved",
+      drafts,
       revision: 0,
       boardRevision,
       scrollMode,
@@ -462,6 +482,7 @@ export function createCanvasStore({ boardId, workspaceId, document, scrollMode =
       setPendingConnector: (pendingConnector) => set({ pendingConnector }),
       setSaveState: (saveState) => set({ saveState }),
       setBoardRevision: (boardRevision) => set({ boardRevision }),
+      setDrafts: (drafts) => set({ drafts }),
       /*
        * The peer list decides two things about following (§5.51).
        *

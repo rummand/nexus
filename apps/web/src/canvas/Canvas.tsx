@@ -49,7 +49,7 @@ function overCanvas(e: React.DragEvent): boolean {
   return !hit || !hit.closest(CHROME);
 }
 
-export function Canvas() {
+export function Canvas({ draftBar }: { draftBar?: React.ReactNode } = {}) {
   const store = useCanvasStore();
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -250,6 +250,9 @@ export function Canvas() {
       {!presenting && panels.comments && <CommentsPanel rootRef={rootRef} />}
       {!presenting && <AgentScopeOverlay />}
       {!presenting && <CommentBadges />}
+      {/* What this board has drawn and not yet agreed (§5.101), passed in rather than imported so
+          the canvas does not have to know which boards have one. */}
+      {!presenting && draftBar}
       {!presenting && <FollowBar />}
       {!presenting && <GatheredNote />}
       {!presenting && <ZoomCard />}

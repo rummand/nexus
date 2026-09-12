@@ -78,7 +78,7 @@ export async function PUT(req: Request, { params }: Params) {
    * boundary a POST body can choose is not one.
    */
   const at = saver ? await currentCheckout(db, result.workspaceId, saver.id) : ON_MAIN;
-  await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId, name: result.boardName }, doc, {
+  const sync = await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId, name: result.boardName }, doc, {
     actor: saver ? who.person(saver) : undefined,
     ref: at.ref,
     userId: saver?.id ?? null,
@@ -95,5 +95,17 @@ export async function PUT(req: Request, { params }: Params) {
    * database, so hand them this document rather than letting the next patch overwrite the write.
    */
   await boardChangedElsewhere(boardId, doc);
-  return NextResponse.json({ ok: true, updatedAt: result.updatedAt, revision: result.revision });
+  /*
+   * What the save held back (#149, §5.101). Handed to the client rather than left for the next
+   * board open to reveal: a drawing surface that quietly keeps an object out of the model, and
+   * only admits it after a reload, is a surface that surprised somebody.
+   */
+  return NextResponse.json({
+    ok: true,
+    updatedAt: result.updatedAt,
+    revision: result.revision,
+    drafts: sync.changeSetId
+      ? { setId: sync.changeSetId, setName: sync.changeSetName, entityIds: sync.proposed, relationIds: sync.proposedRelations }
+      : null,
+  });
 }

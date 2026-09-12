@@ -57,3 +57,30 @@ export async function openBoardSet(
   });
   return id;
 }
+
+/**
+ * What this board has drawn and not yet agreed (#149, §5.101).
+ *
+ * Read on every board open and handed to the canvas, rather than marked onto the cards. The
+ * distinction is the whole lesson of the first attempt: a mark in the document is persisted, can
+ * go stale, and disappears when the document is replaced in place. This is derived from the branch
+ * every time, so it cannot be any of those things.
+ *
+ * Only an *open* branch counts. Once it is delivered the objects are in the estate and once it is
+ * abandoned they are not coming, and in neither case is there anything for a person to add.
+ */
+export async function outstandingDrafts(
+  db: Db,
+  boardId: string,
+): Promise<{ setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null> {
+  const set = await db.query.changeSets.findFirst({
+    where: eq(s.changeSets.boardId, boardId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+  });
+  if (!set || (set.status !== "draft" && set.status !== "planned")) return null;
+  const rows = await db.select().from(s.changes).where(eq(s.changes.changeSetId, set.id));
+  const entityIds = rows.filter((r) => r.op === "addEntity" && r.entityId).map((r) => r.entityId!);
+  const relationIds = rows.filter((r) => r.op === "addRelation" && r.relationId).map((r) => r.relationId!);
+  if (!entityIds.length && !relationIds.length) return null;
+  return { setId: set.id, setName: set.name, entityIds, relationIds };
+}

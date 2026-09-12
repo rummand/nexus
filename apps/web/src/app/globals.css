@@ -1260,6 +1260,28 @@ a { color: inherit; text-decoration: none; }
 .import-bar.done .import-bar-hint { color: #77839a; }
 .import-bar.done .ghost-button { margin-left: auto; }
 .import-bar-done { align-items: center; color: #2f7d32; display: flex; font-size: 12.5px; gap: 6px; margin-left: auto; }
+
+/* ---- drawn, not in the model yet (#149) ----------------------------------- */
+/* The import bar's sibling, and deliberately its cousin rather than its twin: both say "nothing
+   here is in the model", but one is somebody else's file and this is your own drawing. Amber to
+   match the proposed card, and a lighter weight than the import bar, because this appears while
+   you are working rather than on a board you opened to finish. */
+/* Floating, not a layout row — unlike the import bar it can appear *while* somebody is drawing,
+   and a row that pushes the canvas down 34px the moment a card is saved moves the board under the
+   cursor that drew it. Top-centre, below the command bar, above the canvas. */
+.draft-bar { align-items: center; background: linear-gradient(#fffdf7, #fdf6e9); border: 1px solid #efe0c2; border-radius: 13px; box-shadow: var(--shadow); display: flex; flex-wrap: wrap; gap: 10px; left: 50%; max-width: min(820px, calc(100% - 420px)); min-width: 0; padding: 7px 12px; position: absolute; top: 62px; transform: translateX(-50%); z-index: 8; }
+.draft-bar b { align-items: center; color: #9a6c14; display: flex; font-size: 12.5px; gap: 6px; }
+.draft-bar-count { background: #fff; border: 1px solid #efe3c8; border-radius: 999px; color: #9a6c14; font-size: 11.5px; font-weight: 700; padding: 2px 9px; }
+.draft-bar-hint { color: #9a7b45; flex: 1 1 200px; font-size: 11.5px; min-width: 0; }
+.draft-bar .ghost-button, .draft-bar .primary-home-button { margin-left: 0; text-decoration: none; }
+.draft-bar .ghost-button { align-items: center; display: inline-flex; }
+.draft-bar .primary-home-button { margin-left: auto; }
+.draft-bar .ghost-button + .primary-home-button, .draft-bar .ghost-button + .ghost-button { margin-left: 0; }
+.draft-bar-error { align-items: center; color: #b91c1c; display: flex; font-size: 11.5px; gap: 5px; }
+/* A refusal takes the whole row: it is a finding to answer, not a toast to skim past. */
+.draft-bar-refused { align-items: center; background: #fff5f5; border: 1px solid #f3c9c9; border-radius: 8px; color: #b91c1c; display: flex; flex: 1 1 100%; font-size: 11.5px; gap: 8px; padding: 6px 10px; }
+.draft-bar-refused .ghost-button { margin-left: auto; }
+.draft-bar-done { align-items: center; color: #2f7d32; display: flex; font-size: 12.5px; gap: 6px; margin-left: auto; }
 .import-bar-done a { color: var(--blue); font-weight: 700; }
 
 /* ---- safety audit (#111) -------------------------------------------------- */

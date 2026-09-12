@@ -71,8 +71,11 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
    * that looked ordinary while being invisible to every count would be the small lie this whole
    * rule exists to stop.
    */
-  const proposed = Boolean(el.meta?.proposed) && !planned;
-  const proposedIn = typeof el.meta?.proposedInName === "string" ? el.meta.proposedInName : "";
+  const drafts = useCanvas((s) => s.drafts);
+  const proposed = !planned && Boolean(
+    drafts && typeof el.meta?.entityId === "string" && drafts.entityIds.includes(el.meta.entityId),
+  );
+  const proposedIn = drafts?.setName ?? "";
   const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : "", changeState ? `change-${changeState}` : "", planned ? "planned" : "", proposed ? "proposed" : ""].filter(Boolean).join(" ");
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>

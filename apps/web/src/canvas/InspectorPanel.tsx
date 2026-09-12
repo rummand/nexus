@@ -41,8 +41,11 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
    * sentence, because what happens next is different: somebody delivers a change set *this person
    * created by drawing*, rather than one a planner wrote.
    */
-  const proposed = single?.type === "card" ? Boolean(single.meta?.proposed) && !planned : false;
-  const proposedIn = typeof single?.meta?.proposedInName === "string" ? single.meta.proposedInName : "";
+  const drafts = useCanvas((s) => s.drafts);
+  const proposed = single?.type === "card" && !planned && Boolean(
+    drafts && typeof single.meta?.entityId === "string" && drafts.entityIds.includes(single.meta.entityId),
+  );
+  const proposedIn = drafts?.setName ?? "";
 
   return (
     <section

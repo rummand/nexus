@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { hydrateDocument } from "@/lib/graph";
 import { currentUser } from "@/lib/session";
 import { currentCheckout } from "@/lib/change/checkout";
+import { outstandingDrafts } from "@/lib/change/board-set";
 import { eq } from "drizzle-orm";
 import * as s from "@/db/schema";
 
@@ -30,6 +31,8 @@ export default async function BoardPage({ params }: Props) {
    */
   const checkout = await currentCheckout(db, board.workspaceId, user.id);
   const document = await hydrateDocument(db, parseDocument(board.document));
+  // What this board has drawn and not yet agreed (§5.101), beside the document rather than in it.
+  const drafts = await outstandingDrafts(db, board.id);
   /*
    * A staged import board needs to know whether its batch is still open (§5.36). Read here rather
    * than in the bar: an approved import should say so the moment the board is opened, not after a
@@ -42,6 +45,7 @@ export default async function BoardPage({ params }: Props) {
       document={document}
       boardRevision={board.revision}
       importStatus={batch ? batch.status : batchId ? "gone" : null}
+      drafts={drafts}
       header={{
         boardId: board.id,
         workspaceId: board.workspaceId,

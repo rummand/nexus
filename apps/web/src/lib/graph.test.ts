@@ -8,6 +8,7 @@ import * as s from "@/db/schema";
 import type { Db } from "@/db/client";
 import { buildBoardFromGraph, entityDetail, graphSnapshot, hydrateDocument, importGraph, parseImportText, syncBoardToGraph } from "./graph";
 import type { CanvasDocument, CardElement } from "@/canvas/document";
+import { outstandingDrafts } from "./change/board-set";
 
 let db: Db;
 
@@ -252,24 +253,31 @@ describe("nothing new lands unseen (#149)", () => {
     expect(rel[0]!.op).toBe("addRelation");
   });
 
-  it("marks a proposed card on the board, and names the branch it is waiting in", async () => {
+  it("tells the board what it has drawn and not yet agreed, beside the document", async () => {
+    const drafts = await outstandingDrafts(db, "b_draw");
+    expect(drafts, "the board can be told without marking the cards").not.toBeNull();
+    expect(drafts!.setName).toBe("Drawn on “Workshop”");
+    expect(drafts!.entityIds).toContain("ent_drawn_1");
+    expect(drafts!.relationIds).toContain("rel_drawn");
+  });
+
+  it("puts no rendering hint into the document at all", async () => {
+    /*
+     * The lesson of the first attempt, kept as a test. A mark in the document is persisted, can go
+     * stale, and is wiped whenever the document is replaced in place by a live resync — which is
+     * how the badges vanished mid-session for no reason anybody could see.
+     */
     const doc: CanvasDocument = { version: 2, elements: { d1: cardEl("d1", "ent_drawn_1", "Meter Portal") } };
     const hydrated = await hydrateDocument(db, doc);
     const card = hydrated.elements.d1 as CardElement;
-    expect(card.meta?.proposed, "the canvas can see it is not committed").toBe(true);
-    expect(card.meta?.proposedInName).toBe("Drawn on “Workshop”");
+    expect(card.meta?.proposed).toBeUndefined();
+    expect(card.meta?.proposedInName).toBeUndefined();
   });
 
-  it("clears the mark once the object is in the estate, without being asked", async () => {
-    await db.insert(s.entities).values({ id: "ent_drawn_6", workspaceId: "ws_draw", kind: "Application", name: "Landed", description: "", attributes: "{}", source: "canvas" });
-    const stale: CanvasDocument = {
-      version: 2,
-      elements: { d6: { ...cardEl("d6", "ent_drawn_6", "Landed"), meta: { entityId: "ent_drawn_6", proposed: true, proposedInName: "Drawn on “Workshop”" } } },
-    };
-    const hydrated = await hydrateDocument(db, stale);
-    const card = hydrated.elements.d6 as CardElement;
-    expect(card.meta?.proposed, "a rendering hint is recomputed, never trusted").toBeUndefined();
-    expect(card.meta?.proposedInName).toBeUndefined();
+  it("says nothing is outstanding once the branch is delivered", async () => {
+    await db.update(s.changeSets).set({ status: "delivered" }).where(eq(s.changeSets.boardId, "b_draw"));
+    expect(await outstandingDrafts(db, "b_draw"), "a delivered branch has nothing for anybody to add").toBeNull();
+    await db.update(s.changeSets).set({ status: "draft" }).where(eq(s.changeSets.boardId, "b_draw"));
   });
 
   it("lets the seed construct an estate, because it is not somebody at a canvas", async () => {

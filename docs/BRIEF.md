@@ -4331,6 +4331,60 @@ Deliberately not decided here: what happens to the boards and objects created un
 (no migration and no amnesty yet), and whether a sandbox space is exempt — that belongs with
 #128, which owns guided, strict and sandbox modes.
 
+### 5.101 Finishing it on the board (#149, v0.2)
+
+§5.100 stopped a drawn object from landing in the estate unseen, and marked the card. That was the
+safety. On its own it was also an interruption: the canvas could tell you an object had been held
+back and then send you to the roadmap to do anything about it. **A governance step that costs a
+page change is one people learn to route around** — and a rule people route around protects
+nothing.
+
+So the board carries the rest of the conversation, in the same shape the staged-import bar has had
+since §5.36 and for the same reason stated there: *a person working on a board should be able to
+finish without going anywhere else.*
+
+**A bar that counts what this board has drawn and not yet agreed**, names the branch it is waiting
+on, and offers three things: *show me*, which puts those objects on screen because a number nobody
+can point at is not information; *review*, which opens the change set for somebody who wants the
+whole picture; and *add to the model*.
+
+**Adding calls the same action the roadmap calls.** Dependencies, a stale projection, the merge
+gate and MODELOWNERS all apply exactly as they do there. A friendlier second path to "agreed"
+would be a second definition of it, and the one thing this feature cannot afford is two answers to
+whether something has been agreed. A refusal from the gate gets its own row and its own button,
+worded as what it does — *add anyway* — rather than dismissed like a toast, because a refusal is a
+finding somebody is answering for.
+
+**The save says what it held back.** The board save returns what is outstanding on the branch, and
+the canvas holds it. Before this the badge only appeared on the next board open, so the first thing
+a person saw after drawing was nothing at all and the news arrived after a reload. A surface that
+quietly keeps an object out of the model and admits it later has surprised somebody.
+
+**It is state beside the document, not a flag inside it** — and that took two attempts. The first
+marked each card's `meta`, which put a rendering hint into the document: persisted, able to go
+stale, and wiped outright whenever the document was replaced in place by a live resync. The walk
+caught the last of those — badges vanishing mid-session for no reason a person could see. Whether
+an object has been agreed is a fact about the *model*, not part of the drawing, so it is read from
+the branch on every board open, refreshed by each save, and never written into the board.
+
+**And it stops saying it the moment it stops being true.** Delivering from the bar clears it, so a
+card that is now in the estate stops looking as though it is not — the same lie in the other
+direction.
+
+**The bar floats rather than taking a row.** The staged-import bar can push the canvas down because
+it is there from the first paint; this one appears *while* somebody is drawing, and a row that
+grows the moment a card saves moves the board under the cursor that drew it. The walk found that
+too, by clicking where a note had been a moment earlier.
+
+Not on a staged import board: those cards are claims from a file and the import bar already owns
+that conversation. Two bars both saying "nothing here is in the model" would be one too many
+(§5.89).
+
+Still open: a board being drawn on **live** gets the bar on the next open rather than the moment a
+colleague draws — the room persists on its own schedule and does not broadcast what it held back.
+And the count is of objects, not of the connections proposed alongside them, which are real
+changes a reviewer will see on the branch.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5635,6 +5689,14 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | Edits to objects already in the estate still write through, on main and on a branch alike. | Not a destination — a limit. The change model has no op that carries a name, so routing edits today would silently drop every rename. Stated in the brief rather than left for somebody to discover. |
 | 2026-09-12 | Exactly one caller may bypass the rule, and has to name itself to do it. | The seed constructs a demo estate rather than standing at a canvas; a seeded workspace of unreviewed proposals would teach the wrong thing on the first screen. Named rather than inferred, so a second caller has to argue for it in review. |
 
+| 2026-09-12 | Adding from the board calls the same delivery action as the roadmap, gate and owners included. | A friendlier second path to "agreed" is a second definition of agreed. The one thing this feature cannot afford is two answers to whether something has been reviewed. |
+| 2026-09-12 | The board save tells the client what it held back, rather than leaving it for the next board open. | A drawing surface that quietly keeps an object out of the model and only admits it after a reload has surprised somebody. The delay was the whole reason the first version felt like a trap. |
+| 2026-09-12 | Whether an object is agreed is state beside the document, never a flag inside it. | A mark in the document is persisted, can go stale, and is wiped when the document is replaced in place by a live resync — which is how the badges vanished mid-session. It is a fact about the model, not part of the drawing. |
+| 2026-09-12 | The draft bar floats over the canvas rather than taking a layout row like the import bar. | The import bar is there from the first paint; this one appears while somebody is drawing, and a row that grows when a card saves moves the board under the cursor that drew it. |
+| 2026-09-12 | Delivering from the bar clears the proposed marks immediately. | A delivered object still drawn dashed and badged is the same lie as an unreviewed one drawn plain, in the other direction. |
+| 2026-09-12 | A gate refusal gets its own row and a button that says "add anyway", rather than an error toast. | A refusal is a finding somebody is answering for, not a message to skim past. Wording the escape as what it actually does is what makes overriding it a decision rather than a reflex. |
+| 2026-09-12 | No draft bar on a staged import board. | Those cards are claims from a file and the import bar already owns that conversation. Two bars saying "nothing here is in the model" is exactly the duplication §5.89 exists to prevent. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5649,6 +5711,26 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 148: finishing it on the board (#149).** Rev 147 held a drawn object back and
+  marked the card; the product owner's answer was that it needed to be part of the canvas rather
+  than beside it, and he was right — a governance step that costs a page change is one people learn
+  to route around. The board now carries the rest of the conversation: a bar counting what this
+  board has drawn and not yet agreed, naming the branch it waits on, with *show me* (which puts
+  those objects on screen, because a number nobody can point at is not information), *review*, and
+  *add to the model*. Adding calls the same action the roadmap calls — dependencies, stale
+  projection, merge gate and MODELOWNERS all apply — because a friendlier second path to "agreed"
+  would be a second definition of it; a gate refusal takes its own row and a button worded *add
+  anyway*, since a refusal is a finding somebody answers for rather than a toast. The save now
+  returns what it held back and the canvas stamps the cards with it, so the badge appears with the
+  save instead of after a reload, and delivering clears it so a landed object stops looking
+  proposed. Two of this rev's bugs were found by the browser rather than by me: the bar took a
+  layout row and so moved the board under the cursor that had just drawn on it, and the
+  not-yet-agreed state was first kept as a flag on each card — which put it in the document, where
+  it was persisted, could go stale, and was wiped by any live resync. It is state beside the
+  document now, read from the branch on every open. Brief §5.101, seven decision rows. Still open:
+  a board drawn on live gets the bar on the next open, because the room does not broadcast what it
+  held back.
 
 - **2026-09-12 — Rev 147: the canvas stops writing straight to main (#149).** Raised by the product
   owner: an application drawn on a board ought to say that it is not committed yet. Reading the

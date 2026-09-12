@@ -7,13 +7,16 @@ import { Canvas } from "./Canvas";
 import { StudioTopbar, type StudioTopbarProps } from "./StudioTopbar";
 import { loadOverlay } from "./overlay";
 import { ImportBar } from "./ImportBar";
+import { DraftBar } from "./DraftBar";
 import { markBoardOpened } from "@/lib/actions";
 import { CommentsProvider } from "./comments/CommentsContext";
 
 const SCROLL_MODE_KEY = "nexus.scrollMode";
 
 /** Client entry point for a board: owns the store and renders the studio shell. */
-export function BoardCanvas({ document, header, boardRevision = 0, importStatus = null }: { document: CanvasDocument; header: StudioTopbarProps; boardRevision?: number; importStatus?: string | null }) {
+type Drafts = { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null;
+
+export function BoardCanvas({ document, header, boardRevision = 0, importStatus = null, drafts = null }: { document: CanvasDocument; header: StudioTopbarProps; boardRevision?: number; importStatus?: string | null; drafts?: Drafts }) {
   const [store] = useState(() => {
     let scrollMode: ScrollMode = "pan";
     try {
@@ -22,7 +25,12 @@ export function BoardCanvas({ document, header, boardRevision = 0, importStatus 
     } catch {
       /* ignore */
     }
-    return createCanvasStore({ boardId: header.boardId, workspaceId: header.workspaceId, document, scrollMode, boardRevision });
+    /*
+     * `drafts` is seeded here rather than written in afterwards (§5.101): the save path sets the
+     * same field, so there is one place it lives whether the news came from the page or from the
+     * last save — and the store is built once, which is the only moment an initial value belongs.
+     */
+    return createCanvasStore({ boardId: header.boardId, workspaceId: header.workspaceId, document, scrollMode, boardRevision, drafts });
   });
 
   const opened = useRef<string | null>(null);
@@ -81,7 +89,13 @@ export function BoardCanvas({ document, header, boardRevision = 0, importStatus 
           {!presenting && <StudioTopbar {...header} />}
           {/* A staged import is work, not a drawing: say so, and let it be finished from here (§5.36). */}
           {!presenting && importBatch && <ImportBar batchId={importBatch} slug={header.workspace.slug} status={importStatus} />}
-          <Canvas />
+          {/*
+            What this board has drawn that is not in the model yet (§5.101) is rendered *inside*
+            the canvas rather than here, as floating chrome: unlike the import bar it can appear
+            while somebody is drawing, and a layout row that pushes the canvas down the moment a
+            card saves moves the board under the cursor that drew it.
+          */}
+          <Canvas draftBar={!presenting && !importBatch ? <DraftBar slug={header.workspace.slug} /> : null} />
         </div>
       </CommentsProvider>
     </CanvasStoreContext.Provider>

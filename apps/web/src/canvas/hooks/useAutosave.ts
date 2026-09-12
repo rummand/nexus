@@ -55,10 +55,20 @@ export function useAutosave() {
           return;
         }
         if (!res.ok) throw new Error(`save failed: ${res.status}`);
-        const body = (await res.json().catch(() => null)) as { revision?: number } | null;
+        const body = (await res.json().catch(() => null)) as {
+          revision?: number;
+          drafts?: { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null;
+        } | null;
         lastSavedRevision.current = revision;
         const now = store.getState();
         if (typeof body?.revision === "number") now.setBoardRevision(body.revision);
+        /*
+         * What the save held back (#149, §5.101). Applied before the save state settles, so the
+         * badge and the bar appear with "saved" rather than a frame later. `drafts: null` means
+         * this save held nothing back, which is not the same as "nothing is outstanding" — only a
+         * delivery clears that, so a null answer leaves what is already known alone.
+         */
+        if (body?.drafts) now.setDrafts(body.drafts);
         now.setSaveState(now.revision === revision ? "saved" : "dirty");
         if (now.revision !== revision) schedule();
       } catch {

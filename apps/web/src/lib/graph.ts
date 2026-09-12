@@ -108,7 +108,24 @@ export interface SyncOptions {
   writeThrough?: boolean;
 }
 
-export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, options: SyncOptions = {}) {
+/**
+ * What a save did that the person who made it needs to be told about (#149, §5.101).
+ *
+ * Returned rather than left to be discovered on the next board open: an object that was quietly
+ * held back is the one outcome a drawing surface must not keep to itself, and a canvas that only
+ * admits it after a reload is a canvas that surprised somebody.
+ */
+export interface SyncResult {
+  /** Entity ids this save held back as proposals. */
+  proposed: string[];
+  /** Relation ids held back with them. */
+  proposedRelations: string[];
+  /** The branch they are waiting on, when anything was held back. */
+  changeSetId: string | null;
+  changeSetName: string;
+}
+
+export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, options: SyncOptions = {}): Promise<SyncResult> {
   const { actor, userId } = options;
   const ref = options.ref ?? MAIN;
   const writeThrough = options.writeThrough ?? false;
@@ -135,6 +152,7 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
     return target;
   };
   const proposed: string[] = [];
+  const proposedRelations: string[] = [];
 
   await remembering(db, history, { ids }, async () => {
     for (const c of cards) {
@@ -199,6 +217,7 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
          */
         if (route === "propose" || proposedIds.has(r.from) || proposedIds.has(r.to)) {
           await proposeRelation(db, await proposeTo(), r.id, { fromEntityId: r.from, toEntityId: r.to, kind: r.kind }, drawnNote(board.name ?? ""));
+          proposedRelations.push(r.id);
           continue;
         }
         await db.insert(s.relations_).values({ id: r.id, workspaceId: board.workspaceId, fromEntityId: r.from, toEntityId: r.to, kind: r.kind, source: "canvas", createdAt: ts, updatedAt: ts });
@@ -223,6 +242,11 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
   if (placed.length) {
     await db.insert(s.boardEntities).values(placed).onConflictDoNothing();
   }
+
+  const setName = target
+    ? (await db.query.changeSets.findFirst({ where: eq(s.changeSets.id, target), columns: { name: true } }))?.name ?? ""
+    : "";
+  return { proposed, proposedRelations, changeSetId: target, changeSetName: setName };
 }
 
 /**
@@ -315,41 +339,14 @@ export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<Canv
   }
 
   /*
-   * Which cards are still proposals (#149, §5.100).
+   * Which cards are still proposals is *not* recorded here (#149, §5.101).
    *
-   * Last, and over `elements` rather than the document, so it wins over the field sync above
-   * instead of being quietly overwritten by it. Derived on every open rather than trusted from
-   * the document: the flag is a rendering hint and the change is the record, so a stale one
-   * persisted by an older client is corrected here rather than telling somebody their object is
-   * uncommitted long after it landed.
-   *
-   * Note this is *not* `planned` (§5.21). A planned card is excluded from the sync; a proposed
-   * one must keep syncing, because the person is still editing it and the proposal is meant to
-   * track what they typed.
+   * The first version stamped the card's meta, which put a rendering hint into the document: it
+   * was then persisted, could go stale, and was wiped whenever the document was replaced in place
+   * by a live resync. It is a fact about the model rather than part of the drawing, so it travels
+   * beside the document — `outstandingDrafts` below, read by the board page and held in the canvas
+   * store.
    */
-  const missing = cards.filter((c) => !byId.has(c.entityId)).map((c) => c.entityId);
-  const proposals = missing.length
-    ? await db
-        .select({ entityId: s.changes.entityId, setId: s.changeSets.id, setName: s.changeSets.name })
-        .from(s.changes)
-        .innerJoin(s.changeSets, eq(s.changes.changeSetId, s.changeSets.id))
-        .where(and(inArray(s.changes.entityId, missing), eq(s.changes.op, "addEntity")))
-    : [];
-  const proposalOf = new Map(proposals.filter((r) => r.entityId).map((r) => [r.entityId!, r]));
-  for (const c of cards) {
-    const at = elements[c.id];
-    if (!at) continue;
-    const proposal = proposalOf.get(c.entityId);
-    if (proposal) {
-      elements[c.id] = { ...at, meta: { ...at.meta, proposed: true, proposedIn: proposal.setId, proposedInName: proposal.setName } };
-      continue;
-    }
-    if (at.meta?.proposed) {
-      const { proposed: _p, proposedIn: _i, proposedInName: _n, ...meta } = at.meta;
-      void _p; void _i; void _n;
-      elements[c.id] = { ...at, meta };
-    }
-  }
   return { ...doc, elements };
 }
 

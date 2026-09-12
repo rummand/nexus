@@ -19,6 +19,8 @@ const BoardCanvas = dynamic(() => import("./BoardCanvas").then((m) => m.BoardCan
   ),
 });
 
-export function BoardCanvasClient(props: { document: CanvasDocument; header: StudioTopbarProps; boardRevision: number; importStatus?: string | null }) {
+type Drafts = { setId: string; setName: string; entityIds: string[]; relationIds: string[] } | null;
+
+export function BoardCanvasClient(props: { document: CanvasDocument; header: StudioTopbarProps; boardRevision: number; importStatus?: string | null; drafts?: Drafts }) {
   return <BoardCanvas {...props} />;
 }
