@@ -20,7 +20,16 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { startLeanIxStub, STUB_TOKEN } from "./leanix-stub.mjs";
 
-const READY_TIMEOUT_MS = 120_000;
+/*
+ * Generous on purpose. The health endpoint answers only after Next has compiled the
+ * instrumentation hook and the route, and after the migrations and the seed have run against a
+ * database that did not exist a second ago — which on a cold `.next-e2e` and a loaded machine is
+ * several minutes, not seconds. A dead server is caught by the exit-code check below rather than
+ * by this deadline, so a longer one costs nothing when something is genuinely wrong and is the
+ * difference between a suite that runs and a suite that reports "never became healthy" three
+ * times in a night.
+ */
+const READY_TIMEOUT_MS = 420_000;
 
 /** A port nothing else is on, asked for by binding to 0 and reading back what we got. */
 function freePort() {
