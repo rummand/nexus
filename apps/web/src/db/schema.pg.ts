@@ -1561,3 +1561,37 @@ export const checkpoints = pgTable(
 );
 
 export type CheckpointRow = typeof checkpoints.$inferSelect;
+
+/**
+ * Every time Nexus read somebody else's system of record (#111, §5.99).
+ *
+ * The audit panel's evidence. A read-only guard is a claim about code; this is the log that says
+ * what the code actually did — which host, how much came back, and when. Written on the way out
+ * of a successful read rather than on the way in, so a row here means data arrived.
+ *
+ * Deliberately no row for a refusal: a refused write never happened, and a log of things that did
+ * not happen is a log nobody can reason about. A refusal surfaces as an error at the moment
+ * somebody caused it.
+ */
+export const sourceReads = pgTable(
+  "source_reads",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Which connector did the reading — matches CONTRACTS in src/lib/source/readonly.ts. */
+    connector: text("connector").notNull(),
+    /** The host at the other end. Never a credential: a token is used and dropped. */
+    host: text("host").notNull().default(""),
+    objects: integer("objects").notNull().default(0),
+    relations: integer("relations").notNull().default(0),
+    ms: integer("ms").notNull().default(0),
+    /** Who pressed it, so the panel can answer "who pulled this" as well as "when". */
+    byId: text("by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("source_reads_workspace_idx").on(t.workspaceId, t.createdAt)],
+);
+
+export type SourceRead = typeof sourceReads.$inferSelect;

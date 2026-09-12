@@ -2358,6 +2358,22 @@ try {
       null, { timeout: 120000 });
     assert.match(await page.locator("[data-import-result]").innerText(), /4 deleted/,
       "rolled back, the repository's fact sheets are out of the graph again");
+
+    /*
+     * The safety audit (§5.99). The guard proves itself in unit tests; what the browser can prove
+     * is the other half — that a real read through the real client left a row somebody can point
+     * at. It survives the rollback above on purpose: the graph no longer holds the objects, but
+     * the read still happened, and an audit that forgot it would be no audit at all.
+     */
+    await page.goto(`${base}/w/acme-energy/settings/safety`, { waitUntil: "load" });
+    await page.waitForSelector("[data-contract=leanix]", { timeout: 30000 });
+    assert.match(await page.locator("[data-contract=leanix]").innerText(), /Read-only, enforced/,
+      "the audit states the contract, not a reassurance");
+    await page.waitForSelector("[data-reads=leanix] tbody tr", { timeout: 30000 });
+    assert.match(await page.locator("[data-reads=leanix] tbody tr").first().innerText(), /acme\.leanix\.net/,
+      "…and lists the read that actually happened, against the host it happened against");
+    assert.match(await page.locator("[data-contract=mcp]").innerText(), /Not a read-only guarantee/,
+      "and says plainly where Nexus makes no promise on somebody else's behalf");
   } else {
     console.log("  (skipped the EA repository door: no LeanIX to read)");
   }

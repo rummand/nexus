@@ -4234,6 +4234,49 @@ Restore is deliberately **not** here. #112 asks for it with the care a board res
 that is a write against the estate rather than a read of it — a separate decision, and better
 made once somebody has used the reading half in anger.
 
+### 5.99 The read-only safety audit (#111, v0.2)
+
+**"Can this tool change our LeanIX workspace?"** is the first question in every EA tooling
+security review, and until now the answer was a sentence: the importer only issues read queries.
+That is an assurance, not evidence. Nobody can audit an intention, and the next person to add a
+feature has no way of knowing they broke a promise nobody wrote down.
+
+So the promise is made **structural**. Every request to a system of record passes a guard before
+it is sent, and a GraphQL mutation or subscription throws inside this process — no socket opens,
+nothing reaches the far end, and the workspace never has to decline it. The guard sits as the
+first statement of the function every request in the client goes through; a guard with code above
+it is a guard somebody eventually steps around.
+
+**Deny by default.** A document the guard cannot confidently classify as a pure read is refused
+rather than forwarded. That is the wrong bias for a parser and the only defensible one for a
+guard: refusing a legitimate read costs an error message, and forwarding an unrecognised mutation
+costs somebody's production estate. The same rule covers the smuggling cases — a mutation behind
+a legitimate query in one document, and the words `query` or `mutation` inside a string or a
+comment, which are text and not operations.
+
+**Only two requests are not plain reads**, and each says so at its call site: the OAuth token
+exchange that authenticates, and the read query itself. A POST that says neither is refused, so a
+POST added later has to state its case rather than inherit an exception somebody else argued for.
+
+**A guard is a claim about code; the log is what the code did.** Settings → Safety states the
+rule per connector in the words it is enforced in, and lists every read actually made — host,
+volume, duration, who pressed it. Rows are written on the way out of a read that came back with
+data, so a row means data arrived. There is no row for a refusal: a refused write never happened,
+and a log of things that did not happen is one nobody can reason about; a refusal surfaces as an
+error to whoever caused it.
+
+**The page says where the promise stops.** Outbound MCP servers are somebody else's, and their
+card says Nexus makes no read-only claim on their behalf. A safety page that implied a guarantee
+over code Nexus does not run would be worse than no safety page.
+
+**Nothing on the page can be pressed**, deliberately. A control would suggest the promise is a
+setting that can be turned off. It is not — it is in the client, above the network call, and the
+only way to remove it is to change the code and fail the test that proves a mutation is refused.
+
+Still open: the guard covers the connector that reaches a production estate. When a second
+read-only connector is built (#87), it joins the contract list or it is not covered, and the
+audit says which.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -4254,8 +4297,9 @@ The Energinet pull put 455 objects in the graph in eight seconds and none of it 
 
 - **#142 — Trust the data: sources, provenance and the first real connector.** The connector
   framework exists on paper (#87) and one entry has to be built end to end (#99, #100, #127);
-  the importer has to be *proved* read-only rather than believed to be (#111); an object has to
-  be able to say where it came from (#121); and a codebase is a source like any other (#125).
+  the importer is now *proved* read-only rather than believed to be (#111, §5.99 — done); an
+  object has to be able to say where it came from (#121); and a codebase is a source like any
+  other (#125).
 
 #### Next · The model governs itself — *due 19 Dec 2026*
 
@@ -5521,6 +5565,13 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | A control the walk has never pressed is a control that does not work yet. | The follow bar's Stop had been shipped and unexercised for forty revisions, carrying the same swallowed-click bug the gathered note had. The walk ended a follow by moving the board, which passed while the button itself was dead. Coverage that reaches a feature by its side door proves nothing about the front one. |
 | 2026-09-12 | A failing walk prints the assertion before it touches the browser again. | The diagnostics ran first, and a page stuck mid-navigation makes the element count hang with no timeout of its own — so a run could die having reported the screenshot path and never the failure, which is the wrong half to lose. |
 
+| 2026-09-12 | The read-only promise is enforced in code, not delegated to a read-only API token. | A token is the customer's configuration — revocable, changeable, and invisible from here. The guard is a property of the product: it holds whatever the token allows, and removing it fails a test. Use both; rely on the one you control. |
+| 2026-09-12 | A request the guard cannot classify is refused rather than forwarded. | Wrong bias for a parser, only defensible one for a guard. A refused read costs an error message; a forwarded mutation costs somebody's production estate. |
+| 2026-09-12 | The only two non-read requests are named at the call site, rather than POST being waved through. | GraphQL is read over POST and OAuth exchanges a token over POST, so banning POST is not available. Naming the two exceptions means a POST added later has to argue its own case instead of inheriting one. |
+| 2026-09-12 | The audit logs reads that returned data, and never logs a refusal. | A refused write never happened; a log of things that did not happen cannot be reasoned about, and pads the evidence with non-events. A refusal reaches the person who caused it, as an error. |
+| 2026-09-12 | The safety page has no controls at all. | A switch would imply the promise is a setting. It is in the client above the network call; the only way to change it is to change the code. |
+| 2026-09-12 | The page states plainly where Nexus makes no promise (outbound MCP). | A safety page that implied a guarantee over code Nexus does not run would be worth less than no safety page — one overstatement discredits the rest. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5535,6 +5586,23 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 146: the read-only promise becomes evidence (#111).** "Can this tool change
+  our LeanIX workspace?" is the first question in every EA security review, and the answer was a
+  sentence somebody at Nexus wrote. It is now a guard every request passes before it is sent: a
+  GraphQL mutation or subscription throws inside this process, so no socket opens and the far end
+  never has to decline it, and a document the guard cannot confidently read as a pure query is
+  refused rather than forwarded. It is not fooled by a mutation smuggled behind a legitimate query
+  in the same document, nor by the word `mutation` inside a string or a comment. Only two requests
+  in the client are not plain reads — the token exchange and the read query — and each names itself
+  at the call site, so a POST added later has to argue its own case. Beside the rule sits the
+  record: **Settings → Safety** states the contract per connector in the words the code enforces
+  it in, and lists every read actually made — host, volume, duration, who pressed it — written on
+  the way out of a read that came back with data. Nothing on the page can be pressed, and the
+  outbound-MCP card says plainly that Nexus makes no read-only claim on somebody else's server.
+  Nineteen tests, including one that runs every query the LeanIX client can send through the
+  guard. Brief §5.99, six decision rows, a documentation page whose screenshot is a real pull
+  through the real client.
 
 - **2026-09-12 — Rev 145c: floating chrome stops letting the canvas eat the click.** The browser
   walk had not been run in eleven revisions; running it found three things in a row, and two of

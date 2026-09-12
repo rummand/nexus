@@ -98,6 +98,7 @@ export const SETTINGS: NavItem[] = [
   { id: "people", label: "People", path: "/settings/people" },
   { id: "models", label: "Models", path: "/settings/models" },
   { id: "connections", label: "Connections", path: "/settings/connections" },
+  { id: "safety", label: "Safety", path: "/settings/safety" },
 ];
 
 /** Below the settings nav, and out of the rail entirely: the deployment, for whoever runs it. */

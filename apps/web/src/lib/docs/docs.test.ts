@@ -44,6 +44,7 @@ describe("the documentation", () => {
     const known = [
       "", "/graph", "/explore", "/history", "/meta", "/intake", "/intake?view=catalog", "/knowledge", "/roadmap",
       "/roadmap/plateaus", "/agents", "/import", "/docs", "/wiki", "/repository", "/settings/models", "/settings/connections",
+      "/settings/safety",
     ];
     for (const t of tries) {
       const resolved = resolveHref(t.href, "acme-energy");

@@ -1,3 +1,4 @@
+import { assertReadRequest } from "@/lib/source/readonly";
 import type { FactSheet, FactSheetRelation, LeanIxExport } from "./types";
 
 /**
@@ -43,6 +44,9 @@ export class LeanIxError extends Error {
 
 /** Exchange the API token for a bearer. Returns the bearer only; the token is not kept. */
 export async function authenticate(opts: LeanIxOptions): Promise<string> {
+  // The one POST in this file that carries no GraphQL, and it says so rather than being an
+  // unexplained exception to the read-only rule (§5.99).
+  assertReadRequest("POST", { post: "token-exchange" });
   const res = await fetch(`${base(opts)}${TOKEN_PATH}`, {
     method: "POST",
     headers: {
@@ -65,6 +69,14 @@ export async function authenticate(opts: LeanIxOptions): Promise<string> {
 }
 
 async function graphql<T>(opts: LeanIxOptions, bearer: string, query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  /*
+   * The promise that Nexus cannot change a LeanIX workspace, kept here rather than asserted in a
+   * sales deck (#111, §5.99). Every GraphQL request in this file goes through this function, and
+   * a document that is not a pure read never reaches the network — it throws in this process,
+   * before a socket is opened. Deliberately the first statement: a guard with code above it is a
+   * guard somebody will one day step around.
+   */
+  assertReadRequest("POST", { post: "graphql-read", query });
   const res = await fetch(`${base(opts)}${GRAPHQL_PATH}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
@@ -124,6 +136,15 @@ const INTROSPECT = `
 query Shape {
   __type(name: "BaseFactSheet") { possibleTypes { name } }
 }`;
+
+/*
+ * The two constant documents, exported for the read-only audit (#111) and for nothing else.
+ * The safety test asserts that every query this client can send is a read; it cannot do that for
+ * documents it cannot see, and a promise proved only for the queries that happen to be exported
+ * is not the promise being made.
+ */
+export const INTROSPECT_FOR_AUDIT = INTROSPECT;
+export const FALLBACK_PAGE_FOR_AUDIT = FALLBACK_PAGE;
 
 const TYPE_FIELDS = `
 query Fields($name: String!) {

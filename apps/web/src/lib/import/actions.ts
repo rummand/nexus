@@ -16,6 +16,8 @@ import { boardChangedElsewhere } from "@/lib/live/room";
 import { proposeMapping } from "./map";
 import { fetchAll, LeanIxError } from "@/lib/leanix/client";
 import { toBatchFiles } from "@/lib/leanix/batch";
+import { recordRead } from "@/lib/source/audit";
+import { WriteRefused } from "@/lib/source/readonly";
 import { readFile, readPasted } from "./read";
 import { stage, type Decision } from "./stage";
 import { claimsFrom, describeProse } from "./prose";
@@ -199,9 +201,21 @@ export async function stageFromLeanIx(
   const baseUrl = process.env.NEXUS_LEANIX_BASE_URL?.trim() || undefined;
 
   let dump;
+  const startedAt = Date.now();
   try {
     dump = await fetchAll({ host, baseUrl, token: input.token.trim() });
   } catch (error) {
+    /*
+     * The read-only guard firing here means Nexus tried to send something that is not a read
+     * (#111, §5.99) — a bug on this side, caught before it left the process, and worth saying so
+     * rather than reporting it as a LeanIX failure, which it is not.
+     */
+    if (error instanceof WriteRefused) {
+      return {
+        error: `${error.message} Nothing was sent to ${host}. This is a fault in Nexus, not in your `
+          + `workspace, and the safety audit under Settings → Safety explains the rule that stopped it.`,
+      };
+    }
     if (error instanceof LeanIxError) {
       const detail = typeof error.detail === "string" ? error.detail.trim().slice(0, 300) : "";
       return { error: detail ? `${error.message} It said: “${detail}”.` : error.message };
@@ -217,6 +231,23 @@ export async function stageFromLeanIx(
   }
 
   if (!dump.factSheets.length) return { error: "That workspace answered, but with no fact sheets the token can see." };
+
+  /*
+   * Written before the batch is staged, and only on a read that came back with something. The
+   * audit panel's evidence is what actually crossed the wire, so it is recorded at the moment it
+   * did rather than at the end of an import somebody may yet abandon.
+   */
+  const reader = await currentUser();
+  await recordRead(await getDb(), {
+    workspaceId,
+    connector: "leanix",
+    host,
+    objects: dump.factSheets.length,
+    relations: dump.relations.length,
+    ms: Date.now() - startedAt,
+    byId: reader?.id ?? null,
+  });
+
   return stageBatch(workspaceId, toBatchFiles(dump), "EA repository", `LeanIX · ${dump.workspace}`);
 }
 

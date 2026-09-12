@@ -70,6 +70,7 @@ export const TRANSFER_ORDER = [
   "sources",
   "source_runs",
   "source_trust",
+  "source_reads",
   "model_providers",
   "model_tasks",
   "agent_definitions",

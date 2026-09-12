@@ -153,3 +153,28 @@ export const PLATFORM: DocPage = {
     { kind: "prose", text: "The account named by `NEXUS_OWNER_EMAIL` is made an operator on every start — the same argument that created it in the first place: the first person has nobody to ask. After that an operator can make another one from this page, which is the recommended second step, because one operator is a single point of failure with a human attached to it." },
   ],
 };
+
+export const SAFETY: DocPage = {
+  slug: "safety",
+  title: "What Nexus can do to your systems",
+  summary: "Nexus reads systems of record and never writes to them — enforced in the code, with a log of every read.",
+  keywords: ["safety", "read-only", "readonly", "audit", "security", "leanix", "write", "mutation", "guard", "compliance", "security review", "risk", "provenance", "evidence", "governance"],
+  blocks: [
+    { kind: "prose", text: "**Can this change our LeanIX workspace?** It is the first question in every security review, and it deserves an answer somebody can check rather than one they have to take on trust. **Settings → Safety** is that answer: the rule per connector, in the words the code enforces, and the log of every read actually made." },
+    { kind: "shot", src: "safety", alt: "The Safety settings page, with a card per connector stating its read-only contract and a table of recent reads beneath it", caption: "One card per connector: the promise, and what it has read." },
+
+    { kind: "heading", text: "How the promise is kept", id: "guard" },
+    { kind: "prose", text: "Every request to a source of record passes a guard before it is sent. A GraphQL mutation or subscription throws inside Nexus — no socket is opened, nothing reaches your workspace, and the far end never has to decline it. The only requests that are not plain reads are the token exchange that authenticates, and the read query itself, and each of those has to say at the call site which it is." },
+    { kind: "note", tone: "why", title: "Why a refusal, not a permission", text: "A read-only API token would also stop a write, and you should use one. But a token is your configuration, revocable and changeable without anybody here knowing. The guard is a property of the product: it holds whatever the token is allowed to do, and it fails a test if somebody removes it." },
+    { kind: "note", tone: "warning", title: "What it cannot recognise, it refuses", text: "A request the guard cannot confidently read as a pure query is rejected rather than forwarded. That is the wrong bias for a parser and the only defensible one for a guard — a refused read costs an error message, and a forwarded write costs an estate." },
+
+    { kind: "heading", text: "The log", id: "reads" },
+    { kind: "prose", text: "Each row is one read that came back with data: which host, how much arrived, how long it took, and who pressed it. A read that returned nothing writes no row, and a refused write writes no row either — a log of things that did not happen is a log nobody can reason about." },
+    { kind: "note", tone: "tip", text: "There is nothing to press on this page, deliberately. A switch here would suggest the promise is a setting; it is not — it is in the client, above the network call." },
+
+    { kind: "heading", text: "Where the promise stops", id: "limits" },
+    { kind: "prose", text: "**Outbound MCP servers** are somebody else's, and the card says so. A tool one of them offers is called with the arguments a person or an agent chose, and Nexus makes no read-only claim on its behalf. Which tools may be reached is decided under **Connections**." },
+
+    { kind: "try", href: "/w/:slug/settings/safety", label: "Open the safety audit" },
+  ],
+};

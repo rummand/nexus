@@ -64,7 +64,13 @@ describe("the rail", () => {
 describe("what moved out of it", () => {
   it("keeps the settings area to the things that are configured rather than used", () => {
     expect(SETTINGS.every((i) => i.path.startsWith("/settings"))).toBe(true);
-    expect(SETTINGS.map((i) => i.id).sort()).toEqual(["connections", "models", "people"]);
+    /*
+     * Safety is the one entry here that configures nothing — there is no control on it (#111,
+     * §5.99). It belongs beside Connections all the same: somebody asking "what can this tool do
+     * to our systems" is already in this area looking at what it is connected to, and a page
+     * about that promise filed anywhere else is a page nobody finds while the question is live.
+     */
+    expect(SETTINGS.map((i) => i.id).sort()).toEqual(["connections", "models", "people", "safety"]);
   });
 
   it("shows the platform console to operators only, and addresses it outside the workspace", () => {

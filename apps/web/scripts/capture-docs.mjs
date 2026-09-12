@@ -14,6 +14,7 @@
  *   node scripts/capture-docs.mjs roadmap    # only shots whose name contains "roadmap"
  */
 import { spawn } from "node:child_process";
+import { startLeanIxStub, STUB_TOKEN } from "../e2e/leanix-stub.mjs";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createServer } from "node:net";
@@ -39,6 +40,15 @@ function freePort() {
   });
 }
 
+/*
+ * A LeanIX the capture can reach (§5.99). The import door is photographed without one on
+ * purpose — what a person types is the honest picture there — but the safety audit's whole
+ * subject is the log of reads, and an empty table illustrates nothing. So the real client runs
+ * against the suite's stub: the guard, the pull and the recorded row are all the real ones, and
+ * only the far end is standing in.
+ */
+const leanix = await startLeanIxStub();
+
 const dir = mkdtempSync(path.join(tmpdir(), "nexus-docs-"));
 const port = await freePort();
 // localhost, not 127.0.0.1: the numeric form has its dev-server chunks intercepted here.
@@ -54,6 +64,7 @@ const server = spawn("node", [path.resolve("node_modules/next/dist/bin/next"), "
     // would answer differently every run and the docs would describe one lucky afternoon.
     ANTHROPIC_API_KEY: "",
     NEXUS_MODEL: "",
+    NEXUS_LEANIX_BASE_URL: leanix.baseUrl,
   },
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -649,12 +660,31 @@ try {
     await page.waitForTimeout(900);
   });
 
+  /*
+   * A real pull first, so the audit has something to show. Everything here is the product: the
+   * read-only guard checks the query, the client pages the connection, and the row in the table
+   * is written by the same code the Energinet import writes it with.
+   */
+  await shot("safety", async () => {
+    await goto(`${w}/import`, '[data-door="leanix"]');
+    await page.click('[data-door="leanix"]');
+    await page.waitForSelector("[data-import-leanix]", { timeout: 30_000 });
+    await page.fill("[data-leanix-host]", "acme.leanix.net");
+    await page.fill("[data-leanix-token]", STUB_TOKEN);
+    await page.click("[data-stage-leanix]");
+    await page.waitForURL((u) => /\/import\//.test(u.pathname), { timeout: 60_000 });
+    await goto(`${w}/settings/safety`, "[data-contract=leanix]");
+    await page.waitForSelector("[data-reads=leanix] tbody tr", { timeout: 30_000 });
+    await page.waitForTimeout(600);
+  });
+
   // ---- knowledge ----------------------------------------------------------
   await shot("knowledge", () => goto(`${w}/knowledge?q=how+do+you+rationalise+an+application+portfolio`, ".knowledge-passage"), { settle: 900 });
   await shot("knowledge-doctrine", () => goto(`${w}/knowledge?tab=lessons`, ".knowledge-lesson"), { settle: 900 });
   await shot("knowledge-sources", () => goto(`${w}/knowledge?tab=sources`, ".knowledge-source-list"), { settle: 900 });
 
   await browser.close();
+  await leanix.close?.();
   // Merge rather than replace, so a narrowed run does not forget the shots it did not take.
   const manifest = path.resolve("src/lib/docs/shots.json");
   let existing = {};

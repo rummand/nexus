@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cpu, Plug, Shield, UserCog } from "lucide-react";
+import { Cpu, Plug, Shield, ShieldCheck, UserCog } from "lucide-react";
 import { PLATFORM, SETTINGS } from "@/components/workspace/nav";
 
 const ICON: Record<string, React.ReactNode> = {
   people: <UserCog size={16} />,
   models: <Cpu size={16} />,
   connections: <Plug size={16} />,
+  safety: <ShieldCheck size={16} />,
 };
 
 /**
