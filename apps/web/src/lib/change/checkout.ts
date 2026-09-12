@@ -71,7 +71,10 @@ function sourceNameOf(sourceKey: string, branchName: string): string {
   return detail || kind || "a source";
 }
 
-export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ id: string; name: string; status: s.ChangeSetRow["status"]; targetDate: string; changes: number; sourceKey: string }>> {
+/** Plans, then sources, then boards. */
+const rank = (set: { sourceKey: string; boardId: string | null }) => (set.sourceKey ? 1 : set.boardId ? 2 : 0);
+
+export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ id: string; name: string; status: s.ChangeSetRow["status"]; targetDate: string; changes: number; sourceKey: string; boardId: string | null }>> {
   const sets = await db.select().from(s.changeSets).where(eq(s.changeSets.workspaceId, workspaceId));
   const open = sets.filter(canCheckOut);
   if (!open.length) return [];
@@ -79,14 +82,15 @@ export async function refChoices(db: Db, workspaceId: string): Promise<Array<{ i
   const counted = new Map<string, number>();
   for (const row of rows) counted.set(row.changeSetId, (counted.get(row.changeSetId) ?? 0) + 1);
   return open
-    .map((set) => ({ id: set.id, name: set.name, status: set.status, targetDate: set.targetDate, changes: counted.get(set.id) ?? 0, sourceKey: set.sourceKey }))
+    .map((set) => ({ id: set.id, name: set.name, status: set.status, targetDate: set.targetDate, changes: counted.get(set.id) ?? 0, sourceKey: set.sourceKey, boardId: set.boardId }))
     /*
-     * Source branches last, under their own heading: they are always open, so sorting them in
-     * with the plans would put a permanent fixture at the top of a list of things people are
-     * actually working on.
+     * Plans first; then what the sources say (§5.92); then what people have drawn (§5.100). The
+     * last two are holding areas rather than intentions — a branch that exists because somebody
+     * put a card on a board is not a plan, and sorting it in among the plans would read as though
+     * it were one.
      */
     .sort((a, b) =>
-      Number(Boolean(a.sourceKey)) - Number(Boolean(b.sourceKey))
+      rank(a) - rank(b)
       || (a.targetDate || "9999").localeCompare(b.targetDate || "9999")
       || a.name.localeCompare(b.name));
 }

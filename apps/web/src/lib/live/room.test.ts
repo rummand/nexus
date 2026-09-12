@@ -234,17 +234,24 @@ describe("writing it down", () => {
     // a save plus a checkpoint plus a graph sync, so poll for it rather than guessing a delay.
     one!.leave();
     const db = await dbmod.getDb();
-    let entities: Array<{ name: string }> = [];
-    for (let i = 0; i < 40 && !entities.some((e) => e.name === "Maximo"); i++) {
+    let proposals: Array<{ payload: string }> = [];
+    for (let i = 0; i < 40 && !proposals.some((c) => c.payload.includes("Maximo")); i++) {
       await new Promise((r) => setTimeout(r, 50));
-      entities = await db.query.entities.findMany({ where: (e, { eq }) => eq(e.workspaceId, "ws") });
+      proposals = await db.query.changes.findMany({ where: (c, { eq }) => eq(c.op, "addEntity") });
     }
 
     const board = await db.query.boards.findFirst({ where: (b, { eq }) => eq(b.id, "b-save") });
     expect(board!.document).toContain("Maximo");
     expect(board!.revision).toBeGreaterThan(0);
-    // The graph must not be able to tell whether one person or three drew the card.
-    expect(entities.some((e) => e.name === "Maximo")).toBe(true);
+
+    /*
+     * The room must not be a second, looser way in (#149, §5.100). A card drawn live is a
+     * proposal on the board's own branch, exactly as one drawn alone is — the *only* thing the
+     * graph is allowed to notice about a live board is that it is a board.
+     */
+    expect(proposals.some((c) => c.payload.includes("Maximo")), "drawing live proposes it").toBe(true);
+    const entities = await db.query.entities.findMany({ where: (e, { eq }) => eq(e.workspaceId, "ws") });
+    expect(entities.some((e) => e.name === "Maximo"), "and does not put it in the estate").toBe(false);
   });
 
   it("hands a live board the new document when something else rewrites it", async () => {

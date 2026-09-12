@@ -63,10 +63,29 @@ function CardView({ el, selected, fresh }: { el: CardElement; selected: boolean;
   // A planned card looks planned whether or not the overlay is on: it is not in the graph, and a
   // card that looks ordinary while being invisible to every count would be a small lie.
   const planned = Boolean(el.meta?.planned);
-  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : "", changeState ? `change-${changeState}` : "", planned ? "planned" : ""].filter(Boolean).join(" ");
+  /*
+   * Drawn here, not yet in the model (#149, §5.100).
+   *
+   * Distinct from `planned`, which is a *plan's* picture of a system it intends to introduce.
+   * This is somebody's own new object waiting to be seen. Both are "not in the graph", and a card
+   * that looked ordinary while being invisible to every count would be the small lie this whole
+   * rule exists to stop.
+   */
+  const proposed = Boolean(el.meta?.proposed) && !planned;
+  const proposedIn = typeof el.meta?.proposedInName === "string" ? el.meta.proposedInName : "";
+  const cls = ["board-object", "fact-card", selected ? "selected" : "", dimmed ? "dimmed" : "", lensColor ? "lensed" : "", changeState ? `change-${changeState}` : "", planned ? "planned" : "", proposed ? "proposed" : ""].filter(Boolean).join(" ");
   return (
     <div data-element-id={el.id} className={cls} style={boxStyle(el, { "--card-color": el.color, ...(lensColor ? { "--lens-color": lensColor } : {}) } as CSSProperties)}>
       {planned && !changeState && <span className="fact-change-badge planned" title="Planned — not in the graph until its change set is delivered">planned</span>}
+      {proposed && !changeState && (
+        <span
+          className="fact-change-badge proposed"
+          data-proposed
+          title={proposedIn ? `Proposed on “${proposedIn}” — it joins the model when that is delivered` : "Proposed — not in the model until it is delivered"}
+        >
+          proposed
+        </span>
+      )}
       {changeState && <span className={`fact-change-badge ${changeState}`} title={`This change set would ${changeState === "retired" ? "retire" : changeState === "added" ? "introduce" : "change"} this`}>{changeState}</span>}
       {lensBadge && <span className="fact-lens-badge" style={lensColor ? { background: lensColor } : undefined}>{lensBadge}</span>}
       {proposalCount > 0 && <span className="fact-proposal-badge" data-proposal-badge title={`${proposalCount} agent proposal${proposalCount === 1 ? "" : "s"} — select the card to review`}>✦ {proposalCount}</span>}

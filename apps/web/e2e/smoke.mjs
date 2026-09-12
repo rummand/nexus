@@ -1161,10 +1161,23 @@ try {
   {
     const choices = await page.locator("[data-ref-choice]").count();
     assert.ok(choices > 1, "the seeded plans are somewhere you can stand");
-    // A delivered or abandoned change set is history or a decision; neither is a place to work,
-    // so only the open ones plus main are on offer.
-    const open = await page.locator('[data-ref-choice]:not([data-ref-choice="main"])').count();
-    assert.equal(open, 2, "the two open seeded plans are offered, and nothing that is closed");
+    /*
+     * A delivered or abandoned change set is history or a decision; neither is a place to work,
+     * so only the open ones plus main are on offer. Asserted as a property rather than a count:
+     * since §5.100 a board opens a branch of its own the first time somebody draws on it, so the
+     * number here depends on what the walk has drawn by now — and a test that has to be edited
+     * every time the walk grows is a test nobody trusts.
+     */
+    const names = await page.locator('[data-ref-choice]:not([data-ref-choice="main"])').allInnerTexts();
+    assert.ok(names.length >= 2, `the open seeded plans are offered — got ${names.length}`);
+    assert.ok(names.some((n) => /work orders/i.test(n)), "including the one this walk goes on to stand on");
+    assert.ok(names.every((n) => !/delivered|abandoned/i.test(n)), "and nothing that is closed");
+    // A board's branch is a holding area, not a plan, so it sits under its own heading.
+    const drawnChoices = await page.locator("[data-ref-board]").count();
+    if (drawnChoices) {
+      assert.match(await page.locator("[data-ref-menu]").innerText(), /Drawn, not yet agreed/i,
+        "a branch that exists because somebody drew a card is not listed as a plan");
+    }
   }
   await page.locator('[data-ref-choice="chg_seed_workorders"]').click();
   await page.waitForFunction(() => document.querySelector("[data-ref-indicator]")?.getAttribute("data-ref-indicator") !== "main",
@@ -1372,8 +1385,16 @@ try {
   const states = await page.locator("[data-states]").innerText();
   assert.match(states, /AS-IS/i, "the roadmap states what the estate is today");
   assert.ok((await page.locator("[data-change-set]").count()) >= 2, "the seeded change sets are listed");
-  // the point of the screen: a plan held against the graph says what it breaks
-  const impact = await page.locator("[data-impact]").first().innerText();
+  /*
+   * The point of the screen: a plan held against the graph says what it breaks.
+   *
+   * The card is expanded by name rather than by position. The roadmap opens its first card, and
+   * since §5.100 what sits first depends on what anybody has drawn — a test that reads "whichever
+   * card happens to be open" is a test that starts failing for reasons that are not about it.
+   */
+  const retirement = page.locator('[data-change-set="chg_seed_workorders"]');
+  if (!(await retirement.locator("[data-impact]").count())) await retirement.locator(".roadmap-card-head").click();
+  const impact = await retirement.locator("[data-impact]").first().innerText();
   assert.match(impact, /Retiring Maximo/, "the impact of a retirement is computed from the graph");
   assert.match(impact, /attached/, "it names how much is attached");
 
@@ -2735,6 +2756,54 @@ try {
    * things they do: say something about the board, and say something about one object on it — and
    * the second one has to leave a mark on the board itself, or nobody finds the conversation again.
    */
+  /*
+   * ---- nothing new lands unseen (#149, §5.100) -------------------------------------------------
+   *
+   * The rule the import door has always enforced, now enforced at the canvas too: draw a new
+   * object and it becomes a proposal on the board's own branch rather than a row in the estate.
+   * Only a browser can prove this end to end — the unit tests know the rule, but a real save
+   * through the real route is what shows a card somebody drew being held back.
+   */
+  await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+  await page.waitForFunction(() => document.querySelectorAll("[data-element-id]").length > 5, null, { timeout: 45000 });
+  {
+    const drawn = `Smoke drawn ${Date.now()}`;
+    await page.keyboard.press("Escape");
+    await page.click('[data-tool="card"]');
+    await page.waitForSelector('[data-flyout="card"]');
+    await page.click('[data-card-kind="Application"]');
+    await page.mouse.click(700, 760);
+    await page.waitForTimeout(600);
+    // Named the way a person does it: the card is placed with its title focused.
+    await page.keyboard.type(drawn);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(3500); // the autosave, which is the thing under test
+
+    /*
+     * The estate must not have it — asked through the product's own reading surface rather than
+     * the database, because "is it in the model?" is exactly the question people ask of that page.
+     */
+    await page.goto(`${base}/w/acme-energy/graph`, { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    assert.equal(await page.getByText(drawn).count(), 0,
+      "an object drawn on a board is not in the estate — nothing new lands without somebody seeing it");
+
+    // It is a proposal instead, on a branch the board opened and named after itself.
+    await page.goto(`${base}/w/acme-energy/roadmap`, { waitUntil: "load" });
+    await page.waitForSelector("[data-change-set]", { timeout: 30000 });
+    assert.match(await page.locator("body").innerText(), /Drawn on “Application landscape”/,
+      "the board opened a branch of its own, named after the board");
+
+    // And the board says so, or the safety is invisible and nobody trusts it.
+    await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
+    await page.waitForSelector(".fact-card.proposed", { timeout: 30000 });
+    await page.locator(".fact-card.proposed").first().click();
+    await page.waitForSelector("[data-proposed-note]", { timeout: 15000 });
+    assert.match(await page.locator("[data-proposed-note]").innerText(), /Drawn on “Application landscape”/,
+      "…and the inspector names the branch it is waiting in");
+    await page.keyboard.press("Escape");
+  }
+
   await page.goto(`${base}/b/brd_landscape`, { waitUntil: "load" });
   await page.waitForSelector("[data-element-id]");
   await page.click("[data-comments-button]");

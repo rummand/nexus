@@ -69,7 +69,7 @@ describe("board ↔ graph sync", () => {
         c: { id: "c", type: "connector", from: { elementId: "a" }, to: { elementId: "b" }, label: "feeds", stroke: "#000", style: "solid", arrowEnd: true, arrowStart: false, z: 2, meta: { relationId: "rel_ab" } },
       },
     };
-    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc);
+    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc, { writeThrough: true });
     const snap = await graphSnapshot(db, "ws");
     expect(snap.entities.map((e) => e.name).sort()).toEqual(["CRM", "ERP"]);
     expect(snap.entities.find((e) => e.id === "ent_a")).toMatchObject({ relationCount: 1, boardCount: 1 });
@@ -82,7 +82,7 @@ describe("board ↔ graph sync", () => {
 
   it("updates entities on later saves and hydrates other boards", async () => {
     const doc: CanvasDocument = { version: 2, elements: { a: cardEl("a", "ent_a", "CRM Cloud", "Application") } };
-    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc);
+    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc, { writeThrough: true });
     const stale: CanvasDocument = { version: 2, elements: { z: cardEl("z", "ent_a", "CRM", "App") } };
     const fresh = await hydrateDocument(db, stale);
     expect(fresh.elements.z).toMatchObject({ title: "CRM Cloud", kind: "Application" });
@@ -163,12 +163,118 @@ describe("attributes", () => {
   it("syncs card attributes to the entity and hydrates them back", async () => {
     const { syncBoardToGraph, hydrateDocument, entityDetail } = await import("./graph");
     const doc: CanvasDocument = { version: 2, elements: { a: { ...cardEl("a", "ent_a", "CRM Cloud"), attributes: { lifecycle: "end of life", criticality: "high" } } } };
-    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc);
+    await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc, { writeThrough: true });
     const detail = await entityDetail(db, "ent_a");
     expect(detail?.entity.attributes).toEqual({ lifecycle: "end of life", criticality: "high" });
     expect(detail?.kindAttributeKeys).toContain("criticality");
     const stale: CanvasDocument = { version: 2, elements: { z: cardEl("z", "ent_a", "CRM Cloud") } };
     const fresh = await hydrateDocument(db, stale);
     expect(fresh.elements.z).toMatchObject({ attributes: { lifecycle: "end of life", criticality: "high" } });
+  });
+});
+
+/**
+ * The canvas is governed by the same rule as the import door (#149, §5.100).
+ *
+ * A workspace of its own, because every assertion here is about what is *absent* from the estate
+ * and a stray object from another suite would make these pass for the wrong reason.
+ */
+describe("nothing new lands unseen (#149)", () => {
+  beforeAll(async () => {
+    await db.insert(s.workspaces).values({ id: "ws_draw", slug: "ws-draw", name: "Draw" });
+    await db.insert(s.spaces).values({ id: "sp_draw", workspaceId: "ws_draw", name: "Space" });
+    await db.insert(s.boards).values({ id: "b_draw", workspaceId: "ws_draw", spaceId: "sp_draw", name: "Workshop" });
+    await db.insert(s.boards).values({ id: "b_draw2", workspaceId: "ws_draw", spaceId: "sp_draw", name: "Second" });
+  });
+
+  const board = { id: "b_draw", workspaceId: "ws_draw", name: "Workshop" };
+  const setsFor = (boardId: string) =>
+    db.query.changeSets.findMany({ where: (c, { eq }) => eq(c.boardId, boardId) });
+  const changesIn = (setId: string) =>
+    db.query.changes.findMany({ where: (c, { eq }) => eq(c.changeSetId, setId) });
+
+  it("proposes a drawn object rather than putting it in the estate", async () => {
+    const doc: CanvasDocument = { version: 2, elements: { d1: cardEl("d1", "ent_drawn_1", "Meter Portal") } };
+    await syncBoardToGraph(db, board, doc);
+
+    expect(await db.select().from(s.entities).where(eq(s.entities.id, "ent_drawn_1")), "the estate is untouched").toHaveLength(0);
+    const sets = await setsFor("b_draw");
+    expect(sets, "the board opened a branch of its own").toHaveLength(1);
+    expect(sets[0]!.name).toBe("Drawn on “Workshop”");
+    const changes = await changesIn(sets[0]!.id);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]!.op).toBe("addEntity");
+    expect(JSON.parse(changes[0]!.payload)).toMatchObject({ name: "Meter Portal", kind: "Application" });
+    // The index must not claim a proposal is on the board: there is no row to point at.
+    expect(await db.select().from(s.boardEntities).where(eq(s.boardEntities.entityId, "ent_drawn_1"))).toHaveLength(0);
+  });
+
+  it("reuses the board's branch, and refreshes the proposal rather than stacking saves", async () => {
+    const one: CanvasDocument = { version: 2, elements: { d2: cardEl("d2", "ent_drawn_2", "Billing") } };
+    await syncBoardToGraph(db, board, one);
+    const renamed: CanvasDocument = { version: 2, elements: { d2: cardEl("d2", "ent_drawn_2", "Billing Hub") } };
+    await syncBoardToGraph(db, board, renamed);
+    await syncBoardToGraph(db, board, renamed);
+
+    const sets = await setsFor("b_draw");
+    expect(sets, "one branch per board, not one per save").toHaveLength(1);
+    const mine = (await changesIn(sets[0]!.id)).filter((c) => c.entityId === "ent_drawn_2");
+    expect(mine, "one proposal per object, however often it autosaves").toHaveLength(1);
+    expect(JSON.parse(mine[0]!.payload)).toMatchObject({ name: "Billing Hub" });
+  });
+
+  it("sends a drawn object to the branch the person is standing on", async () => {
+    await db.insert(s.changeSets).values({ id: "chg_stand", workspaceId: "ws_draw", name: "Q3 platform", status: "draft" });
+    const doc: CanvasDocument = { version: 2, elements: { d3: cardEl("d3", "ent_drawn_3", "Scheduler") } };
+    await syncBoardToGraph(db, { id: "b_draw2", workspaceId: "ws_draw", name: "Second" }, doc, {
+      ref: { kind: "set", id: "chg_stand", name: "Q3 platform", status: "draft", targetDate: "" },
+    });
+
+    expect(await changesIn("chg_stand")).toHaveLength(1);
+    // Standing somewhere means writes go there — so the board must not have opened one of its own.
+    expect(await setsFor("b_draw2"), "the ref is honoured, not decorated").toHaveLength(0);
+  });
+
+  it("carries a connection to a proposed object with it, rather than leaving a dangling key", async () => {
+    const doc: CanvasDocument = {
+      version: 2,
+      elements: {
+        e1: cardEl("e1", "ent_drawn_4", "Left"),
+        e2: cardEl("e2", "ent_drawn_5", "Right"),
+        c1: { id: "c1", type: "connector", from: { elementId: "e1" }, to: { elementId: "e2" }, label: "feeds", stroke: "#000", style: "solid", arrowEnd: true, arrowStart: false, z: 2, meta: { relationId: "rel_drawn" } },
+      },
+    };
+    await syncBoardToGraph(db, board, doc);
+    expect(await db.select().from(s.relations_).where(eq(s.relations_.id, "rel_drawn")), "no relation into nothing").toHaveLength(0);
+    const sets = await setsFor("b_draw");
+    const rel = (await changesIn(sets[0]!.id)).filter((c) => c.relationId === "rel_drawn");
+    expect(rel).toHaveLength(1);
+    expect(rel[0]!.op).toBe("addRelation");
+  });
+
+  it("marks a proposed card on the board, and names the branch it is waiting in", async () => {
+    const doc: CanvasDocument = { version: 2, elements: { d1: cardEl("d1", "ent_drawn_1", "Meter Portal") } };
+    const hydrated = await hydrateDocument(db, doc);
+    const card = hydrated.elements.d1 as CardElement;
+    expect(card.meta?.proposed, "the canvas can see it is not committed").toBe(true);
+    expect(card.meta?.proposedInName).toBe("Drawn on “Workshop”");
+  });
+
+  it("clears the mark once the object is in the estate, without being asked", async () => {
+    await db.insert(s.entities).values({ id: "ent_drawn_6", workspaceId: "ws_draw", kind: "Application", name: "Landed", description: "", attributes: "{}", source: "canvas" });
+    const stale: CanvasDocument = {
+      version: 2,
+      elements: { d6: { ...cardEl("d6", "ent_drawn_6", "Landed"), meta: { entityId: "ent_drawn_6", proposed: true, proposedInName: "Drawn on “Workshop”" } } },
+    };
+    const hydrated = await hydrateDocument(db, stale);
+    const card = hydrated.elements.d6 as CardElement;
+    expect(card.meta?.proposed, "a rendering hint is recomputed, never trusted").toBeUndefined();
+    expect(card.meta?.proposedInName).toBeUndefined();
+  });
+
+  it("lets the seed construct an estate, because it is not somebody at a canvas", async () => {
+    const doc: CanvasDocument = { version: 2, elements: { d7: cardEl("d7", "ent_drawn_7", "Seeded") } };
+    await syncBoardToGraph(db, board, doc, { writeThrough: true });
+    expect(await db.select().from(s.entities).where(eq(s.entities.id, "ent_drawn_7"))).toHaveLength(1);
   });
 });

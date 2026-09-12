@@ -3462,7 +3462,13 @@ i.confidence.low { background: #f3f6fb; color: #6c7a91; }
 .viewpoint-state-missing { align-items: center; color: #56637a; display: flex; font-size: 11px; gap: 6px; justify-content: space-between; }
 .fact-card.planned { background: repeating-linear-gradient(135deg, rgba(47, 125, 50, 0.05) 0 10px, transparent 10px 20px), #fff; border-style: dashed; }
 .fact-change-badge.planned { background: #eef7ee; color: #2f7d32; }
+/* Proposed (#149): drawn here and waiting to be seen. Amber rather than green — a plan's picture
+   of a future system is agreed, this is not yet, and the two must not read alike. */
+.fact-card.proposed { background: repeating-linear-gradient(135deg, rgba(215, 155, 43, 0.07) 0 10px, transparent 10px 20px), #fff; border-style: dashed; }
+.fact-change-badge.proposed { background: #fdf4e4; color: #9a6c14; }
 .inspector-planned { background: #f3faf4; border: 1px dashed #a8d3ae; border-radius: 10px; color: #3f6b45; font-size: 11.5px; line-height: 1.55; margin: 0; padding: 9px 11px; }
+.inspector-proposed { background: #fdf8ee; border: 1px dashed #e0c079; border-radius: 10px; color: #7a5a12; font-size: 11.5px; line-height: 1.55; margin: 0; padding: 9px 11px; }
+.inspector-proposed strong { display: block; font-size: 12px; margin-bottom: 3px; }
 .roadmap-order { background: #eef2f7; border-radius: 999px; color: #6c7a91; flex: 0 0 auto; font-size: 10.5px; font-weight: 800; height: 19px; line-height: 19px; min-width: 19px; text-align: center; }
 .roadmap-item.delivered .roadmap-order { background: #e7f5e8; color: #2f7d32; }
 .roadmap-status.blocked { align-items: center; background: #fff4e5; color: #8a5a17; display: inline-flex; gap: 4px; }

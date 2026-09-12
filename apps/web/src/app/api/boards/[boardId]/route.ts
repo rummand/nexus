@@ -4,6 +4,7 @@ import { getDb } from "@/db/client";
 import { boards } from "@/db/schema";
 import { migrateDocument, parseDocument, type CanvasDocument } from "@/canvas/document";
 import { hydrateDocument, syncBoardToGraph } from "@/lib/graph";
+import { currentCheckout, ON_MAIN } from "@/lib/change/checkout";
 import { saveBoardDocument } from "@/lib/board-save";
 import { currentUserOrNull } from "@/lib/session";
 import * as who from "@/lib/history/actor";
@@ -71,7 +72,17 @@ export async function PUT(req: Request, { params }: Params) {
   }
   // Whose save this is, so the graph's history names a person rather than a board (§5.43).
   const saver = await currentUserOrNull();
-  await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId, name: result.boardName }, doc, saver ? who.person(saver) : undefined);
+  /*
+   * Where the person is standing decides where new objects go (#149, §5.100). Read here, on the
+   * write path, rather than trusted from the client: the ref is a permission boundary now, and a
+   * boundary a POST body can choose is not one.
+   */
+  const at = saver ? await currentCheckout(db, result.workspaceId, saver.id) : ON_MAIN;
+  await syncBoardToGraph(db, { id: boardId, workspaceId: result.workspaceId, name: result.boardName }, doc, {
+    actor: saver ? who.person(saver) : undefined,
+    ref: at.ref,
+    userId: saver?.id ?? null,
+  });
   /*
    * A staged import board is a working surface, not a drawing (§5.36): its lanes are decisions and
    * its cards are claims, so saving it writes those decisions back to the batch. Staged cards are

@@ -15,7 +15,7 @@ const change = (id: string, op: Change["op"], fields: Partial<Change> = {}): Cha
   ({ id, op, entityId: null, relationId: null, payload: {}, note: "", createdAt: "", ...fields });
 
 const set = (id: string, changes: Change[], status: ChangeSetStatus = "planned", targetDate = "2027-01-01"): ChangeSet => ({
-  id, workspaceId: "ws", name: id, description: "", status, targetDate, deliveredAt: null, createdAt: "", updatedAt: "", changes,
+  id, workspaceId: "ws", name: id, description: "", status, targetDate, deliveredAt: null, sourceKey: "", boardId: null, createdAt: "", updatedAt: "", changes,
 });
 
 const dep = (changeSetId: string, dependsOnId: string): Dependency => ({ changeSetId, dependsOnId });

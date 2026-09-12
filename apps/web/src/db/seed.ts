@@ -109,7 +109,9 @@ export async function seed(db: Db) {
   );
   await db.insert(s.boardFavorites).values([{ userId: DEMO_USER_ID, boardId: "brd_capabilities" }]);
   // index the seeded boards into the knowledge graph
-  for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId, name: b.name }, b.document);
+  // The seed constructs a demo estate rather than standing at a canvas: a seeded workspace whose
+  // every object arrived as an unreviewed proposal would teach the wrong thing on the first screen.
+  for (const b of boards) await syncBoardToGraph(db, { id: b.id, workspaceId, name: b.name }, b.document, { writeThrough: true });
 
   await seedCapabilityTree(db, workspaceId);
   await seedRoadmap(db, workspaceId);

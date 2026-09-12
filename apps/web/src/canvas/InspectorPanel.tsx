@@ -35,6 +35,14 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
    * something that does not exist would be worse than the 404.
    */
   const planned = single?.type === "card" ? Boolean(single.meta?.planned) : false;
+  /**
+   * Drawn here and not yet in the model (#149, §5.100). Same "has an id, has no entity" shape as
+   * a planned card, and for the same reason the graph must not be asked about it — but a different
+   * sentence, because what happens next is different: somebody delivers a change set *this person
+   * created by drawing*, rather than one a planner wrote.
+   */
+  const proposed = single?.type === "card" ? Boolean(single.meta?.proposed) && !planned : false;
+  const proposedIn = typeof single?.meta?.proposedInName === "string" ? single.meta.proposedInName : "";
 
   return (
     <section
@@ -68,6 +76,16 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
               {typeof single.meta?.staged === "string"
                 ? "Staged, not in the graph. It is a claim from an imported file; the lane it sits in decides what happens to it when the import is approved. Renaming it here renames the record."
                 : "Planned, not in the graph. This card comes from a change set; it becomes a real object when that change set is delivered."}
+            </p>
+          )}
+          {proposed && (
+            <p className="inspector-proposed" data-proposed-note>
+              <strong>Proposed, not in the model yet.</strong> Nothing new enters the model without
+              somebody seeing it — the same rule an import goes through.{" "}
+              {/* No quotes around the name: a board's own branch is already called Drawn on “…”,
+                  and wrapping it produced It is waiting on “Drawn on “Application landscape””. */}
+              {proposedIn ? `It is waiting on ${proposedIn}.` : "It is waiting on a change set."}{" "}
+              Keep editing it here; delivering that change set is what adds it.
             </p>
           )}
           <div className="detail-grid">
@@ -106,8 +124,8 @@ export function InspectorPanel({ rootRef }: { rootRef: RefObject<HTMLDivElement 
               </div>
             )}
           </div>
-          {entityId && !planned && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
-          {entityId && !planned && <ProposalsBlock key={`p-${entityId}`} entityId={entityId} />}
+          {entityId && !planned && !proposed && <GraphBlock key={entityId} entityId={entityId} boardId={store.getState().boardId} />}
+          {entityId && !planned && !proposed && <ProposalsBlock key={`p-${entityId}`} entityId={entityId} />}
           {isBoxElement(single) && single.type !== "agent" && <AskBlock key={`a-${single.id}`} ids={[single.id]} label="this" />}
           <div className="inspector-actions">
             <button type="button" onClick={() => store.getState().focusElement(single.id)}>Focus</button>

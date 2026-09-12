@@ -35,7 +35,17 @@ export default async function RoadmapPage({ params }: { params: Promise<{ slug: 
   const warnings = new Map(scheduleWarnings(sets, deps).map((w) => [w.id, w.message]));
 
   const byId = new Map(entities.map((e) => [e.id, { name: e.name }]));
-  const views: ChangeSetView[] = sets.map((set) => {
+  /*
+   * Plans first; holding areas after (§5.92, §5.100).
+   *
+   * A source branch and a board's own branch are both undated, and `listChangeSets` orders by
+   * target date — so without this every one of them sorts above every plan somebody actually
+   * wrote, and the roadmap opens on "Drawn on the workshop board" rather than on the work. The
+   * same call the ref picker makes, for the same reason: neither is an intention.
+   */
+  const held = (set: { sourceKey: string; boardId: string | null }) => Boolean(set.sourceKey) || Boolean(set.boardId);
+  const ordered = [...sets].sort((a, b) => Number(held(a)) - Number(held(b)));
+  const views: ChangeSetView[] = ordered.map((set) => {
     // A change set can connect something it introduces in the same breath, so names have to
     // include its own additions — otherwise the row reads as a raw id nobody recognises.
     const names = new Map(byId);

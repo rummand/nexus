@@ -4277,6 +4277,60 @@ Still open: the guard covers the connector that reaches a production estate. Whe
 read-only connector is built (#87), it joins the contract list or it is not covered, and the
 audit says which.
 
+### 5.100 Nothing new lands unseen — the canvas, too (#149, v0.2)
+
+The product had this rule written down, and enforced it on one door.
+
+`routeOf` (§5.90) refuses to let anything new from a source into the estate: *"is new — nothing
+new lands without somebody seeing it."* An import goes to a branch, through the merge gate, past
+MODELOWNERS, and only then into the graph. Meanwhile a card drawn on a board became an entity on
+the next autosave — same standing as an object that came from LeanIX, was reconciled by a person
+and signed off by its owner. Nothing recorded that one of them was a sketch somebody made in a
+workshop.
+
+Worse, the board **said** otherwise. `syncBoardToGraph` took no ref, but the board chrome read
+your checkout and showed the branch name, so standing on a change set was a claim about what you
+were *looking at* while everything you drew went to `main`. That is not a missing feature; it is
+an interface telling somebody they are safe when they are not.
+
+**One rule, both doors.** A new object or a new connection drawn on a board is a proposal,
+wherever you are standing. On a change set it joins that one. On `main` the board opens a branch
+of its own — *Drawn on "Application landscape"* — and reuses it, the same shape a source branch
+uses (§5.92) and for the same reason: a board keeps producing claims for as long as people draw
+on it, and a branch per autosave is a review queue nobody can read.
+
+**The proposal tracks the card, rather than stacking up behind it.** A board autosaves while
+somebody is still typing, so the change is upserted by object id: one proposal per object, holding
+the newest state of the card, however many times it saved.
+
+**A connection travels with the object it connects.** Writing an edge through while one of its
+ends is still a proposal would be a foreign key into something that does not exist — so a relation
+touching a proposed object is proposed alongside it, which is also what `routeOf` does with
+`addRelation` for the same reason: a connection is a modelling claim, not a field value.
+
+**It has to be visible or it is not safety.** The card is drawn dashed and amber, badged
+*proposed*, and the inspector says which branch it is waiting in and that delivering it is what
+adds it. Amber rather than the green of a `planned` card (§5.21), because those are different
+things: a planned card is a *plan's* picture of a system it intends to introduce — already agreed
+— and this is somebody's own new object that nobody has looked at yet. The mark is derived on
+every board open from whether the object exists and whether a proposal is outstanding; it is a
+rendering hint and the change is the record, so a stale one written by an older client is
+corrected rather than believed.
+
+**Edits to objects already in the estate still write through**, on `main` and on a branch alike.
+This is the honest limit of the slice rather than a considered destination: the change model has
+no op that carries a name — `setAttribute`, `retypeEntity`, `setParent` — so routing edits today
+would silently drop every rename, which is worse than not routing them. #149 carries the rest,
+and the board chrome still overstates what a checkout means for edits.
+
+**One caller may bypass the rule**, named rather than inferred: the seed, which constructs a demo
+estate rather than standing at a canvas. A seeded workspace whose every object arrived as an
+unreviewed proposal would teach the wrong thing on the first screen.
+
+Deliberately not decided here: what happens to the boards and objects created under the old rule
+(no migration and no amnesty yet), and whether a sandbox space is exempt — that belongs with
+#128, which owns guided, strict and sandbox modes.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5572,6 +5626,15 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | The safety page has no controls at all. | A switch would imply the promise is a setting. It is in the client above the network call; the only way to change it is to change the code. |
 | 2026-09-12 | The page states plainly where Nexus makes no promise (outbound MCP). | A safety page that implied a guarantee over code Nexus does not run would be worth less than no safety page — one overstatement discredits the rest. |
 
+| 2026-09-12 | The canvas is governed by the same rule as the import door: nothing new lands unseen. | The rule already existed and was enforced on one door. A model is only as trustworthy as its least governed door, and an object typed in a workshop had the standing of one reconciled from a system of record and signed off by its owner. |
+| 2026-09-12 | A board with no checkout open opens a branch of its own, rather than refusing the drawing or prompting per card. | The object cannot go into the estate and cannot go nowhere. A prompt per card would be answered by turning the feature off; a branch per save would be a review queue nobody reads. One branch per board, reused, is the same shape a source branch already uses. |
+| 2026-09-12 | The proposal is upserted per object rather than appended per save. | A board autosaves while somebody is still typing. Appending would put one change per keystroke-flush in front of a reviewer and call it a plan. |
+| 2026-09-12 | A connection to a proposed object is proposed with it. | Writing the edge through would be a foreign key into an object that does not exist. It is also what `routeOf` already does with `addRelation`: a connection is a modelling claim, not a field value. |
+| 2026-09-12 | Proposed is amber; planned stays green. | They are different states and must not read alike. A planned card is a plan's picture of a system it intends to introduce — already agreed. A proposed one is somebody's own new object that nobody has looked at yet. |
+| 2026-09-12 | The proposed mark is derived on every board open, never trusted from the document. | The change is the record and the mark is a rendering hint. A stale flag persisted by an older client would otherwise tell somebody their object is uncommitted long after it landed. |
+| 2026-09-12 | Edits to objects already in the estate still write through, on main and on a branch alike. | Not a destination — a limit. The change model has no op that carries a name, so routing edits today would silently drop every rename. Stated in the brief rather than left for somebody to discover. |
+| 2026-09-12 | Exactly one caller may bypass the rule, and has to name itself to do it. | The seed constructs a demo estate rather than standing at a canvas; a seeded workspace of unreviewed proposals would teach the wrong thing on the first screen. Named rather than inferred, so a second caller has to argue for it in review. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5586,6 +5649,24 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 147: the canvas stops writing straight to main (#149).** Raised by the product
+  owner: an application drawn on a board ought to say that it is not committed yet. Reading the
+  code, it was worse than a missing state. The import door has refused to let anything new land
+  unseen since §5.90 — *"is new — nothing new lands without somebody seeing it"* — while a card
+  drawn on a board became an entity on the next autosave, with the standing of an object
+  reconciled from LeanIX and signed off by its owner. And the board *said* otherwise: the chrome
+  read your checkout and showed a branch name while everything you drew went to `main`, because
+  the sync took no ref at all. One rule now covers both doors. A new object or connection drawn on
+  a board is a proposal — on the change set you are standing on, or on a branch the board opens
+  for itself and reuses, named *Drawn on "…"*. The proposal is upserted per object rather than
+  appended per save, a connection travels with the proposed object it touches rather than leaving
+  a dangling key, and the card is visibly proposed — dashed, amber, badged, with the inspector
+  naming the branch it waits in. Edits to objects already in the estate still write through, and
+  the brief says so plainly: the change model has no op that carries a name, so routing them today
+  would silently drop every rename. Fourteen new tests; the walk draws a card and proves it is
+  absent from the estate, present on the board's branch, and marked on the canvas. Brief §5.100,
+  eight decision rows. #149 carries what is left.
 
 - **2026-09-12 — Rev 146: the read-only promise becomes evidence (#111).** "Can this tool change
   our LeanIX workspace?" is the first question in every EA security review, and the answer was a

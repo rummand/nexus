@@ -1096,6 +1096,16 @@ export const changeSets = pgTable(
      * cannot say whose decision it was is not a system of record.
      */
     agentId: text("agent_id"),
+    /**
+     * The board that opened this branch by being drawn on (#149, §5.100).
+     *
+     * Nothing new lands in the estate unseen, and that includes an object somebody drew in a
+     * workshop. A board with no change set checked out opens one of its own the first time a new
+     * object appears on it, and reuses it after — the same trick a source branch uses
+     * (`sourceKey` above), for the same reason: one branch per thing that keeps producing
+     * claims, rather than one per save. Empty for every branch that is not a board's own.
+     */
+    boardId: text("board_id").references(() => boards.id, { onDelete: "set null" }),
     createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
@@ -1104,6 +1114,8 @@ export const changeSets = pgTable(
     index("change_sets_workspace_idx").on(t.workspaceId, t.targetDate),
     // "Is there already a branch open for this source?" is asked on every sync.
     index("change_sets_source_idx").on(t.workspaceId, t.sourceKey),
+    // And the same question for a board, asked on every save that finds something new.
+    index("change_sets_board_idx").on(t.boardId, t.status),
   ],
 );
 

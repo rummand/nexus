@@ -10,6 +10,9 @@ import { entityHistory, recordRelationEvent, remembering } from "./history/recor
 import * as who from "./history/actor";
 import type { Actor } from "./history/events";
 import { ancestry, descendants } from "./hierarchy";
+import { drawnNote, routeCard, routeRelation } from "./change/board-write";
+import { openBoardSet } from "./change/board-set";
+import { MAIN, type Ref } from "./change/ref";
 
 // Re-exported so the many callers that reach for it through the graph module keep working.
 export { parseAttributes };
@@ -86,7 +89,29 @@ function entityFrames(elements: Elements): Array<{ id: string; entityId: string;
  * on the Application landscape". Callers that genuinely cannot say (a restore, a scheduled
  * persist) leave it out and the board itself is named as the actor.
  */
-export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, actor?: Actor) {
+export interface SyncOptions {
+  /** The person whose save this is, for the history. */
+  actor?: Actor;
+  /** Where they are standing (§5.82). New objects become proposals on this ref. */
+  ref?: Ref;
+  /** Who to name as the author of a change set the board opens for itself. */
+  userId?: string | null;
+  /**
+   * Write new objects straight into the estate, bypassing the proposal rule.
+   *
+   * For callers that are *constructing an estate* rather than standing at a canvas: the seed,
+   * whose demo workspace would teach the wrong thing on the first screen if every object in it
+   * were an unreviewed proposal, and the tests that need an estate to exist before they can
+   * assert anything about it. Named rather than inferred, so that a caller who wants it has to
+   * write it down and defend it in review. No request path passes it.
+   */
+  writeThrough?: boolean;
+}
+
+export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId: string; name?: string }, doc: CanvasDocument, options: SyncOptions = {}) {
+  const { actor, userId } = options;
+  const ref = options.ref ?? MAIN;
+  const writeThrough = options.writeThrough ?? false;
   const cards = entityCards(doc.elements);
   const framed = entityFrames(doc.elements);
   const ids = [...new Set([...cards.map((c) => c.entityId), ...framed.map((f) => f.entityId)])];
@@ -95,13 +120,43 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
   const ts = now();
   const history = { workspaceId: board.workspaceId, actor: actor ?? who.board(board.name ?? "A board", board.id), context: board.name ? `board: ${board.name}` : "a board" };
 
+  /*
+   * Where a new object goes (#149, §5.100).
+   *
+   * Not into the estate. `routeCard` says "propose" for anything with no row yet, on every ref,
+   * because the import door has refused to let anything new land unseen since §5.90 and a model
+   * is only as trustworthy as its least governed door. The branch is the one you are standing on,
+   * or one the board opens for itself. Resolved lazily: a save that introduces nothing new must
+   * not open a change set, or every board would grow an empty branch on its first autosave.
+   */
+  let target: string | null = ref.kind === "set" ? ref.id : null;
+  const proposeTo = async (): Promise<string> => {
+    target ??= await openBoardSet(db, board, userId);
+    return target;
+  };
+  const proposed: string[] = [];
+
   await remembering(db, history, { ids }, async () => {
     for (const c of cards) {
       const cur = byId.get(c.entityId);
       const attrs = cleanAttributes(c.attributes);
+      const differs = Boolean(cur) && (cur!.kind !== c.kind.trim() || cur!.name !== c.title.trim() || cur!.description !== c.description.trim() || !sameAttributes(parseAttributes(cur!.attributes), attrs));
+      const route = writeThrough && !cur ? "through" : routeCard({ exists: Boolean(cur), differs });
+      if (route === "skip") continue;
       if (!cur) {
+        if (route === "propose") {
+          await proposeEntity(db, await proposeTo(), c.entityId, { kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: attrs }, drawnNote(board.name ?? ""));
+          proposed.push(c.entityId);
+          continue;
+        }
         await db.insert(s.entities).values({ id: c.entityId, workspaceId: board.workspaceId, kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), source: "canvas", createdAt: ts, updatedAt: ts });
-      } else if (cur.workspaceId === board.workspaceId && (cur.kind !== c.kind.trim() || cur.name !== c.title.trim() || cur.description !== c.description.trim() || !sameAttributes(parseAttributes(cur.attributes), attrs))) {
+      } else if (cur.workspaceId === board.workspaceId) {
+        /*
+         * An edit to something already in the estate still writes through, on main and on a
+         * branch alike. Deliberate, and the honest limit of this slice: the change model has no
+         * op that carries a name, so routing an edit would silently drop every rename. #149
+         * carries the rest.
+         */
         await db.update(s.entities).set({ kind: c.kind.trim(), name: c.title.trim(), description: c.description.trim(), attributes: JSON.stringify(attrs), updatedAt: ts }).where(eq(s.entities.id, c.entityId));
       }
     }
@@ -129,12 +184,26 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
     const existingRels = await db.select().from(s.relations_).where(inArray(s.relations_.id, relRows.map((r) => r.id)));
     const relById = new Map(existingRels.map((r) => [r.id, r]));
     const nameOf = (entityId: string) => cards.find((c) => c.entityId === entityId)?.title.trim() ?? byId.get(entityId)?.name ?? "";
+    const proposedIds = new Set(proposed);
     for (const r of relRows) {
       const cur = relById.get(r.id);
+      const differs = Boolean(cur) && (cur!.kind !== r.kind || cur!.fromEntityId !== r.from || cur!.toEntityId !== r.to);
+      const route = writeThrough && !cur ? "through" : routeRelation({ exists: Boolean(cur), differs });
+      if (route === "skip") continue;
       if (!cur) {
+        /*
+         * A connection is a modelling claim, not a field value — the same reason `routeOf` holds
+         * `addRelation` back from a source. And a relation whose end is itself only proposed
+         * *must* travel with it: writing it through would be a foreign key into an object that
+         * does not exist.
+         */
+        if (route === "propose" || proposedIds.has(r.from) || proposedIds.has(r.to)) {
+          await proposeRelation(db, await proposeTo(), r.id, { fromEntityId: r.from, toEntityId: r.to, kind: r.kind }, drawnNote(board.name ?? ""));
+          continue;
+        }
         await db.insert(s.relations_).values({ id: r.id, workspaceId: board.workspaceId, fromEntityId: r.from, toEntityId: r.to, kind: r.kind, source: "canvas", createdAt: ts, updatedAt: ts });
         await recordRelationEvent(db, history, { kind: "relationAdded", label: r.kind, from: { id: r.from, name: nameOf(r.from) }, to: { id: r.to, name: nameOf(r.to) } });
-      } else if (cur.kind !== r.kind || cur.fromEntityId !== r.from || cur.toEntityId !== r.to) {
+      } else {
         await db.update(s.relations_).set({ kind: r.kind, fromEntityId: r.from, toEntityId: r.to, updatedAt: ts }).where(eq(s.relations_.id, r.id));
       }
     }
@@ -142,14 +211,66 @@ export async function syncBoardToGraph(db: Db, board: { id: string; workspaceId:
 
   // board ↔ entity index
   await db.delete(s.boardEntities).where(eq(s.boardEntities.boardId, board.id));
+  const proposedIds = new Set(proposed);
   const placed = [
-    ...cards.map((c) => ({ boardId: board.id, entityId: c.entityId, elementId: c.id })),
+    // A proposed object has no row in `entities` yet, and a foreign key into one that does not
+    // exist fails the insert. It joins the index when its change set is delivered and the next
+    // save finds it real.
+    ...cards.filter((c) => !proposedIds.has(c.entityId)).map((c) => ({ boardId: board.id, entityId: c.entityId, elementId: c.id })),
     // A framed object is on the board as much as a card is: it is where the thing sits.
     ...framed.filter((f) => byId.has(f.entityId)).map((f) => ({ boardId: board.id, entityId: f.entityId, elementId: f.id })),
   ];
   if (placed.length) {
     await db.insert(s.boardEntities).values(placed).onConflictDoNothing();
   }
+}
+
+/**
+ * Record a drawn object as a proposal on a ref (#149, §5.100).
+ *
+ * Upserted by entity id rather than appended, because a board autosaves while somebody is still
+ * typing into the card: appending would put one change per keystroke-flush in front of a reviewer
+ * and call it a plan. The newest state of the card is the proposal.
+ */
+async function proposeEntity(
+  db: Db,
+  changeSetId: string,
+  entityId: string,
+  payload: { kind: string; name: string; description: string; attributes: Record<string, string> },
+  note: string,
+): Promise<void> {
+  const existing = await db.query.changes.findFirst({
+    where: and(eq(s.changes.changeSetId, changeSetId), eq(s.changes.entityId, entityId), eq(s.changes.op, "addEntity")),
+  });
+  const body = JSON.stringify(payload);
+  if (existing) {
+    if (existing.payload !== body) await db.update(s.changes).set({ payload: body }).where(eq(s.changes.id, existing.id));
+    return;
+  }
+  await db.insert(s.changes).values({
+    id: `chn_${nanoid(10)}`, changeSetId, op: "addEntity", entityId, relationId: null, payload: body, note, createdAt: now(),
+  });
+}
+
+/** The same, for a connection drawn between two cards. */
+async function proposeRelation(
+  db: Db,
+  changeSetId: string,
+  relationId: string,
+  payload: { fromEntityId: string; toEntityId: string; kind: string },
+  note: string,
+): Promise<void> {
+  const existing = await db.query.changes.findFirst({
+    where: and(eq(s.changes.changeSetId, changeSetId), eq(s.changes.relationId, relationId), eq(s.changes.op, "addRelation")),
+  });
+  const body = JSON.stringify(payload);
+  if (existing) {
+    if (existing.payload !== body) await db.update(s.changes).set({ payload: body }).where(eq(s.changes.id, existing.id));
+    return;
+  }
+  await db.insert(s.changes).values({
+    id: `chn_${nanoid(10)}`, changeSetId, op: "addRelation", entityId: null, relationId, payload: body, note, createdAt: now(),
+  });
 }
 
 /** Cards placed from a change set: pictures of an intention, not yet backed by an entity (§5.21). */
@@ -170,6 +291,7 @@ export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<Canv
   const rows = await db.select().from(s.entities).where(inArray(s.entities.id, cards.map((c) => c.entityId)));
   const byId = new Map(rows.map((e) => [e.id, e]));
   const elements: Elements = { ...doc.elements };
+
   for (const c of cards) {
     const e = byId.get(c.entityId);
     if (!e) continue;
@@ -189,6 +311,43 @@ export async function hydrateDocument(db: Db, doc: CanvasDocument): Promise<Canv
       if (el.type !== "connector" || !isRelationId(el.meta?.relationId)) continue;
       const r = relById.get(el.meta.relationId);
       if (r && r.kind !== el.label) elements[el.id] = { ...el, label: r.kind };
+    }
+  }
+
+  /*
+   * Which cards are still proposals (#149, §5.100).
+   *
+   * Last, and over `elements` rather than the document, so it wins over the field sync above
+   * instead of being quietly overwritten by it. Derived on every open rather than trusted from
+   * the document: the flag is a rendering hint and the change is the record, so a stale one
+   * persisted by an older client is corrected here rather than telling somebody their object is
+   * uncommitted long after it landed.
+   *
+   * Note this is *not* `planned` (§5.21). A planned card is excluded from the sync; a proposed
+   * one must keep syncing, because the person is still editing it and the proposal is meant to
+   * track what they typed.
+   */
+  const missing = cards.filter((c) => !byId.has(c.entityId)).map((c) => c.entityId);
+  const proposals = missing.length
+    ? await db
+        .select({ entityId: s.changes.entityId, setId: s.changeSets.id, setName: s.changeSets.name })
+        .from(s.changes)
+        .innerJoin(s.changeSets, eq(s.changes.changeSetId, s.changeSets.id))
+        .where(and(inArray(s.changes.entityId, missing), eq(s.changes.op, "addEntity")))
+    : [];
+  const proposalOf = new Map(proposals.filter((r) => r.entityId).map((r) => [r.entityId!, r]));
+  for (const c of cards) {
+    const at = elements[c.id];
+    if (!at) continue;
+    const proposal = proposalOf.get(c.entityId);
+    if (proposal) {
+      elements[c.id] = { ...at, meta: { ...at.meta, proposed: true, proposedIn: proposal.setId, proposedInName: proposal.setName } };
+      continue;
+    }
+    if (at.meta?.proposed) {
+      const { proposed: _p, proposedIn: _i, proposedInName: _n, ...meta } = at.meta;
+      void _p; void _i; void _n;
+      elements[c.id] = { ...at, meta };
     }
   }
   return { ...doc, elements };

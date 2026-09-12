@@ -22,7 +22,7 @@ const change = (id: string, op: Change["op"], fields: Partial<Change> = {}): Cha
   ({ id, op, entityId: null, relationId: null, payload: {}, note: "", createdAt: "2026-01-01", ...fields });
 
 const set = (id: string, name: string, targetDate: string, changes: Change[], status: ChangeSet["status"] = "planned"): ChangeSet =>
-  ({ id, workspaceId: "ws", name, description: "", status, targetDate, deliveredAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", changes });
+  ({ id, workspaceId: "ws", name, description: "", status, targetDate, deliveredAt: null, sourceKey: "", boardId: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", changes });
 
 const ESTATE = [entity("a", "Maximo"), entity("b", "SCADA"), entity("c", "Billing"), entity("d", "Historian")];
 const WIRES = [relation("r1", "c", "a")];

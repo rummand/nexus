@@ -391,7 +391,7 @@ export async function createBoardFromFrame(boardId: string, name: string, docume
     document: serializeDocument(doc),
     lastOpenedAt: now(),
   });
-  await syncBoardToGraph(db, { id, workspaceId: source.workspaceId }, doc);
+  await syncBoardToGraph(db, { id, workspaceId: source.workspaceId }, doc, { userId: user.id });
   revalidatePath(`/w/${await workspaceSlug(source.workspaceId)}`, "layout");
   return { id };
 }
@@ -573,7 +573,7 @@ export async function createBoardFromGraph(input: { workspaceId: string; spaceId
     lastOpenedAt: now(),
   });
   // index the board's cards right away so the inventory shows them
-  await syncBoardToGraph(db, { id, workspaceId: input.workspaceId }, doc);
+  await syncBoardToGraph(db, { id, workspaceId: input.workspaceId }, doc, { userId: user?.id ?? null });
   revalidatePath(`/w/${await workspaceSlug(input.workspaceId)}`, "layout");
   redirect(`/b/${id}`);
 }

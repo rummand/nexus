@@ -349,6 +349,12 @@ async function persist(room: Room, opts: { force?: boolean } = {}) {
      * this is (§5.43). The board is the actor, honestly, rather than whichever peer happened to
      * type last.
      */
+    /*
+     * The room has no single person to ask which ref they are on — it is several people at once —
+     * so a new object drawn live lands on the board's own branch. That is the safe end of the
+     * ambiguity: the alternative is guessing one editor's checkout and writing everybody's work
+     * to it.
+     */
     await syncBoardToGraph(db, { id: room.boardId, workspaceId: result.workspaceId, name: result.boardName }, doc);
     if (doc.meta?.importBatch) await reconcileBoard(db, doc.meta.importBatch, doc);
   } catch {

@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Flag, GitBranch, GitCommitHorizontal, ListChecks, Network, Rss, ShieldCheck } from "lucide-react";
+import { Check, Flag, GitBranch, GitCommitHorizontal, ListChecks, Network, PencilLine, Rss, ShieldCheck } from "lucide-react";
 import { switchRefAction } from "@/lib/change/actions";
 import { divergenceWords, refKindWords, refName, type Divergence, type Ref } from "@/lib/change/ref";
 
@@ -27,6 +27,7 @@ export interface RefChoice {
   changes: number;
   /** Set when the branch belongs to a source system rather than to a person (§5.92). */
   sourceKey: string;
+  boardId: string | null;
 }
 
 /*
@@ -97,24 +98,35 @@ export function RefIndicator({
                 "what ServiceNow says" reads as though somebody is planning the second one.
               */
               const opensSources = Boolean(c.sourceKey) && !choices[i - 1]?.sourceKey;
+              /*
+                And boards under theirs (§5.100). A branch that exists because somebody drew a
+                card is a holding area, not an intention — listing it among the plans would read
+                as though the workshop had been scheduled.
+              */
+              const drawn = Boolean(c.boardId) && !c.sourceKey;
+              const opensBoards = drawn && !(choices[i - 1]?.boardId && !choices[i - 1]?.sourceKey);
               return (
                 <Fragment key={c.id}>
                   {opensSources && <p className="ref-heading">What the sources say</p>}
+                  {opensBoards && <p className="ref-heading">Drawn, not yet agreed</p>}
                   <button
                     type="button"
                     role="menuitem"
-                    className={`${here ? "on" : ""}${c.sourceKey ? " from-source" : ""}`}
+                    className={`${here ? "on" : ""}${c.sourceKey ? " from-source" : ""}${drawn ? " from-board" : ""}`}
                     onClick={() => go(c.id)}
                     data-ref-choice={c.id}
                     data-ref-source={c.sourceKey || undefined}
+                    data-ref-board={drawn ? c.boardId : undefined}
                   >
-                    {c.sourceKey ? <Rss size={13} /> : <GitBranch size={13} />}
+                    {c.sourceKey ? <Rss size={13} /> : drawn ? <PencilLine size={13} /> : <GitBranch size={13} />}
                     <span>
                       <b>{c.name || "(unnamed change set)"}</b>
                       <em>
                         {c.sourceKey
                           ? `${c.changes} thing${c.changes === 1 ? "" : "s"} it says that we have not agreed to`
-                          : `${c.targetDate ? `${c.targetDate} · ` : ""}${c.changes} change${c.changes === 1 ? "" : "s"}`}
+                          : drawn
+                            ? `${c.changes} object${c.changes === 1 ? "" : "s"} drawn there, waiting to be agreed`
+                            : `${c.targetDate ? `${c.targetDate} · ` : ""}${c.changes} change${c.changes === 1 ? "" : "s"}`}
                       </em>
                     </span>
                     {here && <Check size={13} />}

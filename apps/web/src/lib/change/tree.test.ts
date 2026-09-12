@@ -20,7 +20,7 @@ const change = (over: Partial<Change> & { id: string; createdAt: string }): Chan
 });
 const set = (over: Partial<ChangeSet> & { id: string; createdAt: string }): ChangeSet => ({
   workspaceId: "w", name: over.id, description: "", status: "draft", targetDate: "",
-  deliveredAt: null, updatedAt: over.createdAt, changes: [], ...over,
+  deliveredAt: null, sourceKey: "", boardId: null, updatedAt: over.createdAt, changes: [], ...over,
 });
 
 const tree = (over: Partial<TreeInput> = {}) => branchTree({ events: [], changeSets: [], ...over });

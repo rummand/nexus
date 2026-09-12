@@ -69,6 +69,10 @@ export interface ChangeSet {
   /** ISO date (YYYY-MM-DD), or "" when undated. */
   targetDate: string;
   deliveredAt: string | null;
+  /** The source system this branch belongs to, when it is one (§5.92). Empty otherwise. */
+  sourceKey: string;
+  /** The board that opened this branch by being drawn on (§5.100). Null otherwise. */
+  boardId: string | null;
   createdAt: string;
   updatedAt: string;
   changes: Change[];

@@ -23,8 +23,8 @@ beforeAll(async () => {
   const doc2: CanvasDocument = { version: 2, elements: { b: cardEl("b", "ent_b", "asset register", "Applications"), u: cardEl("u", "ent_u", "Grid Planning Tool", "") } };
   await db.update(s.boards).set({ document: serializeDocument(doc1) }).where(eq(s.boards.id, "b1"));
   await db.update(s.boards).set({ document: serializeDocument(doc2) }).where(eq(s.boards.id, "b2"));
-  await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc1);
-  await syncBoardToGraph(db, { id: "b2", workspaceId: "ws" }, doc2);
+  await syncBoardToGraph(db, { id: "b1", workspaceId: "ws" }, doc1, { writeThrough: true });
+  await syncBoardToGraph(db, { id: "b2", workspaceId: "ws" }, doc2, { writeThrough: true });
   await db.insert(s.entities).values({ id: "ent_orphan", workspaceId: "ws", kind: "Application", name: "Old Thing", source: "import:x" });
 });
 

@@ -6,7 +6,7 @@ import type { Change, ChangeSet, ChangeSetStatus } from "./types";
 
 const set = (id: string, targetDate: string, status: ChangeSetStatus = "planned", changes: Change[] = []): ChangeSet => ({
   id, workspaceId: "ws", name: id.toUpperCase(), description: "", status, targetDate,
-  deliveredAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", changes,
+  deliveredAt: null, sourceKey: "", boardId: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", changes,
 });
 
 const dep = (changeSetId: string, dependsOnId: string): Dependency => ({ changeSetId, dependsOnId });
