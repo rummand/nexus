@@ -147,7 +147,13 @@ export function FollowBar() {
   return (
     <>
       <div className="follow-frame" style={{ borderColor: peer.color }} aria-hidden />
-      <div className="follow-bar" data-follow-bar>
+      {/*
+        Pointer events stop here, as they do on every other floating control (the scrubber, the
+        zoom card). Without it the canvas underneath takes the pointer and the button's click
+        never completes — which is exactly how the note below was broken, and this bar has the
+        same shape. Its Stop was never clicked by the walk, so nobody had found out.
+      */}
+      <div className="follow-bar" data-follow-bar onPointerDown={(e) => e.stopPropagation()}>
         <i style={{ background: peer.color }} />
         Following {peer.name}
         <small>move the board to take it back</small>
@@ -163,7 +169,7 @@ export function GatheredNote() {
   const gatheredBy = useCanvas((s) => s.gatheredBy);
   if (!gatheredBy) return null;
   return (
-    <div className="gathered-note" data-gathered>
+    <div className="gathered-note" data-gathered onPointerDown={(e) => e.stopPropagation()}>
       <b>{gatheredBy.name}</b> brought you here.
       <button type="button" onClick={() => store.getState().clearGathered()}>OK</button>
     </div>

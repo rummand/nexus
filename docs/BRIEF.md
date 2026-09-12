@@ -4111,6 +4111,9 @@ may only read still needs in a workshop.
 
 **Being moved always says who moved you.** A camera that jumps with no explanation is the most
 disorienting thing a shared canvas can do, so the pull is accompanied by a name and a dismissal.
+The note sits top-centre, above the scrubber and the zoom card, and — like every other thing that
+floats over the canvas — it stops pointer events, or the canvas underneath takes the pointerdown
+and its OK never completes. Both of those were bugs before the walk pressed the button.
 
 This section is smaller than it was. The first attempt shipped a second presence surface — a
 panel listing everybody, with its own follow and a jump-to — before noticing that the chips
@@ -5514,6 +5517,10 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | The presence surface stays the topbar chips; the new gesture joins them rather than getting a panel. | Two places answering "who is on this board" is the thing §5.89 exists to prevent. A second surface was built and removed in the same session — the honest fix for building the wrong thing is to take it out, not to keep it because it works. |
 | 2026-09-12 | "Go to somebody without following them" was dropped after being built. | Nobody asked for it and following already takes you there with a way back. A verb that exists only because it was easy to add is a verb somebody has to learn for nothing. |
 
+| 2026-09-12 | Everything that floats over the canvas stops pointerdown, and that is a rule rather than a habit. | The canvas claims the pointer on pointerdown to pan and select, so a control that does not stop it has its click swallowed and does nothing — silently, with no error and a perfectly healthy-looking button. Two of the five floating controls had it; the two that did not were both broken. |
+| 2026-09-12 | A control the walk has never pressed is a control that does not work yet. | The follow bar's Stop had been shipped and unexercised for forty revisions, carrying the same swallowed-click bug the gathered note had. The walk ended a follow by moving the board, which passed while the button itself was dead. Coverage that reaches a feature by its side door proves nothing about the front one. |
+| 2026-09-12 | A failing walk prints the assertion before it touches the browser again. | The diagnostics ran first, and a page stuck mid-navigation makes the element count hang with no timeout of its own — so a run could die having reported the screenshot path and never the failure, which is the wrong half to lose. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5528,6 +5535,24 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 145c: floating chrome stops letting the canvas eat the click.** The browser
+  walk had not been run in eleven revisions; running it found three things in a row, and two of
+  them were real product bugs rather than test noise. First, the "*X* brought you here" note
+  (§5.95) sat at the bottom of the canvas underneath the time scrubber — half hidden, and its OK
+  unclickable because the scrubber intercepted the pointer; it now sits top-centre above
+  everything (rev 145b). Second, with the note visible and unobstructed, dismissing it still did
+  nothing: the note did not stop pointer events, so the canvas underneath took the pointerdown and
+  the button's click never completed. Every other floating control — the scrubber, the zoom card —
+  had always stopped them; the note and the follow bar (§5.51) had not. **The follow bar's Stop
+  had never been pressed by anything**, because the walk only ever ended a follow by moving the
+  board, so the same latent bug sat there unfound. Both now stop pointer events, and the walk
+  presses Stop. It also now covers replaying a plan onto today (§5.94) and marking and listing a
+  checkpoint (§5.98), neither of which had any browser coverage. Two harness fixes came with it:
+  the walk's server gets 420s to boot rather than 120 (rev 145a — it was failing to start, not
+  failing a check), and a failed run now prints the assertion *before* the diagnostics, because a
+  page stuck mid-navigation makes the element count hang with no timeout of its own and the run
+  was dying with the useful half missing.
 
 - **2026-09-12 — Rev 145: taking back most of rev 141.** Rev 141 was built on a gap that did not
   exist. `PeerChips` (§5.51) has always listed everybody on the board in the topbar and followed

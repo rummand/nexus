@@ -1425,6 +1425,18 @@ try {
   assert.equal(await blocker.locator(".roadmap-delivered").count(), 0, "a refused delivery does not deliver");
   assert.equal(await page.locator("[data-states]").innerText(), statesBefore, "…and the estate is where it was");
 
+  /*
+   * Replay a plan onto the estate as it is now (§5.94). The seeded plan retires Maximo, which is
+   * still live, so nothing in it has come true yet — the interesting assertion is that it says so
+   * rather than offering to drop anything.
+   */
+  // 60s rather than the usual 30: this is the first press of this server action in the run, and
+  // one run died waiting on it while Turbopack was still compiling the thing it called.
+  await blocker.locator("[data-rebase]").click();
+  await page.waitForFunction(() => /still to do|has arrived/.test(document.querySelector(".roadmap-message")?.textContent ?? ""), null, { timeout: 60000 });
+  assert.match(await page.locator(".roadmap-message").innerText(), /still to do/,
+    "replaying a plan says what is left rather than a percentage");
+
   // plateaus: named states, and the difference between two of them
   await page.goto(`${base}/w/acme-energy/roadmap/plateaus`, { waitUntil: "load" });
   await page.waitForSelector("[data-plateau-strip]");
@@ -1739,6 +1751,27 @@ try {
     );
   }
   assert.equal(await countEntities(), beforeLanding + 2, "merging the branch is what puts the objects in the estate");
+
+  /*
+   * ---- checkpoints: what actually happened (§5.98) ---------------------------------------------
+   *
+   * The other axis from the roadmap. The roadmap diffs the estate against a plan; this diffs it
+   * against itself at another moment. Marking a moment is one row — nothing is copied — so the
+   * walk checks that the page says how far back it can honestly see, which is the claim that
+   * stops a rewind past the log reading as "nothing ever changed".
+   */
+  await page.goto(`${base}/w/acme-energy/checkpoints`, { waitUntil: "load" });
+  await page.waitForSelector("[data-checkpoints]", { timeout: 45000 });
+  assert.match(await page.locator(".checkpoint-reach").innerText(), /reaches back to|Nothing has been recorded/,
+    "the page says how far back the estate can be read, rather than pretending to see forever");
+
+  await page.fill("[data-checkpoint-label]", "Before the walk changed anything");
+  await page.click("[data-mark-checkpoint]");
+  await page.waitForFunction(() => /marked/.test(document.querySelector(".roadmap-message")?.textContent ?? ""), null, { timeout: 30000 });
+  await page.waitForSelector("[data-checkpoint]", { timeout: 30000 });
+  assert.ok((await page.locator("[data-checkpoint]").count()) >= 1, "a named moment is listed");
+  assert.match(await page.locator("[data-checkpoint]").first().innerText(), /Before the walk changed anything/,
+    "…under the name somebody gave it");
 
   /*
    * ---- the repository has a shelf (§5.76) -----------------------------------------------------
@@ -2544,6 +2577,22 @@ try {
       assert.match(await page.locator(".sync-pill").first().innerText(), /Shared/,
         "a live board says it is shared rather than saved — the room is the writer now");
 
+      /*
+       * "Everyone look at this" (§5.95). The chips are a pull — they take you to somebody. This
+       * is the push, and the only way to test it is with the second browser that is already here.
+       */
+      assert.equal(await page.locator("[data-gather]").count(), 1,
+        "the chip row offers a way to bring the room to you");
+      await second.evaluate(() => window.scrollTo(0, 0));
+      await page.click("[data-gather]");
+      await second.waitForSelector("[data-gathered]", { timeout: 20000 });
+      assert.match(await second.locator("[data-gathered]").innerText(), /brought you here/,
+        "being moved says who moved you, because a camera that jumps unexplained is the worst thing a shared canvas does");
+      await second.click("[data-gathered] button");
+      // Waited for rather than counted: dismissing is a state change and a React render, and
+      // asking the moment the click resolves is asking before either has happened.
+      await second.waitForSelector("[data-gathered]", { state: "detached", timeout: 15000 });
+
       // A card drawn on one screen appears on the other, without either reloading.
       //
       // The spot is found rather than guessed: a fixed coordinate on this board lands on the
@@ -2611,7 +2660,15 @@ try {
       const backChip = page.locator("[data-peer-chips] [data-peer-follow]").first();
       assert.equal(await backChip.isDisabled(), true, "you cannot follow somebody who is following you");
 
+      // The bar's own Stop has to work, and until now nothing had ever pressed it — the walk only
+      // ever ended a follow by moving the board, which is why it took the gathered note breaking
+      // the same way to notice that this bar was letting the canvas swallow the click too.
+      await second.click("[data-follow-bar] button");
+      await second.waitForSelector("[data-follow-bar]", { state: "detached", timeout: 15000 });
+
       // And moving the board yourself takes it back, with nothing to press.
+      await second.click("[data-peer-chips] [data-peer-follow]");
+      await second.waitForSelector("[data-follow-bar]", { timeout: 15000 });
       await second.mouse.move(700, 500);
       await second.mouse.wheel(0, 200);
       await second.waitForTimeout(700);
@@ -2829,12 +2886,18 @@ try {
   console.log("smoke: all checks passed");
 } catch (error) {
   // A failing assertion in a headless browser is a mystery without a picture. Leave one.
-  const shot = new URL("./failure.png", import.meta.url).pathname;
-  await page.screenshot({ path: shot, fullPage: false }).catch(() => undefined);
+  // The message goes out before anything that touches the browser again. A page stuck mid-
+  // navigation makes `count()` hang with no timeout of its own, and a run that dies that way
+  // reports the diagnostics and never the failure — which is exactly the wrong half to lose.
   console.error(`smoke: failed at ${page.url()}`);
-  console.error(`smoke: ${await page.locator("[data-element-id]").count().catch(() => "?")} elements on screen`);
-  console.error(`smoke: screenshot written to ${shot}`);
+  console.error(`smoke: ${error && error.message ? error.message.split("\n")[0] : error}`);
   if (problems.length) console.error(`smoke: browser reported ${problems.length}: ${problems.slice(0, 3).join(" | ")}`);
+  const shot = new URL("./failure.png", import.meta.url).pathname;
+  const bounded = (p, fallback) =>
+    Promise.race([p, new Promise((r) => setTimeout(() => r(fallback), 20000))]).catch(() => fallback);
+  await bounded(page.screenshot({ path: shot, fullPage: false }), undefined);
+  console.error(`smoke: ${await bounded(page.locator("[data-element-id]").count(), "?")} elements on screen`);
+  console.error(`smoke: screenshot written to ${shot}`);
   throw error;
 } finally {
 
