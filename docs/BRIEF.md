@@ -4203,6 +4203,39 @@ to stand *on* a date the way they stand on a branch — filtering, editing and m
 rather than looking at it. Neither is true today, and the branch-rot nudge already pushes against
 the first.
 
+### 5.98 Checkpoints: a name for a moment (#112, v0.2)
+
+§5.97 made the estate on any past date readable. This makes it **addressable**, which is what
+#112 actually asked for — name a moment, and compare any two of them.
+
+**A checkpoint is a label on a timestamp, not a copy of the graph.** LeanFlow Studio materialises
+every node and edge per snapshot; this stores one row. The difference matters in both directions:
+copying would put the whole estate on disk per checkpoint, making *checkpoint often* the expensive
+habit rather than the cheap one — and a copy can drift from the log that explains it, where a
+label cannot.
+
+**A different axis from the roadmap**, and the pages are worded to keep them apart. The roadmap
+diffs the estate against a *plan* — what somebody intends. This diffs the estate against **itself
+at another moment** — what actually happened, whether anybody meant it to or not. Past tense
+throughout: arrived, went, changed.
+
+**Both moments are rewound from today**, never one from the other. Today is the only state that
+is certainly true; walking from an older reconstruction to a newer one would compound whatever
+the log could not tell us.
+
+The comparison is in the query string rather than in state, so it is a link somebody can send —
+which is most of the point of naming a moment at all.
+
+**What the history reaches is said out loud.** Rewinding past the oldest event is not wrong so
+much as mute: it returns today's estate with nothing undone, which reads as *nothing has ever
+changed* rather than *I cannot see that far back*. The page says which. And a checkpoint cannot
+be marked in the future, because a moment that has not happened is a plan, and the roadmap
+already holds those.
+
+Restore is deliberately **not** here. #112 asks for it with the care a board restore gets, and
+that is a write against the estate rather than a read of it — a separate decision, and better
+made once somebody has used the reading half in anger.
+
 ## 6. Roadmap
 
 ### Now (brief 1 — foundation) — done, see §6a
@@ -5477,6 +5510,12 @@ migrations. Steps in `docs/DEPLOY.md`.
 | 2026-09-12 | The rewind names what it cannot do rather than approximating it. | A deleted object comes back thin, the log is the limit of what is knowable, and relations are not rewound. A time machine that quietly invents the parts it does not have is worse than one with edges. |
 | 2026-09-12 | Revisit the storage decision when a source branch routinely holds tens of thousands of unmerged changes, or when somebody wants to stand on a date rather than look at one. | Naming the trigger is what stops "last in the sequence" turning into "never". Neither condition holds today. |
 
+| 2026-09-12 | A checkpoint is a label on a moment, not a materialised copy of the graph. | The log can already rewind the estate, so a copy adds disk per checkpoint and a second thing that can drift from the history explaining it. Naming is one row, which makes "checkpoint often" cheap rather than expensive. |
+| 2026-09-12 | Comparing two moments rewinds both from today rather than one from the other. | Today is the only state that is certainly true. Walking from an older reconstruction to a newer one compounds whatever the log could not tell us. |
+| 2026-09-12 | The page says how far back the history reaches. | Rewinding past the oldest event returns today's estate unchanged, which reads as "nothing ever changed" instead of "I cannot see that far". A time machine with no stated edge is one that lies at the edge. |
+| 2026-09-12 | A checkpoint cannot be marked in the future. | A moment that has not happened is a plan, and the roadmap already holds plans. The rewind would also return today's estate for it, which would be false. |
+| 2026-09-12 | Restoring the estate to a checkpoint is not in this slice. | It is a write against the estate rather than a read of it, and deserves the care a board restore gets. Better decided once somebody has used the reading half in anger. |
+
 ## 8. Open questions for the product owner
 
 - Which catalogue entry should be built first for real (ServiceNow CMDB? Entra ID app
@@ -5491,6 +5530,16 @@ migrations. Steps in `docs/DEPLOY.md`.
 
 ## 9. Changelog
 
+
+- **2026-09-12 — Rev 144: checkpoints (#112).** Rev 143 made the estate on a past date readable;
+  this makes it addressable. Name a moment — "before the LeanIX import" — and compare any two of
+  them: what arrived, what went, what changed, field by field. A checkpoint is a label on a
+  timestamp rather than a materialised copy of the graph, so checkpointing often is cheap and
+  nothing can drift from the log that explains it. Both moments are rewound from today, never one
+  from the other, because today is the only state certainly true. The page says how far back the
+  history reaches, since a rewind past the oldest event would otherwise read as "nothing ever
+  changed". Restore is deliberately left out: it is a write, and deserves its own decision.
+  Eleven tests for the diff. Brief §5.98, five decision rows.
 
 - **2026-09-12 — Rev 143: the estate on a date (#138).** The last decision in the epic, answered
   by building the thing it turns on rather than by choosing between the two options as posed. The

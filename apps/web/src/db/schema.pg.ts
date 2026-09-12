@@ -1528,3 +1528,36 @@ export const changeSetApprovals = pgTable(
 );
 
 export type ChangeSetApprovalRow = typeof changeSetApprovals.$inferSelect;
+
+/**
+ * A name for a moment (#112, §5.98).
+ *
+ * LeanFlow Studio materialises a snapshot of every node and edge per checkpoint. This does not,
+ * and the difference is the point: the event log (§5.43) already holds enough to rewind the
+ * estate to any instant (§5.97), so a checkpoint is a *label on a timestamp* — one row — rather
+ * than a copy of the whole graph. Copying would put the estate on disk once per checkpoint and
+ * make "checkpoint often" the expensive habit instead of the cheap one.
+ *
+ * What is lost is the ability to checkpoint a moment the log cannot reach — anything before the
+ * history existed. That is named in §5.97 rather than papered over.
+ */
+export const checkpoints = pgTable(
+  "checkpoints",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** What this moment is called: "before the LeanIX import", "signed the SAP contract". */
+    label: text("label").notNull().default(""),
+    /** The instant itself. The whole record, really; everything else is for a person to read. */
+    at: text("at").notNull(),
+    /** Why it was worth naming. */
+    note: text("note").notNull().default(""),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("checkpoints_workspace_idx").on(t.workspaceId, t.at)],
+);
+
+export type CheckpointRow = typeof checkpoints.$inferSelect;

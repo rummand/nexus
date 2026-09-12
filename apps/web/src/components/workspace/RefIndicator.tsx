@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, GitBranch, GitCommitHorizontal, ListChecks, Network, Rss, ShieldCheck } from "lucide-react";
+import { Check, Flag, GitBranch, GitCommitHorizontal, ListChecks, Network, Rss, ShieldCheck } from "lucide-react";
 import { switchRefAction } from "@/lib/change/actions";
 import { divergenceWords, refKindWords, refName, type Divergence, type Ref } from "@/lib/change/ref";
 
@@ -136,6 +136,10 @@ export function RefIndicator({
           <Link className="ref-checks" href={`/w/${slug}/tree`} onClick={() => setOpen(false)} data-ref-tree>
             <Network size={13} />
             <span>Every branch and commit</span>
+          </Link>
+          <Link className="ref-checks" href={`/w/${slug}/checkpoints`} onClick={() => setOpen(false)} data-ref-checkpoints>
+            <Flag size={13} />
+            <span>What has already happened</span>
           </Link>
           <Link className="ref-checks" href={`/w/${slug}/campaigns`} onClick={() => setOpen(false)} data-ref-campaigns>
             <ListChecks size={13} />

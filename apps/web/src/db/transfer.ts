@@ -62,6 +62,7 @@ export const TRANSFER_ORDER = [
   "plateaus",
   "plateau_change_sets",
   "checkouts",
+  "checkpoints",
   "model_owners",
   "change_set_approvals",
   "campaigns",

@@ -232,6 +232,13 @@
       "when": 1789188230602,
       "tag": "0032_aromatic_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789190343914,
+      "tag": "0033_opposite_rage",
+      "breakpoints": true
     }
   ]
 }
